@@ -6,6 +6,12 @@
     "name": "NoBl",
     "email": "github@bluemle.org"
   },
+  "contributors": [
+    {
+      "name": "NoBl",
+      "email": "github@bluemle.org"
+    }
+  ],
   "homepage": "https://github.com/nobl/ioBroker.senec",
   "license": "MIT",
   "keywords": [
