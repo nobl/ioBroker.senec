@@ -1,0 +1,92 @@
+{
+    "common": {
+        "name": "senec",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "zh-cn": "首次出版"
+            }
+        },
+        "docs": {
+            "de": "docs/de/README.md"
+        },
+        "title": "Senec",
+        "titleLang": {
+            "en": "Senec",
+            "de": "Senec",
+            "ru": "Senec",
+            "pt": "Senec",
+            "nl": "Senec",
+            "fr": "Senec",
+            "it": "Senec",
+            "es": "Senec",
+            "pl": "Senec",
+            "zh-cn": "塞内克"
+        },
+        "desc": {
+            "en": "This adapter reads available values from a Senec Home V2.1 system using lala.cgi.",
+            "de": "Dieser Adapter liest die in einem Senec Home V2.1 verfügbaren Werte via lala.cgi aus."
+        },
+        "authors": [
+            "NoBl <github@bluemle.org>"
+        ],
+        "keywords": [
+			"iobroker",
+            "senec",
+            "solar"
+        ],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "main": "main.js",
+        "icon": "senec.png",
+        "enabled": false,
+        "extIcon": "https://raw.githubusercontent.com/nobl/ioBroker.senec/master/admin/senec.png",
+        "readme": "https://github.com/nobl/ioBroker.senec/blob/master/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "energy",
+        "connectionType": "local",
+		"dataSource": "poll",
+        "compact": true,
+        "materialize": true,
+        "dependencies": [{
+                "js-controller": ">=1.4.2"
+            }
+        ]
+    },
+    "native": {
+        "senecip": "0.0.0.0",
+		"interval": 10
+    },
+    "objects": [],
+    "instanceObjects": [{
+            "_id": "info",
+            "type": "channel",
+            "common": {
+                "name": "Information"
+            },
+            "native": {}
+        }, {
+            "_id": "info.connection",
+            "type": "state",
+            "common": {
+                "role": "indicator.connected",
+                "name": "Device or service connected",
+                "type": "boolean",
+                "read": true,
+                "write": false,
+                "def": false
+            },
+            "native": {}
+        }
+    ]
+}
