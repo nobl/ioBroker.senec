@@ -17,6 +17,7 @@
     "url": "https://github.com/nobl/ioBroker.senec"
   },
   "dependencies": {
+    "request": "^1.0.0",
     "@iobroker/adapter-core": "^2.2.1"
   },
   "devDependencies": {
