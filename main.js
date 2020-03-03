@@ -28,20 +28,9 @@ class Senec extends utils.Adapter {
         // Initialize your adapter here
 
         // Reset the connection indicator during startup
-        this.setState('info.connection', false, true);
-
-        // The adapters config (in the instance object everything under the attribute "native") is accessible via
-        // this.config:
-        this.log.info('config senecip: ' + this.config.senecip);
-
-        if (!this.config.senecip || this.config.senecip === "0.0.0.0") {
-            this.terminate("No Senec system supplied. Exiting!");
-            this.stop();
-        }
-
+        this.setState('info.connection', false, true);       
+        this.checkConnection();
         this.readSenecV21();
-
-        this.setState('info.connection', true, true);
 
     }
 
@@ -62,59 +51,86 @@ class Senec extends utils.Adapter {
         }
     }
 
+	/**
+	 * checks connection to senec service
+	 */
+    async checkConnection() {
+        const url = 'http://' + this.config.senecip + '/lala.cgi';
+        const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":""}}';
+        try {
+			this.log.info('connecting to Senec: ' + this.config.senecip);
+            const body = await this.doGet(url, form);
+			this.log.info('connected to Senec: ' + this.config.senecip);
+			this.setState('info.connection', true, true);
+        } catch (error) {
+            this.terminate("Error connecting to Senec (IP: " + this.config.senecip + "). Exiting! (" + error + ")");
+            this.disable();
+        }
+    }
+
+	/**
+	 * Read from url via request
+	 * @param url to read from
+	 * @param form to post
+	 */	 
+    async doGet(pUrl, pForm) {
+        return new Promise(function (resolve, reject) {
+            const options = {
+                url: pUrl,
+                method: 'POST',
+                form: pForm
+            };
+            request(options, function (error, response, body) {
+                if (error)
+                    return reject(error);
+                resolve(body);
+            });
+        });
+    }
+
     /**
      * Read values from Senec Home V2.1
      * Leaving out Wallbox info because it won't be supplied by senec if no wallbox configured
      */
-    readSenecV21() {
-        //this.log.info('reading from senec: ' + this.config.senecip);
+    async readSenecV21() {
+        // From current senec cgi
+        // '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":"","STAT_YEAR_E_PU1_ARR":""},"ENERGY":{"STAT_STATE":"","STAT_STATE_DECODE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""}}'
 
+        const url = 'http://' + this.config.senecip + '/lala.cgi';
+        const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""}}';
         try {
-            request.post({
-                url: 'http://' + this.config.senecip + '/lala.cgi',
-                // From current senec cgi
-                // '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":"","STAT_YEAR_E_PU1_ARR":""},"ENERGY":{"STAT_STATE":"","STAT_STATE_DECODE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""}}'
-                form: '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""}}'
-            }, (error, response, body) => {
-                if (error) {
-                    this.terminate('Request to senec failed: ' + error);
-                    this.stop();
+            const body = await this.doGet(url, form);
+            // this.log.info('received data from senec: ' + body);
+            var obj = JSON.parse(body, reviverNumParse);
+
+            // this only works, while senec sticks with format {"CAT1":{"ST1":"V1","STn":"Vn"},"CAT2":{...}...}
+            for (let[key1, value1]of Object.entries(obj)) {
+                for (let[key2, value2]of Object.entries(value1)) {
+                    var key = key1 + '.' + key2;
+                    var descUnitValue = getDescUnitValue(String(key1), String(key2), value2);
+                    var desc = descUnitValue[0];
+                    var unit = descUnitValue[1];
+                    var value = descUnitValue[2];
+                    this.doState(key, value, desc, unit);
                 }
+            }
+            // this isn't part of the JSON but we supply it for easier reading of system-state
+            var descUnitValue = getDescUnitValue("ENERGY", "STAT_STATE-Text", obj.ENERGY.STAT_STATE);
+            this.doState("ENERGY.STAT_STATE_Text", descUnitValue[2], descUnitValue[0], descUnitValue[1]);
 
-                // this.log.info('received data from senec (' + response.statusCode + '): ' + body);
+            /*
+             * unknown use: ENERGY.STAT_STATE_DECODE	Ex. Value: u8_0F
+             * unknown use: STATISTIC.STAT_YEAR_E_PU1_ARR is an array with just 0 values
+             *
+             * some have WIZARD.SETUP_NUMBER_WALLBOXES and WIZARD.SETUP_WALLBOX_SERIAL[0..3] but those don't exist on every system it appears.
+             * Need to find out if this depends on wallbox configured so maybe add a switch to admin panel.
+             */
 
-                var obj = JSON.parse(body, reviverNumParse);
-
-                // this only works, while senec sticks with format {"CAT1":{"ST1":"V1","STn":"Vn"},"CAT2":{...}...}
-                for (let[key1, value1]of Object.entries(obj)) {
-                    for (let[key2, value2]of Object.entries(value1)) {
-                        var key = key1 + '.' + key2;
-                        var descUnitValue = getDescUnitValue(String(key1), String(key2), value2);
-                        var desc = descUnitValue[0];
-                        var unit = descUnitValue[1];
-                        var value = descUnitValue[2];
-                        this.doState(key, value, desc, unit);
-                    }
-                }
-                // this isn't part of the JSON but we supply it for easier reading of system-state
-                var descUnitValue = getDescUnitValue("ENERGY", "STAT_STATE-Text", obj.ENERGY.STAT_STATE);
-                this.doState("ENERGY.STAT_STATE_Text", descUnitValue[2], descUnitValue[0], descUnitValue[1]);
-
-                /*
-                 * unknown use: ENERGY.STAT_STATE_DECODE	Ex. Value: u8_0F
-                 * unknown use: STATISTIC.STAT_YEAR_E_PU1_ARR is an array with just 0 values
-                 *
-                 * some have WIZARD.SETUP_NUMBER_WALLBOXES and WIZARD.SETUP_WALLBOX_SERIAL[0..3] but those don't exist on every system it appears.
-                 * Need to find out if this depends on wallbox configured so maybe add a switch to admin panel.
-                 */
-
-            })
-        } catch (e) {
-            this.terminate(e);
-            this.stop();
+            this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
+        } catch (error) {
+            this.terminate("Error reading from Senec (IP: " + this.config.senecip + "). Exiting! (" + error + ")");
+            this.disable();
         }
-
-        this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
     }
 
     /**
@@ -133,8 +149,9 @@ class Senec extends utils.Adapter {
             },
             native: {}
         });
-		var oldState = await this.getStateAsync(name);
-		if (oldState && oldState.val === value) return; // if value didn't change, don't update
+        var oldState = await this.getStateAsync(name);
+        if (oldState && oldState.val === value)
+            return; // if value didn't change, don't update
         await this.setStateAsync(name, {
             val: value,
             ack: true
@@ -190,7 +207,7 @@ const reviverNumParse = (key, value) => {
  * @param numeric state value
  */
 const stateHumanForm = (state) => {
-	// if you can supply me with the correct (senec chargon!) values in english, please open a ticket
+    // if you can supply me with the correct (senec chargon!) values in english, please open a ticket
     switch (state) {
     case 8:
         return "Maximale Sicherheitsladung";
