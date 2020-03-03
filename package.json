@@ -1,6 +1,6 @@
 {
   "name": "iobroker.senec",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Senec Home V2.1",
   "author": {
     "name": "NoBl",
@@ -16,7 +16,8 @@
   "license": "MIT",
   "keywords": [
     "senec",
-    "solar"
+    "solar",
+	"photovoltaic"
   ],
   "repository": {
     "type": "git",

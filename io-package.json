@@ -1,19 +1,19 @@
 {
     "common": {
         "name": "senec",
-        "version": "0.0.1",
+        "version": "1.0.0",
         "news": {
-            "0.0.1": {
-                "en": "initial release",
-                "de": "Erstveröffentlichung",
-                "ru": "Начальная версия",
-                "pt": "lançamento inicial",
-                "nl": "Eerste uitgave",
-                "fr": "Première version",
-                "it": "Versione iniziale",
-                "es": "Versión inicial",
-                "pl": "Pierwsze wydanie",
-                "zh-cn": "首次出版"
+			"1.0.0": {
+				"en": "(NoBl) Initial release version",
+				"de": "(NoBl) Erstversion",
+				"ru": "(NoBl) Начальная версия выпуска",
+				"pt": "(NoBl) Versão de lançamento inicial",
+				"nl": "(NoBl) Eerste versie",
+				"fr": "(NoBl) Version de sortie initiale",
+				"it": "(NoBl) Versione di rilascio iniziale",
+				"es": "(NoBl) Versión de lanzamiento inicial",
+				"pl": "(NoBl) Pierwsza wersja wydania",
+				"zh-cn": " (NoBl) 初始发行版本"
             }
         },
         "docs": {
