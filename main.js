@@ -33,7 +33,7 @@ class Senec extends utils.Adapter {
             await this.checkConnection();
             await this.readSenecV21();
         } catch (error) {
-            this.terminate(error);
+			this.log.error(error);
             this.disable();
         }
     }
@@ -103,7 +103,7 @@ class Senec extends utils.Adapter {
         const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""}}';
         try {
             const body = await this.doGet(url, form);
-            // this.log.info('received data from senec: ' + body);
+            this.log.debug('received data from senec: ' + body);
             var obj = JSON.parse(body, reviverNumParse);
 
             // this only works, while senec sticks with format {"CAT1":{"ST1":"V1","STn":"Vn"},"CAT2":{...}...}
