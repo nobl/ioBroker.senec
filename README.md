@@ -26,7 +26,7 @@ You can either install the adapter via the ioBroker web interface or on your loc
 ### Local machine
 Navigate into your iobroker folder and execute the following command: 
 ```bash
-npm i iobroker.sonnen
+npm i iobroker.senec
 ```
 
 ## Setup
@@ -43,8 +43,7 @@ Additional to the adapter installation you have to add an instance of the adapte
 7. Click on Save & Close
 
 ## Usage
-Here you can find a description of the states and how to use them. The most states of this adapter are read-only states.
-Note, that there are two different sonnen API's so if you are missing states, they are probably not supported.
+Here you can find a description of the states and how to use them. All states of this adapter are read-only states.
 
 ### States
 
@@ -215,7 +214,9 @@ Note, that there are two different sonnen API's so if you are missing states, th
 
 ## Changelog
 
-### 0.0.1
+### 1.0.1
+* (NoBl) updated readme
+### 1.0.0
 * (NoBl) initial release
 
 ## License

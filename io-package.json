@@ -1,23 +1,35 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "news": {
-			"1.0.0": {
-				"en": "(NoBl) Initial release version",
-				"de": "(NoBl) Erstversion",
-				"ru": "(NoBl) Начальная версия выпуска",
-				"pt": "(NoBl) Versão de lançamento inicial",
-				"nl": "(NoBl) Eerste versie",
-				"fr": "(NoBl) Version de sortie initiale",
-				"it": "(NoBl) Versione di rilascio iniziale",
-				"es": "(NoBl) Versión de lanzamiento inicial",
-				"pl": "(NoBl) Pierwsza wersja wydania",
-				"zh-cn": " (NoBl) 初始发行版本"
+            "1.0.1": {
+                "en": "(NoBl) Updated readme",
+                "de": "(NoBl) Readme aktualisiert",
+                "ru": "(NoBl) Обновленный файл readme",
+                "pt": "(NoBl) Leia-me atualizado",
+                "nl": "(NoBl) Bijgewerkt leesmij",
+                "fr": "(NoBl) Readme mis à jour",
+                "it": "(NoBl) Leggimi aggiornato",
+                "es": "(NoBl) Léame actualizado",
+                "pl": "(NoBl) Zaktualizowano plik Readme",
+                "zh-cn": "（NoBl）更新了自述文件"
+            },
+            "1.0.0": {
+                "en": "(NoBl) Initial release version",
+                "de": "(NoBl) Erstversion",
+                "ru": "(NoBl) Начальная версия выпуска",
+                "pt": "(NoBl) Versão de lançamento inicial",
+                "nl": "(NoBl) Eerste versie",
+                "fr": "(NoBl) Version de sortie initiale",
+                "it": "(NoBl) Versione di rilascio iniziale",
+                "es": "(NoBl) Versión de lanzamiento inicial",
+                "pl": "(NoBl) Pierwsza wersja wydania",
+                "zh-cn": " (NoBl) 初始发行版本"
             }
         },
         "docs": {
-			"en": "docs/en/README.md",
+            "en": "docs/en/README.md",
             "de": "docs/de/README.md"
         },
         "title": "Senec",
@@ -41,7 +53,7 @@
             "NoBl <github@bluemle.org>"
         ],
         "keywords": [
-			"iobroker",
+            "iobroker",
             "senec",
             "solar"
         ],
@@ -56,7 +68,7 @@
         "mode": "daemon",
         "type": "energy",
         "connectionType": "local",
-		"dataSource": "poll",
+        "dataSource": "poll",
         "compact": true,
         "materialize": true,
         "dependencies": [{
@@ -66,7 +78,7 @@
     },
     "native": {
         "senecip": "0.0.0.0",
-		"interval": 10
+        "interval": 10
     },
     "objects": [],
     "instanceObjects": [{
