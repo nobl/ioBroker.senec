@@ -33,8 +33,7 @@ class Senec extends utils.Adapter {
             await this.checkConnection();
             await this.readSenecV21();
         } catch (error) {
-			this.log.error(error);
-            this.disable();
+			this.terminate(error, 11);
         }
     }
 
