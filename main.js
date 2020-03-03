@@ -28,10 +28,14 @@ class Senec extends utils.Adapter {
         // Initialize your adapter here
 
         // Reset the connection indicator during startup
-        this.setState('info.connection', false, true);       
-        this.checkConnection();
-        this.readSenecV21();
-
+        this.setState('info.connection', false, true);
+        try {
+            await this.checkConnection();
+            await this.readSenecV21();
+        } catch (error) {
+            this.terminate(error);
+            this.disable();
+        }
     }
 
     /**
@@ -51,28 +55,27 @@ class Senec extends utils.Adapter {
         }
     }
 
-	/**
-	 * checks connection to senec service
-	 */
+    /**
+     * checks connection to senec service
+     */
     async checkConnection() {
         const url = 'http://' + this.config.senecip + '/lala.cgi';
         const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":""}}';
         try {
-			this.log.info('connecting to Senec: ' + this.config.senecip);
+            this.log.info('connecting to Senec: ' + this.config.senecip);
             const body = await this.doGet(url, form);
-			this.log.info('connected to Senec: ' + this.config.senecip);
-			this.setState('info.connection', true, true);
+            this.log.info('connected to Senec: ' + this.config.senecip);
+            this.setState('info.connection', true, true);
         } catch (error) {
-            this.terminate("Error connecting to Senec (IP: " + this.config.senecip + "). Exiting! (" + error + ")");
-            this.disable();
+            throw new Error("Error connecting to Senec (IP: " + this.config.senecip + "). Exiting! (" + error + ")");
         }
     }
 
-	/**
-	 * Read from url via request
-	 * @param url to read from
-	 * @param form to post
-	 */	 
+    /**
+     * Read from url via request
+     * @param url to read from
+     * @param form to post
+     */
     async doGet(pUrl, pForm) {
         return new Promise(function (resolve, reject) {
             const options = {
@@ -128,8 +131,7 @@ class Senec extends utils.Adapter {
 
             this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
         } catch (error) {
-            this.terminate("Error reading from Senec (IP: " + this.config.senecip + "). Exiting! (" + error + ")");
-            this.disable();
+            throw new Error("Error reading from Senec (IP: " + this.config.senecip + "). Exiting! (" + error + ")");
         }
     }
 
