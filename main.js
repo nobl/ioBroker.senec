@@ -212,33 +212,33 @@ const stateHumanForm = (state) => {
     // if you can supply me with the correct (senec chargon!) values in english, please open a ticket
     switch (state) {
     case 8:
-        return "Maximale Sicherheitsladung";
+        return "Maximale Sicherheitsladung (8)";
     case 9:
-        return "Sicherheitsladung fertig";
+        return "Sicherheitsladung fertig (9)";
     case 13:
-        return "Akku voll";
+        return "Akku voll (13)";
     case 14:
-        return "Laden";
+        return "Laden (14)";
     case 15:
-        return "Akku leer";
+        return "Akku leer (15)";
     case 16:
-        return "Entladen";
+        return "Entladen (16)";
     case 17:
-        return "Entladen + PV";
+        return "Entladen + PV (17)";
     case 18:
-        return "Entladen + Netz";
+        return "Entladen + Netz (18)";
     case 20:
-        return "Ausgeschaltet";
+        return "Ausgeschaltet (20)";
     case 21:
-        return "Eigenverbrauch";
+        return "Eigenverbrauch (21)";
     case 36:
-        return "FEHLER: NA-SCHUTZ NETZ";
+        return "FEHLER: NA-SCHUTZ NETZ (36)";
     case 39:
-        return "BMS Fehler";
+        return "BMS Fehler (39)";
     case 54:
-        return "Ladeschlussphase";
+        return "Ladeschlussphase (54)";
     case 56:
-        return "PEAK-SHAVING: WARTEN";
+        return "PEAK-SHAVING: WARTEN (56)";
     default:
         return "Unknown: " + state + " (Please report to Dev)";
     }
