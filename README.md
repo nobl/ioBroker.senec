@@ -57,6 +57,24 @@ Here you can find a description of the states and how to use them. All states of
 
    *Read-only boolean which is true if the adapter is connected to the senec system.*
    
+#### Channel: BMS
+   
+* MODULES_CONFIGURED
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Read-only number, which represents the number of modules currently configured in the system.*
+   
+* MODULE_COUNT
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Read-only number, which represents the number of modules currently known the system (incl. non-configured).*
+   
 
 #### Channel: ENERGY
    
@@ -211,12 +229,29 @@ Here you can find a description of the states and how to use them. All states of
     |boolean|R|
 
    *boolean-value which is true if configuration is loaded. This being false is very unlikely and it shouldn't persist as false.*
+   
+* SETUP_NUMBER_WALLBOXES
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Read-only number, which designates how many wallboxes are configured in the system.*
+   
+* SETUP_WALLBOX_SERIAL[0..3]
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
 
 ### 1.0.2 (2020-03-04)
 * (NoBl) added missing status codes (85 in total now)
 * (NoBl) added status code to status message for easier reference
+* (NoBl) added states for wallboxes and battery modules
 ### 1.0.1
 * (NoBl) updated readme
 ### 1.0.0

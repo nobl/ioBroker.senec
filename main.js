@@ -97,10 +97,17 @@ class Senec extends utils.Adapter {
      */
     async readSenecV21() {
         // From current senec cgi
-        // '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":"","STAT_YEAR_E_PU1_ARR":""},"ENERGY":{"STAT_STATE":"","STAT_STATE_DECODE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""}}'
+        //"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":"","STAT_YEAR_E_PU1_ARR":""}
+        //"ENERGY":{"STAT_STATE":"","STAT_STATE_DECODE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""}
+        //"WIZARD":{"CONFIG_LOADED":"","SETUP_NUMBER_WALLBOXES":"","SETUP_WALLBOX_SERIAL0":"","SETUP_WALLBOX_SERIAL1":"","SETUP_WALLBOX_SERIAL2":"","SETUP_WALLBOX_SERIAL3":"","GUI_LANG":"","FEATURECODE_ENTERED":""}
+        //"SYS_UPDATE":{"UPDATE_AVAILABLE":""}
+        //"LOG":{"USER_LEVEL":"","USERNAME":""}
+        //"RTC":{"WEB_TIME":""}
+        //"FEATURES":{}
+        //"BMS":{"MODULE_COUNT":"","MODULES_CONFIGURED":""}
 
         const url = 'http://' + this.config.senecip + '/lala.cgi';
-        const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""}}';
+        const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":"","SETUP_NUMBER_WALLBOXES":"","SETUP_WALLBOX_SERIAL0":"","SETUP_WALLBOX_SERIAL1":"","SETUP_WALLBOX_SERIAL2":"","SETUP_WALLBOX_SERIAL3":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""},"BMS":{"MODULE_COUNT":"","MODULES_CONFIGURED":""}}';
         try {
             const body = await this.doGet(url, form);
             this.log.debug('received data from senec: ' + body);
@@ -109,12 +116,14 @@ class Senec extends utils.Adapter {
             // this only works, while senec sticks with format {"CAT1":{"ST1":"V1","STn":"Vn"},"CAT2":{...}...}
             for (let[key1, value1]of Object.entries(obj)) {
                 for (let[key2, value2]of Object.entries(value1)) {
-                    var key = key1 + '.' + key2;
-                    var descUnitValue = getDescUnitValue(String(key1), String(key2), value2);
-                    var desc = descUnitValue[0];
-                    var unit = descUnitValue[1];
-                    var value = descUnitValue[2];
-                    this.doState(key, value, desc, unit);
+					if (value2 !== "VARIABLE_NOT_FOUND") {
+						var key = key1 + '.' + key2;
+						var descUnitValue = getDescUnitValue(String(key1), String(key2), value2);
+						var desc = descUnitValue[0];
+						var unit = descUnitValue[1];
+						var value = descUnitValue[2];
+						this.doState(key, value, desc, unit);
+					}
                 }
             }
             // this isn't part of the JSON but we supply it for easier reading of system-state
@@ -124,9 +133,9 @@ class Senec extends utils.Adapter {
             /*
              * unknown use: ENERGY.STAT_STATE_DECODE	Ex. Value: u8_0F
              * unknown use: STATISTIC.STAT_YEAR_E_PU1_ARR is an array with just 0 values
-             *
-             * some have WIZARD.SETUP_NUMBER_WALLBOXES and WIZARD.SETUP_WALLBOX_SERIAL[0..3] but those don't exist on every system it appears.
-             * Need to find out if this depends on wallbox configured so maybe add a switch to admin panel.
+			 *
+			 * In regards to wallboxes there might be a value designating status (like loading, car signals problem soandso, ...).
+			 * Need examples for the JSON to add this.
              */
 
             this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
@@ -195,8 +204,10 @@ const reviverNumParse = (key, value) => {
             return HexToFloat32(value.substring(3));
         } else if (value.startsWith("u") || value.startsWith("u")) { // unsigned int in hex
             return parseInt(value.substring(3), 16);
+		} else if (value.startsWith("VARIABLE_NOT_FOUND")) {
+			return "VARIABLE_NOT_FOUND";
         } else {
-            throw new Error("Unknon value in JSON: " + key + ":" + value);
+            throw new Error("Unknown value in JSON: " + key + ":" + value);
         }
     } else {
         return value;
@@ -448,6 +459,24 @@ const getDescUnitValue = (key1, key2, value) => {
         switch (key2) {
         case "CONFIG_LOADED":
             return ["Configuration loaded", "", (value === 0 ? false : true)];
+		case "SETUP_NUMBER_WALLBOXES":
+            return ["# Wallboxes", "", value];
+		case "SETUP_WALLBOX_SERIAL0":
+            return ["Wallbox 0 Serial", "", value];
+		case "SETUP_WALLBOX_SERIAL1":
+            return ["Wallbox 1 Serial", "", value];
+		case "SETUP_WALLBOX_SERIAL2":
+            return ["Wallbox 2 Serial", "", value];
+		case "SETUP_WALLBOX_SERIAL3":
+            return ["Wallbox 3 Serial", "", value];
+        }
+
+    case "BMS":
+        switch (key2) {
+        case "MODULE_COUNT":
+            return ["# Modules", "", value];
+        case "MODULES_CONFIGURED":
+            return ["# Modules Configured", "", value];
         }
 
     }

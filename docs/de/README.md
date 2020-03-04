@@ -58,6 +58,24 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
 
    *Nur lesbarer boolscher Wert, welcher true ist, wenn die Verbindung zwischen ioBroker und Senec.Home hergestellt ist.*
    
+#### Channel: BMS
+   
+* MODULES_CONFIGURED
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Nur lesbare Zahl, die angibt, wieviele Module im System konfiguriert sind.*
+   
+* MODULE_COUNT
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Nur lesbare Zahl, die angibt, wieviele Module im System angeschlossen sind (inkl. nicht konfigurierter).*
+   
 
 #### Channel: ENERGY
    
@@ -212,3 +230,19 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
     |boolean|R|
 
    *Nur lesbarer boolscher Wert, der angibt, ob die Konfiguration geladen wurde (dieser Wert sollte nicht dauerhaft auf falsch stehen).*
+   
+* SETUP_NUMBER_WALLBOXES
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Nur lesbare Zahl, die angibt, wieviele Wallboxen im System konfiguriert sind.*
+   
+* SETUP_WALLBOX_SERIAL[0..3]
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Nur lesbare Zahl, die die Seriennummern der Wallboxen 0-3 angibt. Dieser Status ist nur verfügbar, falls Wallboxen im System konfiguriert sind.*
