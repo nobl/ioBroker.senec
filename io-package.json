@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.1",
+        "version": "1.0.2",
         "news": {
+		    "1.0.2": {
+				"en": "(NoBl) added missing status codes and added status code to status message",
+				"de": "(NoBl) fügte fehlende Statuscodes hinzu und fügte der Statusmeldung einen Statuscode hinzu",
+				"ru": "(NoBl) добавлены отсутствующие коды состояния и добавлен код состояния в сообщение о состоянии",
+				"pt": "(NoBl) adicionou códigos de status ausentes e adicionou código de status à mensagem de status",
+				"nl": "(NoBl) ontbrekende statuscodes toegevoegd en statuscode toegevoegd aan statusbericht",
+				"fr": "(NoBl) a ajouté des codes d'état manquants et a ajouté un code d'état au message d'état",
+				"it": "(NoBl) ha aggiunto i codici di stato mancanti e ha aggiunto il codice di stato al messaggio di stato",
+				"es": "(NoBl) agregó códigos de estado faltantes y código de estado agregado al mensaje de estado",
+				"pl": "(NoBl) dodał brakujące kody stanu i dodał kod statusu do komunikatu o stanie",
+				"zh-cn": "（NoBl）添加了丢失的状态代码并将状态代码添加到状态消息"
+            },
             "1.0.1": {
                 "en": "(NoBl) Updated readme",
                 "de": "(NoBl) Readme aktualisiert",

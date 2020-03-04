@@ -214,6 +214,9 @@ Here you can find a description of the states and how to use them. All states of
 
 ## Changelog
 
+### 1.0.2 (2020-03-04)
+* (NoBl) added missing status codes (85 in total now)
+* (NoBl) added status code to status message for easier reference
 ### 1.0.1
 * (NoBl) updated readme
 ### 1.0.0

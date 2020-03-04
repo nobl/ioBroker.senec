@@ -33,8 +33,8 @@ class Senec extends utils.Adapter {
             await this.checkConnection();
             await this.readSenecV21();
         } catch (error) {
-			this.log.error(error);
-			this.setState('info.connection', false, true);
+            this.log.error(error);
+            this.setState('info.connection', false, true);
         }
     }
 
@@ -211,34 +211,178 @@ const reviverNumParse = (key, value) => {
 const stateHumanForm = (state) => {
     // if you can supply me with the correct (senec chargon!) values in english, please open a ticket
     switch (state) {
+    case 0:
+        return "INITIALZUSTAND (0)";
+    case 1:
+        return "KEINE KOMMUNIKATION LADEGERAET (1)";
+    case 2:
+        return "FEHLER LEISTUNGSMESSGERAET (2)";
+    case 3:
+        return "RUNDSTEUEREMPFAENGER (3)";
+    case 4:
+        return "ERSTLADUNG (4)";
+    case 5:
+        return "WARTUNGSLADUNG (5)";
+    case 6:
+        return "WARTUNGSLADUNG FERTIG (6)";
+    case 7:
+        return "WARTUNG NOTWENDIG (7)";
     case 8:
-        return "Maximale Sicherheitsladung (8)";
+        return "MAN. SICHERHEITSLADUNG (8)";
     case 9:
-        return "Sicherheitsladung fertig (9)";
+        return "SICHERHEITSLADUNG FERTIG (9)";
+    case 10:
+        return "VOLLLADUNG (10)";
+    case 11:
+        return "AUSGLEICHSLADUNG: LADEN (11)";
+    case 12:
+        return "SULFATLADUNG: LADEN (12)";
     case 13:
-        return "Akku voll (13)";
+        return "AKKU VOLL (13)";
     case 14:
-        return "Laden (14)";
+        return "LADEN (14)";
     case 15:
-        return "Akku leer (15)";
+        return "AKKU LEER (15)";
     case 16:
-        return "Entladen (16)";
+        return "ENTLADEN (16)";
     case 17:
-        return "Entladen + PV (17)";
+        return "PV + ENTLADEN (17)";
     case 18:
-        return "Entladen + Netz (18)";
+        return "NETZ + ENTLADEN (18)";
+    case 19:
+        return "PASSIV (19)";
     case 20:
-        return "Ausgeschaltet (20)";
+        return "AUSGESCHALTET (20)";
     case 21:
-        return "Eigenverbrauch (21)";
+        return "EIGENVERBRAUCH (21)";
+    case 22:
+        return "NEUSTART (22)";
+    case 23:
+        return "MAN. AUSGLEICHSLADUNG: LADEN (23)";
+    case 24:
+        return "MAN. SULFATLADUNG: LADEN (24)";
+    case 25:
+        return "SICHERHEITSLADUNG (25)";
+    case 26:
+        return "AKKU-SCHUTZBETRIEB (26)";
+    case 27:
+        return "EG FEHLER (27)";
+    case 28:
+        return "EG LADEN (28)";
+    case 29:
+        return "EG ENTLADEN (29)";
+    case 30:
+        return "EG PASSIV (30)";
+    case 31:
+        return "EG LADEN VERBOTEN (31)";
+    case 32:
+        return "EG ENTLADEN VERBOTEN (32)";
+    case 33:
+        return "NOTLADUNG (33)";
+    case 34:
+        return "SOFTWAREAKTUALISIERUNG (34)";
+    case 35:
+        return "FEHLER: NA-SCHUTZ (35)";
     case 36:
         return "FEHLER: NA-SCHUTZ NETZ (36)";
+    case 37:
+        return "FEHLER: NA-SCHUTZ HARDWARE (37)";
+    case 38:
+        return "KEINE SERVERVERBINDUNG (38)";
     case 39:
-        return "BMS Fehler (39)";
+        return "BMS FEHLER (39)";
+    case 40:
+        return "WARTUNG: FILTER (40)";
+    case 41:
+        return "SCHLAFMODUS (41)";
+    case 42:
+        return "WARTE AUF ÜBERSCHUSS (42)";
+    case 43:
+        return "KAPAZITÄTSTEST: LADEN (43)";
+    case 44:
+        return "KAPAZITÄTSTEST: ENTLADEN (44)";
+    case 45:
+        return "MAN. SULFATLADUNG: WARTEN (45)";
+    case 46:
+        return "MAN. SULFATLADUNG: FERTIG (46)";
+    case 47:
+        return "MAN. SULFATLADUNG: FEHLER (47)";
+    case 48:
+        return "AUSGLEICHSLADUNG: WARTEN (48)";
+    case 49:
+        return "NOTLADUNG: FEHLER (49)";
+    case 50:
+        return "MAN: AUSGLEICHSLADUNG: WARTEN (50)";
+    case 51:
+        return "MAN: AUSGLEICHSLADUNG: FEHLER (51)";
+    case 52:
+        return "MAN: AUSGLEICHSLADUNG: FERTIG (52)";
+    case 53:
+        return "AUTO: SULFATLADUNG: WARTEN (53)";
     case 54:
-        return "Ladeschlussphase (54)";
+        return "LADESCHLUSSPHASE (54)";
+    case 55:
+        return "BATTERIETRENNSCHALTER AUS (55)";
     case 56:
         return "PEAK-SHAVING: WARTEN (56)";
+    case 57:
+        return "FEHLER LADEGERAET (57)";
+    case 58:
+        return "NPU-FEHLER (58)";
+    case 59:
+        return "BMS OFFLINE (59)";
+    case 60:
+        return "WARTUNGSLADUNG FEHLER (60)";
+    case 61:
+        return "MAN. SICHERHEITSLADUNG FEHLER (61)";
+    case 62:
+        return "SICHERHEITSLADUNG FEHLER (62)";
+    case 63:
+        return "KEINE MASTERVERBINDUNG (63)";
+    case 64:
+        return "LITHIUM SICHERHEITSMODUS AKTIV (64)";
+    case 65:
+        return "LITHIUM SICHERHEITSMODUS BEENDET (65)";
+    case 66:
+        return "FEHLER BATTERIESPANNUNG (66)";
+    case 67:
+        return "BMS DC AUSGESCHALTET (67)";
+    case 68:
+        return "NETZINITIALISIERUNG (68)";
+    case 69:
+        return "NETZSTABILISIERUNG (69)";
+    case 70:
+        return "FERNABSCHALTUNG (70)";
+    case 71:
+        return "OFFPEAK-LADEN (71)";
+    case 72:
+        return "FEHLER HALBBRÜCKE (72)";
+    case 73:
+        return "BMS: FEHLER BETRIEBSTEMPERATUR (73)";
+    case 74:
+        return "FACOTRY SETTINGS NICHT GEFUNDEN (74)";
+    case 75:
+        return "NETZERSATZBETRIEB (75)";
+    case 76:
+        return "NETZERSATZBETRIEB AKKU LEER (76)";
+    case 77:
+        return "NETZERSATZBETRIEB FEHLER (77)";
+    case 78:
+        return "INITIALISIERUNG (78)";
+    case 79:
+        return "INSTALLATIONSMODUS (79)";
+    case 80:
+        return "NETZAUSFALL (80)";
+    case 81:
+        return "BMS UPDATE ERFORDERLICH (81)";
+    case 82:
+        return "BMS KONFIGURATION ERFORDERLICH (82)";
+    case 83:
+        return "ISOLATIONSTEST (83)";
+    case 84:
+        return "SELBSTTEST (84)";
+    case 85:
+        return "EXTERNE STEUERUNG (85)";
     default:
         return "Unknown: " + state + " (Please report to Dev)";
     }
