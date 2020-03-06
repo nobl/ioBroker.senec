@@ -11,6 +11,9 @@
 **Tests:**: [![Travis-CI](http://img.shields.io/travis/nobl/ioBroker.senec/master.svg)](https://travis-ci.org/nobl/ioBroker.senec)
 
 ## senec adapter for ioBroker
+
+[Dokumentation](docs/de/README.md)
+
 Targeted at the Senec Home V2.1 System.
 Other systems might work, as long as they use lala.cgi.
 
@@ -248,6 +251,8 @@ Here you can find a description of the states and how to use them. All states of
 
 ## Changelog
 
+### 1.0.3 (2020-03-06)
+* (NoBl) added link to documentation in german
 ### 1.0.2 (2020-03-04)
 * (NoBl) added missing status codes (85 in total now)
 * (NoBl) added status code to status message for easier reference

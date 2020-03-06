@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.2",
+        "version": "1.0.3",
         "news": {
+			"1.0.3": {
+				"en": "(NoBl) link to german documentation added",
+				"de": "(NoBl) Link zur deutschen Dokumentation hinzugefügt",
+				"ru": "(NoBl) добавлена ссылка на немецкую документацию",
+				"pt": "(NoBl) Link para a documentação alemã adicionada",
+				"nl": "(NoBl) link naar Duitse documentatie toegevoegd",
+				"fr": "(NoBl) lien vers la documentation allemande ajouté",
+				"it": "(NoBl) Aggiunto il link alla documentazione tedesca",
+				"es": "(NoBl) Enlace a la documentación alemana agregada",
+				"pl": "(NoBl) Dodano link do niemieckiej dokumentacji",
+				"zh-cn": "（NoBl）链接到德语文档"
+			},
 		    "1.0.2": {
 				"en": "(NoBl) added missing status codes, added status code to status message, added states for wallboxes and battery modules",
 				"de": "(NoBl) fehlende Statuscodes hinzugefügt, Statuscode zur Statusmeldung hinzugefügt, Status für Wallboxen und Batteriemodule hinzugefügt",
