@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.3",
+        "version": "1.0.4",
         "news": {
+			"1.0.4": {
+				"en": "(NoBl) Repo URL updated",
+				"de": "(NoBl) Repo-URL aktualisiert",
+				"ru": "(NoBl) URL репо обновлен",
+				"pt": "(NoBl) URL do repositório atualizado",
+				"nl": "(NoBl) Repo-URL bijgewerkt",
+				"fr": "(NoBl) URL de dépôt mise à jour",
+				"it": "(NoBl) URL Repo aggiornato",
+				"es": "(NoBl) URL del repositorio actualizada",
+				"pl": "(NoBl) Zaktualizowano adres URL repozytorium",
+				"zh-cn": "（NoBl）回购网址已更新"
+			},
 			"1.0.3": {
 				"en": "(NoBl) link to german documentation added",
 				"de": "(NoBl) Link zur deutschen Dokumentation hinzugefügt",

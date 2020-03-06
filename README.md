@@ -251,6 +251,8 @@ Here you can find a description of the states and how to use them. All states of
 
 ## Changelog
 
+### 1.0.4 (2020-03-06)
+* (NoBl) Repo URL updated
 ### 1.0.3 (2020-03-06)
 * (NoBl) added link to documentation in german
 ### 1.0.2 (2020-03-04)
