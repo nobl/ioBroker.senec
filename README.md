@@ -312,6 +312,14 @@ Here you can find a description of the states and how to use them. All states of
 
 ## Changelog
 
+### 1.0.5 (2020-03-07) (NoBl)
+* Added States for: Energy: GUI_BAT_DATA_VOLTAGE, GUI_BAT_DATA_CURRENT, STAT_HOURS_OF_OPERATION; Sys_update: NPU_VER, NPU_IMAGE_VERSION, Wizard: APPLICATION_VERSION, INTERFACE_VERSION
+* Readme and Documentation (EN exists, now) updated
+* Changed behavior for unknown values completely. They will now be stored as string plus prefixed with "REPORT TO DEV:" so users can easily report back what needs updating.
+* added handling for "st_" values in json
+* added additional configuration options
+* changed retry-behaviour in case of connection issues, ...
+
 ### 1.0.4 (2020-03-06)
 * (NoBl) Repo URL updated
 ### 1.0.3 (2020-03-06)
