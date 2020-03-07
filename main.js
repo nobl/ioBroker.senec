@@ -134,17 +134,18 @@ class Senec extends utils.Adapter {
     async readSenecV21() {
         // From current senec cgi
         //"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":"","STAT_YEAR_E_PU1_ARR":""}
-        //"ENERGY":{"STAT_STATE":"","STAT_STATE_DECODE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""}
-        //"WIZARD":{"CONFIG_LOADED":"","SETUP_NUMBER_WALLBOXES":"","SETUP_WALLBOX_SERIAL0":"","SETUP_WALLBOX_SERIAL1":"","SETUP_WALLBOX_SERIAL2":"","SETUP_WALLBOX_SERIAL3":"","GUI_LANG":"","FEATURECODE_ENTERED":""}
-        //"SYS_UPDATE":{"UPDATE_AVAILABLE":""}
+        //"ENERGY":{"STAT_STATE":"","STAT_STATE_DECODE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","STAT_HOURS_OF_OPERATION":""}
+        //"WIZARD":{"CONFIG_LOADED":"","SETUP_NUMBER_WALLBOXES":"","SETUP_WALLBOX_SERIAL0":"","SETUP_WALLBOX_SERIAL1":"","SETUP_WALLBOX_SERIAL2":"","SETUP_WALLBOX_SERIAL3":"","GUI_LANG":"","FEATURECODE_ENTERED":"","APPLICATION_VERSION":"","INTERFACE_VERSION":""}
+        //"SYS_UPDATE":{"UPDATE_AVAILABLE":"","NPU_VER":"","NPU_IMAGE_VERSION":""}
         //"LOG":{"USER_LEVEL":"","USERNAME":""}
         //"RTC":{"WEB_TIME":""}
         //"FEATURES":{}
         //"BMS":{"MODULE_COUNT":"","MODULES_CONFIGURED":""}
 
         const url = 'http://' + this.config.senecip + '/lala.cgi';
-        const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":"","SETUP_NUMBER_WALLBOXES":"","SETUP_WALLBOX_SERIAL0":"","SETUP_WALLBOX_SERIAL1":"","SETUP_WALLBOX_SERIAL2":"","SETUP_WALLBOX_SERIAL3":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""},"BMS":{"MODULE_COUNT":"","MODULES_CONFIGURED":""}}';
-        try {
+        const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","STAT_HOURS_OF_OPERATION":""},"WIZARD":{"CONFIG_LOADED":"","SETUP_NUMBER_WALLBOXES":"","SETUP_WALLBOX_SERIAL0":"","SETUP_WALLBOX_SERIAL1":"","SETUP_WALLBOX_SERIAL2":"","SETUP_WALLBOX_SERIAL3":"","APPLICATION_VERSION":"","INTERFACE_VERSION":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":"","NPU_VER":"","NPU_IMAGE_VERSION":""},"BMS":{"MODULE_COUNT":"","MODULES_CONFIGURED":""}}';
+        
+		try {
             const body = await this.doGet(url, form, this, this.config.pollingTimeout);
             var obj = JSON.parse(body, reviverNumParse);
 
@@ -451,6 +452,9 @@ const stateHumanForm = (state) => {
  * @return [description,unit,value]
  */
 const getDescUnitValue = (key1, key2, value) => {
+	var a = "A";
+	var h = "h";
+	var v = "V";
     var w = "W";
     var kwh = "kWh";
     var pct = "%";
@@ -477,6 +481,12 @@ const getDescUnitValue = (key1, key2, value) => {
             return ["Boost", "", (value === 0 ? false : true)];
         case "STAT_MAINT_REQUIRED":
             return ["Maintenance required", "", (value === 0 ? false : true)];
+		case "GUI_BAT_DATA_VOLTAGE":
+            return ["Battery Voltage", v, value];
+		case "GUI_BAT_DATA_CURRENT":
+            return ["Battery Current", a, value];
+		case "STAT_HOURS_OF_OPERATION":
+            return ["Hours of operation", h, value];	
         }
 
     case "STATISTIC":

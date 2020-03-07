@@ -60,6 +60,14 @@ Here you can find a description of the states and how to use them. All states of
    
 
 #### Channel: ENERGY
+
+* GUI_BAT_DATA_CURRENT
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Read-only number, which represents the battery's current in Amps.*
    
 * GUI_BAT_DATA_FUEL_CHARGE
 
@@ -68,6 +76,14 @@ Here you can find a description of the states and how to use them. All states of
     |number|R|
 
    *Read-only number, which represents the current level of your battery system in %.*
+   
+* GUI_BAT_DATA_VOLTAGE
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Read-only number, which represents the battery's current voltage in volt.*
    
 * GUI_BAT_DATA_POWER
 
@@ -116,6 +132,14 @@ Here you can find a description of the states and how to use them. All states of
     |number|R|
 
    *Read-only number, which represents the current power supplied by your PV system.*
+   
+* STAT_HOURS_OF_OPERATION
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Read-only number, detailing the system's uptime in hours.*
    
 * STAT_MAINT_REQUIRED
 
@@ -194,6 +218,22 @@ Here you can find a description of the states and how to use them. All states of
    
 #### Channel: SYS_UPDATE
 
+* NPU_IMAGE_VERSION
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Read-only number, representing the Revision NPU-IMAGE*
+
+* NPU_VER
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Read-only number, representing the Revision NPU-REGS*
+
 * UPDATE_AVAILABLE
 
     |Data type|Permission|                                                                       
@@ -205,6 +245,14 @@ Here you can find a description of the states and how to use them. All states of
    
 #### Channel: WIZARD
 
+* APPLICATION_VERSION
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |string|R|
+
+   *Read-only text, representing the Revision MCU*
+
 * CONFIG_LOADED
 
     |Data type|Permission|                                                                       
@@ -212,6 +260,14 @@ Here you can find a description of the states and how to use them. All states of
     |boolean|R|
 
    *boolean-value which is true if configuration is loaded. This being false is very unlikely and it shouldn't persist as false.*
+   
+* INTERFACE_VERSION
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |string|R|
+
+   *Read-only text, representing the Revision GUI*
    
 * SETUP_NUMBER_WALLBOXES
 

@@ -81,6 +81,14 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
    
 
 #### Channel: ENERGY
+
+* GUI_BAT_DATA_CURRENT
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Nur lesbare Zahl, die den aktuellen Batteriestrom in Ampere angibt.*
    
 * GUI_BAT_DATA_FUEL_CHARGE
 
@@ -89,6 +97,14 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
     |number|R|
 
    *Nur lesbare Zahl, die den Füllstand in % des Systems angibt.*
+   
+* GUI_BAT_DATA_VOLTAGE
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Nur lesbare Zahl, die die derzeitige Batteriespannung in Volt angibt*
    
 * GUI_BAT_DATA_POWER
 
@@ -137,6 +153,14 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
     |number|R|
 
    *Nur lesbare Zahl, die angibt, wieviel Watt vom PV System gerade erzeugt werden.*
+   
+* STAT_HOURS_OF_OPERATION
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Nur lesbare Zahl, die die Betriebsstunden des Systems angibt.*
    
 * STAT_MAINT_REQUIRED
 
@@ -215,6 +239,22 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
    
 #### Channel: SYS_UPDATE
 
+* NPU_IMAGE_VERSION
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Nur lesbare Zahl, mit dem Wert für Revision NPU-IMAGE (*
+
+* NPU_VER
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|R|
+
+   *Nur lesbare Zahl, die mit dem Wert für Revision NPU-REGS*
+
 * UPDATE_AVAILABLE
 
     |Data type|Permission|                                                                       
@@ -226,6 +266,14 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
    
 #### Channel: WIZARD
 
+* APPLICATION_VERSION
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |string|R|
+
+   *Nur lesbarer Text, mit dem Wert für Revision MCU.*
+
 * CONFIG_LOADED
 
     |Data type|Permission|                                                                       
@@ -233,6 +281,14 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
     |boolean|R|
 
    *Nur lesbarer boolscher Wert, der angibt, ob die Konfiguration geladen wurde (dieser Wert sollte nicht dauerhaft auf falsch stehen).*
+   
+* INTERFACE_VERSION
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |string|R|
+
+   *Nur lesbarer Text, mit dem Wert für Revision GUI.*
    
 * SETUP_NUMBER_WALLBOXES
 
