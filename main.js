@@ -7,10 +7,7 @@
 const utils = require('@iobroker/adapter-core');
 const request = require('request');
 
-const timeoutPush = 5000; // timeout for http request in ms
-const maxRetries = 10; // max # of retries in case of error
 let retry = 0; // retry-counter
-let retryPollIncrease = 2; // polling interval increase by retryPollyIncrease ^ retry
 
 class Senec extends utils.Adapter {
 
@@ -35,6 +32,7 @@ class Senec extends utils.Adapter {
         // Reset the connection indicator during startup
         this.setState('info.connection', false, true);
         try {
+            await this.checkConfig();
             await this.checkConnection();
             await this.readSenecV21();
         } catch (error) {
@@ -61,6 +59,33 @@ class Senec extends utils.Adapter {
     }
 
     /**
+     * checks config paramaters
+     * Fallback to default values in case they are out of scope
+     */
+    async checkConfig() {
+        this.log.debug("Configured polling interval: " + this.config.interval);
+        if (this.config.interval < 1 || this.config.interval > 3600) {
+            this.log.warn("Config interval " + this.config.interval + " not [1..3600] seconds. Using default: 10");
+            this.config.interval = 10;
+        }
+		this.log.debug("Configured polling timout: " + this.config.pollingTimeout);
+        if (this.config.pollingTimeout < 1000 || this.config.pollingTimeout > 10000) {
+            this.log.warn("Config timeout " + this.config.pollingTimeout + " not [1000..10000] ms. Using default: 5000");
+            this.config.pollingTimeout = 5000;
+        }
+        this.log.debug("Configured num of retries: " + this.config.retries);
+        if (this.config.retries < 0 || this.config.retries > 999) {
+            this.log.warn("Config num of retries " + this.config.retries + " not [0..999] seconds. Using default: 10");
+            this.config.retries = 10;
+        }
+       this.log.debug("Configured retry multiplier: " + this.config.retrymultiplier);
+        if (this.config.retrymultiplier < 1 || this.config.retrymultiplier > 10) {
+            this.log.warn("Config retry multiplier " + this.config.retrymultiplier + " not [1..10] seconds. Using default: 2");
+            this.config.retrymultiplier = 2;
+        }
+    }
+
+    /**
      * checks connection to senec service
      */
     async checkConnection() {
@@ -68,7 +93,7 @@ class Senec extends utils.Adapter {
         const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":""}}';
         try {
             this.log.info('connecting to Senec: ' + this.config.senecip);
-            const body = await this.doGet(url, form, this);
+            const body = await this.doGet(url, form, this, this.config.pollingTimeout);
             this.log.info('connected to Senec: ' + this.config.senecip);
             this.setState('info.connection', true, true);
         } catch (error) {
@@ -81,22 +106,22 @@ class Senec extends utils.Adapter {
      * @param url to read from
      * @param form to post
      */
-    async doGet(pUrl, pForm, caller) {
+    async doGet(pUrl, pForm, caller, pollingTimeout) {
         return new Promise(function (resolve, reject) {
             const options = {
                 url: pUrl,
                 method: 'POST',
                 form: pForm,
-				timeout: timeoutPush
+                timeout: pollingTimeout
             };
             request(options, function (error, response, body) {
                 if (error)
                     return reject(error);
-				caller.log.debug('Status: ' + response.statusCode);
-				if (!response || response.statusCode !== 200)
-					return reject('Cannot read from SENEC: ' + response.statusCode);
-				caller.log.debug('Response: ' + JSON.stringify(response));
-				caller.log.debug('Body: ' + body);
+                caller.log.debug('Status: ' + response.statusCode);
+                if (!response || response.statusCode !== 200)
+                    return reject('Cannot read from SENEC: ' + response.statusCode);
+                caller.log.debug('Response: ' + JSON.stringify(response));
+                caller.log.debug('Body: ' + body);
                 resolve(body);
             });
         });
@@ -120,20 +145,20 @@ class Senec extends utils.Adapter {
         const url = 'http://' + this.config.senecip + '/lala.cgi';
         const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":"","SETUP_NUMBER_WALLBOXES":"","SETUP_WALLBOX_SERIAL0":"","SETUP_WALLBOX_SERIAL1":"","SETUP_WALLBOX_SERIAL2":"","SETUP_WALLBOX_SERIAL3":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""},"BMS":{"MODULE_COUNT":"","MODULES_CONFIGURED":""}}';
         try {
-            const body = await this.doGet(url, form, this);
+            const body = await this.doGet(url, form, this, this.config.pollingTimeout);
             var obj = JSON.parse(body, reviverNumParse);
 
             // this only works, while senec sticks with format {"CAT1":{"ST1":"V1","STn":"Vn"},"CAT2":{...}...}
             for (let[key1, value1]of Object.entries(obj)) {
                 for (let[key2, value2]of Object.entries(value1)) {
-					if (value2 !== "VARIABLE_NOT_FOUND") {
-						var key = key1 + '.' + key2;
-						var descUnitValue = getDescUnitValue(String(key1), String(key2), value2);
-						var desc = descUnitValue[0];
-						var unit = descUnitValue[1];
-						var value = descUnitValue[2];
-						this.doState(key, value, desc, unit);
-					}
+                    if (value2 !== "VARIABLE_NOT_FOUND") {
+                        var key = key1 + '.' + key2;
+                        var descUnitValue = getDescUnitValue(String(key1), String(key2), value2);
+                        var desc = descUnitValue[0];
+                        var unit = descUnitValue[1];
+                        var value = descUnitValue[2];
+                        this.doState(key, value, desc, unit);
+                    }
                 }
             }
             // this isn't part of the JSON but we supply it for easier reading of system-state
@@ -143,22 +168,22 @@ class Senec extends utils.Adapter {
             /*
              * unknown use: ENERGY.STAT_STATE_DECODE	Ex. Value: u8_0F
              * unknown use: STATISTIC.STAT_YEAR_E_PU1_ARR is an array with just 0 values
-			 *
-			 * In regards to wallboxes there might be a value designating status (like loading, car signals problem soandso, ...).
-			 * Need examples for the JSON to add this.
+             *
+             * In regards to wallboxes there might be a value designating status (like loading, car signals problem soandso, ...).
+             * Need examples for the JSON to add this.
              */
 
-			retry = 0;
+            retry = 0;
             this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
         } catch (error) {
-			if (retry === maxRetries) {
-				this.log.error("Error reading from Senec (" + this.config.senecip + "). Retried " + retry + " times with polling interval*" + retryPollIncrease + "^retry. Giving up now. Check config and restart adapter. (" + error + ")");
-				this.setState('info.connection', false, true);
-			} else {
-				retry += 1;
-				this.log.error("Error reading from Senec (" + this.config.senecip + "). Retry " + retry + "/" + maxRetries + " in " + this.config.interval * retryPollIncrease * retry + " seconds! (" + error + ")");
-				this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * retryPollIncrease * retry * 1000);
-			}
+            if ((retry == this.config.retries) && this.config.retries < 999) {
+                this.log.error("Error reading from Senec (" + this.config.senecip + "). Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
+                this.setState('info.connection', false, true);
+            } else {
+                retry += 1;
+                this.log.warn("Error reading from Senec (" + this.config.senecip + "). Retry " + retry + "/" + this.config.retries + " in " + this.config.interval * this.config.retrymultiplier * retry + " seconds! (" + error + ")");
+                this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * this.config.retrymultiplier * retry * 1000);
+            }
         }
     }
 
@@ -222,8 +247,8 @@ const reviverNumParse = (key, value) => {
             return HexToFloat32(value.substring(3));
         } else if (value.startsWith("u") || value.startsWith("u")) { // unsigned int in hex
             return parseInt(value.substring(3), 16);
-		} else if (value.startsWith("VARIABLE_NOT_FOUND")) {
-			return "VARIABLE_NOT_FOUND";
+        } else if (value.startsWith("VARIABLE_NOT_FOUND")) {
+            return "VARIABLE_NOT_FOUND";
         } else {
             throw new Error("Unknown value in JSON: " + key + ":" + value);
         }
@@ -477,15 +502,15 @@ const getDescUnitValue = (key1, key2, value) => {
         switch (key2) {
         case "CONFIG_LOADED":
             return ["Configuration loaded", "", (value === 0 ? false : true)];
-		case "SETUP_NUMBER_WALLBOXES":
+        case "SETUP_NUMBER_WALLBOXES":
             return ["# Wallboxes", "", value];
-		case "SETUP_WALLBOX_SERIAL0":
+        case "SETUP_WALLBOX_SERIAL0":
             return ["Wallbox 0 Serial", "", value];
-		case "SETUP_WALLBOX_SERIAL1":
+        case "SETUP_WALLBOX_SERIAL1":
             return ["Wallbox 1 Serial", "", value];
-		case "SETUP_WALLBOX_SERIAL2":
+        case "SETUP_WALLBOX_SERIAL2":
             return ["Wallbox 2 Serial", "", value];
-		case "SETUP_WALLBOX_SERIAL3":
+        case "SETUP_WALLBOX_SERIAL3":
             return ["Wallbox 3 Serial", "", value];
         }
 

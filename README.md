@@ -36,14 +36,19 @@ npm i iobroker.senec
 Additional to the adapter installation you have to add an instance of the adapter.
 
 ### ioBroker 
-1. Open your ioBroker interface in a browser (eg: 192.168.178.42:8081)
+1. Open your ioBroker interface in a browser (eg: 192.168.178.42:8081) (if configuration dialogue was opened automatically after installation, skip to 4.).
 2. Navigate to Tab "Instances"
 3. Click on the wrench symbol of the senec adapter
-4. Now you can see the main settings of the adapter configuration page --> type in the ip-address of your senec system (FQDN is also possible if you have a working local DNS)<br>
-![Main Settings](/docs/de/media/mainSettings.png)
-5. If you want to thange the interval in which the states are polled, you can change this here, too.
-6. The default polling interval 10 seconds
-7. Click on Save & Close
+4. Now you can see the main settings of the adapter configuration page.<br>
+![Main Settings](/docs/en/media/mainSettings.png)
+4.1 Type in the IP-address of your SENEC system (FQDN is also possible if you have a working local DNS).
+4.2 You can change the polling interval, too. (Default: 10 seconds)
+4.3 If your network requires a higher timeout for requests sent to SENEC, please change the Request-Timeout in miliseconds accordingly. (Default: 5000 miliseconds)
+4.4 In case there is an issue communicating with SENEC the adapter will retry several times. You can adjust how often it will try to read from SENEC. (Default: 10)
+4.5 To space retries apart a bit more you can adjust the Polling Retry Factor. (Default: 2)<br>
+Example: Using default settings the 1st retry will happen 20 seconds after the initial try, the 2nd will happen 40 seconds after the 2nd try.<br>
+After each successful connect to SENEC, the number of retries is reset.
+5. Click on Save & Close
 
 ## Usage
 Here you can find a description of the states and how to use them. All states of this adapter are read-only states.

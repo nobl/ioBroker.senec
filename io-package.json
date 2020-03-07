@@ -114,7 +114,10 @@
     },
     "native": {
         "senecip": "0.0.0.0",
-        "interval": 10
+        "interval": 10,
+		"pollingTimeout": 5000,
+		"retries": 10,
+		"retrymultiplier": 2
     },
     "objects": [],
     "instanceObjects": [{
