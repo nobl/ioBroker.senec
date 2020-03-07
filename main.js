@@ -247,6 +247,8 @@ const reviverNumParse = (key, value) => {
             return HexToFloat32(value.substring(3));
         } else if (value.startsWith("u") || value.startsWith("u")) { // unsigned int in hex
             return parseInt(value.substring(3), 16);
+		} else if (value.startsWith("st_")) {	// string?
+			return value.substring(3);
         } else if (value.startsWith("VARIABLE_NOT_FOUND")) {
             return "VARIABLE_NOT_FOUND";
         } else {
