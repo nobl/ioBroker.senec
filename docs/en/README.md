@@ -1,4 +1,4 @@
-![Logo](admin/senec.png)
+![Logo](/admin/senec.png)
 # ioBroker.senec
 
 ## senec adapter for ioBroker
