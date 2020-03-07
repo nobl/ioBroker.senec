@@ -12,7 +12,8 @@
 
 ## senec adapter for ioBroker
 
-[Dokumentation](docs/de/README.md)
+[Dokumentation DE](docs/de/README.md)
+[Dokumentation EN](docs/en/README.md)
 
 Targeted at the Senec Home V2.1 System.
 Other systems might work, as long as they use lala.cgi.
