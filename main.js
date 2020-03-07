@@ -252,7 +252,8 @@ const reviverNumParse = (key, value) => {
         } else if (value.startsWith("VARIABLE_NOT_FOUND")) {
             return "VARIABLE_NOT_FOUND";
         } else {
-            throw new Error("Unknown value in JSON: " + key + ":" + value);
+			return "REPORT DO DEV: " + key + ":" + value.substring(3);
+            //throw new Error("Unknown value in JSON: " + key + ":" + value);
         }
     } else {
         return value;
