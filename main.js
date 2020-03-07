@@ -7,6 +7,11 @@
 const utils = require('@iobroker/adapter-core');
 const request = require('request');
 
+const timeoutPush = 5000; // timeout for http request in ms
+const maxRetries = 10; // max # of retries in case of error
+let retry = 0; // retry-counter
+let retryPollIncrease = 2; // polling interval increase by retryPollyIncrease ^ retry
+
 class Senec extends utils.Adapter {
 
     /**
@@ -63,7 +68,7 @@ class Senec extends utils.Adapter {
         const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":""}}';
         try {
             this.log.info('connecting to Senec: ' + this.config.senecip);
-            const body = await this.doGet(url, form);
+            const body = await this.doGet(url, form, this);
             this.log.info('connected to Senec: ' + this.config.senecip);
             this.setState('info.connection', true, true);
         } catch (error) {
@@ -76,16 +81,22 @@ class Senec extends utils.Adapter {
      * @param url to read from
      * @param form to post
      */
-    async doGet(pUrl, pForm) {
+    async doGet(pUrl, pForm, caller) {
         return new Promise(function (resolve, reject) {
             const options = {
                 url: pUrl,
                 method: 'POST',
-                form: pForm
+                form: pForm,
+				timeout: timeoutPush
             };
             request(options, function (error, response, body) {
                 if (error)
                     return reject(error);
+				caller.log.debug('Status: ' + response.statusCode);
+				if (!response || response.statusCode !== 200)
+					return reject('Cannot read from SENEC: ' + response.statusCode);
+				caller.log.debug('Response: ' + JSON.stringify(response));
+				caller.log.debug('Body: ' + body);
                 resolve(body);
             });
         });
@@ -109,8 +120,7 @@ class Senec extends utils.Adapter {
         const url = 'http://' + this.config.senecip + '/lala.cgi';
         const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""},"WIZARD":{"CONFIG_LOADED":"","SETUP_NUMBER_WALLBOXES":"","SETUP_WALLBOX_SERIAL0":"","SETUP_WALLBOX_SERIAL1":"","SETUP_WALLBOX_SERIAL2":"","SETUP_WALLBOX_SERIAL3":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""},"BMS":{"MODULE_COUNT":"","MODULES_CONFIGURED":""}}';
         try {
-            const body = await this.doGet(url, form);
-            this.log.debug('received data from senec: ' + body);
+            const body = await this.doGet(url, form, this);
             var obj = JSON.parse(body, reviverNumParse);
 
             // this only works, while senec sticks with format {"CAT1":{"ST1":"V1","STn":"Vn"},"CAT2":{...}...}
@@ -138,9 +148,17 @@ class Senec extends utils.Adapter {
 			 * Need examples for the JSON to add this.
              */
 
+			retry = 0;
             this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
         } catch (error) {
-            throw new Error("Error reading from Senec (IP: " + this.config.senecip + "). Exiting! (" + error + ")");
+			if (retry === maxRetries) {
+				this.log.error("Error reading from Senec (" + this.config.senecip + "). Retried " + retry + " times with polling interval*" + retryPollIncrease + "^retry. Giving up now. Check config and restart adapter. (" + error + ")");
+				this.setState('info.connection', false, true);
+			} else {
+				retry += 1;
+				this.log.error("Error reading from Senec (" + this.config.senecip + "). Retry " + retry + "/" + maxRetries + " in " + this.config.interval * retryPollIncrease * retry + " seconds! (" + error + ")");
+				this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * retryPollIncrease * retry * 1000);
+			}
         }
     }
 
