@@ -29,11 +29,10 @@ Nach Abschluss der Installation einer Adapterinstanz öffnet sich automatisch ei
 |Abfrageintervall|Hier wird eingegeben, in welchen Zeitintervallen (Millisekunden) die Werde vom Senec.Home Systems abgerufen werden. (Default: 10)|
 |Request-Timeout|Hier wird eingegeben, nach wievielen Millisekunden eine Anfrage spätestens vom Senec.Home System beantwortet sein muss, bevor die Anfrage abgebrochen wird. (Default: 5000)|
 |Wiederholungsversuche|Hier wird angegeben, wie oft versucht werden soll, das Senec System anzufragen, falls es zu einem Fehler kommt. Dies gilt nicht beim Start des Adapters - sollte das System dabei nicht erreichbar sein, beendet der Adapter seine Arbeit. (Default: 10)|
-|Polling-Wiederholungsfaktor|Mit diesem Wert kann der Abstand zwischen den Wiederholungsversuchen beeinflusst werden. Es gilt: der n'te Wiederholungsversuch erfolgt nach Intervall * Multiplikator * n Sekunden nach Versuch n-1.<br>
-Beispiel: Mit Standardwerten erfolgt der 1. Wiederholungsversuch 20 Sekunden nach dem initialen Versuch und der 2. Wiederholungsversuch erfolgt 40 Sekunden nach dem 1.|
+|Polling-Wiederholungsfaktor|Mit diesem Wert kann der Abstand zwischen den Wiederholungsversuchen beeinflusst werden. Es gilt: der n'te Wiederholungsversuch erfolgt nach Intervall * Multiplikator * n Sekunden nach Versuch n-1. Beispiel: Mit Standardwerten erfolgt der 1. Wiederholungsversuch 20 Sekunden nach dem initialen Versuch und der 2. Wiederholungsversuch erfolgt 40 Sekunden nach dem 1. Ein erfolgreicher Datenabruf setzt den Zähler für Wiederholungen zurück.|
 
 Nach Abschluss der Konfiguration wird der Konfigurationsdialog mit `SPEICHERN UND SCHLIEßEN` verlassen. 
-Dadurch efolgt im Anschluß ein Neustart des Adapters.
+Dadurch erfolgt im Anschluß ein Neustart des Adapters.
 
 ## Instanzen
 Die Installation des Adapters hat im Bereich `Objekte` eine aktive Instanz des sonnen Adapters angelegt.
@@ -247,6 +246,6 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
-    |number|R|
+    |string|R|
 
-   *Nur lesbare Zahl, die die Seriennummern der Wallboxen 0-3 angibt. Dieser Status ist nur verfügbar, falls Wallboxen im System konfiguriert sind.*
+   *Nur lesbarer Text, die die Seriennummern der evtl. vorhandenen Wallboxen 0-3 angibt.*

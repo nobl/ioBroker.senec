@@ -21,9 +21,7 @@ In addition to the adapter installation you have to add an instance of the adapt
 |Request-Timeout|If your network requires a higher timeout for requests sent to SENEC, please change the Request-Timeout in miliseconds accordingly. (Default: 5000 miliseconds)|
 |Polling Retries|In case there is an issue communicating with SENEC the adapter will retry several times. You can adjust how often it will try to read from SENEC. (Default: 10)<br>
 This does not apply to Adapter Start - if the System is unavailable to Adapter will stop.|
-|Polling Retry Factor|To space retries apart a bit more you can adjust the Polling Retry Factor. (Default: 2)<br>
-Example: Using default settings the 1st retry will happen 20 seconds after the initial try, the 2nd will happen 40 seconds after the 2nd try.<br>
-After each successful connect to SENEC, the number of retries is reset.|
+|Polling Retry Factor|To space retries apart a bit more you can adjust the Polling Retry Factor. (Default: 2) - Example: Using default settings the 1st retry will happen 20 seconds after the initial try, the 2nd will happen 40 seconds after the 2nd try. After each successful connect to SENEC, the number of retries is reset.|
 
 Once finished setting up configuration, hit `SAVE AND CLOSE` to leave configuration dialogue. The adapter will automatically restart.
 
@@ -227,6 +225,6 @@ Here you can find a description of the states and how to use them. All states of
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
-    |number|R|
+    |string|R|
 
-   *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
+   *Read-only text, which designates the serial number of wallbox [0..3].*
