@@ -3,6 +3,18 @@
         "name": "senec",
         "version": "1.0.5",
         "news": {
+			"1.0.6": {
+				"en": "(NoBl) Added missing state descriptions",
+				"de": "(NoBl) Fehlende Zustandsbeschreibungen hinzugefügt",
+				"ru": "(NoBl) Добавлены недостающие описания состояний",
+				"pt": "(NoBl) Adicionadas descrições de estado ausentes",
+				"nl": "(NoBl) Beschrijvingen van ontbrekende status toegevoegd",
+				"fr": "(NoBl) Ajout de descriptions d'état manquantes",
+				"it": "(NoBl) Aggiunte descrizioni di stato mancanti",
+				"es": "(NoBl) Se agregaron descripciones de estado faltantes",
+				"pl": "(NoBl) Dodano brakujące opisy stanów",
+				"zh-cn": "（NoBl）添加了缺少的状态描述"
+			},
 			"1.0.5": {
 				"en": "(NoBl) Added States for: Energy: GUI_BAT_DATA_VOLTAGE, GUI_BAT_DATA_CURRENT, STAT_HOURS_OF_OPERATION; Sys_update: NPU_VER, NPU_IMAGE_VERSION, Wizard: APPLICATION_VERSION, INTERFACE_VERSION; Readme and Documentation (EN exists, now) updated; Changed behavior for unknown values completely. They will now be stored as string plus prefixed with \"REPORT TO DEV:\" so users can easily report back what needs updating. ; added handling for \"st_\" values in json;  added additional configuration options; changed retry-behaviour in case of connection issues, ...",
 				"de": "(NoBl) Hinzugefügte Zustände für: Energie: GUI_BAT_DATA_VOLTAGE, GUI_BAT_DATA_CURRENT, STAT_HOURS_OF_OPERATION; Sys_update: NPU_VER, NPU_IMAGE_VERSION, Assistent: APPLICATION_VERSION, INTERFACE_VERSION; Readme und Dokumentation (EN existiert, jetzt) aktualisiert; Verhalten für unbekannte Werte komplett geändert. Sie werden jetzt als Zeichenfolge mit dem Präfix \"REPORT TO DEV:\" gespeichert, sodass Benutzer problemlos zurückmelden können, was aktualisiert werden muss. ;; Behandlung für \"st_\" -Werte in json hinzugefügt; zusätzliche Konfigurationsoptionen hinzugefügt; Wiederholtes Wiederholungsverhalten bei Verbindungsproblemen, ...",

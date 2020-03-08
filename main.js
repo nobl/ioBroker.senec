@@ -68,7 +68,7 @@ class Senec extends utils.Adapter {
             this.log.warn("Config interval " + this.config.interval + " not [1..3600] seconds. Using default: 10");
             this.config.interval = 10;
         }
-		this.log.debug("Configured polling timout: " + this.config.pollingTimeout);
+        this.log.debug("Configured polling timout: " + this.config.pollingTimeout);
         if (this.config.pollingTimeout < 1000 || this.config.pollingTimeout > 10000) {
             this.log.warn("Config timeout " + this.config.pollingTimeout + " not [1000..10000] ms. Using default: 5000");
             this.config.pollingTimeout = 5000;
@@ -78,7 +78,7 @@ class Senec extends utils.Adapter {
             this.log.warn("Config num of retries " + this.config.retries + " not [0..999] seconds. Using default: 10");
             this.config.retries = 10;
         }
-       this.log.debug("Configured retry multiplier: " + this.config.retrymultiplier);
+        this.log.debug("Configured retry multiplier: " + this.config.retrymultiplier);
         if (this.config.retrymultiplier < 1 || this.config.retrymultiplier > 10) {
             this.log.warn("Config retry multiplier " + this.config.retrymultiplier + " not [1..10] seconds. Using default: 2");
             this.config.retrymultiplier = 2;
@@ -144,8 +144,8 @@ class Senec extends utils.Adapter {
 
         const url = 'http://' + this.config.senecip + '/lala.cgi';
         const form = '{"STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":""},"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","STAT_HOURS_OF_OPERATION":""},"WIZARD":{"CONFIG_LOADED":"","SETUP_NUMBER_WALLBOXES":"","SETUP_WALLBOX_SERIAL0":"","SETUP_WALLBOX_SERIAL1":"","SETUP_WALLBOX_SERIAL2":"","SETUP_WALLBOX_SERIAL3":"","APPLICATION_VERSION":"","INTERFACE_VERSION":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":"","NPU_VER":"","NPU_IMAGE_VERSION":""},"BMS":{"MODULE_COUNT":"","MODULES_CONFIGURED":""}}';
-        
-		try {
+
+        try {
             const body = await this.doGet(url, form, this, this.config.pollingTimeout);
             var obj = JSON.parse(body, reviverNumParse);
 
@@ -248,12 +248,12 @@ const reviverNumParse = (key, value) => {
             return HexToFloat32(value.substring(3));
         } else if (value.startsWith("u") || value.startsWith("u")) { // unsigned int in hex
             return parseInt(value.substring(3), 16);
-		} else if (value.startsWith("st_")) {	// string?
-			return value.substring(3);
+        } else if (value.startsWith("st_")) { // string?
+            return value.substring(3);
         } else if (value.startsWith("VARIABLE_NOT_FOUND")) {
             return "VARIABLE_NOT_FOUND";
         } else {
-			return "REPORT DO DEV: " + key + ":" + value.substring(3);
+            return "REPORT DO DEV: " + key + ":" + value.substring(3);
             //throw new Error("Unknown value in JSON: " + key + ":" + value);
         }
     } else {
@@ -452,9 +452,9 @@ const stateHumanForm = (state) => {
  * @return [description,unit,value]
  */
 const getDescUnitValue = (key1, key2, value) => {
-	var a = "A";
-	var h = "h";
-	var v = "V";
+    var a = "A";
+    var h = "h";
+    var v = "V";
     var w = "W";
     var kwh = "kWh";
     var pct = "%";
@@ -481,12 +481,12 @@ const getDescUnitValue = (key1, key2, value) => {
             return ["Boost", "", (value === 0 ? false : true)];
         case "STAT_MAINT_REQUIRED":
             return ["Maintenance required", "", (value === 0 ? false : true)];
-		case "GUI_BAT_DATA_VOLTAGE":
+        case "GUI_BAT_DATA_VOLTAGE":
             return ["Battery Voltage", v, value];
-		case "GUI_BAT_DATA_CURRENT":
+        case "GUI_BAT_DATA_CURRENT":
             return ["Battery Current", a, value];
-		case "STAT_HOURS_OF_OPERATION":
-            return ["Hours of operation", h, value];	
+        case "STAT_HOURS_OF_OPERATION":
+            return ["Hours of operation", h, value];
         }
 
     case "STATISTIC":
@@ -507,14 +507,22 @@ const getDescUnitValue = (key1, key2, value) => {
 
     case "SYS_UPDATE":
         switch (key2) {
+        case "NPU_IMAGE_VERSION":
+            return ["Revision NPU-Image", "", value];
+        case "NPU_VER":
+            return ["Revision NPU-REGS", "", value];
         case "UPDATE_AVAILABLE":
             return ["Update available", "", (value === 0 ? false : true)];
         }
 
     case "WIZARD":
         switch (key2) {
+        case "APPLICATION_VERSION":
+            return ["Revision MCU", "", value];
         case "CONFIG_LOADED":
             return ["Configuration loaded", "", (value === 0 ? false : true)];
+        case "INTERFACE_VERSION":
+            return ["Revision GUI", "", value];
         case "SETUP_NUMBER_WALLBOXES":
             return ["# Wallboxes", "", value];
         case "SETUP_WALLBOX_SERIAL0":

@@ -313,6 +313,9 @@ Here you can find a description of the states and how to use them. All states of
 
 ## Changelog
 
+### 1.0.6 (NoBl)
+* Added missing state descriptions
+
 ### 1.0.5 (2020-03-07) (NoBl)
 * Added States for: Energy: GUI_BAT_DATA_VOLTAGE, GUI_BAT_DATA_CURRENT, STAT_HOURS_OF_OPERATION; Sys_update: NPU_VER, NPU_IMAGE_VERSION, Wizard: APPLICATION_VERSION, INTERFACE_VERSION
 * Readme and Documentation (EN exists, now) updated
