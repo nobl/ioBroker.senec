@@ -6,6 +6,8 @@
 
 const utils = require('@iobroker/adapter-core');
 const request = require('request');
+const mode_desc = require(__dirname + '/lib/mode_desc.js');
+const state_attr = require(__dirname + '/lib/state_attr.js');
 
 let retry = 0; // retry-counter
 
@@ -153,18 +155,29 @@ class Senec extends utils.Adapter {
             for (let[key1, value1]of Object.entries(obj)) {
                 for (let[key2, value2]of Object.entries(value1)) {
                     if (value2 !== "VARIABLE_NOT_FOUND") {
-                        var key = key1 + '.' + key2;
-                        var descUnitValue = getDescUnitValue(String(key1), String(key2), value2);
-                        var desc = descUnitValue[0];
-                        var unit = descUnitValue[1];
-                        var value = descUnitValue[2];
+                        const key = key1 + '.' + key2;
+                        if (state_attr[key] === undefined) {
+                            this.log.warn('State attribute definition missing for + ' + key);
+                        }
+                        const desc = (state_attr[key] !== undefined) ? state_attr[key].name : "undefined";
+                        const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
+                        var value = value2;
+                        if (state_attr[key] !== undefined && state_attr[key].booltype) {
+                            value = (value2 === 0) ? false : true;
+                        }
                         this.doState(key, value, desc, unit);
                     }
                 }
             }
-            // this isn't part of the JSON but we supply it for easier reading of system-state
-            var descUnitValue = getDescUnitValue("ENERGY", "STAT_STATE-Text", obj.ENERGY.STAT_STATE);
-            this.doState("ENERGY.STAT_STATE_Text", descUnitValue[2], descUnitValue[0], descUnitValue[1]);
+            // this isn't part of the JSON but we supply it as an additional state for easier reading of system-mode
+            const key = "ENERGY.STAT_STATE_Text";
+            const desc = (state_attr[key] !== undefined) ? state_attr[key].name : "undefined";
+            const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
+            if (mode_desc[obj.ENERGY.STAT_STATE] === undefined) {
+                this.log.warn('Senec mode definition missing for + ' + obj.ENERGY.STAT_STATE);
+            }
+            var value = (mode_desc[obj.ENERGY.STAT_STATE] !== undefined) ? mode_desc[obj.ENERGY.STAT_STATE].name : "unknown";
+            this.doState(key, value, desc, unit);
 
             /*
              * unknown use: ENERGY.STAT_STATE_DECODE	Ex. Value: u8_0F
@@ -259,292 +272,6 @@ const reviverNumParse = (key, value) => {
     } else {
         return value;
     }
-}
-
-/**
- * Translate senec numeric system state to the official human readable representation.
- * Please report unknown values.
- * @param numeric state value
- */
-const stateHumanForm = (state) => {
-    // if you can supply me with the correct (senec chargon!) values in english, please open a ticket
-    switch (state) {
-    case 0:
-        return "INITIALZUSTAND (0)";
-    case 1:
-        return "KEINE KOMMUNIKATION LADEGERAET (1)";
-    case 2:
-        return "FEHLER LEISTUNGSMESSGERAET (2)";
-    case 3:
-        return "RUNDSTEUEREMPFAENGER (3)";
-    case 4:
-        return "ERSTLADUNG (4)";
-    case 5:
-        return "WARTUNGSLADUNG (5)";
-    case 6:
-        return "WARTUNGSLADUNG FERTIG (6)";
-    case 7:
-        return "WARTUNG NOTWENDIG (7)";
-    case 8:
-        return "MAN. SICHERHEITSLADUNG (8)";
-    case 9:
-        return "SICHERHEITSLADUNG FERTIG (9)";
-    case 10:
-        return "VOLLLADUNG (10)";
-    case 11:
-        return "AUSGLEICHSLADUNG: LADEN (11)";
-    case 12:
-        return "SULFATLADUNG: LADEN (12)";
-    case 13:
-        return "AKKU VOLL (13)";
-    case 14:
-        return "LADEN (14)";
-    case 15:
-        return "AKKU LEER (15)";
-    case 16:
-        return "ENTLADEN (16)";
-    case 17:
-        return "PV + ENTLADEN (17)";
-    case 18:
-        return "NETZ + ENTLADEN (18)";
-    case 19:
-        return "PASSIV (19)";
-    case 20:
-        return "AUSGESCHALTET (20)";
-    case 21:
-        return "EIGENVERBRAUCH (21)";
-    case 22:
-        return "NEUSTART (22)";
-    case 23:
-        return "MAN. AUSGLEICHSLADUNG: LADEN (23)";
-    case 24:
-        return "MAN. SULFATLADUNG: LADEN (24)";
-    case 25:
-        return "SICHERHEITSLADUNG (25)";
-    case 26:
-        return "AKKU-SCHUTZBETRIEB (26)";
-    case 27:
-        return "EG FEHLER (27)";
-    case 28:
-        return "EG LADEN (28)";
-    case 29:
-        return "EG ENTLADEN (29)";
-    case 30:
-        return "EG PASSIV (30)";
-    case 31:
-        return "EG LADEN VERBOTEN (31)";
-    case 32:
-        return "EG ENTLADEN VERBOTEN (32)";
-    case 33:
-        return "NOTLADUNG (33)";
-    case 34:
-        return "SOFTWAREAKTUALISIERUNG (34)";
-    case 35:
-        return "FEHLER: NA-SCHUTZ (35)";
-    case 36:
-        return "FEHLER: NA-SCHUTZ NETZ (36)";
-    case 37:
-        return "FEHLER: NA-SCHUTZ HARDWARE (37)";
-    case 38:
-        return "KEINE SERVERVERBINDUNG (38)";
-    case 39:
-        return "BMS FEHLER (39)";
-    case 40:
-        return "WARTUNG: FILTER (40)";
-    case 41:
-        return "SCHLAFMODUS (41)";
-    case 42:
-        return "WARTE AUF ÜBERSCHUSS (42)";
-    case 43:
-        return "KAPAZITÄTSTEST: LADEN (43)";
-    case 44:
-        return "KAPAZITÄTSTEST: ENTLADEN (44)";
-    case 45:
-        return "MAN. SULFATLADUNG: WARTEN (45)";
-    case 46:
-        return "MAN. SULFATLADUNG: FERTIG (46)";
-    case 47:
-        return "MAN. SULFATLADUNG: FEHLER (47)";
-    case 48:
-        return "AUSGLEICHSLADUNG: WARTEN (48)";
-    case 49:
-        return "NOTLADUNG: FEHLER (49)";
-    case 50:
-        return "MAN: AUSGLEICHSLADUNG: WARTEN (50)";
-    case 51:
-        return "MAN: AUSGLEICHSLADUNG: FEHLER (51)";
-    case 52:
-        return "MAN: AUSGLEICHSLADUNG: FERTIG (52)";
-    case 53:
-        return "AUTO: SULFATLADUNG: WARTEN (53)";
-    case 54:
-        return "LADESCHLUSSPHASE (54)";
-    case 55:
-        return "BATTERIETRENNSCHALTER AUS (55)";
-    case 56:
-        return "PEAK-SHAVING: WARTEN (56)";
-    case 57:
-        return "FEHLER LADEGERAET (57)";
-    case 58:
-        return "NPU-FEHLER (58)";
-    case 59:
-        return "BMS OFFLINE (59)";
-    case 60:
-        return "WARTUNGSLADUNG FEHLER (60)";
-    case 61:
-        return "MAN. SICHERHEITSLADUNG FEHLER (61)";
-    case 62:
-        return "SICHERHEITSLADUNG FEHLER (62)";
-    case 63:
-        return "KEINE MASTERVERBINDUNG (63)";
-    case 64:
-        return "LITHIUM SICHERHEITSMODUS AKTIV (64)";
-    case 65:
-        return "LITHIUM SICHERHEITSMODUS BEENDET (65)";
-    case 66:
-        return "FEHLER BATTERIESPANNUNG (66)";
-    case 67:
-        return "BMS DC AUSGESCHALTET (67)";
-    case 68:
-        return "NETZINITIALISIERUNG (68)";
-    case 69:
-        return "NETZSTABILISIERUNG (69)";
-    case 70:
-        return "FERNABSCHALTUNG (70)";
-    case 71:
-        return "OFFPEAK-LADEN (71)";
-    case 72:
-        return "FEHLER HALBBRÜCKE (72)";
-    case 73:
-        return "BMS: FEHLER BETRIEBSTEMPERATUR (73)";
-    case 74:
-        return "FACOTRY SETTINGS NICHT GEFUNDEN (74)";
-    case 75:
-        return "NETZERSATZBETRIEB (75)";
-    case 76:
-        return "NETZERSATZBETRIEB AKKU LEER (76)";
-    case 77:
-        return "NETZERSATZBETRIEB FEHLER (77)";
-    case 78:
-        return "INITIALISIERUNG (78)";
-    case 79:
-        return "INSTALLATIONSMODUS (79)";
-    case 80:
-        return "NETZAUSFALL (80)";
-    case 81:
-        return "BMS UPDATE ERFORDERLICH (81)";
-    case 82:
-        return "BMS KONFIGURATION ERFORDERLICH (82)";
-    case 83:
-        return "ISOLATIONSTEST (83)";
-    case 84:
-        return "SELBSTTEST (84)";
-    case 85:
-        return "EXTERNE STEUERUNG (85)";
-    default:
-        return "Unknown: " + state + " (Please report to Dev)";
-    }
-}
-
-/**
- * Returns the description, unit and (if needed) a modified value for a state object
- * @param the two keys per JSON, current value
- * @return [description,unit,value]
- */
-const getDescUnitValue = (key1, key2, value) => {
-    var a = "A";
-    var h = "h";
-    var v = "V";
-    var w = "W";
-    var kwh = "kWh";
-    var pct = "%";
-    switch (key1) {
-    case "ENERGY":
-        switch (key2) {
-        case "STAT_STATE":
-            return ["System Mode", "", value];
-        case "STAT_STATE-Text":
-            return ["System Mode", "", stateHumanForm(value)];
-        case "GUI_BAT_DATA_FUEL_CHARGE":
-            return ["Accu Level", pct, value];
-        case "GUI_INVERTER_POWER":
-            return ["PV Power current", w, value];
-        case "GUI_GRID_POW":
-            return ["Net Power current", w, value];
-        case "GUI_BAT_DATA_POWER":
-            return ["Accu Power current", w, value];
-        case "GUI_HOUSE_POW":
-            return ["House Power current", w, value];
-        case "GUI_CHARGING_INFO":
-            return ["Accu charging", "", (value === 0 ? false : true)];
-        case "GUI_BOOSTING_INFO":
-            return ["Boost", "", (value === 0 ? false : true)];
-        case "STAT_MAINT_REQUIRED":
-            return ["Maintenance required", "", (value === 0 ? false : true)];
-        case "GUI_BAT_DATA_VOLTAGE":
-            return ["Battery Voltage", v, value];
-        case "GUI_BAT_DATA_CURRENT":
-            return ["Battery Current", a, value];
-        case "STAT_HOURS_OF_OPERATION":
-            return ["Hours of operation", h, value];
-        }
-
-    case "STATISTIC":
-        switch (key2) {
-        case "STAT_DAY_E_PV":
-            return ["PV Power Day", kwh, value];
-        case "STAT_DAY_E_GRID_IMPORT":
-            return ["Net Import Day", kwh, value];
-        case "STAT_DAY_E_GRID_EXPORT":
-            return ["Net Export Day", kwh, value];
-        case "STAT_DAY_BAT_CHARGE":
-            return ["Accu Charged Day", kwh, value];
-        case "STAT_DAY_BAT_DISCHARGE":
-            return ["Accu Discharged Day", kwh, value];
-        case "STAT_DAY_E_HOUSE":
-            return ["House Power Day", kwh, value];
-        }
-
-    case "SYS_UPDATE":
-        switch (key2) {
-        case "NPU_IMAGE_VERSION":
-            return ["Revision NPU-Image", "", value];
-        case "NPU_VER":
-            return ["Revision NPU-REGS", "", value];
-        case "UPDATE_AVAILABLE":
-            return ["Update available", "", (value === 0 ? false : true)];
-        }
-
-    case "WIZARD":
-        switch (key2) {
-        case "APPLICATION_VERSION":
-            return ["Revision MCU", "", value];
-        case "CONFIG_LOADED":
-            return ["Configuration loaded", "", (value === 0 ? false : true)];
-        case "INTERFACE_VERSION":
-            return ["Revision GUI", "", value];
-        case "SETUP_NUMBER_WALLBOXES":
-            return ["# Wallboxes", "", value];
-        case "SETUP_WALLBOX_SERIAL0":
-            return ["Wallbox 0 Serial", "", value];
-        case "SETUP_WALLBOX_SERIAL1":
-            return ["Wallbox 1 Serial", "", value];
-        case "SETUP_WALLBOX_SERIAL2":
-            return ["Wallbox 2 Serial", "", value];
-        case "SETUP_WALLBOX_SERIAL3":
-            return ["Wallbox 3 Serial", "", value];
-        }
-
-    case "BMS":
-        switch (key2) {
-        case "MODULE_COUNT":
-            return ["# Modules", "", value];
-        case "MODULES_CONFIGURED":
-            return ["# Modules Configured", "", value];
-        }
-
-    }
-    return ["Unknown: " + key1 + "." + key2, "", value];
 }
 
 // @ts-ignore parent is a valid property on module
