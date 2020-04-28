@@ -26,17 +26,17 @@ systemDictionary = {
         "pl": "Adres IP / FQDN systemu SENEC",
         "zh-cn": "SENEC系统的IP / FQDN"
     },
-    "Polling Interval (seconds)": {
-        "en": "Polling Interval (seconds)",
-        "de": "Abfrageintervall (Sekunden)",
-        "ru": "Интервал опроса (секунды)",
-        "pt": "Intervalo de pesquisa (segundos)",
-        "nl": "Polling-interval (seconden)",
-        "fr": "Intervalle d'interrogation (secondes)",
-        "it": "Intervallo di polling (secondi)",
-        "es": "Intervalo de sondeo (segundos)",
-        "pl": "Interwał odpytywania (sekundy)",
-        "zh-cn": "轮询间隔（秒）"
+    "Polling Interval (seconds) High Priority Data": {
+    "en": "Polling Interval (seconds) High Priority Data",
+    "de": "Abfrageintervall (Sekunden) Daten mit hoher Priorität",
+    "ru": "Интервал опроса (секунды) Данные с высоким приоритетом",
+    "pt": "Intervalo de pesquisa (segundos) Dados de alta prioridade",
+    "nl": "Polling Interval (seconden) Gegevens met hoge prioriteit",
+    "fr": "Intervalle d'interrogation (secondes) Données de haute priorité",
+    "it": "Intervallo di polling (secondi) Dati ad alta priorità",
+    "es": "Intervalo de sondeo (segundos) Datos de alta prioridad",
+    "pl": "Interwał odpytywania (sekundy) Dane o wysokim priorytecie",
+    "zh-cn": "轮询间隔（秒）高优先级数据"
     },
 	  "Here you can define the polling interval [min 1, max 3600 seconds]. Default = 10.": {
     "en": "Here you can define the polling interval [min 1, max 3600 seconds]. Default = 10.",
@@ -48,7 +48,31 @@ systemDictionary = {
     "it": "Qui è possibile definire l'intervallo di polling [min 1, max 3600 secondi]. Predefinito = 10.",
     "es": "Aquí puede definir el intervalo de sondeo [mínimo 1, máximo 3600 segundos]. Por defecto = 10.",
     "pl": "Tutaj możesz zdefiniować interwał odpytywania [min 1, max 3600 sekund]. Domyślnie = 10.",
-    "zh-cn": "在这里，您可以定义轮询间隔[最小1，最大3600秒]。默认值= 10"
+    "zh-cn": "在这里，您可以定义轮询间隔[最小1，最大3600秒]。默认值= 10。"
+  },
+    "Polling Interval (minutes) Low Priority Data": {
+    "en": "Polling Interval (minutes) Low Priority Data",
+    "de": "Abfrageintervall (Minuten) Daten mit niedriger Priorität",
+    "ru": "Интервал опроса (минуты) Данные с низким приоритетом",
+    "pt": "Intervalo de pesquisa (minutos) Dados de baixa prioridade",
+    "nl": "Polling Interval (minuten) Gegevens met lage prioriteit",
+    "fr": "Intervalle d'interrogation (minutes) Données de faible priorité",
+    "it": "Intervallo di polling (minuti) Dati a bassa priorità",
+    "es": "Intervalo de sondeo (minutos) Datos de baja prioridad",
+    "pl": "Interwał odpytywania (minuty) Dane o niskim priorytecie",
+    "zh-cn": "轮询间隔（分钟）低优先级数据"
+    },
+	  "Here you can define the polling interval for low priority data [min 60, max 3600 minutes]. Default = 60.": {
+    "en": "Here you can define the polling interval for low priority data [min 60, max 3600 minutes]. Default = 60.",
+    "de": "Hier können Sie das Abfrageintervall für Daten mit niedriger Priorität definieren [min 60, max 3600 Minuten]. Standard = 60.",
+    "ru": "Здесь вы можете определить интервал опроса для данных с низким приоритетом [мин 60, макс 3600 минут]. По умолчанию = 60.",
+    "pt": "Aqui você pode definir o intervalo de pesquisa para dados de baixa prioridade [min 60, max 3600 minutos]. Padrão = 60.",
+    "nl": "Hier kunt u het polling-interval definiëren voor gegevens met een lage prioriteit [min 60, max 3600 minuten]. Standaard = 60.",
+    "fr": "Ici, vous pouvez définir l'intervalle d'interrogation pour les données de faible priorité [min 60, max 3600 minutes]. Par défaut = 60.",
+    "it": "Qui è possibile definire l'intervallo di polling per i dati a bassa priorità [min 60, max 3600 minuti]. Predefinito = 60.",
+    "es": "Aquí puede definir el intervalo de sondeo para datos de baja prioridad [mínimo 60, máximo 3600 minutos]. Por defecto = 60.",
+    "pl": "Tutaj możesz zdefiniować interwał odpytywania dla danych o niskim priorytecie [min 60, max 3600 minut]. Domyślnie = 60.",
+    "zh-cn": "在这里，您可以定义低优先级数据的轮询间隔[最小60，最大3600分钟]。默认值= 60"
   },
 	"Here you enter the IP or FQDN of your SENEC System": {
 		"en": "Here you enter the IP or FQDN of your SENEC System",

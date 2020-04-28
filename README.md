@@ -43,7 +43,8 @@ Additional to the adapter installation you have to add an instance of the adapte
 4. Now you can see the main settings of the adapter configuration page.<br>
 ![Main Settings](/docs/en/media/mainSettings.png)
 4.1 Type in the IP-address of your SENEC system (FQDN is also possible if you have a working local DNS).<br>
-4.2 You can change the polling interval, too. (Default: 10 seconds)<br>
+4.2 You can change the polling interval, too. (Default: 10 seconds for low priority data, 60 minutes for high priority data)<br>
+Warning! If you are polling too often, your SENEC system will not be able to connect to the SENEC servers anymore! So please be aware of this!<br>
 4.3 If your network requires a higher timeout for requests sent to SENEC, please change the Request-Timeout in miliseconds accordingly. (Default: 5000 miliseconds)<br>
 4.4 In case there is an issue communicating with SENEC the adapter will retry several times. You can adjust how often it will try to read from SENEC. (Default: 10)<br>
 4.5 To space retries apart a bit more you can adjust the Polling Retry Factor. (Default: 2)<br>

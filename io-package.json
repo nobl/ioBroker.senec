@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.6",
+        "version": "1.0.7",
         "news": {
+			"1.0.7": {
+				"en": "(NoBl) Reading all known states from SENEC. Split states into high/low priority (heavy requesting the SENEC system renders it unable to sync with the SENEC datacenter). Updated adapter-core and testing versions. Added more state descriptions to manual. But need input on these and those that are still not documented.",
+				"de": "(NoBl) Lesen aller bekannten Zustände aus SENEC. Aufteilen von Zuständen in hohe / niedrige Priorität (eine starke Belastung des SENEC-Systems mit Anfragen führt dazu, dass es nicht SENEC-Rechenzentrum synchronisieren kann). Adapter-Core- und Testversionen aktualisiert. Weitere Statusbeschreibungen zum Handbuch hinzugefügt. Aber weitere Informationen zu diesen benötigt, sowie zu noch nicht beschriebenen States.",
+				"ru": "(NoBl) Чтение всех известных состояний от SENEC. Разделение состояний на высокий / низкий приоритет (тяжелый запрос системы SENEC делает невозможной синхронизацию с центром данных SENEC). Обновлены ядро адаптера и тестовые версии. Добавлено больше описаний состояний в руководство. Но нужен вклад по этим и тем, которые еще не документированы.",
+				"pt": "(NoBl) Lendo todos os estados conhecidos do SENEC. Divida os estados em prioridade alta / baixa (a solicitação pesada do sistema SENEC torna incapaz de sincronizar com o datacenter SENEC). Versões de núcleo e adaptador atualizadas do adaptador. Adicionado mais descrições de estado ao manual. Mas é necessário contribuir com esses e aqueles que ainda não estão documentados.",
+				"nl": "(NoBl) Het lezen van alle bekende staten van SENEC. Splitst staten in hoge / lage prioriteit (zwaar verzoek van het SENEC-systeem maakt het niet mogelijk om te synchroniseren met het SENEC-datacenter). Bijgewerkte adapter-core en testversies. Meer staatsbeschrijvingen toegevoegd aan handleiding. Maar heb input nodig over deze en degenen die nog niet zijn gedocumenteerd.",
+				"fr": "(NoBl) Lecture de tous les états connus du SENEC. Fractionner les états en priorité haute / basse (une demande importante du système SENEC le rend incapable de se synchroniser avec le centre de données SENEC). Mise à jour du noyau d'adaptateur et des versions de test. Ajout de plus de descriptions d'état au manuel. Mais vous avez besoin de commentaires sur ceux-ci et ceux qui ne sont toujours pas documentés.",
+				"it": "(NoBl) Lettura di tutti gli stati noti dal SENEC. Dividere gli stati in priorità alta / bassa (la pesante richiesta del sistema SENEC rende impossibile la sincronizzazione con il centro dati SENEC). Core adattatore e versioni di test aggiornati. Aggiunte ulteriori descrizioni di stato al manuale. Ma hanno bisogno di input su questi e quelli che non sono ancora documentati.",
+				"es": "(NoBl) Lectura de todos los estados conocidos de SENEC. Divida los estados en alta / baja prioridad (la gran solicitud del sistema SENEC hace que no pueda sincronizarse con el centro de datos SENEC). Adaptador actualizado núcleo y versiones de prueba. Se agregaron más descripciones de estado al manual. Pero necesita información sobre estos y aquellos que aún no están documentados.",
+				"pl": "(NoBl) Czytanie wszystkich znanych stanów z SENEC. Podziel stany na wysoki / niski priorytet (ciężkie żądanie systemu SENEC uniemożliwia synchronizację z centrum danych SENEC). Zaktualizowano wersje rdzenia adaptera i testowania. Dodano więcej opisów stanów do instrukcji. Ale potrzebujesz wkładu w te i te, które wciąż nie są udokumentowane.",
+				"zh-cn": "（NoBl）从SENEC读取所有已知状态。将状态分为高/低优先级（繁重的SENEC系统请求使其无法与SENEC数据中心同步）。更新了适配器核心和测试版本。在手册中增加了更多状态描述。但是需要这些以及尚未记录的内容的输入。"
+			},
 			"1.0.6": {
 				"en": "(NoBl) Added missing state descriptions, Moved senec states and state attributes to libs",
 				"de": "(NoBl) Fehlende Statusbeschreibungen, verschobene Senec-Status und Statusattribute zu libs hinzugefügt",
@@ -139,6 +151,7 @@
     "native": {
         "senecip": "0.0.0.0",
         "interval": 10,
+		"intervalLow": 60,
 		"pollingTimeout": 5000,
 		"retries": 10,
 		"retrymultiplier": 2

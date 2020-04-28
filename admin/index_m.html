@@ -79,16 +79,21 @@
             </div>
 			<div class="col s12 m6 l3 input-field">
 				<input type="number" min="1" max="3600" class="value" id="interval" />
-				<label for="interval" class="translate">Polling Interval (seconds)</label>
+				<label for="interval" class="translate">Polling Interval (seconds) High Priority Data</label>
 				<span class="tooltiptext translate">Here you can define the polling interval [min 1, max 3600 seconds]. Default = 10.</span>
 			</div>
+			<div class="col s12 m6 l3 input-field">
+				<input type="number" min="60" max="3600" class="value" id="intervalLow" />
+				<label for="intervalLow" class="translate">Polling Interval (minutes) Low Priority Data</label>
+				<span class="tooltiptext translate">Here you can define the polling interval for low priority data [min 60, max 3600 minutes]. Default = 60.</span>
+			</div>
+		</div>
+		<div class="row">
 			<div class="col s12 m6 l3 input-field">
 				<input type="number" min="1" max="3600" class="value" id="pollingTimeout" />
 				<label for="pollingTimeout" class="translate">Request-Timeout (ms)</label>
 				<span class="tooltiptext translate">Here you define the request timeout when polling from SENEC [min 1000, max 100000]. Default = 5000.</span>
 			</div>
-		</div>
-		<div class="row">
             <div class="col s12 m6 l3 input-field">
                 <input type="number" min="0" max="999" class="value" id="retries" />
                 <label for="retries" class="translate">Polling Retries</label>
