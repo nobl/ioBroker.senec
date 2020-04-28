@@ -314,6 +314,12 @@ Here you can find a description of the states and how to use them. All states of
 
 ## Changelog
 
+### 1.0.7 (NoBl)
+* Reading all known states from SENEC.
+* Split states into high/low priority (heavy requesting the SENEC system renders it unable to sync with the SENEC datacenter!).
+* Updated adapter-core and testing versions along with current dev dependencies. Removed node 8 support.
+* Added more state descriptions to manual. But need input on these and those that are still not documented.
+
 ### 1.0.6 (NoBl)
 * Moved senec states and state attributes to libs
 * Added missing state descriptions
