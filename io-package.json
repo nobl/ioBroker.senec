@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.7",
+        "version": "1.0.8",
         "news": {
+			"1.0.8": {
+				"en": "(NoBl) Added more states to known states (please feedback if they need special handling (unit, special description, value modification, ...)), Bugfix in creating debug data, Unknown states are now reported in debug instead of info, Code cleanup",
+				"de": "(NoBl) Weitere SENEC States hinzugefügt (bitte Feedback, falls eine spezielle Behandlung erforderlich ist (Einheit, spezielle Beschreibung, Wertanpassung, ...)). Bugfix beim Erzeugen von Debug-Daten. Unbekannte Zustände werden jetzt in Debug- und nicht mehr Info-Mode gemeldet. Code-Cleanup.",
+				"ru": "(NoBl) Добавлено больше состояний в известные состояния (пожалуйста, сообщите, если они нуждаются в специальной обработке (единица, специальное описание, изменение значения, ...)), Исправлена ошибка при создании данных отладки, Неизвестные состояния теперь сообщаются в отладке вместо информации, Код уборка",
+				"pt": "(NoBl) Adicionado mais estados aos estados conhecidos (por favor, envie um feedback se eles precisarem de tratamento especial (unidade, descrição especial, modificação de valor, ...)), Correção de bug na criação de dados de depuração, Estados desconhecidos agora são relatados em depuração em vez de informações, Código Limpar",
+				"nl": "(NoBl) Meer staten toegevoegd aan bekende staten (geef feedback als ze speciale afhandeling nodig hebben (eenheid, speciale beschrijving, waardewijziging, ...)), Bugfix bij het maken van foutopsporingsgegevens, Onbekende staten worden nu gerapporteerd in foutopsporing in plaats van info, Code opruimen",
+				"fr": "(NoBl) Ajout de plus d'états aux états connus (merci de nous faire part de vos commentaires s'ils ont besoin d'une manipulation particulière (unité, description spéciale, modification de valeur, ...)), Bugfix lors de la création des données de débogage, Les états inconnus sont désormais signalés dans le débogage au lieu des informations, Code nettoyer",
+				"it": "(NoBl) Aggiunti più stati a stati noti (si prega di feedback se hanno bisogno di una gestione speciale (unità, descrizione speciale, modifica del valore, ...)), Bugfix nella creazione di dati di debug, Gli stati sconosciuti sono ora riportati nel debug invece di informazioni, Codice pulire",
+				"es": "(NoBl) Se agregaron más estados a los estados conocidos (envíe sus comentarios si necesitan un manejo especial (unidad, descripción especial, modificación de valor, ...)), Corrección de errores al crear datos de depuración, Los estados desconocidos ahora se informan en depuración en lugar de información, Código limpiar",
+				"pl": "(NoBl) Dodano więcej stanów do znanych stanów (proszę o informację, jeśli wymagają specjalnej obsługi (jednostka, specjalny opis, modyfikacja wartości, ...)), Bugfix w tworzeniu danych debugowania, Nieznane stany są teraz zgłaszane podczas debugowania zamiast informacji, Kod sprzątać",
+				"zh-cn": "（NoBl）在已知状态中添加了更多状态（如果需要特殊处理（单位，特殊描述，值修改等），请提供反馈），创建调试数据时的错误修正，现在在调试中报告未知状态，而不是信息，代码清理"
+			},
 			"1.0.7": {
 				"en": "(NoBl) Reading all known states from SENEC. Split states into high/low priority (heavy requesting the SENEC system renders it unable to sync with the SENEC datacenter). Updated adapter-core and testing versions. Added more state descriptions to manual. But need input on these and those that are still not documented.",
 				"de": "(NoBl) Lesen aller bekannten Zustände aus SENEC. Aufteilen von Zuständen in hohe / niedrige Priorität (eine starke Belastung des SENEC-Systems mit Anfragen führt dazu, dass es nicht SENEC-Rechenzentrum synchronisieren kann). Adapter-Core- und Testversionen aktualisiert. Weitere Statusbeschreibungen zum Handbuch hinzugefügt. Aber weitere Informationen zu diesen benötigt, sowie zu noch nicht beschriebenen States.",

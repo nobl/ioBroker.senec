@@ -314,6 +314,12 @@ Here you can find a description of the states and how to use them. All states of
 
 ## Changelog
 
+### 1.0.8 (NoBl)
+* Added more states to known states (please feedback if they need special handling (unit, special description, value modification, ...))
+* Bugfix in creating debug data
+* Unknown states are now reported in debug instead of info.
+* Code cleanup
+
 ### 1.0.7 (NoBl)
 * Reading all known states from SENEC.
 * Split states into high/low priority (heavy requesting the SENEC system renders it unable to sync with the SENEC datacenter!).
