@@ -75,7 +75,7 @@ class Senec extends utils.Adapter {
             this.log.warn("Config interval high priority " + this.config.interval + " not [1..3600] seconds. Using default: 10");
             this.config.interval = 10;
         }
-		this.log.debug("Configured polling interval low priority: " + this.config.intervalLow);
+        this.log.debug("Configured polling interval low priority: " + this.config.intervalLow);
         if (this.config.intervalLow < 60 || this.config.intervalLow > 3600) {
             this.log.warn("Config interval low priority " + this.config.intervalLow + " not [60..3600] minutes. Using default: 60");
             this.config.intervalLow = 60;
@@ -165,38 +165,8 @@ class Senec extends utils.Adapter {
             const body = await this.doGet(url, form, this, this.config.pollingTimeout);
             var obj = JSON.parse(body, reviverNumParse);
 
-            // this only works, while senec sticks with format {"CAT1":{"ST1":"V1","STn":"Vn"},"CAT2":{...}...}
-            for (let[key1, value1]of Object.entries(obj)) {
-                for (let[key2, value2]of Object.entries(value1)) {
-                    if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
-                        const key = key1 + '.' + key2;
-                        if (state_attr[key] === undefined) {
-                            this.log.debug('State attribute definition missing for: ' + key);
-                        }
-                        var isBool = false;
-                        var isDate = false;
-                        var isIP = false;
-                        if (state_attr[key] !== undefined && state_attr[key].booltype) {
-                            isBool = true;
-                        }
-                        if (state_attr[key] !== undefined && state_attr[key].datetype) {
-                            isDate = true;
-                        }
-                        if (state_attr[key] !== undefined && state_attr[key].iptype) {
-                            isIP = true;
-                        }
-                        const desc = (state_attr[key] !== undefined) ? state_attr[key].name : "undefined";
-                        const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
-                        if (Array.isArray(value2)) {
-                            for (var i = 0; i < value2.length; i++) {
-                                this.doState(key + '.' + i, ValueTyping(key, value2[i]), desc + '[' + i + ']', unit);
-                            }
-                        } else {
-                            this.doState(key, ValueTyping(key, value2), desc, unit);
-                        }
-                    }
-                }
-            }
+            await this.evalPoll(obj);
+
             // this isn't part of the JSON but we supply it as an additional state for easier reading of system-mode
             const key = "ENERGY.STAT_STATE_Text";
             const desc = (state_attr[key] !== undefined) ? state_attr[key].name : "undefined";
@@ -226,7 +196,7 @@ class Senec extends utils.Adapter {
      * This causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
      */
     async readSenecV21LowPrio() {
-		this.log.info('LowPrio polling ...');
+        this.log.info('LowPrio polling ...');
         // we are polling all known objects ...
 
         const url = 'http://' + this.config.senecip + '/lala.cgi';
@@ -236,39 +206,7 @@ class Senec extends utils.Adapter {
             const body = await this.doGet(url, form, this, this.config.pollingTimeout);
             var obj = JSON.parse(body, reviverNumParse);
 
-            // this only works, while senec sticks with format {"CAT1":{"ST1":"V1","STn":"Vn"},"CAT2":{...}...}
-            for (let[key1, value1]of Object.entries(obj)) {
-                for (let[key2, value2]of Object.entries(value1)) {
-                    if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
-                        const key = key1 + '.' + key2;
-                        if (state_attr[key] === undefined) {
-                            this.log.debug('(lowPrio) State attribute definition missing for: ' + key);
-                        }
-                        var isBool = false;
-                        var isDate = false;
-                        var isIP = false;
-                        if (state_attr[key] !== undefined && state_attr[key].booltype) {
-                            isBool = true;
-                        }
-                        if (state_attr[key] !== undefined && state_attr[key].datetype) {
-                            isDate = true;
-                        }
-                        if (state_attr[key] !== undefined && state_attr[key].iptype) {
-                            isIP = true;
-                        }
-                        const desc = (state_attr[key] !== undefined) ? state_attr[key].name : "undefined";
-                        const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
-
-                        if (Array.isArray(value2)) {
-                            for (var i = 0; i < value2.length; i++) {
-                                this.doState(key + '.' + i, ValueTyping(key, value2[i]), desc + '[' + i + ']', unit);
-                            }
-                        } else {
-                            this.doState(key, ValueTyping(key, value2), desc, unit);
-                        }
-                    }
-                }
-            }
+            await this.evalPoll(obj);
 
             retryLowPrio = 0;
             this.timerLowPrio = setTimeout(() => this.readSenecV21LowPrio(), this.config.intervalLow * 1000 * 60);
@@ -301,15 +239,42 @@ class Senec extends utils.Adapter {
             native: {}
         });
         var oldState = await this.getStateAsync(name);
-		if (oldState) {
-			if (oldState.val === value)
-				return;
-			this.log.debug('Update: ' + name + ': ' + oldState.val + ' -> ' + value);
-		}
+        if (oldState) {
+            if (oldState.val === value)
+                return;
+            this.log.silly('Update: ' + name + ': ' + oldState.val + ' -> ' + value);
+        }
         await this.setStateAsync(name, {
             val: value,
             ack: true
         });
+    }
+
+	/**
+	 * evaluates data polled from SENEC system.
+	 * creates / updates the state.
+	 */
+    async evalPoll(obj) {
+        for (let[key1, value1]of Object.entries(obj)) {
+            for (let[key2, value2]of Object.entries(value1)) {
+                if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
+                    const key = key1 + '.' + key2;
+                    if (state_attr[key] === undefined) {
+                        this.log.debug('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
+                    }	
+                    const desc = (state_attr[key] !== undefined) ? state_attr[key].name : key2;
+                    const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
+
+                    if (Array.isArray(value2)) {
+                        for (var i = 0; i < value2.length; i++) {
+                            this.doState(key + '.' + i, ValueTyping(key, value2[i]), desc + '[' + i + ']', unit);
+                        }
+                    } else {
+                        this.doState(key, ValueTyping(key, value2), desc, unit);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -321,126 +286,126 @@ const ValueTyping = (key, value) => {
     if (state_attr[key] === undefined) {
         return value;
     }
-    const isBool = state_attr[key].booltype;
-    const isDate = state_attr[key].datetype;
-    const isIP = state_attr[key].iptype;
-    const multiply = state_attr[key].multiply;
-        if (isBool) {
-            return (value === 0) ? false : true;
-        } else if (isDate) {
-            return new Date(value * 1000).toString();
-        } else if (isIP) {
-            return DecToIP(value);
-        } else if (multiply !== 1) {
-            return (value *= multiply).toFixed(2);
-        } else {
-            return value;
-        }
-    }
-
-    /**
-     * Converts float value in hex format to js float32.
-     * Also fixes to 2 decimals.
-     * @param string with hex value
-     */
-    const HexToFloat32 = (str) => {
-        var int = parseInt(str, 16);
-        if (int > 0 || int < 0) {
-            // var sign = (int >>> 31) ? -1 : 1;
-            var sign = (int & 0x80000000) ? -1 : 1;
-            var exp = (int >>> 23 & 0xff) - 127;
-            var mantissa = ((int & 0x7fffff) + 0x800000).toString(2);
-            var float32 = 0;
-            for (var i = 0; i < mantissa.length; i++) {
-                float32 += parseInt(mantissa[i]) ? Math.pow(2, exp) : 0;
-                exp--;
-            }
-            return (float32 * sign).toFixed(2);
-        } else {
-            return 0;
-        }
-    }
-
-    /**
-     * Converts a given decimal to a properly formatted IP address.
-     * We have to do that because Senec stores IPs as regular hex values and due to the fact that we
-     * are using a reviver function for the JSON we have to back-convert to hex and then build the IP
-     * for proper human reading.
-     */
-    const DecToIP = (str) => {
-        var ipHex = str.toString(16);
-        while (ipHex.length < 8) {
-            ipHex = '0' + ipHex;
-        }
-        const fourth = ipHex.substring(0, 2);
-        const third = ipHex.substring(2, 4);
-        const second = ipHex.substring(4, 6);
-        const first = ipHex.substring(6);
-        return (parseInt(first, 16) + '.' + parseInt(second, 16) + '.' + parseInt(third, 16) + '.' + parseInt(fourth, 16));
-    }
-
-    /**
-     * Reviver function to convert numeric values to float or int.
-     * Senec supplies them as hex.
-     * @param key value pair as defined in reviver option
-     */
-    const reviverNumParse = (key, value) => {
-        // prepare values for output using reviver function
-        if (typeof value === "string") {
-            if (value.startsWith("fl_")) { // float in hex IEEE754
-                return HexToFloat32(value.substring(3));
-            } else if (value.startsWith("u")) { // unsigned int in hex
-                return parseInt(value.substring(3), 16);
-            } else if (value.startsWith("st_")) { // string?
-                return value.substring(3);
-            } else if (value.startsWith("i1")) { // int
-                var val = parseInt(value.substring(3), 16);
-                if (!isNaN(val)) {
-                    if ((val & 0x8000) > 0) {
-                        val = val - 0x10000;
-                    }
-                    return val;
-                } else
-                    return 0;
-
-            } else if (value.startsWith("i3")) { // int
-                var val = parseInt(value.substring(3), 16);
-                if (!isNaN(val)) {
-                    if ((Math.abs(value & 0x80000000)) > 0) {
-                        val = val - 0x100000000;
-                    }
-                    return val;
-                } else
-                    return 0;
-
-            } else if (value.startsWith("i8")) { // int
-                var val = parseInt(value.substring(3), 16);
-                if (!isNaN(val)) {
-                    if ((value & 0x80) > 0) {
-                        val = val - 0x100;
-                    }
-                    return val;
-                } else
-                    return 0;
-            } else if (value.startsWith("VARIABLE_NOT_FOUND")) {
-                return "VARIABLE_NOT_FOUND";
-            } else {
-                return "REPORT DO DEV: " + key + ":" + value;
-                //throw new Error("Unknown value in JSON: " + key + ":" + value);
-            }
-        } else {
-            return value;
-        }
-    }
-
-    // @ts-ignore parent is a valid property on module
-    if (module.parent) {
-        // Export the constructor in compact mode
-        /**
-         * @param {Partial<ioBroker.AdapterOptions>} [options={}]
-         */
-        module.exports = (options) => new Senec(options);
+	const isBool = (state_attr[key] !== undefined && state_attr[key].booltype) ? state_attr[key].booltype : false;
+	const isDate = (state_attr[key] !== undefined && state_attr[key].isDate) ? state_attr[key].isDate : false;
+	const isIP = (state_attr[key] !== undefined && state_attr[key].isIP) ? state_attr[key].isIP : false;
+	const multiply = (state_attr[key] !== undefined && state_attr[key].multiply) ? state_attr[key].multiply : 1;
+    if (isBool) {
+        return (value === 0) ? false : true;
+    } else if (isDate) {
+        return new Date(value * 1000).toString();
+    } else if (isIP) {
+        return DecToIP(value);
+    } else if (multiply !== 1) {
+        return (value *= multiply).toFixed(2);
     } else {
-        // otherwise start the instance directly
-        new Senec();
+        return value;
     }
+}
+
+/**
+ * Converts float value in hex format to js float32.
+ * Also fixes to 2 decimals.
+ * @param string with hex value
+ */
+const HexToFloat32 = (str) => {
+    var int = parseInt(str, 16);
+    if (int > 0 || int < 0) {
+        // var sign = (int >>> 31) ? -1 : 1;
+        var sign = (int & 0x80000000) ? -1 : 1;
+        var exp = (int >>> 23 & 0xff) - 127;
+        var mantissa = ((int & 0x7fffff) + 0x800000).toString(2);
+        var float32 = 0;
+        for (var i = 0; i < mantissa.length; i++) {
+            float32 += parseInt(mantissa[i]) ? Math.pow(2, exp) : 0;
+            exp--;
+        }
+        return (float32 * sign).toFixed(2);
+    } else {
+        return 0;
+    }
+}
+
+/**
+ * Converts a given decimal to a properly formatted IP address.
+ * We have to do that because Senec stores IPs as regular hex values and due to the fact that we
+ * are using a reviver function for the JSON we have to back-convert to hex and then build the IP
+ * for proper human reading.
+ */
+const DecToIP = (str) => {
+    var ipHex = str.toString(16);
+    while (ipHex.length < 8) {
+        ipHex = '0' + ipHex;
+    }
+    const fourth = ipHex.substring(0, 2);
+    const third = ipHex.substring(2, 4);
+    const second = ipHex.substring(4, 6);
+    const first = ipHex.substring(6);
+    return (parseInt(first, 16) + '.' + parseInt(second, 16) + '.' + parseInt(third, 16) + '.' + parseInt(fourth, 16));
+}
+
+/**
+ * Reviver function to convert numeric values to float or int.
+ * Senec supplies them as hex.
+ * @param key value pair as defined in reviver option
+ */
+const reviverNumParse = (key, value) => {
+    // prepare values for output using reviver function
+    if (typeof value === "string") {
+        if (value.startsWith("fl_")) { // float in hex IEEE754
+            return HexToFloat32(value.substring(3));
+        } else if (value.startsWith("u")) { // unsigned int in hex
+            return parseInt(value.substring(3), 16);
+        } else if (value.startsWith("st_")) { // string?
+            return value.substring(3);
+        } else if (value.startsWith("i1")) { // int
+            var val = parseInt(value.substring(3), 16);
+            if (!isNaN(val)) {
+                if ((val & 0x8000) > 0) {
+                    val = val - 0x10000;
+                }
+                return val;
+            } else
+                return 0;
+
+        } else if (value.startsWith("i3")) { // int
+            var val = parseInt(value.substring(3), 16);
+            if (!isNaN(val)) {
+                if ((Math.abs(value & 0x80000000)) > 0) {
+                    val = val - 0x100000000;
+                }
+                return val;
+            } else
+                return 0;
+
+        } else if (value.startsWith("i8")) { // int
+            var val = parseInt(value.substring(3), 16);
+            if (!isNaN(val)) {
+                if ((value & 0x80) > 0) {
+                    val = val - 0x100;
+                }
+                return val;
+            } else
+                return 0;
+        } else if (value.startsWith("VARIABLE_NOT_FOUND")) {
+            return "VARIABLE_NOT_FOUND";
+        } else {
+            return "REPORT DO DEV: " + key + ":" + value;
+            //throw new Error("Unknown value in JSON: " + key + ":" + value);
+        }
+    } else {
+        return value;
+    }
+}
+
+// @ts-ignore parent is a valid property on module
+if (module.parent) {
+    // Export the constructor in compact mode
+    /**
+     * @param {Partial<ioBroker.AdapterOptions>} [options={}]
+     */
+    module.exports = (options) => new Senec(options);
+} else {
+    // otherwise start the instance directly
+    new Senec();
+}
