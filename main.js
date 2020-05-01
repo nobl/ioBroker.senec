@@ -171,7 +171,7 @@ class Senec extends utils.Adapter {
                     if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
                         const key = key1 + '.' + key2;
                         if (state_attr[key] === undefined) {
-                            this.log.warn('State attribute definition missing for: ' + key);
+                            this.log.debug('State attribute definition missing for: ' + key);
                         }
                         var isBool = false;
                         var isDate = false;
@@ -242,7 +242,7 @@ class Senec extends utils.Adapter {
                     if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
                         const key = key1 + '.' + key2;
                         if (state_attr[key] === undefined) {
-                            this.log.warn('(lowPrio) State attribute definition missing for: ' + key);
+                            this.log.debug('(lowPrio) State attribute definition missing for: ' + key);
                         }
                         var isBool = false;
                         var isDate = false;
@@ -301,9 +301,11 @@ class Senec extends utils.Adapter {
             native: {}
         });
         var oldState = await this.getStateAsync(name);
-        if (oldState && oldState.val === value)
-            return; // if value didn't change, don't update
-        this.log.debug('Update: ' + name + ': ' + oldState.val + ' -> ' + value);
+		if (oldState) {
+			if (oldState.val === value)
+				return;
+			this.log.debug('Update: ' + name + ': ' + oldState.val + ' -> ' + value);
+		}
         await this.setStateAsync(name, {
             val: value,
             ack: true
