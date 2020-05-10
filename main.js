@@ -288,7 +288,7 @@ const ValueTyping = (key, value) => {
     }
 	const isBool = (state_attr[key] !== undefined && state_attr[key].booltype) ? state_attr[key].booltype : false;
 	const isDate = (state_attr[key] !== undefined && state_attr[key].isDate) ? state_attr[key].isDate : false;
-	const isIP = (state_attr[key] !== undefined && state_attr[key].isIP) ? state_attr[key].isIP : false;
+	const isIP = (state_attr[key] !== undefined && state_attr[key].iptype) ? state_attr[key].iptype : false;
 	const multiply = (state_attr[key] !== undefined && state_attr[key].multiply) ? state_attr[key].multiply : 1;
     if (isBool) {
         return (value === 0) ? false : true;
