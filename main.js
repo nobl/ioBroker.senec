@@ -7,6 +7,9 @@
 const utils = require('@iobroker/adapter-core');
 const request = require('request');
 const mode_desc = require(__dirname + '/lib/mode_desc.js');
+const sys_type_desc = require(__dirname + '/lib/sys_type_desc.js');
+const country_desc = require(__dirname + '/lib/country_desc.js');
+const batt_type_desc = require(__dirname + '/lib/batt_type_desc.js');
 const state_attr = require(__dirname + '/lib/state_attr.js');
 
 let retry = 0; // retry-counter
@@ -200,7 +203,7 @@ class Senec extends utils.Adapter {
         // we are polling all known objects ...
 
         const url = 'http://' + this.config.senecip + '/lala.cgi';
-        const form = '{"STATISTIC":{},"ENERGY":{},"FEATURES":{},"LOG":{},"SYS_UPDATE":{},"WIZARD":{},"BMS":{},"BAT1":{},"BAT1OBJ1":{},"BAT1OBJ2":{},"BAT1OBJ2":{},"BAT1OBJ3":{},"BAT1OBJ4":{},"PWR_UNIT":{},"PV1":{}}';
+        const form = '{"STATISTIC":{},"ENERGY":{},"FEATURES":{},"LOG":{},"SYS_UPDATE":{},"WIZARD":{},"BMS":{},"BAT1":{},"BAT1OBJ1":{},"BAT1OBJ2":{},"BAT1OBJ2":{},"BAT1OBJ3":{},"BAT1OBJ4":{},"PWR_UNIT":{},"PV1":{},"FACTORY":{}}';
 
         try {
             const body = await this.doGet(url, form, this, this.config.pollingTimeout);
@@ -283,6 +286,15 @@ class Senec extends utils.Adapter {
  * currently handles bool, date, ip objects
  */
 const ValueTyping = (key, value) => {
+	if (key === "FACTORY.SYS_TYPE") {
+        return (sys_type_desc[value] !== undefined) ? sys_type_desc[value].name : "unknown";
+	}
+	if (key === "FACTORY.COUNTRY") {
+        return (country_desc[value] !== undefined) ? country_desc[value].name : "unknown";
+	}
+	if (key === "FACTORY.BAT_TYPE") {
+        return (batt_type_desc[value] !== undefined) ? batt_type_desc[value].name : "unknown";
+	}
     if (state_attr[key] === undefined) {
         return value;
     }
