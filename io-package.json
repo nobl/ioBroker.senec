@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.8",
+        "version": "1.0.9",
         "news": {
+			"1.0.9": {
+				"en": "(NoBl) IP types are shown as IP again; added datapoints for FACTORY along with more state descriptions for Battery Type, Country and System Type; added datapoints for GRIDCONFIG",
+				"de": "(NoBl) IP Adressen werden wieder als solche angezeigt. Datenpunkte für FACTORY zusammen mit weiteren Statusbeschreibungen für Batterietyp, Land und Systemtyp hinzugefügt; Datenpunkte für GRIDCONFIG hinzugefügt",
+				"ru": "(NoBl) Типы IP снова отображаются как IP; добавлены точки данных для FACTORY вместе с дополнительными описаниями состояния для типа батареи, страны и типа системы; добавлены точки данных для GRIDCONFIG",
+				"pt": "Os tipos de IP (NoBl) são mostrados como IP novamente; pontos de dados adicionados para FACTORY, além de mais descrições de estado para Tipo de bateria, país e tipo de sistema; pontos de dados adicionados para GRIDCONFIG",
+				"nl": "(NoBl) IP-typen worden opnieuw weergegeven als IP; datapunten toegevoegd voor FACTORY samen met meer statusbeschrijvingen voor batterijtype, land en systeemtype; datapunten toegevoegd voor GRIDCONFIG",
+				"fr": "(NoBl) Les types IP sont à nouveau affichés comme IP; points de données ajoutés pour FACTORY ainsi que des descriptions d'état supplémentaires pour le type de batterie, le pays et le type de système; points de données ajoutés pour GRIDCONFIG",
+				"it": "(NoBl) I tipi di IP vengono nuovamente visualizzati come IP; aggiunti punti dati per FABBRICA insieme a più descrizioni di stato per tipo di batteria, paese e tipo di sistema; aggiunti punti dati per GRIDCONFIG",
+				"es": "(NoBl) Los tipos de IP se muestran como IP nuevamente; puntos de datos agregados para FACTORY junto con más descripciones de estado para Tipo de batería, País y Tipo de sistema; puntos de datos agregados para GRIDCONFIG",
+				"pl": "(NoBl) Typy adresów IP są ponownie wyświetlane jako adresy IP; dodano punkty danych dla FACTORY wraz z dodatkowymi opisami stanów dla typu baterii, kraju i typu systemu; dodano punkty danych dla GRIDCONFIG",
+				"zh-cn": "（NoBl）IP类型再次显示为IP；添加了FACTORY的数据点，以及有关电池类型，国家和系统类型的更多状态描述；为GRIDCONFIG添加了数据点"
+			},
 			"1.0.8": {
 				"en": "(NoBl) Added more states to known states (please feedback if they need special handling (unit, special description, value modification, ...)), Bugfix in creating debug data, Unknown states are now reported in debug instead of info, Code cleanup",
 				"de": "(NoBl) Weitere SENEC States hinzugefügt (bitte Feedback, falls eine spezielle Behandlung erforderlich ist (Einheit, spezielle Beschreibung, Wertanpassung, ...)). Bugfix beim Erzeugen von Debug-Daten. Unbekannte Zustände werden jetzt in Debug- und nicht mehr Info-Mode gemeldet. Code-Cleanup.",

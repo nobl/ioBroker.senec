@@ -16,7 +16,28 @@
 [Documentation EN](docs/en/README.md)
 
 Targeted at the Senec Home V2.1 System.
-Other systems might work, as long as they use lala.cgi.
+Other systems should work, as long as they use lala.cgi. Although datapoints may differ (missing, additional, changed).
+
+Systems that might work:
+* Senec Home 4.0 / Blei
+* Senec Home 6.0 Pb
+* Senec Home 8.0 / Blei
+* Senec Home 10.0 Pb
+* Senec Home 5.0/7.5/10.0 / Lithium
+* Senec Home 15.0 / Lithium
+* Senec Home V2 5.0/7.5/10.0
+* Senec Home V2 10.0 / Blei
+* Senec Home V2.1 1ph / Lithium
+* Senec.Home V3 Hybrid
+* Senec.Home V3 Hybrid duo
+* Senec Business 30.0 / Blei
+* Senec Business V2 30.0 / Blei
+* Senec Business 25.0 / Lithium
+* Senec Business V2_2ph / Lithium
+* Senec Business V2 3ph / Lithium
+* ADS Tec
+* OEM LG
+* Solarinvert Storage 10.0 / Blei,
 
 ## Installation
 You can either install the adapter via the ioBroker web interface or on your local machine via npm.
@@ -55,7 +76,7 @@ After each successful connect to SENEC, the number of retries is reset.
 ## Usage
 Here you can find a description of the states and how to use them. All states of this adapter are read-only states.
 
-### States
+### Example States (States differ per System and Version)
 
 #### Channel: info
 
@@ -313,6 +334,10 @@ Here you can find a description of the states and how to use them. All states of
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.0.9 (NoBl)
+* IP types are shown as IP again.
+* added datapoints for FACTORY along with more state descriptions for Battery Type, Country and System Type.
+* added datapoints for GRIDCONFIG
 
 ### 1.0.8 (NoBl)
 * Added more states to known states (please feedback if they need special handling (unit, special description, value modification, ...))

@@ -3,7 +3,28 @@
 
 ## senec adapter for ioBroker
 Targeted at the Senec Home V2.1 System.
-Other systems might work, as long as they use lala.cgi.
+Other systems should work, as long as they use lala.cgi. Although datapoints may differ (missing, additional, changed).
+
+Systems that might work:
+* Senec Home 4.0 / Blei
+* Senec Home 6.0 Pb
+* Senec Home 8.0 / Blei
+* Senec Home 10.0 Pb
+* Senec Home 5.0/7.5/10.0 / Lithium
+* Senec Home 15.0 / Lithium
+* Senec Home V2 5.0/7.5/10.0
+* Senec Home V2 10.0 / Blei
+* Senec Home V2.1 1ph / Lithium
+* Senec.Home V3 Hybrid
+* Senec.Home V3 Hybrid duo
+* Senec Business 30.0 / Blei
+* Senec Business V2 30.0 / Blei
+* Senec Business 25.0 / Lithium
+* Senec Business V2_2ph / Lithium
+* Senec Business V2 3ph / Lithium
+* ADS Tec
+* OEM LG
+* Solarinvert Storage 10.0 / Blei,
 
 ## Installation
 You is facilitated via the ioBroker web interface and the configuration will auto-open once installation is completed.
@@ -32,7 +53,7 @@ Here you can find a description of the states and how to use them. All states of
 Depending on the individual system states might not be available or additional states could be there.
 If a state is not documented (or only partially documented) and you know what it represents, please send a pull request (or open a ticket with the information).
 
-### States
+### Example States (States differ per System and Version)
 
 #### Channel: info
 
