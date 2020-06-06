@@ -402,8 +402,10 @@ const reviverNumParse = (key, value) => {
                 return 0;
         } else if (value.startsWith("VARIABLE_NOT_FOUND")) {
             return "VARIABLE_NOT_FOUND";
+		} else if (value.startsWith("FILE_VARIABLE_NOT_READABLE")) {
+            return "";
         } else {
-            return "REPORT DO DEV: " + key + ":" + value;
+            return "REPORT TO DEV: " + key + ":" + value;
             //throw new Error("Unknown value in JSON: " + key + ":" + value);
         }
     } else {
