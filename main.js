@@ -286,6 +286,7 @@ class Senec extends utils.Adapter {
  * currently handles bool, date, ip objects
  */
 const ValueTyping = (key, value) => {
+	if (!isNaN(value)) value = Number(value); // otherwise iobroker will note it as string
 	if (key === "FACTORY.SYS_TYPE") {
         return (sys_type_desc[value] !== undefined) ? sys_type_desc[value].name : "unknown";
 	}
