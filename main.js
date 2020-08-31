@@ -158,7 +158,7 @@ class Senec extends utils.Adapter {
         const url = 'http://' + this.config.senecip + '/lala.cgi';
         var form = '{';
         form += '"ENERGY":{"STAT_STATE":"","STAT_STATE_DECODE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":"","GUI_BAT_DATA_POWER":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_BAT_DATA_OA_CHARGING":"","STAT_LIMITED_NET_SKEW":""}';
-        form += ',"PV1":{"POWER_RATIO":""}';
+        form += ',"PV1":{"POWER_RATIO":"","MPP_INT":""}';
         form += ',"PWR_UNIT":{"POWER_L1":"","POWER_L2":"","POWER_L3":""}';
         form += ',"PM1OBJ1":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
         form += ',"PM1OBJ2":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
@@ -286,6 +286,7 @@ class Senec extends utils.Adapter {
  * currently handles bool, date, ip objects
  */
 const ValueTyping = (key, value) => {
+	if (!isNaN(value)) value = Number(value); // otherwise iobroker will note it as string
 	if (key === "FACTORY.SYS_TYPE") {
         return (sys_type_desc[value] !== undefined) ? sys_type_desc[value].name : "unknown";
 	}
@@ -299,7 +300,7 @@ const ValueTyping = (key, value) => {
         return value;
     }
 	const isBool = (state_attr[key] !== undefined && state_attr[key].booltype) ? state_attr[key].booltype : false;
-	const isDate = (state_attr[key] !== undefined && state_attr[key].isDate) ? state_attr[key].isDate : false;
+	const isDate = (state_attr[key] !== undefined && state_attr[key].datetype) ? state_attr[key].datetype : false;
 	const isIP = (state_attr[key] !== undefined && state_attr[key].iptype) ? state_attr[key].iptype : false;
 	const multiply = (state_attr[key] !== undefined && state_attr[key].multiply) ? state_attr[key].multiply : 1;
     if (isBool) {
@@ -401,8 +402,10 @@ const reviverNumParse = (key, value) => {
                 return 0;
         } else if (value.startsWith("VARIABLE_NOT_FOUND")) {
             return "VARIABLE_NOT_FOUND";
+		} else if (value.startsWith("FILE_VARIABLE_NOT_READABLE")) {
+            return "";
         } else {
-            return "REPORT DO DEV: " + key + ":" + value;
+            return "REPORT TO DEV: " + key + ":" + value;
             //throw new Error("Unknown value in JSON: " + key + ":" + value);
         }
     } else {
