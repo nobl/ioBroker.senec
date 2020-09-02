@@ -334,6 +334,9 @@ Here you can find a description of the states and how to use them. All states of
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### dev (NoBl)
+* Update to current adapter template
+
 ### 1.0.10 (NoBl, smartpran)
 * DateType objects are stored as date again
 * changed WIZARD.SETUP_POWER_RULE unit to '%'
