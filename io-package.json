@@ -175,11 +175,29 @@
         "loglevel": "info",
         "mode": "daemon",
         "type": "energy",
-        "connectionType": "local",
-        "dataSource": "poll",
-        "compact": true,
-        "materialize": true,
-        "dependencies": [{
+		"compact": true,
+		"materialize": true,
+		"materializeTab": true,
+		"adminTab": {
+	            "singleton": true,
+	            "name": {
+	                "en": "Senec",
+					"de": "Senec",
+					"ru": "Сенек",
+					"pt": "Senec",
+					"nl": "Senec",
+					"fr": "Senec",
+					"it": "Senec",
+					"es": "Senec",
+					"pl": "Senec",
+					"zh-cn": "塞内克"
+	            },
+	            "link": "",
+	            "fa-icon": "info"
+	    },
+		"supportCustoms": true,
+        "dependencies": [
+			{
                 "js-controller": ">=1.4.2"
             }
         ]
