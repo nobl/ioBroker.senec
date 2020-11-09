@@ -334,6 +334,9 @@ Here you can find a description of the states and how to use them. All states of
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.0.12 (NoBl)
+* Just set 'supportCustoms' to false so it won't show up in admin custom config.
+
 ### 1.0.11 (NoBl)
 * Update to current adapter template
 * Added Datapoints: PV1.MPP_CUR, MPP_VOL, MPP_POWER (former: MPP_INT which is unused at this moment but does still exist)

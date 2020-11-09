@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.11",
+        "version": "1.0.12",
         "news": {
+			"1.0.12": {
+				"en": "(NoBl) Just set 'supportCustoms' to false so it won't show up in admin custom config",
+				"de": "(NoBl) 'supportCustoms' auf false gesetzt, damit keine benutzerdefinierte Admin-Konfig mehr angezeigt wird.",
+				"ru": "(NoBl) Просто установите для параметра supportCustoms значение false, чтобы оно не отображалось в пользовательской конфигурации администратора.",
+				"pt": "(NoBl) Basta definir 'supportCustoms' como false para que não apareça na configuração personalizada do administrador",
+				"nl": "(NoBl) Stel gewoon 'supportCustoms' in op false zodat het niet wordt weergegeven in de aangepaste configuratie van de beheerder",
+				"fr": "(NoBl) Il suffit de définir 'supportCustoms' sur false pour qu'il n'apparaisse pas dans la configuration personnalisée de l'administrateur",
+				"it": "(NoBl) Basta impostare \"supportCustoms\" su false in modo che non venga visualizzato nella configurazione personalizzata dell'amministratore",
+				"es": "(NoBl) Simplemente configure 'supportCustoms' en falso para que no se muestre en la configuración personalizada del administrador",
+				"pl": "(NoBl) Po prostu ustaw „supportCustoms” na false, aby nie pojawiło się w niestandardowej konfiguracji administratora",
+				"zh-cn": "（NoBl）只需将'supportCustoms'设置为false，这样它就不会显示在管理员自定义配置中"
+			},
 			"1.0.11": {
 				 "en": "(NoBl) Update to current adapter template; Added Datapoints: PV1.MPP_CUR, MPP_VOL, MPP_POWER (former: MPP_INT which is unused at this moment but does still exist); Added Datapoints (please feedback any improvements for their descriptions, ...): FEATURES.SGREADY, WIZARD.SETUP_WALLBOX_MAX_TOTAL_CURRENT_BY_GRID, WIZARD.SG_READY_CURR_MODE, BMS.ERROR, BMS.RECOVERLOCKED, BMS.SERIAL, BMS.START_SELFTEST, BAT1.RESET, BAT1.SELFTEST_ACT, BAT1.SELFTEST_LIMIT, BAT1.SELFTEST_OFF, BAT1.SELFTEST_OVERALL_STATE, BAT1.SELFTEST_STATE, BAT1.SELFTEST_STEP, BAT1.SELFTEST_TIME, BAT1.SERIAL, BAT1.TRIG_ITALY_SELF, BAT1OBJ1.COMM, GRIDCONFIG.AU_SOFT_RAMP_EN, GRIDCONFIG.AU_VRR_MAX, GRIDCONFIG.AU_VRR_MIN, GRIDCONFIG.AU_VVAR_PERCENTAGE, GRIDCONFIG.AU_VVAR_P_MAX, GRIDCONFIG.AU_VVAR_P_MIN, GRIDCONFIG.AU_VVAR_VOLTAGE, GRIDCONFIG.AU_VWC_VOLTAGE, GRIDCONFIG.AU_VWD_VOLTAGE, GRIDCONFIG.CEI_SEGNALE_ESTERNO, GRIDCONFIG.VDELVFRTDISABLE, GRIDCONFIG.VDEURMSMAX10",
 				"de": "(NoBl) Update auf aktuelle Adaptervorlage; Hinzugefügte Datenpunkte: PV1.MPP_CUR, MPP_VOL, MPP_POWER (früher: MPP_INT, das derzeit nicht verwendet wird, aber noch vorhanden ist); Hinzugefügte Datenpunkte (bitte Feedback zu Verbesserungen für deren Beschreibungen, ...): FEATURES.SGREADY, WIZARD.SETUP_WALLBOX_MAX_TOTAL_CURRENT_BY_GRID, WIZARD.SG_READY_CURR_MODE, BMS.ERROR, BMS.RECOVERLOCKS, BMS.ERROR, BMS.RECOVERLOCKS SELFTEST_ACT, BAT1.SELFTEST_LIMIT, BAT1.SELFTEST_OFF, BAT1.SELFTEST_OVERALL_STATE, BAT1.SELFTEST_STATE, BAT1.SELFTEST_STEP, BAT1.SELFTEST_TIME, BAT1.SERIAL, BAT1.TRIG_ITALY_SELF, BAT1OBJ1.COMM, GRIDCONFIG.AU_SOFT_RAMP_EN, GRIDCONFIG.AU_VRR_MAX, GRIDCONFIG.AU_VRR_MIN, GRIDCONFIG.AU_VVAR_PERCENTAGE, GRIDCONFIG.AU_VVAR_P_MAX, GRIDCONFIG.AU_VVAR_P_MIN, GRIDCONFIG.AU_VVAR_VOLTAGE, GRIDCONFIG.AU_VWC_VOLTAGE, GRIDCONFIG.AU_VWD_VOLTAGE, GRIDCONFIG.CEI_SEGNALE_ESTERNO, GRIDCONFIG.VDELVFRTDISABLE, GRIDCONFIG.VDEURMSMAX10",
@@ -207,7 +219,7 @@
 	            "link": "",
 	            "fa-icon": "info"
 	    },
-		"supportCustoms": true,
+		"supportCustoms": false,
         "dependencies": [
 			{
                 "js-controller": ">=1.4.2"
