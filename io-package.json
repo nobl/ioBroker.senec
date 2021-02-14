@@ -211,6 +211,8 @@
         "loglevel": "info",
         "mode": "daemon",
         "type": "energy",
+		"connectionType": "local",
+	    "dataSource": "poll",
 		"compact": true,
 		"materialize": true,
 		"materializeTab": true,
