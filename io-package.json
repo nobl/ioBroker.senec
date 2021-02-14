@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.12",
+        "version": "1.0.13",
         "news": {
+			"1.0.13": {
+				"en": "(NoBl) Added System Description 19 for Senec.Home V3 Hybrid and Added Mode Descriptions for 86-91. (Credits to noffycws)",
+				"de": "(NoBl) Systembeschreibung 19 für Senec.Home V3 Hybrid hinzugefügt und Modusbeschreibungen für 86-91 hinzugefügt. (Dank an noffycws)",
+				"ru": "(NoBl) Добавлено описание системы 19 для гибридного Senec.Home V3 и добавлены описания режимов для 86-91. (Кредиты для noffycws)",
+				"pt": "(NoBl) Descrição do sistema adicionada 19 para Senec.Home V3 Hybrid e Descrições do modo adicionado para 86-91. (Créditos para noffycws)",
+				"nl": "(NoBl) Systeembeschrijving 19 toegevoegd voor Senec.Home V3 Hybride en Toegevoegde modusbeschrijvingen voor 86-91. (Credits aan noffycws)",
+				"fr": "(NoBl) Ajout de la description du système 19 pour Senec.Home V3 Hybrid et des descriptions du mode ajouté pour 86-91. (Crédits à noffycws)",
+				"it": "(NoBl) Aggiunta la descrizione del sistema 19 per Senec.Home V3 Hybrid e aggiunte le descrizioni delle modalità per 86-91. (Crediti a noffycws)",
+				"es": "(NoBl) Descripción de sistema agregada 19 para Senec.Home V3 Hybrid y Descripciones de modo agregadas para 86-91. (Créditos a noffycws)",
+				"pl": "(NoBl) Dodano opis systemu 19 dla Senec.Home V3 Hybrid i dodano opisy trybów dla 86-91. (Kredyty dla noffycws)",
+				"zh-cn": "（NoBl）为Senec.Home V3 Hybrid添加了系统说明19，并为86-91添加了模式说明。 （归功于noffycws）"
+			},
 			"1.0.12": {
 				"en": "(NoBl) Just set 'supportCustoms' to false so it won't show up in admin custom config",
 				"de": "(NoBl) 'supportCustoms' auf false gesetzt, damit keine benutzerdefinierte Admin-Konfig mehr angezeigt wird.",

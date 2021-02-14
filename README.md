@@ -334,6 +334,10 @@ Here you can find a description of the states and how to use them. All states of
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.0.13 (NoBl)
+* Added System Description 19 for Senec.Home V3 Hybrid (Credits to noffycws)
+* Added Mode Descriptions for 86-91. (Credits to noffycws)
+
 ### 1.0.12 (NoBl)
 * Just set 'supportCustoms' to false so it won't show up in admin custom config.
 
