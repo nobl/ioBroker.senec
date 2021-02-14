@@ -406,7 +406,7 @@ Here you can find a description of the states and how to use them. All states of
 ## License
 MIT License
 
-Copyright (c) 2020 Norbert Bluemle <github@bluemle.org>
+Copyright (c) 2021 Norbert Bluemle <github@bluemle.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
