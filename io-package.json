@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.0.13",
+        "version": "1.1.0",
         "news": {
+			"1.1.0": {
+				"en": "(NoBl) Updated to current adapter template, Integrated GitHub Testing and auto npm publishing, Some other administrative updates",
+				"de": "(NoBl) Aktualisierung auf aktuelles Adaptertemplate, GitHub Testing und auto npm-Publish übernommen, zzgl. administrativer Aenderungen",
+				"ru": "(NoBl) Обновлено до текущего шаблона адаптера, интегрированного тестирования GitHub и автоматической публикации npm, некоторых других административных обновлений",
+				"pt": "(NoBl) Atualizado para o modelo do adaptador atual, teste integrado do GitHub e publicação automática de npm, algumas outras atualizações administrativas",
+				"nl": "(NoBl) Bijgewerkt naar huidig adaptersjabloon, geïntegreerde GitHub-tests en automatische npm-publicatie, enkele andere administratieve updates",
+				"fr": "(NoBl) Mise à jour du modèle d'adaptateur actuel, test GitHub intégré et publication automatique de npm, quelques autres mises à jour administratives",
+				"it": "(NoBl) Aggiornato al modello di adattatore corrente, Test GitHub integrato e pubblicazione automatica npm, Alcuni altri aggiornamenti amministrativi",
+				"es": "(NoBl) Actualizado a la plantilla de adaptador actual, pruebas de GitHub integradas y publicación automática de npm, algunas otras actualizaciones administrativas",
+				"pl": "(NoBl) Zaktualizowano do aktualnego szablonu adaptera, zintegrowane testowanie GitHub i automatyczne publikowanie npm, kilka innych aktualizacji administracyjnych",
+				"zh-cn": "（NoBl）已更新为当前的适配器模板，集成的GitHub测试和自动npm发布，其他一些管理更新"
+			},
 			"1.0.13": {
 				"en": "(NoBl) Added System Description 19 for Senec.Home V3 Hybrid and Added Mode Descriptions for 86-91. (Credits to noffycws)",
 				"de": "(NoBl) Systembeschreibung 19 für Senec.Home V3 Hybrid hinzugefügt und Modusbeschreibungen für 86-91 hinzugefügt. (Dank an noffycws)",
