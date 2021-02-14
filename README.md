@@ -11,6 +11,7 @@
 [![NPM](https://nodei.co/npm/iobroker.senec.png?downloads=true)](https://nodei.co/npm/iobroker.senec/)
 
 **Tests:** ![Test and Release](https://github.com/nobl/ioBroker.senec/workflows/Test%20and%20Release/badge.svg)
+**Tests Travis:** [![Travis-CI](http://img.shields.io/travis/nobl/ioBroker.senec/master.svg)](https://travis-ci.org/nobl/ioBroker.senec)
 
 ## senec adapter for ioBroker
 
