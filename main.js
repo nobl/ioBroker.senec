@@ -242,6 +242,22 @@ class Senec extends utils.Adapter {
             },
             native: {}
         });
+		
+		// Check object for changes:
+		var obj = await this.getObjectAsync(name);
+		if (obj.common.name != description) {
+			this.log.debug("Updating object: " + name + " (desc): " + obj.common.name + " -> " + description);
+			await this.extendObject(name, {common: {name: description}});
+		}
+		if (obj.common.type != typeof(value)) {
+			this.log.debug("Updating object: " + name + " (type): " + obj.common.type + " -> " + typeof(value));
+			await this.extendObject(name, {common: {type: typeof(value)}});
+		}
+		if (obj.common.unit != unit) {
+			this.log.debug("Updating object: " + name + " (unit): " + obj.common.unit + " -> " + unit);
+			await this.extendObject(name, {common: {unit: unit}});
+		}
+
         var oldState = await this.getStateAsync(name);
         if (oldState) {
             if (oldState.val === value)
