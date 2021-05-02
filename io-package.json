@@ -1,19 +1,31 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.1.1",
+        "version": "1.2.0",
         "news": {
+			"1.2.0": {
+				"en": "(NoBl) Added datapoints for: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (please report wrong / missing units).",
+				"de": "(NoBl) Datenpunkte hinzugefügt für: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, STECKDOSEN, CASC, WALLBOX, CONNX50, STECA (bitte falsche / fehlende Einheiten melden).",
+				"ru": "(NoBl) Добавлены точки данных для: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (сообщите неправильные / отсутствующие блоки).",
+				"pt": "(NoBl) Adicionados pontos de dados para: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (relatar unidades erradas / ausentes).",
+				"nl": "(NoBl) Datapunten toegevoegd voor: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (gelieve verkeerde / ontbrekende eenheden te melden).",
+				"fr": "(NoBl) Ajout de points de données pour: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (veuillez signaler les unités erronées / manquantes).",
+				"it": "(NoBl) Aggiunti datapoint per: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (segnalare unità errate / mancanti).",
+				"es": "(NoBl) Se agregaron puntos de datos para: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (informe unidades incorrectas / faltantes).",
+				"pl": "(NoBl) Dodano punkty danych dla: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (proszę zgłosić błędne / brakujące jednostki).",
+				"zh-cn": "(NoBl) 添加了以下数据点：PM1OBJ1，PM1OBJ2，EG_CONTROL，RTC，PM1，TEMPMEASURE，DEBUG，SOCKETS，CASC，WALLBOX，CONNX50，STECA（请报告错误/丢失的单元）。"
+			},
 			"1.1.1": {
-				"en": "* Object attributes are updated to what they are expected to be: unit, description, datatype (this will break anything that still relies on datapoints being STRING that aren't meant to be string)",
-				"de": "* Objektattribute werden bei Bedarf korrigiert: Einheit, Beschreibung, Datentyp (Es ist jetzt nicht mehr alles STRING).",
-				"ru": "* Атрибуты объекта обновляются до ожидаемых значений: единица измерения, описание, тип данных (это нарушит все, что все еще зависит от точек данных, являющихся STRING, а не строками)",
-				"pt": "* Os atributos do objeto são atualizados para o que se espera que sejam: unidade, descrição, tipo de dados (isso quebrará qualquer coisa que ainda dependa de pontos de dados sendo STRING que não deveriam ser strings)",
-				"nl": "* Objectkenmerken worden bijgewerkt naar wat ze worden verwacht: eenheid, beschrijving, datatype (dit zal alles verbreken dat nog steeds afhankelijk is van datapunten die STRING zijn en die niet bedoeld zijn als tekenreeks)",
-				"fr": "* Les attributs d'objet sont mis à jour pour ce qu'ils devraient être: unité, description, type de données (cela cassera tout ce qui repose encore sur des points de données STRING qui ne sont pas censés être une chaîne)",
-				"it": "* Gli attributi degli oggetti vengono aggiornati a quello che dovrebbero essere: unità, descrizione, tipo di dati (questo interromperà tutto ciò che si basa ancora sul fatto che i punti dati siano STRINGA che non devono essere stringa)",
-				"es": "* Los atributos de objeto se actualizan a lo que se espera que sean: unidad, descripción, tipo de datos (esto romperá cualquier cosa que todavía dependa de que los puntos de datos sean STRING y que no estén destinados a ser cadenas)",
-				"pl": "* Atrybuty obiektów są aktualizowane zgodnie z oczekiwaniami: jednostka, opis, typ danych (to zepsuje wszystko, co nadal zależy od punktów danych będących STRING, które nie mają być ciągiem)",
-				"zh-cn": "*对象属性已更新为预期的值：单位，描述，数据类型（这将破坏仍然依赖于数据点为STRING而不是字符串的任何内容）"
+				"en": "(NoBl) Object attributes are updated to what they are expected to be: unit, description, datatype (this will break anything that still relies on datapoints being STRING that aren't meant to be string)",
+				"de": "(NoBl) Objektattribute werden bei Bedarf korrigiert: Einheit, Beschreibung, Datentyp (Es ist jetzt nicht mehr alles STRING).",
+				"ru": "(NoBl) Атрибуты объекта обновляются до ожидаемых значений: единица измерения, описание, тип данных (это нарушит все, что все еще зависит от точек данных, являющихся STRING, а не строками)",
+				"pt": "(NoBl) Os atributos do objeto são atualizados para o que se espera que sejam: unidade, descrição, tipo de dados (isso quebrará qualquer coisa que ainda dependa de pontos de dados sendo STRING que não deveriam ser strings)",
+				"nl": "(NoBl) Objectkenmerken worden bijgewerkt naar wat ze worden verwacht: eenheid, beschrijving, datatype (dit zal alles verbreken dat nog steeds afhankelijk is van datapunten die STRING zijn en die niet bedoeld zijn als tekenreeks)",
+				"fr": "(NoBl) Les attributs d'objet sont mis à jour pour ce qu'ils devraient être: unité, description, type de données (cela cassera tout ce qui repose encore sur des points de données STRING qui ne sont pas censés être une chaîne)",
+				"it": "(NoBl) Gli attributi degli oggetti vengono aggiornati a quello che dovrebbero essere: unità, descrizione, tipo di dati (questo interromperà tutto ciò che si basa ancora sul fatto che i punti dati siano STRINGA che non devono essere stringa)",
+				"es": "(NoBl) Los atributos de objeto se actualizan a lo que se espera que sean: unidad, descripción, tipo de datos (esto romperá cualquier cosa que todavía dependa de que los puntos de datos sean STRING y que no estén destinados a ser cadenas)",
+				"pl": "(NoBl) Atrybuty obiektów są aktualizowane zgodnie z oczekiwaniami: jednostka, opis, typ danych (to zepsuje wszystko, co nadal zależy od punktów danych będących STRING, które nie mają być ciągiem)",
+				"zh-cn": "(NoBl) 对象属性已更新为预期的值：单位，描述，数据类型（这将破坏仍然依赖于数据点为STRING而不是字符串的任何内容）"
 			},
 			"1.1.0": {
 				"en": "(NoBl) Updated to current adapter template, Integrated GitHub Testing and auto npm publishing, Some other administrative updates",
