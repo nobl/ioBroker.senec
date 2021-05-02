@@ -261,20 +261,28 @@ class Senec extends utils.Adapter {
 
         var oldState = await this.getStateAsync(name);
         if (oldState) {
-            if (oldState.val === value)
+            if (oldState.val === value) {
+				await this.checkUpdateSelfStat(name);
                 return;
+			}
             this.log.silly('Update: ' + name + ': ' + oldState.val + ' -> ' + value);
         }
         await this.setStateAsync(name, {
             val: value,
             ack: true
         });
-		
+		await this.checkUpdateSelfStat(name);
+    }
+
+	/** 
+	 * Helper routine
+	 */
+	async checkUpdateSelfStat(name) {
 		if (name == "STATISTIC.LIVE_GRID_EXPORT" || name == "STATISTIC.LIVE_GRID_IMPORT" || name == "STATISTIC.LIVE_HOUSE_CONS" || name == "STATISTIC.LIVE_PV_GEN" || name == "STATISTIC.LIVE_BAT_CHARGE_MASTER" || name == "STATISTIC.LIVE_BAT_DISCHARGE_MASTER") {
 			await this.updateSelfStat(name);
 		}
-    }
-
+	}
+	
 	/**
 	 * evaluates data polled from SENEC system.
 	 * creates / updates the state.
