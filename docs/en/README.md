@@ -35,7 +35,7 @@ In addition to the adapter installation you have to add an instance of the adapt
 ### Configuration 
 ![Main Settings](media/mainSettings.png "Main Settings")
 
-| Feld         | Beschreibung |                                                                       
+| Field         | Description |                                                                       
 |:-------------|:-------------|
 |SENEC System    |Type in the IP-address of your SENEC system (FQDN is also possible if you have a working local DNS).|
 |Polling Interval High Priority Data|You can change the polling interval for high priority data (how often the Adapter reads from your Senec System), too. (Default: 10 seconds)|
@@ -64,6 +64,41 @@ If a state is not documented (or only partially documented) and you know what it
     |boolean|R|
 
    *Read-only boolean which is true if the adapter is connected to the senec system.*
+   
+#### Channel: _calc
+This channel contains calculated values. Currently these are day values for specific data points.
+
+* xxx.refDay
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Modifiable number indicating which day of the year the day data applies to.
+   
+* xxx.refValue
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Modifiable number indicating what the reference value is for calculating the current day value.*
+   
+* xxx.today
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Modifiable number representing the current day value of the corresponding datapoint.
+   
+* xxx.yesterday
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Modifiable number representing the previous day's value of the corresponding datapoint.
    
 #### Channel: BMS
 

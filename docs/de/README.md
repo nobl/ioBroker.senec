@@ -86,6 +86,41 @@ Falls zu einem State keine Dokumentation vorhanden ist, jemand aber weiß, was d
 
    *Nur lesbarer boolscher Wert, welcher true ist, wenn die Verbindung zwischen ioBroker und Senec.Home hergestellt ist.*
    
+#### Channel: _calc
+Dieser Kanal enthält berechnete Werte. Aktuell sind dies Tageswerte zu bestimmten Datenpunkten.
+
+* xxx.refDay
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Änderbare Zahl, die angibt, für welchen Tag des Jahres die Tagesdaten gelten.*
+   
+* xxx.refValue
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Änderbare Zahl, die angibt, was der Referenzwert zur Berechnung des aktuellen Tageswerts ist.*
+   
+* xxx.today
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Änderbare Zahl, die den aktuellen Tageswert des entspr. Datenpunkts repräsentiert.*
+   
+* xxx.yesterday
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Änderbare Zahl, die den Vortageswert des entspr. Datenpunkts repräsentiert.*
+   
 #### Channel: BMS
 
 * BL[0-3]

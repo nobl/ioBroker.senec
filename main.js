@@ -163,8 +163,9 @@ class Senec extends utils.Adapter {
         form += ',"PWR_UNIT":{"POWER_L1":"","POWER_L2":"","POWER_L3":""}';
         form += ',"PM1OBJ1":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
         form += ',"PM1OBJ2":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
+		form += ',"STATISTIC":{"LIVE_GRID_EXPORT":"","LIVE_GRID_IMPORT":"","LIVE_HOUSE_CONS":"","LIVE_PV_GEN":"","LIVE_BAT_CHARGE_MASTER":"","LIVE_BAT_DISCHARGE_MASTER":""}';
         form += '}';
-
+			
         try {
             const body = await this.doGet(url, form, this, this.config.pollingTimeout);
             var obj = JSON.parse(body, reviverNumParse);
@@ -179,7 +180,7 @@ class Senec extends utils.Adapter {
                 this.log.warn('Senec mode definition missing for + ' + obj.ENERGY.STAT_STATE);
             }
             var value = (mode_desc[obj.ENERGY.STAT_STATE] !== undefined) ? mode_desc[obj.ENERGY.STAT_STATE].name : "unknown";
-            this.doState(key, value, desc, unit);
+            this.doState(key, value, desc, unit, false);
 
             retry = 0;
             this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
@@ -229,7 +230,7 @@ class Senec extends utils.Adapter {
     /**
      * sets a state's value and creates the state if it doesn't exist yet
      */
-    async doState(name, value, description, unit) {
+    async doState(name, value, description, unit, write) {
         await this.setObjectNotExistsAsync(name, {
             type: 'state',
             common: {
@@ -238,7 +239,7 @@ class Senec extends utils.Adapter {
                 role: 'value',
                 unit: unit,
                 read: true,
-                write: false
+                write: write
             },
             native: {}
         });
@@ -268,6 +269,10 @@ class Senec extends utils.Adapter {
             val: value,
             ack: true
         });
+		
+		if (name == "STATISTIC.LIVE_GRID_EXPORT" || name == "STATISTIC.LIVE_GRID_IMPORT" || name == "STATISTIC.LIVE_HOUSE_CONS" || name == "STATISTIC.LIVE_PV_GEN" || name == "STATISTIC.LIVE_BAT_CHARGE_MASTER" || name == "STATISTIC.LIVE_BAT_DISCHARGE_MASTER") {
+			await this.updateSelfStat(name);
+		}
     }
 
 	/**
@@ -287,15 +292,57 @@ class Senec extends utils.Adapter {
 
                     if (Array.isArray(value2)) {
                         for (var i = 0; i < value2.length; i++) {
-                            this.doState(key + '.' + i, ValueTyping(key, value2[i]), desc + '[' + i + ']', unit);
+                            this.doState(key + '.' + i, ValueTyping(key, value2[i]), desc + '[' + i + ']', unit, false);
                         }
                     } else {
-                        this.doState(key, ValueTyping(key, value2), desc, unit);
+                        this.doState(key, ValueTyping(key, value2), desc, unit, false);
                     }
                 }
             }
         }
     }
+	
+	async updateSelfStat(name, value) {
+		const prefix = "_calc.";
+		const today = ".today";
+		const yesterday = ".yesterday";
+		const ref = ".refValue";
+		const key = prefix + name.substring(10);
+		const refDayObj = await this.getStateAsync(key + ".refDay");
+		var refDay = refDayObj ? refDayObj.val : 0;
+		const valCurObj = await this.getStateAsync(name);
+		var valCur = valCurObj ? valCurObj.val : 0;
+		const valRefObj = await this.getStateAsync(key + ref);
+		var valRef = valRefObj ? valRefObj.val : 0;
+		const valTodayObj = await this.getStateAsync(key + today);
+		var valToday = valTodayObj ? valTodayObj.val : 0;
+		const valYesterdayObj = await this.getStateAsync(key + yesterday);
+		var valYesterday = valYesterdayObj ? valYesterdayObj.val : 0;
+		
+		const descToday = (state_attr[key + today] !== undefined) ? state_attr[key + today].name : key;
+        const unitToday = (state_attr[key + today] !== undefined) ? state_attr[key + today].unit : "";
+		const descYesterday = (state_attr[key + yesterday] !== undefined) ? state_attr[key + yesterday].name : key;
+        const unitYesterday = (state_attr[key + yesterday] !== undefined) ? state_attr[key + yesterday].unit : "";
+		const descRef = (state_attr[key + ref] !== undefined) ? state_attr[key + ref].name : key;
+        const unitRef = (state_attr[key + ref] !== undefined) ? state_attr[key + ref].unit : "";
+		const descRefDay = (state_attr[key + ".refDay"] !== undefined) ? state_attr[key + ".refDay"].name : key;
+        const unitRefDay = (state_attr[key + ".refDay"] !== undefined) ? state_attr[key + ".refDay"].unit : "";
+		
+		if (refDay != getCurDay()) {
+			this.log.debug("New day (or first value of day). Updating stat data for: " + name.substring(10));
+			// Change of day
+			await this.doState(key + ".refDay", getCurDay(), descRefDay, unitRefDay, true);
+			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, true);
+			await this.doState(key + today, 0, descToday, unitToday, true);
+			await this.doState(key + ref, valCur, descRef, unitRef, true);
+		} else {
+			this.log.debug("Updating day value for: " + name.substring(10));
+			// update today's value
+			await this.doState(key + today, Number((valCur - valRef).toFixed(2)), descToday, unitToday, true);
+		}
+		
+	}
+
 }
 
 /**
@@ -428,6 +475,13 @@ const reviverNumParse = (key, value) => {
     } else {
         return value;
     }
+}
+
+/**
+ * Returns the current day of the year
+ */
+const getCurDay = () => {
+	return (Math.round((new Date().setHours(23) - new Date(new Date().getYear()+1900, 0, 1, 0, 0, 0))/1000/60/60/24));
 }
 
 // @ts-ignore parent is a valid property on module
