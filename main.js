@@ -1,9 +1,5 @@
 'use strict';
 
-/*
- * Created with @iobroker/create-adapter v1.17.0
- */
-
 const utils = require('@iobroker/adapter-core');
 const request = require('request');
 const mode_desc = require(__dirname + '/lib/mode_desc.js');
@@ -492,8 +488,7 @@ const getCurDay = () => {
 	return (Math.round((new Date().setHours(23) - new Date(new Date().getYear()+1900, 0, 1, 0, 0, 0))/1000/60/60/24));
 }
 
-// @ts-ignore parent is a valid property on module
-if (module.parent) {
+ if (require.main !== module) {
     // Export the constructor in compact mode
     /**
      * @param {Partial<ioBroker.AdapterOptions>} [options={}]
