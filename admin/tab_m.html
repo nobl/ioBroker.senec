@@ -1,0 +1,71 @@
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="../../lib/css/materialize.css">
+    <link rel="stylesheet" type="text/css" href="../../css/adapter.css" />
+
+    <script type="text/javascript" src="../../lib/js/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="../../socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="../../js/translate.js"></script>
+    <script type="text/javascript" src="../../lib/js/materialize.js"></script>
+
+    <script type="text/javascript" src="words.js"></script>
+    <style>
+        .m .col .select-wrapper + label {
+            top: -26px;
+        }
+        .m span{
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="m adapter-container">
+
+        <div class="row">
+            <div class="col s12 m6 l3">
+                <img src="senec.png" class="logo">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col s12 m6 l3 input-field">
+                <input type="text" class="value" id="senecip" />
+                <label for="senecip" class="translate">SENEC System</label>
+				<span class="tooltiptext translate">Here you enter the IP or FQDN of your SENEC System</span>
+            </div>
+			<div class="col s12 m6 l3 input-field">
+				<input type="number" min="1" max="3600" class="value" id="interval" />
+				<label for="interval" class="translate">Polling Interval (seconds) High Priority Data</label>
+				<span class="tooltiptext translate">Here you can define the polling interval [min 1, max 3600 seconds]. Default = 10.</span>
+			</div>
+			<div class="col s12 m6 l3 input-field">
+				<input type="number" min="60" max="3600" class="value" id="intervalLow" />
+				<label for="intervalLow" class="translate">Polling Interval (minutes) Low Priority Data</label>
+				<span class="tooltiptext translate">Here you can define the polling interval for low priority data [min 60, max 3600 minutes]. Default = 60.</span>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col s12 m6 l3 input-field">
+				<input type="number" min="1" max="3600" class="value" id="pollingTimeout" />
+				<label for="pollingTimeout" class="translate">Request-Timeout (ms)</label>
+				<span class="tooltiptext translate">Here you define the request timeout when polling from SENEC [min 1000, max 100000]. Default = 5000.</span>
+			</div>
+            <div class="col s12 m6 l3 input-field">
+                <input type="number" min="0" max="999" class="value" id="retries" />
+                <label for="retries" class="translate">Polling Retries</label>
+				<span class="tooltiptext translate">Here you enter how often you want the adapter to retry polling in case of error [min 0, max 999]. 0 = never, 999 = unlimited. Default = 10.</span>
+            </div>
+			<div class="col s12 m6 l3 input-field">
+                <input type="number" min="1" max="10" class="value" id="retrymultiplier" />
+                <label for="retrymultiplier" class="translate">Polling Retry Factor</label>
+				<span class="tooltiptext translate">Here you enter how you want to space retries apart of each other. n'th retry will happen after Interval * Multiplier * n seconds. [min 1, max 10]. Default = 2.</span>
+            </div>
+		</div>
+	</div>
+
+</body>
+
+</html>
