@@ -307,16 +307,23 @@ class Senec extends utils.Adapter {
     }
 	
 	async updateSelfStat(name, value) {
-		const prefix = "_calc.";
-		const today = ".today";
-		const yesterday = ".yesterday";
-		const ref = ".refValue";
-		const key = prefix + name.substring(10);
-		const refDayObj = await this.getStateAsync(key + ".refDay");
-		var refDay = refDayObj ? refDayObj.val : 0;
+		await this.updateSelfStatHelper(name, value, ".today", ".yesterday", ".refValue", "Day", getCurDay());
+		await this.updateSelfStatHelper(name, value, ".week", ".lastWeek", ".refValueWeek", "Week", getCurWeek());
+		await this.updateSelfStatHelper(name, value, ".month", ".lastMonth", ".refValueMonth", "Month", getCurMonth());
+		await this.updateSelfStatHelper(name, value, ".year", ".lastYear", ".refValueYear", "Year", getCurYear());
+		return;		
+	}
+	
+	async updateSelfStatHelper(name, value, today, yesterday, refValue, day, curDay) {
+		const key = "_calc." + name.substring(10);
+		
+		const refDayObj = await this.getStateAsync(key + ".ref" + day);
+		var refDay = refDayObj ? refDayObj.val : -1;
+		
 		const valCurObj = await this.getStateAsync(name);
 		var valCur = valCurObj ? valCurObj.val : 0;
-		const valRefObj = await this.getStateAsync(key + ref);
+		
+		const valRefObj = await this.getStateAsync(key + refValue);
 		var valRef = valRefObj ? valRefObj.val : 0;
 		const valTodayObj = await this.getStateAsync(key + today);
 		var valToday = valTodayObj ? valTodayObj.val : 0;
@@ -327,24 +334,24 @@ class Senec extends utils.Adapter {
         const unitToday = (state_attr[key + today] !== undefined) ? state_attr[key + today].unit : "";
 		const descYesterday = (state_attr[key + yesterday] !== undefined) ? state_attr[key + yesterday].name : key;
         const unitYesterday = (state_attr[key + yesterday] !== undefined) ? state_attr[key + yesterday].unit : "";
-		const descRef = (state_attr[key + ref] !== undefined) ? state_attr[key + ref].name : key;
-        const unitRef = (state_attr[key + ref] !== undefined) ? state_attr[key + ref].unit : "";
-		const descRefDay = (state_attr[key + ".refDay"] !== undefined) ? state_attr[key + ".refDay"].name : key;
-        const unitRefDay = (state_attr[key + ".refDay"] !== undefined) ? state_attr[key + ".refDay"].unit : "";
+		const descRef = (state_attr[key + refValue] !== undefined) ? state_attr[key + refValue].name : key;
+        const unitRef = (state_attr[key + refValue] !== undefined) ? state_attr[key + refValue].unit : "";
+		const descRefDay = (state_attr[key + ".ref" + day] !== undefined) ? state_attr[key + ".ref" + day].name : key;
+        const unitRefDay = (state_attr[key + ".ref" + day] !== undefined) ? state_attr[key + ".ref" + day].unit : "";
 		
-		if (refDay != getCurDay()) {
-			this.log.debug("New day (or first value of day). Updating stat data for: " + name.substring(10));
+		if (refDay != curDay) {
+			this.log.debug("New " + day + " (or first value seen). Updating stat data for: " + name.substring(10));
 			// Change of day
-			await this.doState(key + ".refDay", getCurDay(), descRefDay, unitRefDay, true);
+			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, true);
 			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, true);
 			await this.doState(key + today, 0, descToday, unitToday, true);
-			await this.doState(key + ref, valCur, descRef, unitRef, true);
+			await this.doState(key + refValue, valCur, descRef, unitRef, true);
 		} else {
-			this.log.debug("Updating day value for: " + name.substring(10));
+			this.log.debug("Updating " + day +" value for: " + name.substring(10));
 			// update today's value
 			await this.doState(key + today, Number((valCur - valRef).toFixed(2)), descToday, unitToday, true);
 		}
-		
+
 	}
 
 }
@@ -488,7 +495,37 @@ const getCurDay = () => {
 	return (Math.round((new Date().setHours(23) - new Date(new Date().getYear()+1900, 0, 1, 0, 0, 0))/1000/60/60/24));
 }
 
- if (require.main !== module) {
+/**
+ * Returns the current month of the year
+ */
+const getCurMonth = () => {
+	return (new Date().getMonth());
+}
+
+/**
+ * Returns the current year
+ */
+const getCurYear = () => {
+	return (new Date().getFullYear());
+}
+
+/**
+ * Returns the current week of the year
+ * Using Standard ISO8601
+ */
+const getCurWeek = () => {
+	var tdt = new Date();
+    var dayn = (tdt.getDay() + 6) % 7;
+    tdt.setDate(tdt.getDate() - dayn + 3);
+    var firstThursday = tdt.valueOf();
+    tdt.setMonth(0, 1);
+    if (tdt.getDay() !== 4) {
+		tdt.setMonth(0, 1 + ((4 - tdt.getDay()) + 7) % 7);
+    }
+    return 1 + Math.ceil((firstThursday - tdt) / 604800000);
+}
+
+if (require.main !== module) {
     // Export the constructor in compact mode
     /**
      * @param {Partial<ioBroker.AdapterOptions>} [options={}]
