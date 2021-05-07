@@ -57,7 +57,7 @@ class Senec extends utils.Adapter {
                 clearTimeout(this.timerLowPrio);
             }
             this.log.info('cleaned everything up...');
-            this.setState('info.connection', false, false);
+            this.setState('info.connection', false, true);
             callback();
         } catch (e) {
             callback();
