@@ -251,24 +251,7 @@
 	    "dataSource": "poll",
 		"compact": true,
 		"materialize": true,
-		"materializeTab": true,
-		"adminTab": {
-	            "singleton": true,
-	            "name": {
-	                "en": "Senec",
-					"de": "Senec",
-					"ru": "Сенек",
-					"pt": "Senec",
-					"nl": "Senec",
-					"fr": "Senec",
-					"it": "Senec",
-					"es": "Senec",
-					"pl": "Senec",
-					"zh-cn": "塞内克"
-	            },
-	            "link": "",
-	            "fa-icon": "info"
-	    },
+		"materializeTab": false,
 		"supportCustoms": false,
         "dependencies": [
 			{
