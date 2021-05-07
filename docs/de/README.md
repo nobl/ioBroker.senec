@@ -87,39 +87,39 @@ Falls zu einem State keine Dokumentation vorhanden ist, jemand aber weiß, was d
    *Nur lesbarer boolscher Wert, welcher true ist, wenn die Verbindung zwischen ioBroker und Senec.Home hergestellt ist.*
    
 #### Channel: _calc
-Dieser Kanal enthält berechnete Werte. Aktuell sind dies Tageswerte zu bestimmten Datenpunkten.
+Dieser Kanal enthält berechnete Werte. Aktuell sind dies Tages-/Wochen-/Monats-/Jahres-Werte zu bestimmten Datenpunkten.
 
-* xxx.refDay
+* xxx.refDay/Week/Month/Year
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
     |number|W|
 
-   *Änderbare Zahl, die angibt, für welchen Tag des Jahres die Tagesdaten gelten.*
+   *Änderbare Zahl, die angibt, für welchen Tag/Woche/Monat/Jahr die Daten gelten.*
    
-* xxx.refValue
+* xxx.refValue/Week/Mont/Year
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
     |number|W|
 
-   *Änderbare Zahl, die angibt, was der Referenzwert zur Berechnung des aktuellen Tageswerts ist.*
+   *Änderbare Zahl, die angibt, was der Referenzwert zur Berechnung des aktuellen Wertes ist.*
    
-* xxx.today
+* xxx.today/week/month/year
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
     |number|W|
 
-   *Änderbare Zahl, die den aktuellen Tageswert des entspr. Datenpunkts repräsentiert.*
+   *Änderbare Zahl, die den aktuellen Wert für Tag/Woche/Monat/Jahr des entspr. Datenpunkts repräsentiert.*
    
-* xxx.yesterday
+* xxx.yesterday/lastWeek/lastMonth/lastYear
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
     |number|W|
 
-   *Änderbare Zahl, die den Vortageswert des entspr. Datenpunkts repräsentiert.*
+   *Änderbare Zahl, die den vorangegangenen Wert für Tag/Woche/Monat/Jahr des entspr. Datenpunkts repräsentiert.*
    
 #### Channel: BMS
 

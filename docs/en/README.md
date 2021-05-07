@@ -66,39 +66,39 @@ If a state is not documented (or only partially documented) and you know what it
    *Read-only boolean which is true if the adapter is connected to the senec system.*
    
 #### Channel: _calc
-This channel contains calculated values. Currently these are day values for specific data points.
+This channel contains calculated values. Currently these are day/week/month/year values at specific data points.
 
-* xxx.refDay
+* xxx.refDay/Week/Month/Year
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
     |number|W|
 
-   *Modifiable number indicating which day of the year the day data applies to.
+   *Modifiable number indicating for which day/week/month/year the data is valid.
    
-* xxx.refValue
+* xxx.refValue/Week/Mont/Year
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
     |number|W|
 
-   *Modifiable number indicating what the reference value is for calculating the current day value.*
+   *Modifiable number indicating what the reference value is for calculating the current value.
    
-* xxx.today
+* xxx.today/week/month/year
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
     |number|W|
 
-   *Modifiable number representing the current day value of the corresponding datapoint.
+   *Modifiable number representing the current value for day/week/month/year of the corresponding data point.
    
-* xxx.yesterday
+* xxx.yesterday/lastWeek/lastMonth/lastYear
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
     |number|W|
 
-   *Modifiable number representing the previous day's value of the corresponding datapoint.
+   *Modifiable number representing the previous value for day/week/month/year of the corresponding data point.
    
 #### Channel: BMS
 
