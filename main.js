@@ -2,11 +2,8 @@
 
 const utils = require('@iobroker/adapter-core');
 const request = require('request');
-const mode_desc = require(__dirname + '/lib/mode_desc.js');
-const sys_type_desc = require(__dirname + '/lib/sys_type_desc.js');
-const country_desc = require(__dirname + '/lib/country_desc.js');
-const batt_type_desc = require(__dirname + '/lib/batt_type_desc.js');
 const state_attr = require(__dirname + '/lib/state_attr.js');
+const state_trans = require(__dirname + '/lib/state_trans.js');
 
 let retry = 0; // retry-counter
 let retryLowPrio = 0; // retry-counter
@@ -165,18 +162,7 @@ class Senec extends utils.Adapter {
         try {
             const body = await this.doGet(url, form, this, this.config.pollingTimeout);
             var obj = JSON.parse(body, reviverNumParse);
-
             await this.evalPoll(obj);
-
-            // this isn't part of the JSON but we supply it as an additional state for easier reading of system-mode
-            const key = "ENERGY.STAT_STATE_Text";
-            const desc = (state_attr[key] !== undefined) ? state_attr[key].name : "undefined";
-            const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
-            if (mode_desc[obj.ENERGY.STAT_STATE] === undefined) {
-                this.log.warn('Senec mode definition missing for + ' + obj.ENERGY.STAT_STATE);
-            }
-            var value = (mode_desc[obj.ENERGY.STAT_STATE] !== undefined) ? mode_desc[obj.ENERGY.STAT_STATE].name : "unknown";
-            this.doState(key, value, desc, unit, false);
 
             retry = 0;
             this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
@@ -268,7 +254,31 @@ class Senec extends utils.Adapter {
             ack: true
         });
 		await this.checkUpdateSelfStat(name);
-    }
+		await this.doDecode(name, value);
+	}
+		
+	/**
+	 * Checks if there is decoding possible for a given value and creates/updates a decoded state
+	 * Language used for translations is the language of the SENEC appliance
+	 */
+	async doDecode(name, value) {
+		// Lang: WIZARD.GUI_LANG 0=German, 1=English, 2=Italian
+		var lang = 1; // fallback to english
+		var langState = await this.getStateAsync('WIZARD.GUI_LANG');
+		if (langState) lang = langState.val;
+		this.log.debug("Senec language: " + lang);
+		var key = name;
+		if (!isNaN(name.substring(name.lastIndexOf('.')) + 1)) key = name.substring(0, name.lastIndexOf('.'));
+		this.log.silly("Checking: " + name + " -> " + key);
+		
+		if (state_trans[key + "." + lang] !== undefined) {
+			this.log.silly("Trans found for: " + key + "." + lang);
+			const trans = (state_trans[key + "." + lang] !== undefined ? (state_trans[key + "." + lang][value] !== undefined ? state_trans[key + "." + lang][value] : "(unknown)") : "(unknown)");
+			this.log.debug("Trans " + key + ":" + value + " = " + trans);
+			const desc = (state_attr[key + "_Text"] !== undefined) ? state_attr[key + "_Text"].name : key;
+			await this.doState(name + "_Text", trans, desc, "", true);
+		}
+	}
 
 	/** 
 	 * Helper routine
@@ -362,15 +372,6 @@ class Senec extends utils.Adapter {
  */
 const ValueTyping = (key, value) => {
 	if (!isNaN(value)) value = Number(value); // otherwise iobroker will note it as string
-	if (key === "FACTORY.SYS_TYPE") {
-        return (sys_type_desc[value] !== undefined) ? sys_type_desc[value].name : "unknown";
-	}
-	if (key === "FACTORY.COUNTRY") {
-        return (country_desc[value] !== undefined) ? country_desc[value].name : "unknown";
-	}
-	if (key === "FACTORY.BAT_TYPE") {
-        return (batt_type_desc[value] !== undefined) ? batt_type_desc[value].name : "unknown";
-	}
     if (state_attr[key] === undefined) {
         return value;
     }
