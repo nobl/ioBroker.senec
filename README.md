@@ -90,6 +90,41 @@ Here you can find a description of the states and how to use them. All states of
 
    *Read-only boolean which is true if the adapter is connected to the senec system.*
    
+#### Channel: _calc
+This channel contains calculated values. Currently these are day/week/month/year values at specific data points.
+
+* xxx.refDay/Week/Month/Year
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Modifiable number indicating for which day/week/month/year the data is valid.
+   
+* xxx.refValue/Week/Mont/Year
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Modifiable number indicating what the reference value is for calculating the current value.
+   
+* xxx.today/week/month/year
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Modifiable number representing the current value for day/week/month/year of the corresponding data point.
+   
+* xxx.yesterday/lastWeek/lastMonth/lastYear
+
+    |Data type|Permission|                                                                       
+    |:---:|:---:|
+    |number|W|
+
+   *Modifiable number representing the previous value for day/week/month/year of the corresponding data point.
+   
 #### Channel: BMS
    
 * MODULES_CONFIGURED

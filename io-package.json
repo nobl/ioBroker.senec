@@ -1,7 +1,7 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.3.0-Test",
+        "version": "1.3.0",
         "news": {
 			"1.3.0": {
 				"en": "(NoBl) Rewrote translations handling and added translations for wallbox status. Translated status get an extra datapoint with _Text as postfix. Former translations that didn't add an extra dp will now revert to their numeric representation and add the _Text DP. translations are now handled via lib/state_trans.js for all 3 languages available in the senec system (german, english, italian).",
