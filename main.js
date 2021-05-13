@@ -240,6 +240,10 @@ class Senec extends utils.Adapter {
 			this.log.debug("Updating object: " + name + " (unit): " + obj.common.unit + " -> " + unit);
 			await this.extendObject(name, {common: {unit: unit}});
 		}
+		if (obj.common.write != write) {
+			this.log.debug("Updating object: " + name + " (write): " + obj.common.write + " -> " + write);
+			await this.extendObject(name, {common: {write: write}});
+		}
 
         var oldState = await this.getStateAsync(name);
         if (oldState) {
@@ -350,14 +354,14 @@ class Senec extends utils.Adapter {
 		if (refDay != curDay) {
 			this.log.debug("New " + day + " (or first value seen). Updating stat data for: " + name.substring(10));
 			// Change of day
-			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, true);
-			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, true);
-			await this.doState(key + today, 0, descToday, unitToday, true);
+			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, false);
+			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, false);
+			await this.doState(key + today, 0, descToday, unitToday, false);
 			await this.doState(key + refValue, valCur, descRef, unitRef, true);
 		} else {
 			this.log.debug("Updating " + day +" value for: " + name.substring(10));
 			// update today's value
-			await this.doState(key + today, Number((valCur - valRef).toFixed(2)), descToday, unitToday, true);
+			await this.doState(key + today, Number((valCur - valRef).toFixed(2)), descToday, unitToday, false);
 		}
 		
 		if (name === "STATISTIC.LIVE_HOUSE_CONS") await this.updateAutarkyHelper(today, yesterday, day, curDay); // otherwise we get way too many updates
@@ -398,13 +402,13 @@ class Senec extends utils.Adapter {
 		if (refDay != curDay) {
 			this.log.debug("New " + day + " (or first value seen). Updating Autarky data for: " + key + " " + day);
 			// Change of day
-			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, true);
-			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, true);
-			await this.doState(key + today, 0, descToday, unitToday, true);
+			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, false);
+			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, false);
+			await this.doState(key + today, 0, descToday, unitToday, false);
 		} else {
 			this.log.debug("Updating Autarky " + day +" value for: " + key + today);
 			// update today's value
-			await this.doState(key + today, Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(1)), descToday, unitToday, true);
+			await this.doState(key + today, Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(1)), descToday, unitToday, false);
 		}
 	}
 
