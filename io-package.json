@@ -3,6 +3,18 @@
         "name": "senec",
         "version": "1.3.0",
         "news": {
+			"1.3.1": {
+				"en": "(NoBl) Added calculation of autarky for day/week/month/year",
+				"de": "(NoBl) Berechnung der Autarkie für Tag / Woche / Monat / Jahr hinzugefügt",
+				"ru": "(NoBl) Добавлен расчет автаркии на день / неделю / месяц / год",
+				"pt": "(NoBl) Adicionado cálculo de autarquia para dia / semana / mês / ano",
+				"nl": "(NoBl) Berekening van autarkie toegevoegd voor dag / week / maand / jaar",
+				"fr": "(NoBl) Ajout du calcul de l'autarcie pour jour / semaine / mois / année",
+				"it": "(NoBl) Aggiunto il calcolo dell'autarchia per giorno / settimana / mese / anno",
+				"es": "(NoBl) Cálculo agregado de autarquía para día / semana / mes / año",
+				"pl": "(NoBl) Dodano obliczanie autarkii dla dnia / tygodnia / miesiąca / roku",
+				"zh-cn": "（NoBl）添加了针对日/周/月/年的自给自足计算"
+			},
 			"1.3.0": {
 				"en": "(NoBl) Rewrote translations handling and added translations for wallbox status. Translated status get an extra datapoint with _Text as postfix. Former translations that didn't add an extra dp will now revert to their numeric representation and add the _Text DP. translations are now handled via lib/state_trans.js for all 3 languages available in the senec system (german, english, italian).",
 				"de": "(NoBl) Übersetzungshandling neu designed und Übersetzungen für den Wallbox-Status hinzugefügt. Der übersetzte Status erhält einen zusätzlichen Datenpunkt mit _Text als Postfix. Frühere Übersetzungen ohne zusätzlichen DP werden auf ihren numerischen Wert zurückgesetzt und es wird der DP mit Postfix ergänzt. Übersetzungen werden jetzt über lib / state_trans.js für alle 3 im senec-System verfügbaren Sprachen (Deutsch, Englisch, Italienisch) abgewickelt.",

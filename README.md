@@ -371,6 +371,9 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.3.1 (NoBl) 20210513
+* Added calculation of autarky for day/week/month/year
+
 ### 1.3.0 (NoBl) 20210509
 * Rewrote translations handling
 * Added translations for wallbox status.
