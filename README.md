@@ -371,6 +371,10 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.3.2 (NoBl) Beta
+* autarky without decimal places (again). They are causing more updates than we really need.
+* Ensuring that only values meant to be changeable by user are defined so (attribute changes upon the next update of value)
+
 ### 1.3.1 (NoBl) 20210513
 * Added calculation of autarky for day/week/month/year
 

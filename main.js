@@ -408,7 +408,7 @@ class Senec extends utils.Adapter {
 		} else {
 			this.log.debug("Updating Autarky " + day +" value for: " + key + today);
 			// update today's value
-			await this.doState(key + today, Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(1)), descToday, unitToday, false);
+			await this.doState(key + today, Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(0)), descToday, unitToday, false);
 		}
 	}
 
