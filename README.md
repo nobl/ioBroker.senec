@@ -39,7 +39,7 @@ Systems that might work:
 * Senec Business V2 3ph / Lithium
 * ADS Tec
 * OEM LG
-* Solarinvert Storage 10.0 / Blei,
+* Solarinvert Storage 10.0 / Blei
 
 ## Installation
 You can either install the adapter via the ioBroker web interface or on your local machine via npm.
