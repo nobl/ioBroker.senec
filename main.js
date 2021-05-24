@@ -404,12 +404,12 @@ class Senec extends utils.Adapter {
 			// Change of day
 			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, false);
 			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, false);
-			await this.doState(key + today, 0, descToday, unitToday, false);
-		} else {
-			this.log.debug("Updating Autarky " + day +" value for: " + key + today);
-			// update today's value
-			await this.doState(key + today, Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(0)), descToday, unitToday, false);
+			// await this.doState(key + today, 0, descToday, unitToday, false); // we don't need to reset autarky to 0 because it is calculated by reference values.
+			// instead do the regular calc right after the change of day
 		}
+		this.log.debug("Updating Autarky " + day +" value for: " + key + today);
+		// update today's value
+		await this.doState(key + today, Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(0)), descToday, unitToday, false);
 	}
 
 }
