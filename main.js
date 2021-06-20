@@ -406,7 +406,6 @@ class Senec extends utils.Adapter {
 		if (refDay != curDay) {
 			this.log.debug("New " + day + " (or first value seen). Updating Autarky data for: " + key + " " + day);
 			// Change of day
-			if (curDay > 
 			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, false);
 			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, false);
 			// await this.doState(key + today, 0, descToday, unitToday, false); // we don't need to reset autarky to 0 because it is calculated by reference values.
