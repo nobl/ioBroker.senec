@@ -357,7 +357,11 @@ class Senec extends utils.Adapter {
 			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, false);
 			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, false);
 			await this.doState(key + today, 0, descToday, unitToday, false);
-			await this.doState(key + refValue, valCur, descRef, unitRef, true);
+			if (valRef < valCur) {
+				await this.doState(key + refValue, valCur, descRef, unitRef, true);
+			} else {
+				this.log.warning("Not updating reference value for: " + name.substring(10) + "! Old RefValue (" + valRef + ") >= new RefValue (" + valCur + "). Impossible situation. If this is intentional, please update via admin!");
+			}
 		} else {
 			this.log.debug("Updating " + day +" value for: " + name.substring(10));
 			// update today's value
