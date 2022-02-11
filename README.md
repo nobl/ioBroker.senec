@@ -5,7 +5,6 @@
 [![Downloads](https://img.shields.io/npm/dm/iobroker.senec.svg)](https://www.npmjs.com/package/iobroker.senec)
 ![Number of Installations (latest)](http://iobroker.live/badges/senec-installed.svg)
 ![Number of Installations (stable)](http://iobroker.live/badges/senec-stable.svg)
-[![Dependency Status](https://img.shields.io/david/nobl/iobroker.senec.svg)](https://david-dm.org/nobl/iobroker.senec)
 [![Known Vulnerabilities](https://snyk.io/test/github/nobl/ioBroker.senec/badge.svg)](https://snyk.io/test/github/nobl/ioBroker.senec)
 
 [![NPM](https://nodei.co/npm/iobroker.senec.png?downloads=true)](https://nodei.co/npm/iobroker.senec/)
