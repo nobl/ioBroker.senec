@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "request": "^2.88.2",
+	"got": "^12.0.1",
     "@iobroker/adapter-core": "^2.5.1"
   },
   "devDependencies": {
