@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.3.2",
+        "version": "1.3.3",
         "news": {
+			"1.3.3": {
+				"en": "Update to current template.",
+				"de": "Update auf aktuelles Template.",
+				"ru": "Обновите текущий шаблон.",
+				"pt": "Atualize para o modelo atual.",
+				"nl": "Update naar huidige sjabloon.",
+				"fr": "Mettre à jour le modèle actuel.",
+				"it": "Aggiorna al modello corrente.",
+				"es": "Actualizar a la plantilla actual.",
+				"pl": "Zaktualizuj do bieżącego szablonu.",
+				"zh-cn": "更新到当前模板。"
+			},
 			"1.3.2": {
 				"en": "Autarky without decimal places (again) or they would cause too many updates that are irrelevant especially when considering precision. Values also won't reset to 0 at change of timeframe (day, week, ...) anymore. They are calculated based on reference values anyways. Ensuring that only values meant to be changeable by user are defined so (attribute changes upon the next update of value)",
 				"de": "Autarkie (wieder) ohne Dezimalstellen, da sie mehr Updates verursachen, als wirklich benötigt werden (insbesondere im Rahmen der Rundungsgenauigkeiten). Auch werden die Werte bei Änderung des Zeitrahmens (Tag, Woche, ...) nicht mehr forciert auf 0 zurückgesetzt, da sie ohnehin anhand von Referenzwerten berechnet werden. Es wird auch sichergestellt, dass nur Werte geändert werden können, die vom Benutzer geändert werden sollen (Attributänderungen bei der nächsten Wertaktualisierung).",
