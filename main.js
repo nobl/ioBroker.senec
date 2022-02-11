@@ -1,7 +1,7 @@
 'use strict';
 
 const utils = require('@iobroker/adapter-core');
-const request = require('request');
+const axios = require('axios');
 const state_attr = require(__dirname + '/lib/state_attr.js');
 const state_trans = require(__dirname + '/lib/state_trans.js');
 
@@ -110,30 +110,43 @@ class Senec extends utils.Adapter {
     }
 
     /**
-     * Read from url via request
+     * Read from url via axios
      * @param url to read from
      * @param form to post
      */
-    async doGet(pUrl, pForm, caller, pollingTimeout) {
-        return new Promise(function (resolve, reject) {
-            const options = {
-                url: pUrl,
-                method: 'POST',
-                form: pForm,
-                timeout: pollingTimeout
-            };
-            request(options, function (error, response, body) {
-                if (error)
-                    return reject(error);
-                caller.log.debug('Status: ' + response.statusCode);
-                if (!response || response.statusCode !== 200)
-                    return reject('Cannot read from SENEC: ' + response.statusCode);
-                caller.log.debug('Response: ' + JSON.stringify(response));
-                caller.log.debug('Body: ' + body);
-                resolve(body);
-            });
-        });
-    }
+	async doGet(pUrl, pForm, caller, pollingTimeout) {
+		return new Promise(function (resolve, reject) {
+			axios({
+				method: 'post',
+				url: pUrl,
+				data: pForm,
+				timeout: pollingTimeout
+			}).then(
+				async (response) => {
+                        const content = response.data;
+                        caller.log.debug('received data (' + response.status + '): ' + JSON.stringify(content));
+						resolve(JSON.stringify(content));
+                    }
+                ).catch(
+                    (error) => {
+                        if (error.response) {
+                            // The request was made and the server responded with a status code
+                            caller.log.warn('received error ' + error.response.status + ' response from SENEC with content: ' + JSON.stringify(error.response.data));
+							reject(error.response.status);
+                        } else if (error.request) {
+                            // The request was made but no response was received
+                            // `error.request` is an instance of XMLHttpRequest in the browser and an instance of http.ClientRequest in node.js<div></div>
+                            caller.log.info(error.message);
+							reject(error.message);
+                        } else {
+                            // Something happened in setting up the request that triggered an Error
+                            caller.log.info(error.message);
+							reject(error.status);
+                        }
+                    }
+                );
+		});
+	}
 
     /**
      * Read values from Senec Home V2.1
@@ -213,6 +226,7 @@ class Senec extends utils.Adapter {
      * sets a state's value and creates the state if it doesn't exist yet
      */
     async doState(name, value, description, unit, write) {
+		this.log.silly('Update: ' + name + ': ' + value);
         await this.setObjectNotExistsAsync(name, {
             type: 'state',
             common: {
@@ -363,7 +377,7 @@ class Senec extends utils.Adapter {
 				this.log.warning("Not updating reference value for: " + name.substring(10) + "! Old RefValue (" + valRef + ") >= new RefValue (" + valCur + "). Impossible situation. If this is intentional, please update via admin!");
 			}
 		} else {
-			this.log.debug("Updating " + day +" value for: " + name.substring(10));
+			this.log.debug("Updating " + day +" value for: " + name.substring(10) + ": " + Number((valCur - valRef).toFixed(2)));
 			// update today's value
 			await this.doState(key + today, Number((valCur - valRef).toFixed(2)), descToday, unitToday, false);
 		}
@@ -411,9 +425,11 @@ class Senec extends utils.Adapter {
 			// await this.doState(key + today, 0, descToday, unitToday, false); // we don't need to reset autarky to 0 because it is calculated by reference values.
 			// instead do the regular calc right after the change of day
 		}
-		this.log.debug("Updating Autarky " + day +" value for: " + key + today);
 		// update today's value - but beware of div/0
-		if (valHouseCons > 0) await this.doState(key + today, Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(0)), descToday, unitToday, false);
+		var newVal = 0;
+		if (valHouseCons > 0) newVal = Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(0));
+		this.log.debug("Updating Autarky " + day +" value for: " + key + today + ": " + newVal);
+		if (valHouseCons > 0) await this.doState(key + today, newVal, descToday, unitToday, false);
 	}
 
 }
