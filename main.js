@@ -155,7 +155,7 @@ class Senec extends utils.Adapter {
     async readSenecV21() {
         // read by webinterface are the following values. Not all are "high priority" though.
         // "STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":"","STAT_YEAR_E_PU1_ARR":""}
-        // "ENERGY":{"STAT_STATE":"","STAT_STATE_DECODE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""}
+        // "ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""}
         // "WIZARD":{"CONFIG_LOADED":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""}
         // "PV1":{"POWER_RATIO":""},"WIZARD":{"MAC_ADDRESS_BYTES":""},"BAT1OBJ1":{"BMS_NR_INSTALLED":"","SPECIAL_TIMEOUT":"","INV_CYCLE":"","TEMP1":"","TEMP2":"","TEMP3":"","TEMP4":"","TEMP5":"","SW_VERSION":"","SW_VERSION2":"","SW_VERSION3":"","I_DC":""},"BAT1OBJ2":{"TEMP1":"","TEMP2":"","TEMP3":"","TEMP4":"","TEMP5":"","I_DC":""},"BAT1OBJ3":{"TEMP1":"","TEMP2":"","TEMP3":"","TEMP4":"","TEMP5":"","I_DC":""},"PWR_UNIT":{"POWER_L1":"","POWER_L2":"","POWER_L3":""},"BAT1":{"CEI_LIMIT":""},"BMS":{}
         // "PM1OBJ1":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""},"PM1OBJ2":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}
@@ -163,9 +163,8 @@ class Senec extends utils.Adapter {
 
         const url = 'http://' + this.config.senecip + '/lala.cgi';
         var form = '{';
-        form += '"ENERGY":{"STAT_STATE":"","STAT_STATE_DECODE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":"","GUI_BAT_DATA_POWER":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_BAT_DATA_OA_CHARGING":"","STAT_LIMITED_NET_SKEW":""}';
-		// MPP_INT got replaced by MPP_POWER but might still be in use by some machines. Can be removed at a later point in time. (includes state_attr) 2020-10-22
-        form += ',"PV1":{"POWER_RATIO":"","MPP_POWER":"","MPP_INT":""}';
+        form += '"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":"","GUI_BAT_DATA_POWER":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_BAT_DATA_OA_CHARGING":"","STAT_LIMITED_NET_SKEW":""}';
+        form += ',"PV1":{"POWER_RATIO":"","MPP_POWER":""}';
         form += ',"PWR_UNIT":{"POWER_L1":"","POWER_L2":"","POWER_L3":""}';
         form += ',"PM1OBJ1":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
         form += ',"PM1OBJ2":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
