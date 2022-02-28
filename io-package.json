@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.3.4",
+        "version": "1.3.5-beta",
         "news": {
+			"1.3.5-beta": {
+				"en": "Added more state attributes (if you have updated descriptions or anything, please open an issue!), Workaround in case SENEC reports bogus request data",
+				"de": "Weitere Beschreibungen für Datenpunkte hinzugefügt (wenn Sie hierzu Updates, fehlende Datenpunkte, etc haben, öffnen Sie bitte ein Ticket auf github; Problemumgehung für den Fall, dass SENEC gefälschte Anfragedaten meldet",
+				"ru": "Добавлено больше атрибутов состояния (если вы обновили описания или что-то еще, пожалуйста, откройте проблему!), Обходной путь в случае, если SENEC сообщает о фиктивных данных запроса",
+				"pt": "Adicionados mais atributos de estado (se você atualizou as descrições ou qualquer coisa, abra um problema!), Solução alternativa caso a SENEC relate dados de solicitação falsos",
+				"nl": "Meer statusattributen toegevoegd (als je beschrijvingen hebt bijgewerkt of iets dergelijks, open dan een probleem!), Tijdelijke oplossing voor het geval SENEC valse verzoekgegevens meldt",
+				"fr": "Ajout de plus d'attributs d'état (si vous avez mis à jour des descriptions ou quoi que ce soit, veuillez ouvrir un problème !), Solution de contournement au cas où SENEC signale de fausses données de demande",
+				"it": "Aggiunti più attributi di stato (se hai descrizioni aggiornate o altro, apri un problema!), Soluzione alternativa nel caso in cui SENEC segnali dati di richiesta fasulli",
+				"es": "Se agregaron más atributos de estado (si tiene descripciones actualizadas o algo, ¡abra un problema!), Solución alternativa en caso de que SENEC informe datos de solicitud falsos",
+				"pl": "Dodano więcej atrybutów stanu (jeśli zaktualizowałeś opisy lub cokolwiek, otwórz problem!), Obejście w przypadku, gdy SENEC zgłosi fałszywe dane żądania",
+				"zh-cn": "添加了更多的状态属性（如果您有更新的描述或任何内容，请打开一个问题！），以防 SENEC 报告虚假请求数据的解决方法"
+			},
 			"1.3.4": {
 				"en": "Moved from request to axios, Added more state attributes (if you have updated descriptions or anything, please open an issue!)",
 				"de": "Poll von request zu axios geändert, weitere Zustandsattribute hinzugefügt (wenn Sie aktuellere Beschreibungen, ... haben, bitte issue auf GitHub eröffnen!)",
