@@ -121,30 +121,32 @@ class Senec extends utils.Adapter {
 				url: pUrl,
 				data: pForm,
 				timeout: pollingTimeout
-			}).then(
+			})
+			.then(
 				async (response) => {
                         const content = response.data;
                         caller.log.debug('(Poll) received data (' + response.status + '): ' + JSON.stringify(content));
 						resolve(JSON.stringify(content));
                     }
-                ).catch(
-                    (error) => {
-                        if (error.response) {
-                            // The request was made and the server responded with a status code
-                            caller.log.warn('(Poll) received error ' + error.response.status + ' response from SENEC with content: ' + JSON.stringify(error.response.data));
-							reject(error.response.status);
-                        } else if (error.request) {
-                            // The request was made but no response was received
-                            // `error.request` is an instance of XMLHttpRequest in the browser and an instance of http.ClientRequest in node.js<div></div>
-                            caller.log.info(error.message);
-							reject(error.message);
-                        } else {
-                            // Something happened in setting up the request that triggered an Error
-                            caller.log.info(error.message);
-							reject(error.status);
-                        }
-                    }
-                );
+                )
+			.catch(
+				(error) => {
+					if (error.response) {
+						// The request was made and the server responded with a status code
+						caller.log.warn('(Poll) received error ' + error.response.status + ' response from SENEC with content: ' + JSON.stringify(error.response.data));
+						reject(error.response.status);
+					} else if (error.request) {
+						// The request was made but no response was received
+						// `error.request` is an instance of XMLHttpRequest in the browser and an instance of http.ClientRequest in node.js<div></div>
+						caller.log.info(error.message);
+						reject(error.message);
+					} else {
+						// Something happened in setting up the request that triggered an Error
+						caller.log.info(error.message);
+						reject(error.status);
+					}
+				}
+			);
 		});
 	}
 
@@ -172,7 +174,13 @@ class Senec extends utils.Adapter {
         form += '}';
 			
         try {
-            const body = await this.doGet(url, form, this, this.config.pollingTimeout);
+            var body = await this.doGet(url, form, this, this.config.pollingTimeout);
+			if (body.includes('\\"')) { 
+				// in rare cases senec reports back extra escape sequences on some machines ...
+				this.log.info("(Poll) Double escapes detected!  Body inc: " + body);
+				body = body.replace(/\\"/g, '"');
+				this.log.info("(Poll) Double escapes autofixed! Body out: " + body);
+			}
             var obj = JSON.parse(body, reviverNumParse);
             await this.evalPoll(obj);
 
@@ -202,7 +210,13 @@ class Senec extends utils.Adapter {
         const form = '{"STATISTIC":{},"ENERGY":{},"FEATURES":{},"LOG":{},"SYS_UPDATE":{},"WIZARD":{},"BMS":{},"BAT1":{},"BAT1OBJ1":{},"BAT1OBJ2":{},"BAT1OBJ2":{},"BAT1OBJ3":{},"BAT1OBJ4":{},"PWR_UNIT":{},"PM1OBJ1":{},"PM1OBJ2":{},"PV1":{},"FACTORY":{},"GRIDCONFIG":{},"EG_CONTROL":{},"RTC":{},"PM1":{},"TEMPMEASURE":{},"DEBUG":{},"SOCKETS":{},"CASC":{},"WALLBOX":{},"CONNX50":{},"STECA":{}}';
 
         try {
-            const body = await this.doGet(url, form, this, this.config.pollingTimeout);
+            var body = await this.doGet(url, form, this, this.config.pollingTimeout);
+			if (body.includes('\\"')) { 
+				// in rare cases senec reports back extra escape sequences on some machines ...
+				this.log.info("(Poll) Double escapes detected!  Body inc: " + body);
+				body = body.replace(/\\"/g, '"');
+				this.log.info("(Poll) Double escapes autofixed! Body out: " + body);
+			}
             var obj = JSON.parse(body, reviverNumParse);
 
             await this.evalPoll(obj);
@@ -321,7 +335,7 @@ class Senec extends utils.Adapter {
                 if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
                     const key = key1 + '.' + key2;
                     if (state_attr[key] === undefined) {
-                        this.log.debug('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
+                        this.log.info('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
                     }	
                     const desc = (state_attr[key] !== undefined) ? state_attr[key].name : key2;
                     const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
