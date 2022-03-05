@@ -370,7 +370,10 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
-### 1.3.5-beta (NoBl)
+### 1.3.6 (NoBl)
+* Fixed log.warning error
+
+### 1.3.5 (NoBl)
 * Added more state attributes (if you have updated descriptions or anything, please open an issue!)
 * Workaround in case SENEC reports bogus request data
 
