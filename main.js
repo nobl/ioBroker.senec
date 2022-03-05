@@ -392,7 +392,7 @@ class Senec extends utils.Adapter {
 			if (valRef < valCur) {
 				await this.doState(key + refValue, valCur, descRef, unitRef, true);
 			} else {
-				this.log.warning("(Calc) Not updating reference value for: " + name.substring(10) + "! Old RefValue (" + valRef + ") >= new RefValue (" + valCur + "). Impossible situation. If this is intentional, please update via admin!");
+				this.log.warn("(Calc) Not updating reference value for: " + name.substring(10) + "! Old RefValue (" + valRef + ") >= new RefValue (" + valCur + "). Impossible situation. If this is intentional, please update via admin!");
 			}
 		} else {
 			this.log.silly("(Calc) Updating " + day +" value for: " + name.substring(10) + ": " + Number((valCur - valRef).toFixed(2)));
