@@ -166,7 +166,10 @@ class Senec extends utils.Adapter {
         const url = 'http://' + this.config.senecip + '/lala.cgi';
         var form = '{';
         form += '"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":"","GUI_BAT_DATA_POWER":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_BAT_DATA_OA_CHARGING":"","STAT_LIMITED_NET_SKEW":""}';
-        form += ',"PV1":{"POWER_RATIO":"","MPP_POWER":""}';
+        /** added by GIT-ZeR0 - 2022-04-19 **/
+        form += ',"BMS":{"CELL_TEMPERATURES_MODULE_A":"","CELL_TEMPERATURES_MODULE_B":"","CELL_TEMPERATURES_MODULE_C":"","CELL_TEMPERATURES_MODULE_D":"","CELL_VOLTAGES_MODULE_A":"","CELL_VOLTAGES_MODULE_B":"","CELL_VOLTAGES_MODULE_C":"","CELL_VOLTAGES_MODULE_D":"","CURRENT":"","SOC":"","SYSTEM_SOC":"","TEMP_MAX":"","TEMP_MIN":"","VOLTAGE":""}';
+        /** added by GIT-ZeR0 - 2022-04-19 **/
+	form += ',"PV1":{"POWER_RATIO":"","MPP_POWER":""}';
         form += ',"PWR_UNIT":{"POWER_L1":"","POWER_L2":"","POWER_L3":""}';
         form += ',"PM1OBJ1":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
         form += ',"PM1OBJ2":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
