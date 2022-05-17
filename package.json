@@ -24,7 +24,7 @@
     "url": "https://github.com/nobl/ioBroker.senec.git"
   },
   "dependencies": {
-    "axios": "^0.25.0",
+    "axios": "^0.27.2",
     "@iobroker/adapter-core": "^2.6.0"
   },
   "devDependencies": {
