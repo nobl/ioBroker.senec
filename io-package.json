@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.3.6",
+        "version": "1.3.7",
         "news": {
+			"1.3.7": {
+				"en": "Updates to state translations (new values when SENEC turned off appliances), Added state definitions, Added high priority datapoints: temperatures, voltages, ... to better monitor safety relevant data",
+				"de": "Aktualisierungen der State Übersetzungen (neue Werte durch die SENEC Problematik), Zustandsdefinitionen hinzugefügt, Datenpunkte mit hoher Priorität ergänzt: Temperaturen, Spannungen, ... um sicherheitsrelevante Daten besser zu überwachen",
+				"ru": "Обновления государственных переводов (новые значения, когда SENEC отключила бытовую технику), Добавлены государственные определения, Добавлены высокие приоритетные данные: температуры, напряжения, ... для лучшего контроля безопасности соответствующих данных",
+				"pt": "Atualizações às traduções estaduais (novos valores quando o SENEC desligou aparelhos), definições de estado adicionadas, pontos de dados de alta prioridade adicionados: temperaturas, tensões, ... para melhor monitorar dados relevantes de segurança",
+				"nl": "Vertaling:",
+				"fr": "Mises à jour des traductions d'état (nouvelles valeurs lorsque SENEC a éteint les appareils), Définitions d'état, Ajout de points de données hautement prioritaires: températures, tensions, ... pour mieux surveiller les données pertinentes de sécurité",
+				"it": "Aggiornamenti alle traduzioni di stato (nuovi valori quando SENEC ha spento gli elettrodomestici), Aggiunte definizioni di stato, Aggiunto datapoint ad alta priorità: temperature, tensioni, ... per monitorare meglio la sicurezza dati rilevanti",
+				"es": "Actualizaciones a las traducciones estatales (nuevos valores cuando SENEC apagó electrodomésticos), definiciones de estado agregadas, Puntos de datos de alta prioridad añadidos: temperaturas, voltajes, ... para monitorear mejor la seguridad datos relevantes",
+				"pl": "Ulepszenia do tłumaczenia stanu (nowe wartości, kiedy SENEC odwrócił urządzenia), definicje państwowe, dodane wysoko priorytetowe punkty danych: temperatury, napięcia, ... aby lepiej monitorować odpowiednie dane danych",
+				"zh-cn": "国家翻译的更新(新值在中欧经会脱离了配件),加上国家定义,加上高度优先的数据点:温度,火山,......以更好地监测安全相关数据"
+			},
 			"1.3.6": {
 				"en": "fixed log.warning error",
 				"de": "log.warning-Fehler behoben",
@@ -74,18 +86,6 @@
 				"es": "(NoBl) Cálculo agregado de autarquía para día / semana / mes / año",
 				"pl": "(NoBl) Dodano obliczanie autarkii dla dnia / tygodnia / miesiąca / roku",
 				"zh-cn": "（NoBl）添加了针对日/周/月/年的自给自足计算"
-			},
-			"1.3.0": {
-				"en": "(NoBl) Rewrote translations handling and added translations for wallbox status. Translated status get an extra datapoint with _Text as postfix. Former translations that didn't add an extra dp will now revert to their numeric representation and add the _Text DP. translations are now handled via lib/state_trans.js for all 3 languages available in the senec system (german, english, italian).",
-				"de": "(NoBl) Übersetzungshandling neu designed und Übersetzungen für den Wallbox-Status hinzugefügt. Der übersetzte Status erhält einen zusätzlichen Datenpunkt mit _Text als Postfix. Frühere Übersetzungen ohne zusätzlichen DP werden auf ihren numerischen Wert zurückgesetzt und es wird der DP mit Postfix ergänzt. Übersetzungen werden jetzt über lib / state_trans.js für alle 3 im senec-System verfügbaren Sprachen (Deutsch, Englisch, Italienisch) abgewickelt.",
-				"ru": "(NoBl) Переписана обработка переводов и добавлены переводы для статуса wallbox. Переведенный статус получает дополнительную точку данных с _Text в качестве постфикса. Прежние переводы, которые не добавляли дополнительный dp, теперь вернутся к своему числовому представлению и добавят _Text DP. переводы теперь выполняются через lib / state_trans.js для всех 3 языков, доступных в системе senec (немецкий, английский, итальянский).",
-				"pt": "(NoBl) Manipulação de traduções reescritas e traduções adicionadas para status de wallbox. O status traduzido obtém um ponto de dados extra com _Text como postfix. As traduções anteriores que não adicionaram um dp extra irão agora reverter para sua representação numérica e adicionar o _Text DP. as traduções agora são feitas via lib / state_trans.js para todos os 3 idiomas disponíveis no sistema senec (alemão, inglês, italiano).",
-				"nl": "(NoBl) Verwerking van vertalingen herschreven en vertalingen toegevoegd voor wallbox-status. De vertaalde status krijgt een extra datapunt met _Text als postfix. Voormalige vertalingen die geen extra dp hebben toegevoegd, zullen nu terugkeren naar hun numerieke weergave en de _Text DP toevoegen. vertalingen worden nu afgehandeld via lib / state_trans.js voor alle 3 talen die beschikbaar zijn in het senec-systeem (duits, engels, italiaans).",
-				"fr": "(NoBl) Réécriture de la gestion des traductions et ajout de traductions pour le statut de la wallbox. Le statut traduit obtient un point de données supplémentaire avec _Text comme suffixe. Les anciennes traductions qui n'ajoutaient pas de dp supplémentaire reviendront maintenant à leur représentation numérique et ajouteront le _Text DP. les traductions sont désormais gérées via lib / state_trans.js pour les 3 langues disponibles dans le système senec (allemand, anglais, italien).",
-				"it": "(NoBl) Gestione delle traduzioni riscritta e traduzioni aggiunte per lo stato della wallbox. Lo stato tradotto ottiene un datapoint aggiuntivo con _Text come suffisso. Le precedenti traduzioni che non aggiungevano un dp extra torneranno ora alla loro rappresentazione numerica e aggiungeranno _Text DP. le traduzioni sono ora gestite tramite lib / state_trans.js per tutte e 3 le lingue disponibili nel sistema senec (tedesco, inglese, italiano).",
-				"es": "(NoBl) Reescribió el manejo de traducciones y agregó traducciones para el estado de wallbox. El estado traducido obtiene un punto de datos adicional con _Text como sufijo. Las traducciones anteriores que no agregaron un dp adicional ahora volverán a su representación numérica y agregarán el _Text DP. las traducciones ahora se manejan a través de lib / state_trans.js para los 3 idiomas disponibles en el sistema senec (alemán, inglés, italiano).",
-				"pl": "(NoBl) Przepisano obsługę tłumaczeń i dodano tłumaczenia dla statusu Wallbox. Status przetłumaczony otrzymuje dodatkowy punkt danych z _Textem jako postfiksem. Wcześniejsze tłumaczenia, które nie dodały dodatkowego dp, teraz powrócą do swojej reprezentacji numerycznej i dodają _Text DP. tłumaczenia są teraz obsługiwane przez lib / state_trans.js dla wszystkich 3 języków dostępnych w systemie senec (niemiecki, angielski, włoski).",
-				"zh-cn": "（NoBl）重新编写了翻译处理并添加了关于墙盒状态的翻译。转换后的状态以_Text作为后缀获得一个额外的数据点。以前没有添加额外dp的翻译现在将恢复为其数字表示形式，并添加_Text DP。现在可以通过lib / state_trans.js处理senec系统中所有3种语言（德语，英语，意大利语）的翻译。"
 			}
         },
         "docs": {

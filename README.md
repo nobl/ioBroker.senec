@@ -370,6 +370,11 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.3.7 (NoBl, noffycws, git-ZeR0)
+* Updates to state translations (new values when SENEC turned off appliances)
+* Added state definitions
+* Added high priority datapoints: temperatures, voltages, ... to better monitor safety relevant data
+
 ### 1.3.6 (NoBl)
 * Fixed log.warning error
 
