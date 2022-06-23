@@ -132,23 +132,6 @@
 		"compact": true,
 		"materialize": true,
 		"materializeTab": false,
-		"adminTab": {
-            "singleton": true,
-            "name": {
-                "en": "Senec (JavaScript)",
-                "de": "Senec (JavaScript)",
-                "ru": "Senec (JavaScript)",
-                "pt": "Senec (JavaScript)",
-                "nl": "Senec (JavaScript)",
-                "fr": "Senec (JavaScript)",
-                "it": "Senec (JavaScript)",
-                "es": "Senec (JavaScript)",
-                "pl": "Senec (JavaScript)",
-                "zh-cn": "塞内克 (JavaScript)"
-            },
-            "link": "",
-            "fa-icon": "info"
-        },
 		"supportCustoms": false,
         "dependencies": [
 			{
