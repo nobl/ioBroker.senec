@@ -1,8 +1,20 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.3.7",
+        "version": "1.3.8",
         "news": {
+			"1.3.8": {
+				"en": "Removed (unnecessary) admin tab.",
+				"de": "(Unnötigen) Admin-Tab entfernt.",
+				"ru": "Удаленная (необходимая) админ таб.",
+				"pt": "Removido (desnecessário) guia de administração.",
+				"nl": "Admin Tab.",
+				"fr": "Supprimé (non nécessaire) onglet administrateur.",
+				"it": "Rimossa (non necessaria) scheda di amministrazione.",
+				"es": "Tapa de administración extraída (innecesaria).",
+				"pl": "Przemieniona (nieunikniona) tablica adminowa.",
+				"zh-cn": "删除(无必要)专注表。."
+			},
 			"1.3.7": {
 				"en": "Updates to state translations (new values when SENEC turned off appliances), Added state definitions, Added high priority datapoints: temperatures, voltages, ... to better monitor safety relevant data",
 				"de": "Aktualisierungen der State Übersetzungen (neue Werte durch die SENEC Problematik), Zustandsdefinitionen hinzugefügt, Datenpunkte mit hoher Priorität ergänzt: Temperaturen, Spannungen, ... um sicherheitsrelevante Daten besser zu überwachen",
@@ -74,18 +86,6 @@
 				"es": "Autarquía sin decimales (de nuevo). Están provocando más actualizaciones de las que realmente necesitamos. Los valores de autarquía ya no se restablecerán a 0 al cambiar el período de tiempo (día, semana, ...). De todos modos, se calculan sobre la base de valores de referencia. Asegurarse de que solo se definan así los valores que el usuario puede cambiar (el atributo cambia en la próxima actualización del valor)",
 				"pl": "Autarkia bez miejsc dziesiętnych (ponownie). Powodują więcej aktualizacji, niż naprawdę potrzebujemy. Wartości autarkii nie będą już resetowane do 0 przy zmianie przedziału czasowego (dzień, tydzień, ...). Są one i tak obliczane na podstawie wartości referencyjnych. Zapewnienie, że tylko wartości, które mają być zmieniane przez użytkownika, są tak zdefiniowane (atrybut zmienia się przy następnej aktualizacji wartości)",
 				"zh-cn": "再次没有小数位的Autarky。它们造成的更新超出了我们的实际需要。 Autarky值将不会在时间范围（天，周，...）更改时重置为0。无论如何，它们都是基于参考值计算的。确保仅定义要由用户更改的值（在值的下一次更新时归因于更改）"
-			},
-			"1.3.1": {
-				"en": "(NoBl) Added calculation of autarky for day/week/month/year",
-				"de": "(NoBl) Berechnung der Autarkie für Tag / Woche / Monat / Jahr hinzugefügt",
-				"ru": "(NoBl) Добавлен расчет автаркии на день / неделю / месяц / год",
-				"pt": "(NoBl) Adicionado cálculo de autarquia para dia / semana / mês / ano",
-				"nl": "(NoBl) Berekening van autarkie toegevoegd voor dag / week / maand / jaar",
-				"fr": "(NoBl) Ajout du calcul de l'autarcie pour jour / semaine / mois / année",
-				"it": "(NoBl) Aggiunto il calcolo dell'autarchia per giorno / settimana / mese / anno",
-				"es": "(NoBl) Cálculo agregado de autarquía para día / semana / mes / año",
-				"pl": "(NoBl) Dodano obliczanie autarkii dla dnia / tygodnia / miesiąca / roku",
-				"zh-cn": "（NoBl）添加了针对日/周/月/年的自给自足计算"
 			}
         },
         "docs": {
