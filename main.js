@@ -172,6 +172,7 @@ class Senec extends utils.Adapter {
         form += ',"PM1OBJ1":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
         form += ',"PM1OBJ2":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
 		form += ',"STATISTIC":{"LIVE_GRID_EXPORT":"","LIVE_GRID_IMPORT":"","LIVE_HOUSE_CONS":"","LIVE_PV_GEN":"","LIVE_BAT_CHARGE_MASTER":"","LIVE_BAT_DISCHARGE_MASTER":""}';
+		form += ',"WALLBOX":{"APPARENT_CHARGING_POWER":"","PROHIBIT_USAGE":"","EV_CONNECTED":"","STATE":""}';
         form += '}';
 			
         try {
