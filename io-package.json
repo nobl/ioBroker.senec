@@ -1,14 +1,26 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.3.8",
+        "version": "1.3.9",
         "news": {
+			"1.3.9": {
+				"en": "Added (some) Wallbox Datapoints to high-prio polling, Added more state definitions",
+				"de": "Hinzugefügt: (einige) Wallbox Datapoints zu High-Prio-Polling und Statusdefinitionen",
+				"ru": "Добавлены (некоторые) Настенный ящик Datapoints для высокоценного опроса, Добавлено больше государственных определений",
+				"pt": "Adicionado (alguns) Wallbox Datapoints para alta-prio polling, Adicionado mais definições de estado",
+				"nl": "Added (some) Wallbox Datapoints to high-prio polling, Added more state definitions",
+				"fr": "Ajouté (certains) Wallbox Datapoints to high-prio polling, Ajouté plus de définitions d'état",
+				"it": "Aggiunto (alcuni) Wallbox Datapoints a high-prio polling, Aggiunto più definizioni di stato",
+				"es": "Añadido (algunos) Wallbox Datapoints to high-prio polling, Añadido más state definitions",
+				"pl": "Added (pojedynczy) Wallbox Datapoints to high-prio polling",
+				"zh-cn": "增加(有些)W箱数据点到高中投票,加上更多的国家定义。"
+			},
 			"1.3.8": {
 				"en": "Removed (unnecessary) admin tab.",
 				"de": "(Unnötigen) Admin-Tab entfernt.",
 				"ru": "Удаленная (необходимая) админ таб.",
 				"pt": "Removido (desnecessário) guia de administração.",
-				"nl": "Admin Tab.",
+				"nl": "Removed (unnecessary) admin tab.",
 				"fr": "Supprimé (non nécessaire) onglet administrateur.",
 				"it": "Rimossa (non necessaria) scheda di amministrazione.",
 				"es": "Tapa de administración extraída (innecesaria).",
@@ -20,7 +32,7 @@
 				"de": "Aktualisierungen der State Übersetzungen (neue Werte durch die SENEC Problematik), Zustandsdefinitionen hinzugefügt, Datenpunkte mit hoher Priorität ergänzt: Temperaturen, Spannungen, ... um sicherheitsrelevante Daten besser zu überwachen",
 				"ru": "Обновления государственных переводов (новые значения, когда SENEC отключила бытовую технику), Добавлены государственные определения, Добавлены высокие приоритетные данные: температуры, напряжения, ... для лучшего контроля безопасности соответствующих данных",
 				"pt": "Atualizações às traduções estaduais (novos valores quando o SENEC desligou aparelhos), definições de estado adicionadas, pontos de dados de alta prioridade adicionados: temperaturas, tensões, ... para melhor monitorar dados relevantes de segurança",
-				"nl": "Vertaling:",
+				"nl": "Updates to state translations (new values when SENEC turned off appliances), Added state definitions, Added high priority datapoints: temperatures, voltages, ... to better monitor safety relevant data",
 				"fr": "Mises à jour des traductions d'état (nouvelles valeurs lorsque SENEC a éteint les appareils), Définitions d'état, Ajout de points de données hautement prioritaires: températures, tensions, ... pour mieux surveiller les données pertinentes de sécurité",
 				"it": "Aggiornamenti alle traduzioni di stato (nuovi valori quando SENEC ha spento gli elettrodomestici), Aggiunte definizioni di stato, Aggiunto datapoint ad alta priorità: temperature, tensioni, ... per monitorare meglio la sicurezza dati rilevanti",
 				"es": "Actualizaciones a las traducciones estatales (nuevos valores cuando SENEC apagó electrodomésticos), definiciones de estado agregadas, Puntos de datos de alta prioridad añadidos: temperaturas, voltajes, ... para monitorear mejor la seguridad datos relevantes",
@@ -74,18 +86,6 @@
 				"es": "Actualizar a la plantilla actual.",
 				"pl": "Zaktualizuj do bieżącego szablonu.",
 				"zh-cn": "更新到当前模板。"
-			},
-			"1.3.2": {
-				"en": "Autarky without decimal places (again) or they would cause too many updates that are irrelevant especially when considering precision. Values also won't reset to 0 at change of timeframe (day, week, ...) anymore. They are calculated based on reference values anyways. Ensuring that only values meant to be changeable by user are defined so (attribute changes upon the next update of value)",
-				"de": "Autarkie (wieder) ohne Dezimalstellen, da sie mehr Updates verursachen, als wirklich benötigt werden (insbesondere im Rahmen der Rundungsgenauigkeiten). Auch werden die Werte bei Änderung des Zeitrahmens (Tag, Woche, ...) nicht mehr forciert auf 0 zurückgesetzt, da sie ohnehin anhand von Referenzwerten berechnet werden. Es wird auch sichergestellt, dass nur Werte geändert werden können, die vom Benutzer geändert werden sollen (Attributänderungen bei der nächsten Wertaktualisierung).",
-				"ru": "Автаркия без десятичных знаков (опять же). Они вызывают больше обновлений, чем нам действительно нужно. Значения автарки больше не сбрасываются на 0 при смене таймфрейма (день, неделя, ...). В любом случае они рассчитываются на основе справочных значений. Обеспечение того, чтобы были определены только значения, которые должны быть изменены пользователем (атрибут изменяется при следующем обновлении значения)",
-				"pt": "Autarquia sem casas decimais (novamente). Eles estão causando mais atualizações do que realmente precisamos. Os valores da Autarky não serão mais zerados na mudança do período (dia, semana, ...). Eles são calculados com base em valores de referência de qualquer maneira. Garantir que apenas os valores que devem ser alterados pelo usuário sejam definidos assim (alterações de atributo na próxima atualização de valor)",
-				"nl": "Autarkie zonder decimalen (opnieuw). Ze zorgen voor meer updates dan we echt nodig hebben. Autarky-waarden worden niet meer gereset naar 0 bij verandering van tijdsbestek (dag, week, ...). Ze worden sowieso berekend op basis van referentiewaarden. Ervoor zorgen dat alleen waarden die bedoeld zijn om door de gebruiker te kunnen worden gewijzigd, zo worden gedefinieerd (attribuut verandert bij de volgende update van waarde)",
-				"fr": "Autarcie sans décimales (encore une fois). Ils provoquent plus de mises à jour que ce dont nous avons vraiment besoin. Les valeurs d'autarcie ne seront plus remises à 0 lors du changement de la période (jour, semaine, ...). Ils sont de toute façon calculés sur la base des valeurs de référence. S'assurer que seules les valeurs censées être modifiables par l'utilisateur sont définies ainsi (l'attribut change lors de la prochaine mise à jour de la valeur)",
-				"it": "Autarchia senza cifre decimali (di nuovo). Stanno causando più aggiornamenti di quelli di cui abbiamo veramente bisogno. I valori di autarchia non si resetteranno più a 0 al cambio del periodo di tempo (giorno, settimana, ...). Sono comunque calcolati sulla base dei valori di riferimento. Garantire che solo i valori che devono essere modificabili dall'utente siano definiti in questo modo (l'attributo cambia al successivo aggiornamento del valore)",
-				"es": "Autarquía sin decimales (de nuevo). Están provocando más actualizaciones de las que realmente necesitamos. Los valores de autarquía ya no se restablecerán a 0 al cambiar el período de tiempo (día, semana, ...). De todos modos, se calculan sobre la base de valores de referencia. Asegurarse de que solo se definan así los valores que el usuario puede cambiar (el atributo cambia en la próxima actualización del valor)",
-				"pl": "Autarkia bez miejsc dziesiętnych (ponownie). Powodują więcej aktualizacji, niż naprawdę potrzebujemy. Wartości autarkii nie będą już resetowane do 0 przy zmianie przedziału czasowego (dzień, tydzień, ...). Są one i tak obliczane na podstawie wartości referencyjnych. Zapewnienie, że tylko wartości, które mają być zmieniane przez użytkownika, są tak zdefiniowane (atrybut zmienia się przy następnej aktualizacji wartości)",
-				"zh-cn": "再次没有小数位的Autarky。它们造成的更新超出了我们的实际需要。 Autarky值将不会在时间范围（天，周，...）更改时重置为0。无论如何，它们都是基于参考值计算的。确保仅定义要由用户更改的值（在值的下一次更新时归因于更改）"
 			}
         },
         "docs": {
