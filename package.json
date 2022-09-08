@@ -31,6 +31,7 @@
     "@alcalzone/release-script": "^3.5.9",
 	"@iobroker/adapter-dev": "^1.0.1",
     "@iobroker/testing": "^3.0.2",
+	"@tsconfig/node14": "^1.0.3",
     "@types/chai": "^4.3.3",
     "@types/chai-as-promised": "^7.1.5",
     "@types/mocha": "^9.1.1",
@@ -60,7 +61,6 @@
   "scripts": {
     "test:js": "mocha --config test/mocharc.custom.json \"{!(node_modules|test)/**/*.test.js,*.test.js,test/**/test!(PackageFiles|Startup).js}\"",
 	"test:package": "mocha test/package --exit",
-	"test:unit": "mocha test/unit --exit",
 	"test:integration": "mocha test/integration --exit",
 	"test": "npm run test:js && npm run test:package",
 	"check": "tsc --noEmit -p tsconfig.check.json",

@@ -135,9 +135,14 @@
 		"supportCustoms": false,
         "dependencies": [
 			{
-                "js-controller": ">=2.0.0"
+                "js-controller": ">=3.3.22"
             }
-        ]
+        ],
+	        "globalDependencies": [
+	            {
+	                "admin": ">=5.1.13"
+	            }
+	        ]
     },
     "native": {
         "senecip": "0.0.0.0",
