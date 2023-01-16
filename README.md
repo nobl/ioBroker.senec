@@ -40,23 +40,19 @@ Systems that might work:
 * OEM LG
 * Solarinvert Storage 10.0 / Blei
 
-## Installation
-You can either install the adapter via the ioBroker web interface or on your local machine via npm.
+## Disclaimer
+**All product and company names or logos are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them or any associated subsidiaries! This personal project is maintained in spare time and has no business goal.**
 
-### Browser-based
+## Installation
+You can install the adapter via the ioBroker web interface.
+
 1. Open your ioBroker web interface in a browser (eg: 192.168.178.42:8081)
 2. Click on Tab "Adapters"
 3. Type "senec" in the filter
 4. Click on the  "+" symbol of the senec adapter
 
-### Local machine
-Navigate into your iobroker folder and execute the following command: 
-```bash
-npm i iobroker.senec
-```
-
 ## Setup
-Additional to the adapter installation you have to add an instance of the adapter.
+In addition to the adapter installation you have to add an instance of the adapter.
 
 ### ioBroker 
 1. Open your ioBroker interface in a browser (eg: 192.168.178.42:8081) (if configuration dialogue was opened automatically after installation, skip to 4.).
@@ -75,7 +71,7 @@ After each successful connect to SENEC, the number of retries is reset.
 5. Click on Save & Close
 
 ## Usage
-Here you can find a description of the states and how to use them. All states of this adapter are read-only states.
+Here you can find a description of the states (list is incomplete) and how to use them. All states of this adapter are read-only states.
 
 ### Example States (States differ per System and Version)
 
@@ -410,18 +406,6 @@ This channel contains calculated values. Currently these are day/week/month/year
 * Translated status get an extra datapoint with _Text as postfix. Former translations that didn't add an extra dp will now revert to their numeric representation and add the _Text DP.
 * Translations are now handled via lib/state_trans.js for all 3 languages available in the senec system (german, english, italian).
 * Language used is decided by the language of the SENEC appliance.
-
-### 1.2.0 (NoBl)
-* Added datapoints for: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (please report wrong / missing units).
-* Adapter now calculates day/week/month/year-values for: STATISTIC.LIVE_GRID_EXPORT, STATISTIC.LIVE_GRID_IMPORT, STATISTIC.LIVE_HOUSE_CONS, STATISTIC.LIVE_PV_GEN, STATISTIC.LIVE_BAT_CHARGE_MASTER, STATISTIC.LIVE_BAT_DISCHARGE_MASTER. Calculated values can be found below the "_calc." datapoint. Information about daily values was removed from the API by SENEC in the past. So here we go again ...
-
-### 1.1.1 (NoBl)
-* Object attributes are updated to what they are expected to be: unit, description, datatype (this will break anything that still relies on datapoints being STRING that aren't meant to be string)
-
-### 1.1.0 (NoBl)
-* Updated to current adapter template
-* Integrated GitHub Testing and auto npm publishing
-* Some other administrative updates
 
 ### [Former Updates](CHANGELOG_old.md)
 

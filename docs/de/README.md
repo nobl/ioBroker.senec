@@ -27,7 +27,10 @@ Systeme, die funktionieren dürften, da sie die gleiche Schnittstelle nutzen sin
 * Senec Business V2 3ph / Lithium
 * ADS Tec
 * OEM LG
-* Solarinvert Storage 10.0 / Blei,
+* Solarinvert Storage 10.0 / Blei
+
+## Haftungsausschluss
+**Alle Produkt- und Firmennamen oder -logos sind Warenzeichen™ oder eingetragene® Warenzeichen der jeweiligen Inhaber. Ihre Verwendung impliziert keine Zugehörigkeit oder Befürwortung durch diese oder zugehörige Tochtergesellschaften! Dieses persönliche Projekt wird in der Freizeit gepflegt und hat kein geschäftliches Ziel.
 
 ### SENEC.Home
 Es handelt sich um ein System, dessen Herzstück ein Lithium-Ionen-Akku ist, der Strom speichert und wieder abgibt, der von der Solaranlage auf dem Dach erzeugt wird. Das funktioniert genau wie beim Akku im Smartphone, Notebook oder dem Akkuschrauber. Es steckt im Prinzip auch die gleiche bewährte Technologie drin. Wenn du mehr Strom auf dem Dach erzeugst, als du selbst im Haus verbrauchen kannst, fließt der Strom nicht ins Netz, sondern in deinen Speicher. Du kannst ihn dann nutzen, wenn es dunkel wird oder Wolken aufziehen und du weniger oder keinen Strom mehr erzeugst. Dann kannst du auch abends mit deinem eigenen Solarstrom den Fernseher betreiben oder das Essen kochen. 
@@ -74,7 +77,7 @@ Zur Suche nach einem bestimmten Datenpunkt empfiehlt sich die Suche mittels der 
 Abhängig vom individuellen System können States nicht existieren oder aber auch nicht dokumentierte States auftreten.
 Falls zu einem State keine Dokumentation vorhanden ist, jemand aber weiß, was der State darstellt, bitte ich um einen entspr. Pull-Request (oder Ticket mit der entspr. Information eröffnen).
 
-### Beispiel States (verfügbare States sind abhängig von System und Softwarestand)
+### Beispiel States (verfügbare States sind abhängig von System und Softwarestand, die Liste ist grundsätzlich unvollständig)
 
 #### Channel: info
 

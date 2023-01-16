@@ -24,7 +24,10 @@ Systems that might work:
 * Senec Business V2 3ph / Lithium
 * ADS Tec
 * OEM LG
-* Solarinvert Storage 10.0 / Blei,
+* Solarinvert Storage 10.0 / Blei
+
+## Disclaimer
+**All product and company names or logos are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them or any associated subsidiaries! This personal project is maintained in spare time and has no business goal.**
 
 ## Installation
 You is facilitated via the ioBroker web interface and the configuration will auto-open once installation is completed.
@@ -49,7 +52,7 @@ This does not apply to Adapter Start - if the System is unavailable to Adapter w
 Once finished setting up configuration, hit `SAVE AND CLOSE` to leave configuration dialogue. The adapter will automatically restart.
 
 ## Usage
-Here you can find a description of the states and how to use them. All states of this adapter are read-only states.
+Here you can find a description of the states (incomplete list) and how to use them. All states of this adapter are read-only states.
 Depending on the individual system states might not be available or additional states could be there.
 If a state is not documented (or only partially documented) and you know what it represents, please send a pull request (or open a ticket with the information).
 

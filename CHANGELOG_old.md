@@ -1,5 +1,17 @@
 The newest change log is [README.md](README.md)
 
+### 1.2.0 (NoBl)
+* Added datapoints for: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (please report wrong / missing units).
+* Adapter now calculates day/week/month/year-values for: STATISTIC.LIVE_GRID_EXPORT, STATISTIC.LIVE_GRID_IMPORT, STATISTIC.LIVE_HOUSE_CONS, STATISTIC.LIVE_PV_GEN, STATISTIC.LIVE_BAT_CHARGE_MASTER, STATISTIC.LIVE_BAT_DISCHARGE_MASTER. Calculated values can be found below the "_calc." datapoint. Information about daily values was removed from the API by SENEC in the past. So here we go again ...
+
+### 1.1.1 (NoBl)
+* Object attributes are updated to what they are expected to be: unit, description, datatype (this will break anything that still relies on datapoints being STRING that aren't meant to be string)
+
+### 1.1.0 (NoBl)
+* Updated to current adapter template
+* Integrated GitHub Testing and auto npm publishing
+* Some other administrative updates
+
 ### 1.0.13 (NoBl)
 * Added System Description 19 for Senec.Home V3 Hybrid (Credits to noffycws)
 * Added Mode Descriptions for 86-91. (Credits to noffycws)
@@ -56,13 +68,17 @@ The newest change log is [README.md](README.md)
 
 ### 1.0.4 (2020-03-06)
 * (NoBl) Repo URL updated
+
 ### 1.0.3 (2020-03-06)
 * (NoBl) added link to documentation in german
+
 ### 1.0.2 (2020-03-04)
 * (NoBl) added missing status codes (85 in total now)
 * (NoBl) added status code to status message for easier reference
 * (NoBl) added states for wallboxes and battery modules
+
 ### 1.0.1
 * (NoBl) updated readme
+
 ### 1.0.0
 * (NoBl) initial release
