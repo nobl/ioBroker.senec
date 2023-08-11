@@ -1,14 +1,27 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.3.9",
+        "version": "1.3.10",
         "news": {
+			"1.3.10": {
+				"en": "Fixed wrong Unit for STATISTIC.LIVE_WB_ENERGY, added more state_attr. Moved to json admin UI and other technical updates.",
+				"de": "Fehler behoben Einheit für STATISTIC.LIVE_WB_ENERGY, hinzugefügt mehr state_attr. Umgezogen zu json admin UI und anderen technischen Updates.",
+				"ru": "Исправлено неправильно Блок для STATISTIC.LIVE_WB_ENERGY, добавил больше state_attr. Переехал в json admin UI и другие технические обновления.",
+				"pt": "Correção errada Unidade para STATISTIC.LIVE_WB_ENERGY, adicionou mais state_attr. Movido para a interface de administração json e outras atualizações técnicas.",
+				"nl": "Verkeerd. Eenheid voor STATISTIC.LiveWBEERGY, voegde meer staatattr toe. Verhuisd naar Json administratie en andere technische updates.",
+				"fr": "Correction Unité pour STATISTIC.LIVE_WB_ENERGY, ajouté plus state_attr. Déplacement vers json admin UI et autres mises à jour techniques.",
+				"it": "Corretto sbagliato Unità per STATISTIC.LIVE_WB_ENERGY, aggiunto più state_attr. Passato a json admin UI e altri aggiornamenti tecnici.",
+				"es": "Corregido mal Unidad para STATISTIC.LIVE_WB_ENERGY, agregó más state_attr. Se movió a json admin UI y otras actualizaciones técnicas.",
+				"pl": "Fixed wrong (ang.). Unit for STATISTIC.LIVE_WB_ENERGY (ang.). Wykorzystywany do json admin UI i innych aktualizacji technicznych.",
+				"uk": "Виправлено неправильно Блок для STATISTIC.LIVE_WB_ENERGY, додано більше стану_attr. Переміщено в json admin UI та інші технічні оновлення.",
+				"zh-cn": "混合错误 统计司股 Moved to json admin UI及其他技术更新。."
+			},
 			"1.3.9": {
 				"en": "Added (some) Wallbox Datapoints to high-prio polling, Added more state definitions",
 				"de": "Hinzugefügt (einige) Wallbox Datapoints zu High-Prio-Polling hinzugefügt und Statusdefinitionen",
 				"ru": "Добавлены (некоторые) Настенный ящик Datapoints для высокоценного опроса, Добавлено больше государственных определений",
 				"pt": "Adicionado (alguns) Wallbox Datapoints para alta-prio polling, Adicionado mais definições de estado",
-				"nl": "Vertaling:",
+				"nl": "Added (some) Wallbox Datapoints to high-prio polling, Added more state definitions",
 				"fr": "Ajouté (certains) Wallbox Datapoints to high-prio polling, Ajouté plus de définitions d'état",
 				"it": "Aggiunto (alcuni) Wallbox Datapoints a high-prio polling, Aggiunto più definizioni di stato",
 				"es": "Añadido (algunos) Wallbox Datapoints to high-prio polling, Añadido más state definitions",

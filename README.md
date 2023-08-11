@@ -366,6 +366,12 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.3.10 (NoBl)
+* Fixed wrong Unit for STATISTIC.LIVE_WB_ENERGY
+* Updated to json Admin UI
+* Technical Updates
+* Added more state_attr definitions
+
 ### 1.3.9 (Nobl)
 * Added (some) Wallbox Datapoints to high-prio polling
 * Added more state definitions
