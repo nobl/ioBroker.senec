@@ -5,94 +5,22 @@
         "news": {
 			"1.3.9": {
 				"en": "Added (some) Wallbox Datapoints to high-prio polling, Added more state definitions",
-				"de": "Hinzugefügt: (einige) Wallbox Datapoints zu High-Prio-Polling und Statusdefinitionen",
+				"de": "Hinzugefügt (einige) Wallbox Datapoints zu High-Prio-Polling hinzugefügt und Statusdefinitionen",
 				"ru": "Добавлены (некоторые) Настенный ящик Datapoints для высокоценного опроса, Добавлено больше государственных определений",
 				"pt": "Adicionado (alguns) Wallbox Datapoints para alta-prio polling, Adicionado mais definições de estado",
-				"nl": "Added (some) Wallbox Datapoints to high-prio polling, Added more state definitions",
+				"nl": "Vertaling:",
 				"fr": "Ajouté (certains) Wallbox Datapoints to high-prio polling, Ajouté plus de définitions d'état",
 				"it": "Aggiunto (alcuni) Wallbox Datapoints a high-prio polling, Aggiunto più definizioni di stato",
 				"es": "Añadido (algunos) Wallbox Datapoints to high-prio polling, Añadido más state definitions",
 				"pl": "Added (pojedynczy) Wallbox Datapoints to high-prio polling",
+				"uk": "Додано ( some) Точки даних Wallbox до високе опитування, Додано більше державних визначення",
 				"zh-cn": "增加(有些)W箱数据点到高中投票,加上更多的国家定义。"
-			},
-			"1.3.8": {
-				"en": "Removed (unnecessary) admin tab.",
-				"de": "(Unnötigen) Admin-Tab entfernt.",
-				"ru": "Удаленная (необходимая) админ таб.",
-				"pt": "Removido (desnecessário) guia de administração.",
-				"nl": "Removed (unnecessary) admin tab.",
-				"fr": "Supprimé (non nécessaire) onglet administrateur.",
-				"it": "Rimossa (non necessaria) scheda di amministrazione.",
-				"es": "Tapa de administración extraída (innecesaria).",
-				"pl": "Przemieniona (nieunikniona) tablica adminowa.",
-				"zh-cn": "删除(无必要)专注表。."
-			},
-			"1.3.7": {
-				"en": "Updates to state translations (new values when SENEC turned off appliances), Added state definitions, Added high priority datapoints: temperatures, voltages, ... to better monitor safety relevant data",
-				"de": "Aktualisierungen der State Übersetzungen (neue Werte durch die SENEC Problematik), Zustandsdefinitionen hinzugefügt, Datenpunkte mit hoher Priorität ergänzt: Temperaturen, Spannungen, ... um sicherheitsrelevante Daten besser zu überwachen",
-				"ru": "Обновления государственных переводов (новые значения, когда SENEC отключила бытовую технику), Добавлены государственные определения, Добавлены высокие приоритетные данные: температуры, напряжения, ... для лучшего контроля безопасности соответствующих данных",
-				"pt": "Atualizações às traduções estaduais (novos valores quando o SENEC desligou aparelhos), definições de estado adicionadas, pontos de dados de alta prioridade adicionados: temperaturas, tensões, ... para melhor monitorar dados relevantes de segurança",
-				"nl": "Updates to state translations (new values when SENEC turned off appliances), Added state definitions, Added high priority datapoints: temperatures, voltages, ... to better monitor safety relevant data",
-				"fr": "Mises à jour des traductions d'état (nouvelles valeurs lorsque SENEC a éteint les appareils), Définitions d'état, Ajout de points de données hautement prioritaires: températures, tensions, ... pour mieux surveiller les données pertinentes de sécurité",
-				"it": "Aggiornamenti alle traduzioni di stato (nuovi valori quando SENEC ha spento gli elettrodomestici), Aggiunte definizioni di stato, Aggiunto datapoint ad alta priorità: temperature, tensioni, ... per monitorare meglio la sicurezza dati rilevanti",
-				"es": "Actualizaciones a las traducciones estatales (nuevos valores cuando SENEC apagó electrodomésticos), definiciones de estado agregadas, Puntos de datos de alta prioridad añadidos: temperaturas, voltajes, ... para monitorear mejor la seguridad datos relevantes",
-				"pl": "Ulepszenia do tłumaczenia stanu (nowe wartości, kiedy SENEC odwrócił urządzenia), definicje państwowe, dodane wysoko priorytetowe punkty danych: temperatury, napięcia, ... aby lepiej monitorować odpowiednie dane danych",
-				"zh-cn": "国家翻译的更新(新值在中欧经会脱离了配件),加上国家定义,加上高度优先的数据点:温度,火山,......以更好地监测安全相关数据"
-			},
-			"1.3.6": {
-				"en": "fixed log.warning error",
-				"de": "log.warning-Fehler behoben",
-				"ru": "исправлена ошибка log.warning",
-				"pt": "erro log.warning corrigido",
-				"nl": "vaste log.waarschuwingsfout",
-				"fr": "correction de l'erreur log.warning",
-				"it": "errore log.warning corretto",
-				"es": "error de advertencia de registro fijo",
-				"pl": "naprawiony błąd log.warning",
-				"zh-cn": "修复了 log.warning 错误"
-			},
-			"1.3.5-beta": {
-				"en": "Added more state attributes (if you have updated descriptions or anything, please open an issue!), Workaround in case SENEC reports bogus request data",
-				"de": "Weitere Beschreibungen für Datenpunkte hinzugefügt (wenn Sie hierzu Updates, fehlende Datenpunkte, etc haben, öffnen Sie bitte ein Ticket auf github; Problemumgehung für den Fall, dass SENEC gefälschte Anfragedaten meldet",
-				"ru": "Добавлено больше атрибутов состояния (если вы обновили описания или что-то еще, пожалуйста, откройте проблему!), Обходной путь в случае, если SENEC сообщает о фиктивных данных запроса",
-				"pt": "Adicionados mais atributos de estado (se você atualizou as descrições ou qualquer coisa, abra um problema!), Solução alternativa caso a SENEC relate dados de solicitação falsos",
-				"nl": "Meer statusattributen toegevoegd (als je beschrijvingen hebt bijgewerkt of iets dergelijks, open dan een probleem!), Tijdelijke oplossing voor het geval SENEC valse verzoekgegevens meldt",
-				"fr": "Ajout de plus d'attributs d'état (si vous avez mis à jour des descriptions ou quoi que ce soit, veuillez ouvrir un problème !), Solution de contournement au cas où SENEC signale de fausses données de demande",
-				"it": "Aggiunti più attributi di stato (se hai descrizioni aggiornate o altro, apri un problema!), Soluzione alternativa nel caso in cui SENEC segnali dati di richiesta fasulli",
-				"es": "Se agregaron más atributos de estado (si tiene descripciones actualizadas o algo, ¡abra un problema!), Solución alternativa en caso de que SENEC informe datos de solicitud falsos",
-				"pl": "Dodano więcej atrybutów stanu (jeśli zaktualizowałeś opisy lub cokolwiek, otwórz problem!), Obejście w przypadku, gdy SENEC zgłosi fałszywe dane żądania",
-				"zh-cn": "添加了更多的状态属性（如果您有更新的描述或任何内容，请打开一个问题！），以防 SENEC 报告虚假请求数据的解决方法"
-			},
-			"1.3.4": {
-				"en": "Moved from request to axios, Added more state attributes (if you have updated descriptions or anything, please open an issue!)",
-				"de": "Poll von request zu axios geändert, weitere Zustandsattribute hinzugefügt (wenn Sie aktuellere Beschreibungen, ... haben, bitte issue auf GitHub eröffnen!)",
-				"ru": "Перемещено из запроса в аксиомы, добавлено больше атрибутов состояния (если вы обновили описания или что-то еще, пожалуйста, откройте проблему!)",
-				"pt": "Movido de solicitação para axios, Adicionado mais atributos de estado (se você atualizou as descrições ou qualquer coisa, abra um problema!)",
-				"nl": "Verplaatst van verzoek naar axios, meer statusattributen toegevoegd (als je beschrijvingen hebt bijgewerkt of iets dergelijks, open dan een probleem!)",
-				"fr": "Déplacé de la demande vers axios, Ajout de plus d'attributs d'état (si vous avez des descriptions mises à jour ou quoi que ce soit, veuillez ouvrir un problème !)",
-				"it": "Spostato da richiesta ad axios, Aggiunti più attributi di stato (se hai descrizioni aggiornate o altro, apri un problema!)",
-				"es": "Se movió de solicitud a axios, se agregaron más atributos de estado (si tiene descripciones actualizadas o algo así, ¡abra un problema!)",
-				"pl": "Przeniesiono z żądania do axios, dodano więcej atrybutów stanu (jeśli zaktualizowałeś opisy lub cokolwiek, otwórz zgłoszenie!)",
-				"zh-cn": "从 request 移到 axios，添加了更多状态属性（如果您有更新的描述或任何内容，请打开一个问题！）"
-			},
-			"1.3.3": {
-				"en": "Update to current template.",
-				"de": "Update auf aktuelles Template.",
-				"ru": "Обновите текущий шаблон.",
-				"pt": "Atualize para o modelo atual.",
-				"nl": "Update naar huidige sjabloon.",
-				"fr": "Mettre à jour le modèle actuel.",
-				"it": "Aggiorna al modello corrente.",
-				"es": "Actualizar a la plantilla actual.",
-				"pl": "Zaktualizuj do bieżącego szablonu.",
-				"zh-cn": "更新到当前模板。"
 			}
         },
         "docs": {
             "en": "docs/en/README.md",
             "de": "docs/de/README.md"
         },
-        "title": "Senec",
         "titleLang": {
             "en": "Senec",
             "de": "Senec",
@@ -103,17 +31,26 @@
             "it": "Senec",
             "es": "Senec",
             "pl": "Senec",
+			"uk": "Senec",
             "zh-cn": "塞内克"
         },
         "desc": {
-            "en": "This adapter reads available values from a Senec Home V2.1 system using lala.cgi.",
-            "de": "Dieser Adapter liest die in einem Senec Home V2.1 verfügbaren Werte via lala.cgi aus."
+            "en": "This adapter reads available values from a Senec Home V2.1 system using lala.cgi",
+			"de": "Dieser Adapter liest verfügbare Werte von einem Senec Home V2.1 System mit lala.cgi",
+			"ru": "Этот адаптер читает доступные значения от системы Senec Home V2.1 с использованием lala.cgi",
+			"pt": "Este adaptador lê valores disponíveis de um sistema Senec Home V2.1 usando lala.cgi",
+			"nl": "Deze adapter leest beschikbare waarden van een Senec Home V2.1 systeem met lala",
+			"fr": "Cet adaptateur lit les valeurs disponibles d'un système Senec Home V2.1 en utilisant lala.cgi",
+			"it": "Questo adattatore legge i valori disponibili da un sistema Senec Home V2.1 utilizzando lala.cgi",
+			"es": "Este adaptador lee los valores disponibles de un sistema Senec Home V2.1 utilizando lala.cgi",
+			"pl": "Ten adapter odczytuje dostępne wartości z systemu Senec Home V2.1 używając lala.cgi",
+			"uk": "Цей адаптер читає доступні значення з системи Senec Home V2.1 за допомогою lala.cgi",
+			"zh-cn": "这种适应者用Fla.cgi改为Senec Home V2.1系统可得到的数值。"
         },
         "authors": [
             "NoBl <github@bluemle.org>"
         ],
         "keywords": [
-            "iobroker",
             "senec",
             "solar"
         ],

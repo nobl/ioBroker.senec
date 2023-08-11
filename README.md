@@ -412,7 +412,7 @@ This channel contains calculated values. Currently these are day/week/month/year
 ## License
 MIT License
 
-Copyright (c) 2022 Norbert Bluemle <github@bluemle.org>
+Copyright (c) 2023 Norbert Bluemle <github@bluemle.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
