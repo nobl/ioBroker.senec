@@ -1,0 +1,201 @@
+{
+	"i18n": false,
+	"type": "panel",
+	"items": {
+		"senecip": {
+			"type": "text",
+			"label": {
+				"en": "IP / FQDN of SENEC System",
+				"de": "IP / FQDN des SENEC Systems",
+				"ru": "IP / FQDN системы SENEC",
+				"pt": "IP / FQDN do sistema SENEC",
+				"nl": "IP/ FQDN of SENEC System",
+				"fr": "IP / FQDN du système SENEC",
+				"it": "IP / FQDN del sistema SENEC",
+				"es": "IP / FQDN del Sistema SENEC",
+				"pl": "FQDN of SENEC System (ang.)",
+				"uk": "IP / FQDN системи SENEC",
+				"zh-cn": "ENEC系统IP/FQDN"
+			},
+			"help": {
+				"en": "Here you enter the IP or FQDN of your SENEC System",
+				"de": "Hier erfassen Sie die IP oder FQDN Ihres SENEC Systems",
+				"ru": "Здесь вы вводите IP или FQDN вашей системы SENEC",
+				"pt": "Aqui você digita o IP ou FQDN do seu sistema SENEC",
+				"nl": "Hier kom je in het IP of FQDN van je SENEC System",
+				"fr": "Ici vous entrez l'IP ou le FQDN de votre système SENEC",
+				"it": "Qui si immette l'IP o FQDN del sistema SENEC",
+				"es": "Aquí usted introduce la IP o FQDN de su sistema SENEC",
+				"pl": "Wprowadza się do IP lub FQDN systemu SENEC",
+				"uk": "Тут ви вводите IP або FQDN системи SENEC",
+				"zh-cn": "在此,你加入你的SENEC系统IP或FQDN。"
+			},
+			"default": "0.0.0.0",
+			"newLine": true
+		},
+		"interval": {
+			"type": "number",
+			"label": {
+				"en": "Polling Interval (seconds)",
+				"de": "Abfrageintervall (Sekunden)",
+				"ru": "Поллинг Интервал (в секундах)",
+				"pt": "Intervalo de Polling (segundos)",
+				"nl": "Polling Interval (seconds)",
+				"fr": "Intervalle de vote (secondes)",
+				"it": "Polling Interval (secondi)",
+				"es": "Interval (segundos)",
+				"pl": "Polling Interval (ang.)",
+				"uk": "Поллінг Інтервал (секунди)",
+				"zh-cn": "(二) 干预行动"
+			},
+			"help": {
+				"en": "Here you can define the polling interval [min 1, max 3600 seconds]. Default = 10.",
+				"de": "Hier können Sie das Abfrageintervall definieren [min 1, max 3600 Sekunden]. Standard = 10.",
+				"ru": "Здесь вы можете определить интервал опроса [мин 1, макс 3600 секунд]. По умолчанию = 10.",
+				"pt": "Aqui você pode definir o intervalo de pesquisa [min 1, max 3600 segundos]. Padrão = 10.",
+				"nl": "Hier kunt u het polling-interval definiëren [min 1, max 3600 seconden]. Standaard = 10.",
+				"fr": "Ici, vous pouvez définir l'intervalle d'interrogation [min 1, max 3600 secondes]. Par défaut = 10.",
+				"it": "Qui è possibile definire l'intervallo di polling [min 1, max 3600 secondi]. Predefinito = 10.",
+				"es": "Aquí puede definir el intervalo de sondeo [mínimo 1, máximo 3600 segundos]. Por defecto = 10.",
+				"pl": "Tutaj możesz zdefiniować interwał odpytywania [min 1, max 3600 sekund]. Domyślnie = 10.",
+				"zh-cn": "在这里，您可以定义轮询间隔[最小1，最大3600秒]。默认值= 10。"
+			},
+			"default": 10,
+			"min": 1,
+			"max": 3600,
+			"newLine": true
+		},
+		"intervalLow": {
+			"type": "number",
+			"label": {
+				"en": "Polling Interval (minutes) Low Priority Data",
+				"de": "Polling Interval (Minuten) Niedrige Priorität",
+				"ru": "Поллинг Интервал (минут) Низкие приоритетные данные",
+				"pt": "Polling Interval (minutos) Dados de baixa prioridade",
+				"nl": "Polling Interval (minutes) Low Priority Data",
+				"fr": "Polling Interval (minutes) Low Priority Data",
+				"it": "Polling Interval (minuti) Dati di bassa priorità",
+				"es": "Intervalo de votación (minutos minutos) Datos de baja prioridad",
+				"pl": "Profil na Low Priority Data (ang.)",
+				"uk": "Polling Interval (хвилини) Низькі пріоритетні дані",
+				"zh-cn": "低优先数据"
+			},
+			"help": {
+				"en": "Here you can define the polling interval for low priority data [min 60, max 3600 minutes]. Default = 60.",
+				"de": "Hier können Sie das Abfrageintervall für niedrige Priorität definieren [min 60, max 3600 Minuten]. Standard = 60.",
+				"ru": "Здесь вы можете определить интервал опроса для низких приоритетных данных [мин 60, макс 3600 минут]. По умолчанию = 60.",
+				"pt": "Aqui você pode definir o intervalo de votação para dados de baixa prioridade [min 60, max 3600 minutes]. Padrão = 60.",
+				"nl": "Hier kun je de polling interval definiëren voor lage prioriteit gegevens. Default =60.",
+				"fr": "Ici vous pouvez définir l'intervalle de vote pour les données à faible priorité [min 60, max 3600 minutes]. Par défaut = 60.",
+				"it": "Qui è possibile definire l'intervallo di polling per i dati di bassa priorità [min 60, max 3600 minuti]. Predefinito = 60.",
+				"es": "Aquí puede definir el intervalo de votación para datos de baja prioridad [min 60, max 3600 minutos]. Default = 60.",
+				"pl": "Możesz zdefiniować przedział zanieczyszczeń dla niskich priorytetów 60, max 3600 minut. Default = 60.",
+				"uk": "Тут можна визначити інтервал опитування для низьких пріоритетних даних [хв 60, макс. 3600 хвилин]. За замовчуванням = 60.",
+				"zh-cn": "在此,你可以界定低优先数据的投票间隔[60分钟,三十六分钟]。 Default=60."
+			},
+			"default": 60,
+			"min": 60,
+			"max": 3600,
+			"newLine": true
+		},
+		"pollingTimeout": {
+			"type": "number",
+			"label": {
+				"en": "Request-Timeout (ms)",
+				"de": "Request-Timeout (ms)",
+				"ru": "Время ожидания запроса (мс)",
+				"pt": "Tempo limite da solicitação (ms)",
+				"nl": "Verzoek-time-out (ms)",
+				"fr": "Délai d'expiration de la demande (ms)",
+				"it": "Request-Timeout (ms)",
+				"es": "Solicitud de tiempo de espera (ms)",
+				"pl": "Limit czasu żądania (ms)",
+				"uk": "Заявка на пошук (MS)",
+				"zh-cn": "请求超时（毫秒）"
+			},
+			"help": {
+				"en": "Here you define the request timeout when polling from SENEC [min 1000, max 100000]. Default = 5000.",
+				"de": "Hier definieren Sie den Anfrage-Timeout bei der Abfrage von SENEC [min 1000, max 100000]. Standard = 5000.",
+				"ru": "Здесь вы определяете временную выписку запроса при опросе от SENEC [min 1000, max 100000]. По умолчанию = 5000.",
+				"pt": "Aqui você define o tempo limite de solicitação ao pesquisar da SENEC [min 1000, max 100000]. Padrão = 5000.",
+				"nl": "Hier definieer je de verzoek time-out als de peiling van SENEC (min 1000, max 100.000) 5000.",
+				"fr": "Ici, vous définissez le délai de demande lors du sondage de SENEC [min 1000, max 100000]. Par défaut = 5000.",
+				"it": "Qui si definisce il timeout di richiesta quando inquina da SENEC [min 1000, max 100000]. Predefinito = 5000.",
+				"es": "Aquí usted define el tiempo de solicitud al votar desde SENEC [min 1000, max 100000]. Default = 5000.",
+				"pl": "Określamy żądanie od SENEC min 1000, max 100000. Default = 5000.",
+				"uk": "Ось ви визначаєте час замовлення при опитуванні від SENEC [min 1000, макс. 100000]. За замовчуванням = 5000.",
+				"zh-cn": "这里,你界定了索林委员会投票时的要求时间[1000,100 000]。 Default=5000。."
+			},
+			"default": 5000,
+			"min": 1000,
+			"max": 100000,
+			"newLine": true
+		},
+		"retries": {
+			"type": "number",
+			"label": {
+				"en": "Polling Retries",
+				"de": "Wiederholungsversuche",
+				"ru": "Повторные попытки",
+				"pt": "Tentativas de sondagem",
+				"nl": "Polling pogingen",
+				"fr": "Relance des interrogations",
+				"it": "Tentativi di polling",
+				"es": "Reintentos de sondeo",
+				"pl": "Ponawia próbę odpytywania",
+				"uk": "Покриття Retries",
+				"zh-cn": "轮询重试"
+			},
+			"help": {
+				"en": "Here you enter how often you want the adapter to retry polling in case of error [min 0, max 999]. 0 = never, 999 = unlimited. Default = 10.",
+				"de": "Hier geben Sie an, wie oft der Adapter im Fehlerfall die Abfrage wiederholen soll [min 0, max 999]. 0 = nie, 999 = unbegrenzt. Standard = 10.",
+				"ru": "Здесь вы вводите, как часто вы хотите, чтобы адаптер повторил опрос в случае ошибки [min 0, max 999]. 0 = никогда, 999 = неограниченно. По умолчанию = 10.",
+				"pt": "Aqui, você insere com que frequência deseja que o adaptador tente novamente a pesquisa em caso de erro [min 0, máximo 999]. 0 = nunca, 999 = ilimitado. Padrão = 10.",
+				"nl": "Hier geeft u op hoe vaak u wilt dat de adapter polling opnieuw probeert in geval van een fout [min 0, max 999]. 0 = nooit, 999 = onbeperkt. Standaard = 10.",
+				"fr": "Vous saisissez ici la fréquence à laquelle vous souhaitez que l'adaptateur relance l'interrogation en cas d'erreur [min 0, max 999]. 0 = jamais, 999 = illimité. Par défaut = 10.",
+				"it": "Qui inserisci la frequenza con cui desideri che l'adattatore riprova a eseguire il polling in caso di errore [min 0, max 999]. 0 = mai, 999 = illimitato. Predefinito = 10.",
+				"es": "Aquí ingresa con qué frecuencia desea que el adaptador vuelva a intentar el sondeo en caso de error [min 0, max 999]. 0 = nunca, 999 = ilimitado. Por defecto = 10.",
+				"pl": "Tutaj wprowadź, jak często adapter ma ponawiać próbę odpytywania w przypadku błędu [min. 0, maks. 999]. 0 = nigdy, 999 = nieograniczony. Domyślnie = 10.",
+				"uk": "Тут ви вводите, як часто ви хочете адаптер, щоб переробляти опитування у разі помилки [min 0, макс. 999]. 0 = ніколи, 999 = необмежений. За замовчуванням = 10.",
+				"zh-cn": "在此输入发生错误[最小0，最大999]时适配器重试轮询的频率。 0 =永不，999 =无限。默认值= 10。"
+			},
+			"default": 10,
+			"min": 0,
+			"max": 999,
+			"newLine": true
+		},
+		"retrymultiplier": {
+			"type": "number",
+			"label": {
+				"en": "Polling Retry Factor",
+				"de": "Polling-Wiederholungsfaktor",
+				"ru": "Коэффициент повтора опроса",
+				"pt": "Fator de Nova Tentativa de Pesquisa",
+				"nl": "Polling Retry Factor",
+				"fr": "Facteur de nouvelle tentative d'interrogation",
+				"it": "Fattore di tentativo di polling",
+				"es": "Factor de reintento de sondeo",
+				"pl": "Współczynnik ponownej próbkowania",
+				"uk": "Полювання ретри фактор",
+				"zh-cn": "轮询重试因子"
+			},
+			"help": {
+				"en": "Here you enter how you want to space retries apart of each other. n'th retry will happen after Interval * Multiplier * n seconds. [min 1, max 10]. Default = 2.",
+				"de": "Hier geben Sie ein, wie sich der zeitliche Abstand zwischen den Wiederholungsversuchen verhält. Der n-te Wiederholungsversuch erfolgt nach Intervall * Multiplikator * n Sekunden. [min 1, max 10]. Standard = 2. ",
+				"ru": "Здесь вы вводите, как вы хотите, чтобы интервалы повторялись друг от друга. n-я повторная попытка произойдет через интервал *множитель* n секунд. [мин 1, макс 10]. По умолчанию = 2. ",
+				"pt": "Aqui você digita como deseja espaçar as tentativas uma da outra. a enésima nova tentativa ocorrerá após o Intervalo *Multiplicador* n segundos. [min 1, max 10]. Padrão = 2. ",
+				"nl": "Hier geeft u op hoe u pogingen uit elkaar wilt plaatsen. de nieuwe poging zal gebeuren na Interval *Multiplier* n seconden. [min 1, max 10]. Standaard = 2. ",
+				"fr": "Vous saisissez ici comment vous souhaitez espacer les tentatives les unes des autres. La sixième tentative ne se produira qu'après Intervalle *Multiplicateur* n secondes. [min 1, max 10]. Par défaut = 2. ",
+				"it": "Qui si inserisce il modo in cui si desidera separare i tentativi uno dall'altro. l'ennesimo tentativo avverrà dopo l'intervallo *moltiplicatore* n secondi. [min 1, max 10]. Predefinito = 2. ",
+				"es": "Aquí ingresa cómo desea espaciar los reintentos uno del otro. el enésimo reintento ocurrirá después del Intervalo *Multiplicador* n segundos. [mínimo 1, máximo 10]. Por defecto = 2. ",
+				"pl": "Tutaj podajesz, w jaki sposób chcesz umieścić odstępy między sobą. n-ta próba nastąpi po przerwie *Mnożnik* n sekund. [min 1, maks. 10]. Domyślnie = 2. ",
+				"uk": "Тут ви вводите, як ви хочете, щоб звільнити місце один від одного. n'th retry відбудеться після Interval * Multiplier * n секунд. [min 1, макс. 10]. Ім'я *.",
+				"zh-cn": "在这里，您可以输入相互重试间隔的方式。第n次重试将在间隔*乘数* n秒后发生。 [最小1，最大10]。默认值= 2。"
+			},
+			"default": 2,
+			"min": 1,
+			"max": 10,
+			"newLine": true
+		}
+	}
+}
