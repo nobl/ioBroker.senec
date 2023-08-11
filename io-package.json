@@ -64,12 +64,12 @@
         "loglevel": "info",
         "mode": "daemon",
         "type": "energy",
+		"compact": true,
 		"connectionType": "local",
 	    "dataSource": "poll",
-		"compact": true,
-		"materialize": true,
-		"materializeTab": false,
-		"supportCustoms": false,
+		"adminUI": {
+			"config": "json"
+		},
         "dependencies": [
 			{
                 "js-controller": ">=4.0.0"
