@@ -29,6 +29,9 @@
   },
   "devDependencies": {
     "@alcalzone/release-script": "^3.5.9",
+    "@alcalzone/release-script-plugin-iobroker": "^3.5.9",
+    "@alcalzone/release-script-plugin-license": "^3.5.9",
+    "@alcalzone/release-script-plugin-manual-review": "^3.5.9",
 	"@iobroker/adapter-dev": "^1.2.0",
     "@iobroker/testing": "^4.1.0",
 	"@tsconfig/node14": "^1.0.3",
@@ -50,7 +53,7 @@
   },
   "main": "main.js",
   "files": [
-    "admin{,/!(src)/**}/!(tsconfig|tsconfig.*).json",
+    "admin{,/!(src)/**}/!(tsconfig|tsconfig.*|.eslintrc).json",
     "admin{,/!(src)/**}/*.{html,css,png,svg,jpg,js}",
     "lib/",
     "www/",
