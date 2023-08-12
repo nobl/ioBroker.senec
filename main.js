@@ -1,12 +1,14 @@
 'use strict';
 
 const utils = require('@iobroker/adapter-core');
-const axios = require('axios');
+const axios = require('axios').default;
 const state_attr = require(__dirname + '/lib/state_attr.js');
 const state_trans = require(__dirname + '/lib/state_trans.js');
 
 let retry = 0; // retry-counter
 let retryLowPrio = 0; // retry-counter
+
+let unloaded = false;
 
 class Senec extends utils.Adapter {
 
@@ -47,6 +49,7 @@ class Senec extends utils.Adapter {
      */
     onUnload(callback) {
         try {
+			unloaded = true;
             if (this.timer) {
                 clearTimeout(this.timer);
             }
@@ -114,7 +117,7 @@ class Senec extends utils.Adapter {
      * @param url to read from
      * @param form to post
      */
-	async doGet(pUrl, pForm, caller, pollingTimeout) {
+	doGet(pUrl, pForm, caller, pollingTimeout) {
 		return new Promise(function (resolve, reject) {
 			axios({
 				method: 'post',
@@ -187,6 +190,7 @@ class Senec extends utils.Adapter {
             await this.evalPoll(obj);
 
             retry = 0;
+			if (unloaded) return;
             this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
         } catch (error) {
             if ((retry == this.config.retries) && this.config.retries < 999) {
@@ -224,6 +228,7 @@ class Senec extends utils.Adapter {
             await this.evalPoll(obj);
 
             retryLowPrio = 0;
+			if (unloaded) return;
             this.timerLowPrio = setTimeout(() => this.readSenecV21LowPrio(), this.config.intervalLow * 1000 * 60);
         } catch (error) {
             if ((retryLowPrio == this.config.retries) && this.config.retries < 999) {
@@ -332,8 +337,9 @@ class Senec extends utils.Adapter {
 	 * creates / updates the state.
 	 */
     async evalPoll(obj) {
-        for (let[key1, value1]of Object.entries(obj)) {
-            for (let[key2, value2]of Object.entries(value1)) {
+		if (unloaded) return;
+        for (const[key1, value1] of Object.entries(obj)) {
+            for (const[key2, value2] of Object.entries(value1)) {
                 if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
                     const key = key1 + '.' + key2;
                     if (state_attr[key] === undefined) {
@@ -474,7 +480,7 @@ const ValueTyping = (key, value) => {
     } else if (isIP) {
         return DecToIP(value);
     } else if (multiply !== 1) {
-        return (value *= multiply).toFixed(2);
+        return parseFloat((value * multiply).toFixed(2));
     } else {
         return value;
     }
