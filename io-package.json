@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.3.10",
+        "version": "1.4.0",
         "news": {
+			"1.4.0": {
+				"en": "Added object caching and minor code updates. Due to the amount of objects we deal with caching is about mandatory.",
+				"de": "Objekt-Caching und kleinere Code-Updates hinzugefügt. Aufgrund der Menge an Objekten, die der Adapter bearbeitet, ist Caching zwingend notwendig.",
+				"ru": "Добавлена кэшировка объекта и незначительные обновления кода. В связи с количеством объектов, с которыми мы занимаемся кэшированием, является обязательным.",
+				"pt": "Adicionado cache de objeto e pequenas atualizações de código. Devido à quantidade de objetos que lidamos com caching é sobre obrigatória.",
+				"nl": "Toegevoegd voorwerp caching en kleine code updates. Gezien de hoeveelheid objecten die we met caching hebben, gaat het over verplichting.",
+				"fr": "Ajout de cache d'objet et de mises à jour de code mineur. En raison de la quantité d'objets que nous traitons avec le cache est environ obligatoire.",
+				"it": "Aggiunti caching oggetto e aggiornamenti di codice minori. A causa della quantità di oggetti che abbiamo a che fare con il caching è circa obbligatorio.",
+				"es": "Añadido objeto caching y actualizaciones de código menor. Debido a la cantidad de objetos que tratamos con el caché es sobre obligatorio.",
+				"pl": "Dodany obiekt caching i drobnych aktualizacji kodu. Ze względu na ilość przedmiotów, które traktują z cachingiem, dotyczy obowiązkowych.",
+				"uk": "Додано кешування об'єкта та оновлення коду неповного розміру. У зв'язку з кількістю об'єктів, які ми маємо справу з кешуванням, є обов'язковим.",
+				"zh-cn": "添加了目标包和小法典的更新。 由于我们所处理的物品数量是强制性的。."
+			},
 			"1.3.10": {
 				"en": "Fixed wrong Unit for STATISTIC.LIVE_WB_ENERGY, added more state_attr. Moved to json admin UI and other technical updates.",
 				"de": "Fehler behoben Einheit für STATISTIC.LIVE_WB_ENERGY, hinzugefügt mehr state_attr. Umgezogen zu json admin UI und anderen technischen Updates.",

@@ -1,5 +1,46 @@
 The newest change log is [README.md](README.md)
 
+### 1.3.9 (Nobl)
+* Added (some) Wallbox Datapoints to high-prio polling
+* Added more state definitions
+
+### 1.3.8 (NoBl)
+* Removed (unnecessary) admin tab
+
+### 1.3.7 (NoBl, noffycws, git-ZeR0)
+* Updates to state translations (new values when SENEC turned off appliances)
+* Added state definitions
+* Added high priority datapoints: temperatures, voltages, ... to better monitor safety relevant data
+
+### 1.3.6 (NoBl)
+* Fixed log.warning error
+
+### 1.3.5 (NoBl)
+* Added more state attributes (if you have updated descriptions or anything, please open an issue!)
+* Workaround in case SENEC reports bogus request data
+
+### 1.3.4 (NoBl)
+* Moved from request to axios
+* Added more state attributes (if you have updated descriptions or anything, please open an issue!)
+
+### 1.3.3 (NoBl)
+* Updated to current template.
+
+### 1.3.2 (NoBl)
+* Autarky without decimal places (again). They are causing more updates than we really need.
+* Autarky values won't reset to 0 at change of timeframe (day, week, ...) anymore. They are calculated based on reference values anyways.
+* Ensuring that only values meant to be changeable by user are defined so (attribute changes upon the next update of value)
+
+### 1.3.1 (NoBl) 20210513
+* Added calculation of autarky for day/week/month/year
+
+### 1.3.0 (NoBl) 20210509
+* Rewrote translations handling
+* Added translations for wallbox status.
+* Translated status get an extra datapoint with _Text as postfix. Former translations that didn't add an extra dp will now revert to their numeric representation and add the _Text DP.
+* Translations are now handled via lib/state_trans.js for all 3 languages available in the senec system (german, english, italian).
+* Language used is decided by the language of the SENEC appliance.
+
 ### 1.2.0 (NoBl)
 * Added datapoints for: PM1OBJ1, PM1OBJ2, EG_CONTROL, RTC, PM1, TEMPMEASURE, DEBUG, SOCKETS, CASC, WALLBOX, CONNX50, STECA (please report wrong / missing units).
 * Adapter now calculates day/week/month/year-values for: STATISTIC.LIVE_GRID_EXPORT, STATISTIC.LIVE_GRID_IMPORT, STATISTIC.LIVE_HOUSE_CONS, STATISTIC.LIVE_PV_GEN, STATISTIC.LIVE_BAT_CHARGE_MASTER, STATISTIC.LIVE_BAT_DISCHARGE_MASTER. Calculated values can be found below the "_calc." datapoint. Information about daily values was removed from the API by SENEC in the past. So here we go again ...
