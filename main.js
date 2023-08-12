@@ -10,6 +10,8 @@ let retryLowPrio = 0; // retry-counter
 
 let unloaded = false;
 
+const knownObjects = {};
+
 class Senec extends utils.Adapter {
 
     /**
@@ -252,51 +254,51 @@ class Senec extends utils.Adapter {
 			return;
 		}
 		this.log.silly('(doState) Update: ' + name + ': ' + value);
-        await this.setObjectNotExistsAsync(name, {
-            type: 'state',
-            common: {
-                name: description,
-                type: typeof(value),
-                role: 'value',
-                unit: unit,
-                read: true,
-                write: write
-            },
-            native: {}
-        });
-		
+       
+		const valueType = value !== null && value !== undefined ? typeof value : "mixed";
+	
 		// Check object for changes:
-		var obj = await this.getObjectAsync(name);
-		if (obj.common.name != description) {
-			this.log.debug("(doState) Updating object: " + name + " (desc): " + obj.common.name + " -> " + description);
-			await this.extendObject(name, {common: {name: description}});
-		}
-		if (obj.common.type != typeof(value)) {
-			this.log.debug("(doState) Updating object: " + name + " (type): " + obj.common.type + " -> " + typeof(value));
-			await this.extendObject(name, {common: {type: typeof(value)}});
-		}
-		if (obj.common.unit != unit) {
-			this.log.debug("(doState) Updating object: " + name + " (unit): " + obj.common.unit + " -> " + unit);
-			await this.extendObject(name, {common: {unit: unit}});
-		}
-		if (obj.common.write != write) {
-			this.log.debug("(doState) Updating object: " + name + " (write): " + obj.common.write + " -> " + write);
-			await this.extendObject(name, {common: {write: write}});
-		}
-
-        var oldState = await this.getStateAsync(name);
-        if (oldState) {
-            if (oldState.val === value) {
-				await this.checkUpdateSelfStat(name);
-                return;
+		const obj = knownObjects[name] ? knownObjects[name] : await this.getObjectAsync(name);
+		if (obj) {
+			const newCommon = {};
+			if (obj.common.name !== description) {
+				this.log.debug("(doState) Updating object: " + name + " (desc): " + obj.common.name + " -> " + description);
+				newCommon.name = description;
 			}
-            this.log.debug('(doState) Update: ' + name + ': ' + oldState.val + ' -> ' + value);
-        }
-        await this.setStateAsync(name, {
-            val: value,
-            ack: true
-        });
-		await this.checkUpdateSelfStat(name);
+			if (obj.common.type !== valueType) {
+				this.log.debug("(doState) Updating object: " + name + " (type): " + obj.common.type + " -> " + typeof value);
+				newCommon.type = valueType;
+			}
+			if (obj.common.unit !== unit) {
+				this.log.debug("(doState) Updating object: " + name + " (unit): " + obj.common.unit + " -> " + unit);
+				newCommon.unit = unit;
+			}
+			if (obj.common.write !== write) {
+				this.log.debug("(doState) Updating object: " + name + " (write): " + obj.common.write + " -> " + write);
+				newCommon.write = write;
+			}
+			if (Object.keys(newCommon).length > 0) {
+				await this.extendObjectAsync(name, { common: newCommon });
+			}
+		} else {
+			knownObjects[name] = {
+				type: "state",
+				common: {
+					name: description,
+					type: valueType,
+					role: "value",
+					unit: unit,
+					read: true,
+					write: write
+				},
+				native: {}
+			};
+			await this.setObjectNotExistsAsync(name, knownObjects[name]);
+		}
+		await this.setStateChangedAsync(name, {
+			val: value,
+			ack: true
+		});
 		await this.doDecode(name, value);
 	}
 		
