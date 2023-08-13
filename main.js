@@ -299,6 +299,7 @@ class Senec extends utils.Adapter {
 			val: value,
 			ack: true
 		});
+		await this.checkUpdateSelfStat(name);
 		await this.doDecode(name, value);
 	}
 		
@@ -405,7 +406,7 @@ class Senec extends utils.Adapter {
 				this.log.warn("(Calc) Not updating reference value for: " + name.substring(10) + "! Old RefValue (" + valRef + ") >= new RefValue (" + valCur + "). Impossible situation. If this is intentional, please update via admin!");
 			}
 		} else {
-			this.log.silly("(Calc) Updating " + day +" value for: " + name.substring(10) + ": " + Number((valCur - valRef).toFixed(2)));
+			this.log.debug("(Calc) Updating " + day +" value for: " + name.substring(10) + ": " + Number((valCur - valRef).toFixed(2)));
 			// update today's value
 			await this.doState(key + today, Number((valCur - valRef).toFixed(2)), descToday, unitToday, false);
 		}
@@ -455,9 +456,11 @@ class Senec extends utils.Adapter {
 		}
 		// update today's value - but beware of div/0
 		var newVal = 0;
-		if (valHouseCons > 0) newVal = Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(0));
-		this.log.silly("(Autarky) Updating Autarky " + day +" value for: " + key + today + ": " + newVal);
-		if (valHouseCons > 0) await this.doState(key + today, newVal, descToday, unitToday, false);
+		if (valHouseCons > 0) {
+			newVal = Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(0));
+			this.log.debug("(Autarky) Updating Autarky " + day +" value for: " + key + today + ": " + newVal);
+			await this.doState(key + today, newVal, descToday, unitToday, false);
+		}
 	}
 
 }
