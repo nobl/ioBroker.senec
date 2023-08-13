@@ -366,6 +366,9 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.4.1 (NoBl)
+* Fix: Autarky calculations are working again.
+
 ### 1.4.0 (NoBl)
 * Added object caching along with some minor code updates. Due to the amount of objects we deal with caching is about mandatory.
 

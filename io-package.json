@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.4.0",
+        "version": "1.4.1",
         "news": {
+			"1.4.1": {
+				"en": "Autarky calculations are working again.",
+				"de": "Autarkieberechnungen funktionieren wieder.",
+				"ru": "Расчеты Autarky снова работают.",
+				"pt": "Cálculos autarcos estão a funcionar outra vez.",
+				"nl": "Autarische berekeningen werken weer.",
+				"fr": "Les calculs Autarky fonctionnent à nouveau.",
+				"it": "I calcoli autarky funzionano di nuovo.",
+				"es": "Los cálculos autárquicos están funcionando de nuevo.",
+				"pl": "Ponowne obliczenia autarktyczne działają ponownie.",
+				"uk": "Аутарки знову працюють.",
+				"zh-cn": "Autarky的计算正再次工作。."
+			},
 			"1.4.0": {
 				"en": "Added object caching and minor code updates. Due to the amount of objects we deal with caching is about mandatory.",
 				"de": "Objekt-Caching und kleinere Code-Updates hinzugefügt. Aufgrund der Menge an Objekten, die der Adapter bearbeitet, ist Caching zwingend notwendig.",
@@ -61,17 +74,17 @@
             "zh-cn": "塞内克"
         },
         "desc": {
-            "en": "This adapter reads available values from a Senec Home V2.1 system using lala.cgi",
-			"de": "Dieser Adapter liest verfügbare Werte von einem Senec Home V2.1 System mit lala.cgi",
-			"ru": "Этот адаптер читает доступные значения от системы Senec Home V2.1 с использованием lala.cgi",
-			"pt": "Este adaptador lê valores disponíveis de um sistema Senec Home V2.1 usando lala.cgi",
-			"nl": "Deze adapter leest beschikbare waarden van een Senec Home V2.1 systeem met lala",
-			"fr": "Cet adaptateur lit les valeurs disponibles d'un système Senec Home V2.1 en utilisant lala.cgi",
-			"it": "Questo adattatore legge i valori disponibili da un sistema Senec Home V2.1 utilizzando lala.cgi",
-			"es": "Este adaptador lee los valores disponibles de un sistema Senec Home V2.1 utilizando lala.cgi",
-			"pl": "Ten adapter odczytuje dostępne wartości z systemu Senec Home V2.1 używając lala.cgi",
-			"uk": "Цей адаптер читає доступні значення з системи Senec Home V2.1 за допомогою lala.cgi",
-			"zh-cn": "这种适应者用Fla.cgi改为Senec Home V2.1系统可得到的数值。"
+            "en": "This adapter reads available values from a Senec Home V2.1 (and later) system using lala.cgi",
+			"de": "Dieser Adapter liest verfügbare Werte von einem Senec Home V2.1 (und später) System mit lala.cgi",
+			"ru": "Этот адаптер считывает доступные значения от системы Senec Home V2.1 (и позже) с помощью lala.cgi",
+			"pt": "Este adaptador lê valores disponíveis de um sistema Senec Home V2.1 (e posterior) usando lala.cgi",
+			"nl": "Deze adapter leest beschikbare waarden van een Senec Home V21 (en later) systeem met lala",
+			"fr": "Cet adaptateur lit les valeurs disponibles d'un système Senec Home V2.1 (et plus tard) utilisant lala.cgi",
+			"it": "Questo adattatore legge i valori disponibili da un sistema Senec Home V2.1 (e successivamente) utilizzando lala.cgi",
+			"es": "Este adaptador lee los valores disponibles de un sistema Senec Home V2.1 (y más tarde) usando lala.cgi",
+			"pl": "Ta adapter przeczytała dostępne wartości z systemu Senec Home V2.1 (a później) używając lala.cgi",
+			"uk": "Цей адаптер зчитуває доступні значення від Senec Home V2.1 (і пізніше) системи за допомогою lala.cgi",
+			"zh-cn": "这种适应者从Senec Home V2.1(和以后)利用Fla.cgi阅读了可使用的数值。"
         },
         "authors": [
             "NoBl <github@bluemle.org>"
