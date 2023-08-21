@@ -1,7 +1,10 @@
 'use strict';
+//process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'; // not cool, not nice - but well ... just a last option if everything else fails
+
 const https = require('https');
-const agent = new https.Agent({
-  rejectUnauthorized: false
+const agent = new https.Agent({ 
+	requestCert: true,
+	rejectUnauthorized: false 
 });
 
 const utils = require('@iobroker/adapter-core');
@@ -133,7 +136,7 @@ class Senec extends utils.Adapter {
 		return new Promise(function (resolve, reject) {
 			axios({
 				method: 'post',
-				agent,
+				httpsAgent: agent,
 				url: pUrl,
 				data: pForm,
 				timeout: pollingTimeout
