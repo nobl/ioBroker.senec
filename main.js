@@ -1,4 +1,8 @@
 'use strict';
+const https = require('https');
+const agent = new https.Agent({
+  rejectUnauthorized: false
+});
 
 const utils = require('@iobroker/adapter-core');
 const axios = require('axios').default;
@@ -129,6 +133,7 @@ class Senec extends utils.Adapter {
 		return new Promise(function (resolve, reject) {
 			axios({
 				method: 'post',
+				agent,
 				url: pUrl,
 				data: pForm,
 				timeout: pollingTimeout
