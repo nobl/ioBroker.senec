@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.4.1",
+        "version": "1.4.2",
         "news": {
+			"1.4.2": {
+				"en": "Added option to use https for connecting to SENEC (only activate if your appliance supports / requires this!)",
+				"de": "Zusätzliche Option zur Verwendung von https zur Verbindung mit SENEC hinzugefügt (nur aktivieren, wenn Ihr Gerät dies unterstützt / erfordert)",
+				"ru": "Добавлена возможность использования https для подключения к SENEC (только активируйте, если ваше приложение поддерживает / требует этого)",
+				"pt": "Adicionado opção para usar https para conectar-se ao SENEC (apenas ativar se o seu aparelho suporta / requer este)",
+				"nl": "Aangepaste optie om HTP's te gebruiken voor verbinding met SENEC (only geactiveerd als je appliance steunt / vereist dit",
+				"fr": "Ajout de l'option d'utiliser les https pour se connecter à SENEC (seulement activer si votre appareil prend en charge / nécessite ceci) ",
+				"it": "Aggiunta opzione per utilizzare https per il collegamento a SENEC (solo attivare se il tuo elettrodomestici supporta / richiede questo)",
+				"es": "Opción agregada para usar https para conectarse a SENEC (sólo activar si su dispositivo soporta / requiere esto)",
+				"pl": "Dodana opcja do używania https dla połączenia z SENEC (w sposób aktywowana, jeśli dana osoba obsługuje / wymaga to)",
+				"uk": "Додано можливість використовувати HTTPS для підключення до SENEC (тільки активуйте, якщо підтримує додаток / вимагає цього)",
+				"zh-cn": "增加使用连接到SENEC的网站的选择(如果你的可靠支持/要求这样做)"
+			},
 			"1.4.1": {
 				"en": "Autarky calculations are working again.",
 				"de": "Autarkieberechnungen funktionieren wieder.",
