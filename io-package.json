@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.4.2",
+        "version": "1.4.3",
         "news": {
+			"1.4.3": {
+				"en": "Working on https connection. Please test and report!",
+				"de": "Arbeiten an https-Verbindung. Bitte testen und melden!",
+				"ru": "Работает на связи https. Пожалуйста, проверьте и сообщите!",
+				"pt": "A trabalhar na ligação https. Por favor, teste e informe!",
+				"nl": "Werken aan HTP's verbinding. test en rapporteer!",
+				"fr": "Travailler sur la connexion https. S'il vous plaît tester et rapporter!",
+				"it": "Lavorare sul collegamento https. Si prega di testare e segnalare!",
+				"es": "Trabajando en la conexión https. ¡Por favor, prueba e informe!",
+				"pl": "Pracuje nad połączeniem https. Protestować i sprawdzić!",
+				"uk": "Робота на підключення HTTPS. Будь ласка, перевірте та звітуйте!",
+				"zh-cn": "关于网址的工作。 请试验和报告!"
+			},
 			"1.4.2": {
 				"en": "Added option to use https for connecting to SENEC (only activate if your appliance supports / requires this!)",
 				"de": "Zusätzliche Option zur Verwendung von https zur Verbindung mit SENEC hinzugefügt (nur aktivieren, wenn Ihr Gerät dies unterstützt / erfordert)",

@@ -366,6 +366,9 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.4.3 (NoBl)
+* Working on https connection. Please test and report!
+
 ### 1.4.2 (NoBl)
 * Added option to use https for connecting to SENEC (only activate if your appliance supports / requires this!)
 
