@@ -7,6 +7,7 @@ const state_trans = require(__dirname + '/lib/state_trans.js');
 
 let retry = 0; // retry-counter
 let retryLowPrio = 0; // retry-counter
+let connectVia = "http://";
 
 let unloaded = false;
 
@@ -96,21 +97,26 @@ class Senec extends utils.Adapter {
             this.log.warn("(checkConf) Config retry multiplier " + this.config.retrymultiplier + " not [1..10] seconds. Using default: 2");
             this.config.retrymultiplier = 2;
         }
+		this.log.debug("(checkConf) Configured https-usage: " + this.config.useHttps);
+		if (this.config.useHttps) {
+			connectVia = "https://";
+			this.log.debug("(checkConf) Switching to https ... " + this.config.useHttps);
+		}
     }
 
     /**
      * checks connection to senec service
      */
     async checkConnection() {
-        const url = 'http://' + this.config.senecip + '/lala.cgi';
+        const url = connectVia + this.config.senecip + '/lala.cgi';
         const form = '{"ENERGY":{"STAT_STATE":""}}';
         try {
-            this.log.info('connecting to Senec: ' + this.config.senecip);
+            this.log.info('connecting to Senec: ' + url);
             const body = await this.doGet(url, form, this, this.config.pollingTimeout);
-            this.log.info('connected to Senec: ' + this.config.senecip);
+            this.log.info('connected to Senec: ' + url);
             this.setState('info.connection', true, true);
         } catch (error) {
-            throw new Error("Error connecting to Senec (IP: " + this.config.senecip + "). Exiting! (" + error + ")");
+            throw new Error("Error connecting to Senec (IP: " + connectVia + this.config.senecip + "). Exiting! (" + error + "). Try to toggle https-mode in settings and check FQDN of SENEC appliance.");
         }
     }
 
@@ -168,7 +174,7 @@ class Senec extends utils.Adapter {
         // "PM1OBJ1":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""},"PM1OBJ2":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}
         // "ENERGY":{"STAT_HOURS_OF_OPERATION":"","STAT_DAYS_SINCE_MAINT":"","GUI_BAT_DATA_POWER":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_BAT_DATA_OA_CHARGING":"","STAT_SULFAT_CHRG_COUNTER":"","STAT_LIMITED_NET_SKEW":"","STAT_LIMITED_NO_STAND_BY":"","GUI_CAP_TEST_DIS_COUNT":"","GUI_SCHARGE_REMAIN":"","GUI_SCHARGE_ELAPSED":"","GUI_CHARGING_INFO":"","OFFPEAK_DURATION":"","OFFPEAK_RUNNING":"","OFFPEAK_CURRENT":"","OFFPEAK_TARGET":""},"SYS_UPDATE":{"NPU_VER":"","NPU_IMAGE_VERSION":""}}
 
-        const url = 'http://' + this.config.senecip + '/lala.cgi';
+        const url = connectVia + this.config.senecip + '/lala.cgi';
         var form = '{';
 		form += '"BMS":{"CELL_TEMPERATURES_MODULE_A":"","CELL_TEMPERATURES_MODULE_B":"","CELL_TEMPERATURES_MODULE_C":"","CELL_TEMPERATURES_MODULE_D":"","CELL_VOLTAGES_MODULE_A":"","CELL_VOLTAGES_MODULE_B":"","CELL_VOLTAGES_MODULE_C":"","CELL_VOLTAGES_MODULE_D":"","CURRENT":"","SOC":"","SYSTEM_SOC":"","TEMP_MAX":"","TEMP_MIN":"","VOLTAGE":""}';
         form += ',"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":"","GUI_BAT_DATA_POWER":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_BAT_DATA_OA_CHARGING":"","STAT_LIMITED_NET_SKEW":""}';
@@ -214,7 +220,7 @@ class Senec extends utils.Adapter {
         this.log.info('LowPrio polling ...');
         // we are polling all known objects ...
 
-        const url = 'http://' + this.config.senecip + '/lala.cgi';
+        const url = connectVia + this.config.senecip + '/lala.cgi';
         const form = '{"STATISTIC":{},"ENERGY":{},"FEATURES":{},"LOG":{},"SYS_UPDATE":{},"WIZARD":{},"BMS":{},"BAT1":{},"BAT1OBJ1":{},"BAT1OBJ2":{},"BAT1OBJ2":{},"BAT1OBJ3":{},"BAT1OBJ4":{},"PWR_UNIT":{},"PM1OBJ1":{},"PM1OBJ2":{},"PV1":{},"FACTORY":{},"GRIDCONFIG":{},"EG_CONTROL":{},"RTC":{},"PM1":{},"TEMPMEASURE":{},"DEBUG":{},"SOCKETS":{},"CASC":{},"WALLBOX":{},"CONNX50":{},"STECA":{}}';
 
         try {

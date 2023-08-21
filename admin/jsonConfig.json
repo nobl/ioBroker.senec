@@ -33,6 +33,37 @@
 			"default": "0.0.0.0",
 			"newLine": true
 		},
+		"useHttps": {
+			"type": "checkbox",
+			"label": {
+				"en": "Use https?",
+				"de": "https verwenden?",
+				"ru": "Используйте https?",
+				"pt": "Usar https?",
+				"nl": "HTP's gebruiken?",
+				"fr": "Utiliser des https ?",
+				"it": "Utilizzare https?",
+				"es": "¿Usar https?",
+				"pl": "Użycie https?",
+				"uk": "Використовуйте HTTPS?",
+				"zh-cn": "使用网址?"
+			},
+			"help": {
+				"en": "Is https required to connect to SENEC? Only check if SENEC supports https already!",
+				"de": "Ist https erforderlich, um mit SENEC zu verbinden? Nur aktivieren, falls SENEC bereits https unterstützt!",
+				"ru": "Необходимо ли подключиться к SENEC? Только проверьте, поддерживает ли SENEC https уже!",
+				"pt": "São necessários https para se conectar ao SENEC? Basta verificar se o SENEC suporta https já!",
+				"nl": "Is HTP's nodig om te verbinden met SENEC? Controleer of SENEC al HTP's steunt!",
+				"fr": "Les https sont-ils nécessaires pour se connecter à SENEC? Vérifiez seulement si SENEC prend déjà en charge https!",
+				"it": "Https è necessario connettersi a SENEC? Controlla solo se SENEC supporta già https!",
+				"es": "¿Se requiere https para conectarse a SENEC? ¡Sólo comprueba si SENEC admite https ya!",
+				"pl": "Czy https musi łączyć się z SENEC? Jeśli SENEC obsługuje https już!",
+				"uk": "Чи потрібен HTTPS для підключення до SENEC? Тільки перевірте, чи підтримує SENEC HTTPS вже!",
+				"zh-cn": "是否需要与ENEC联系? 只有检查有无国界协会支持已经!"
+			},
+			"default": false,
+			"newLine": false
+		},
 		"interval": {
 			"type": "number",
 			"label": {
