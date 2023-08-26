@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.4.3",
+        "version": "1.5.0",
         "news": {
+			"1.5.0": {
+				"en": "Added configuration section to add datapoints to high priority polling. Please be aware of the possible issues this could cause (if too many datapoints added) and use at your own risk. ALL Wallbox datapoints have been removed from high priority polling. Only some users even have a SENEC wallbox. Please reconfigure via the new config dialogue. Possible Candidate for stable. Please report any findings!",
+				"de": "Konfigurationsabschnitt hinzugefügt, um zusätzliche Datenpunkte mit hoher Priorität abzufragen. Bitte beachten Sie die möglichen Probleme, die dies verursachen könnte (wenn zu viele Datenpunkte hinzugefügt wurden). Nutzung auf eigenes Risiko. Standardgemäß werden nun keine Wallbox-Datenpunkte mehr mit hoher Priorität abgefragt (zu wenige User haben eine SENEC Wallbox). Diese nun bitte über den neuen Configdialog konfigurieren. Möglicher Kandidat für stable - bitte alle Probleme reporten.",
+				"ru": "Добавлен раздел конфигурации, чтобы добавить данные точки к высокому приоритетному опросу. Пожалуйста, имейте в виду возможные проблемы, которые могут вызвать (если слишком много добавленных данных) и использовать на вашем собственном риске. Все точки данных Wallbox были удалены из высококачественного опроса. Только некоторые пользователи даже имеют SENEC wallbox. Пожалуйста, обратите внимание на новый диалог.",
+				"pt": "Seção de configuração adicionada para adicionar datapoints a votação de alta prioridade. Por favor, esteja ciente dos possíveis problemas que isso poderia causar (se muitos datapoints adicionados) e usar em seu próprio risco. TODOS os datapoints da Wallbox foram removidos da votação de alta prioridade. Apenas alguns usuários têm uma caixa de parede SENEC. Por favor, reconfigure através do novo diálogo de configuração.",
+				"nl": "Toegevoegd configuration sectie om gegevens toe te voegen aan hoge prioriteitsvervuiling. Wees alsjeblieft op de hoogte van de mogelijke kwesties die dit kan veroorzaken... als te veel datapoints toegevoegd zijn en gebruik maken van je eigen risico. Alle Wallbox datapoints zijn verwijderd van hoge prioriteitsvervuiling. Alleen sommige gebruikers hebben zelfs een SENEC muurdoos. Herconfiguur via de nieuwe dialoog.",
+				"fr": "Ajout de la section de configuration pour ajouter des points de données à un sondage prioritaire. S'il vous plaît être conscient des problèmes possibles qui pourraient causer (si trop de points de données ajoutés) et utiliser à vos propres risques. Tous les points de données de Wallbox ont été retirés du vote prioritaire. Seuls certains utilisateurs ont même une boîte murale SENEC. Veuillez reconfigurer via le nouveau dialogue de configuration.",
+				"it": "Aggiunta sezione di configurazione per aggiungere datapoints ad inquinamento ad alta priorità. Si prega di essere consapevoli dei possibili problemi che questo potrebbe causare (se troppi punti di dati aggiunti) e utilizzare a proprio rischio. Tutti i datapoint di Wallbox sono stati rimossi dall'inquinamento ad alta priorità. Solo alcuni utenti hanno anche una parete SENEC. Si prega di riconfigurare tramite il nuovo dialogo di configurazione.",
+				"es": "Se agregó la sección de configuración para añadir puntos de datos a encuestas de alta prioridad. Tenga en cuenta los posibles problemas que esto podría causar (si se añaden demasiados datos) y utilizar a su propio riesgo. Todos los puntos de datos de Wallbox han sido eliminados de encuestas de alta prioridad. Sólo algunos usuarios tienen una caja de pared SENEC. Por favor reconfigure a través del nuevo diálogo de configuración.",
+				"pl": "Wtedy sekcja konfiguracji dodania punktów danych do wysokiego priorytetu. Poświadczenie o możliwych zagadnieniach może powodować (jeśli są zbyt wiele punktów danych) i wykorzystać swój własny ryzyko. ALL Wallbox datapoints zostały usunięte z wysokiego priorytetu. Tylko niektórzy użytkownicy mają nawet SENEC. Powraca się poprzez nowe dialogi.",
+				"uk": "Додано розділ конфігурації, щоб додати точки даних до високого пріоритетного опитування. Будь ласка, будь ласка, будь ласка, будь ласка, зв'яжіться з нами та користуйтеся власним ризиком. Усі точки даних Wallbox видаляються з високого  пріоритетного опитування. Тільки деякі користувачі навіть мають скриньку SENEC. Будь ласка, переадресація через новий діалог налаштування.",
+				"zh-cn": "增加数据点以进行高度优先投票。 请了解可能出现的问题(如果数据点增加),并利用你自己的风险。 已从高优先投票中删除了所有Wil箱数据点。 只有一些用户甚至有SENEC墙箱。 请通过新的混凝土对话进行改组。."
+			},
 			"1.4.3": {
 				"en": "Working on https connection. Please test and report!",
 				"de": "Arbeiten an https-Verbindung. Bitte testen und melden!",
@@ -54,32 +67,6 @@
 				"pl": "Dodany obiekt caching i drobnych aktualizacji kodu. Ze względu na ilość przedmiotów, które traktują z cachingiem, dotyczy obowiązkowych.",
 				"uk": "Додано кешування об'єкта та оновлення коду неповного розміру. У зв'язку з кількістю об'єктів, які ми маємо справу з кешуванням, є обов'язковим.",
 				"zh-cn": "添加了目标包和小法典的更新。 由于我们所处理的物品数量是强制性的。."
-			},
-			"1.3.10": {
-				"en": "Fixed wrong Unit for STATISTIC.LIVE_WB_ENERGY, added more state_attr. Moved to json admin UI and other technical updates.",
-				"de": "Fehler behoben Einheit für STATISTIC.LIVE_WB_ENERGY, hinzugefügt mehr state_attr. Umgezogen zu json admin UI und anderen technischen Updates.",
-				"ru": "Исправлено неправильно Блок для STATISTIC.LIVE_WB_ENERGY, добавил больше state_attr. Переехал в json admin UI и другие технические обновления.",
-				"pt": "Correção errada Unidade para STATISTIC.LIVE_WB_ENERGY, adicionou mais state_attr. Movido para a interface de administração json e outras atualizações técnicas.",
-				"nl": "Verkeerd. Eenheid voor STATISTIC.LiveWBEERGY, voegde meer staatattr toe. Verhuisd naar Json administratie en andere technische updates.",
-				"fr": "Correction Unité pour STATISTIC.LIVE_WB_ENERGY, ajouté plus state_attr. Déplacement vers json admin UI et autres mises à jour techniques.",
-				"it": "Corretto sbagliato Unità per STATISTIC.LIVE_WB_ENERGY, aggiunto più state_attr. Passato a json admin UI e altri aggiornamenti tecnici.",
-				"es": "Corregido mal Unidad para STATISTIC.LIVE_WB_ENERGY, agregó más state_attr. Se movió a json admin UI y otras actualizaciones técnicas.",
-				"pl": "Fixed wrong (ang.). Unit for STATISTIC.LIVE_WB_ENERGY (ang.). Wykorzystywany do json admin UI i innych aktualizacji technicznych.",
-				"uk": "Виправлено неправильно Блок для STATISTIC.LIVE_WB_ENERGY, додано більше стану_attr. Переміщено в json admin UI та інші технічні оновлення.",
-				"zh-cn": "混合错误 统计司股 Moved to json admin UI及其他技术更新。."
-			},
-			"1.3.9": {
-				"en": "Added (some) Wallbox Datapoints to high-prio polling, Added more state definitions",
-				"de": "Hinzugefügt (einige) Wallbox Datapoints zu High-Prio-Polling hinzugefügt und Statusdefinitionen",
-				"ru": "Добавлены (некоторые) Настенный ящик Datapoints для высокоценного опроса, Добавлено больше государственных определений",
-				"pt": "Adicionado (alguns) Wallbox Datapoints para alta-prio polling, Adicionado mais definições de estado",
-				"nl": "Added (some) Wallbox Datapoints to high-prio polling, Added more state definitions",
-				"fr": "Ajouté (certains) Wallbox Datapoints to high-prio polling, Ajouté plus de définitions d'état",
-				"it": "Aggiunto (alcuni) Wallbox Datapoints a high-prio polling, Aggiunto più definizioni di stato",
-				"es": "Añadido (algunos) Wallbox Datapoints to high-prio polling, Añadido más state definitions",
-				"pl": "Added (pojedynczy) Wallbox Datapoints to high-prio polling",
-				"uk": "Додано ( some) Точки даних Wallbox до високе опитування, Додано більше державних визначення",
-				"zh-cn": "增加(有些)W箱数据点到高中投票,加上更多的国家定义。"
 			}
         },
         "docs": {
