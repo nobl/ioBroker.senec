@@ -41,6 +41,7 @@ In addition to the adapter installation you have to add an instance of the adapt
 | Field         | Description |                                                                       
 |:-------------|:-------------|
 |SENEC System    |Type in the IP-address of your SENEC system (FQDN is also possible if you have a working local DNS).|
+|Use https?|If the SENEC system has already been converted to https, this option must be activated.|
 |Polling Interval High Priority Data|You can change the polling interval for high priority data (how often the Adapter reads from your Senec System), too. (Default: 10 seconds)|
 |Polling Interval Low Priority Data|You can change the polling interval for low priority data (how often the Adapter reads from your Senec System), too. (Default: 60 minutes)<br>
 Please be careful with high-frequency polling because this can render your SENEC machine unable to connect to the SENEC server!|
@@ -50,6 +51,17 @@ This does not apply to Adapter Start - if the System is unavailable to Adapter w
 |Polling Retry Factor|To space retries apart a bit more you can adjust the Polling Retry Factor. (Default: 2) - Example: Using default settings the 1st retry will happen 20 seconds after the initial try, the 2nd will happen 40 seconds after the 2nd try. After each successful connect to SENEC, the number of retries is reset.|
 
 Once finished setting up configuration, hit `SAVE AND CLOSE` to leave configuration dialogue. The adapter will automatically restart.
+
+### Fenster "Additional HighPrio Polling Datapoints"
+![Polling Settings](media/pollingSettings.png "Additional HighPrio Polling Datapoints")
+
+| Field         | Description |                                                                       
+|:-------------|:-------------|
+|Disclaimer |To make changes to the polling behavior of the adapter, it must be confirmed that you are aware of possible risks and accept them willingly and knowingly. The developer of the adapter does not bear any responsibility.
+|Data points for different ranges|Here you can specify additional data points to be polled with high priority. Only characters A-Z and digits 0-9 as well as , may be used for separation.|
+|Add datapoints to poll?|Confirm here again that you really want to add the datapoints you specified to high priority polling.|
+
+Attention! If the SENEC system is queried with too high a frequency and/or too many data points, this can lead to the fact that no more data can be transmitted to the SENEC servers (e.g. no current values in the app or on mein-senec.de)! Also, the SENEC system can restart unmotivated and/or no longer respond to requests. In this case, stopping the adapter and then correcting the settings will help.
 
 ## Usage
 Here you can find a description of the states (incomplete list) and how to use them. All states of this adapter are read-only states.

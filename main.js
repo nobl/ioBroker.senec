@@ -48,8 +48,8 @@ class Senec extends utils.Adapter {
         // Reset the connection indicator during startup
         this.setState('info.connection', false, true);
         try {
-			await this.initPollSettings();
             await this.checkConfig();
+			await this.initPollSettings();
             await this.checkConnection();
 			await this.pollSenec(true, 0); // highPrio
 			await this.pollSenec(false, 0); // lowPrio
@@ -84,33 +84,58 @@ class Senec extends utils.Adapter {
 		// creating form for low priority pulling (which means pulling everything we know)
 		// we can do this while preparing values for high prio
 		lowPrioForm = '{';	
-		allKnownObjects.forEach (function(value) {
+		for (const value of allKnownObjects) {
 			lowPrioForm += '"' + value + '":{},';
 			const objectsSet = new Set();
 			switch (value) {
 				case "BMS":
 					["CELL_TEMPERATURES_MODULE_A","CELL_TEMPERATURES_MODULE_B","CELL_TEMPERATURES_MODULE_C","CELL_TEMPERATURES_MODULE_D","CELL_VOLTAGES_MODULE_A","CELL_VOLTAGES_MODULE_B","CELL_VOLTAGES_MODULE_C","CELL_VOLTAGES_MODULE_D","CURRENT","SOC","SYSTEM_SOC","TEMP_MAX","TEMP_MIN","VOLTAGE"].forEach(item => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_BMS_active) this.addUserDps(value, objectsSet, this.config.highPrio_BMS);
 				break;
 				case "ENERGY":
 					["STAT_STATE","GUI_BAT_DATA_POWER","GUI_INVERTER_POWER","GUI_HOUSE_POW","GUI_GRID_POW","GUI_BAT_DATA_FUEL_CHARGE","GUI_CHARGING_INFO","GUI_BOOSTING_INFO","GUI_BAT_DATA_POWER","GUI_BAT_DATA_VOLTAGE","GUI_BAT_DATA_CURRENT","GUI_BAT_DATA_FUEL_CHARGE","GUI_BAT_DATA_OA_CHARGING","STAT_LIMITED_NET_SKEW"].forEach(item => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_ENERGY_active) this.addUserDps(value, objectsSet, this.config.highPrio_ENERGY);
 				break;
 				case "PV1":
 					["POWER_RATIO","MPP_POWER"].forEach(item => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_PV1_active) this.addUserDps(value, objectsSet, this.config.highPrio_PV1);
 				break;
 				case "PWR_UNIT":
 					["POWER_L1","POWER_L2","POWER_L3"].forEach(item => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_PWR_UNIT_active) this.addUserDps(value, objectsSet, this.config.highPrio_PWR_UNIT);
 				break;
 				case "PM1OBJ1":
 					["FREQ","U_AC","I_AC","P_AC","P_TOTAL"].forEach(item => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_PM1OBJ1_active) this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ1);
 				break;
 				case "PM1OBJ2":
 					["FREQ","U_AC","I_AC","P_AC","P_TOTAL"].forEach(item => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_PM1OBJ2_active) this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ2);
 				break;
 				case "STATISTIC":
 					["LIVE_GRID_EXPORT","LIVE_GRID_IMPORT","LIVE_HOUSE_CONS","LIVE_PV_GEN","LIVE_BAT_CHARGE_MASTER","LIVE_BAT_DISCHARGE_MASTER"].forEach(item => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_STATISTIC_active) this.addUserDps(value, objectsSet, this.config.highPrio_STATISTIC);
 				break;
 				case "WALLBOX":
-					["APPARENT_CHARGING_POWER","PROHIBIT_USAGE","EV_CONNECTED","STATE"].forEach(item => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_WALLBOX_active) this.addUserDps(value, objectsSet, this.config.highPrio_WALLBOX);
+				break;
+				case "BAT1":
+					if (this.config.disclaimer && this.config.highPrio_BAT1_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT1);
+				break;
+				case "BAT1OBJ1":
+					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ1_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT1OBJ1);
+				break;
+				case "BAT1OBJ2":
+					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ2_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT2OBJ1);
+				break;
+				case "BAT1OBJ3":
+					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ3_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT3OBJ1);
+				break;
+				case "BAT1OBJ4":
+					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ4_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT4OBJ1);
+				break;
+				case "TEMPMEASURE":
+					if (this.config.disclaimer && this.config.highPrio_TEMPMEASURE_active) this.addUserDps(value, objectsSet, this.config.highPrio_TEMPMEASURE);
 				break;
 				default:
 					// nothing to do here
@@ -119,7 +144,7 @@ class Senec extends utils.Adapter {
 			if (objectsSet.size > 0) {
 				highPrioObjects.set(value, objectsSet);
 			}
-		})
+		}
 		
 		lowPrioForm = lowPrioForm.slice(0, -1) +  '}';
 		this.log.info("(initPollSettings) lowPrio: " + lowPrioForm);
@@ -134,9 +159,16 @@ class Senec extends utils.Adapter {
 			highPrioForm = highPrioForm.slice(0, -1) +  '},';
 		})
 		highPrioForm = highPrioForm.slice(0, -1) +  '}';
-
 		this.log.info("(initPollSettings) highPrio: " + highPrioForm);
-		
+	}
+	
+	addUserDps(value, objectsSet, dpToAdd) {
+		if (dpToAdd.trim().length < 1 || !/^[A-Z0-9_,]*$/.test(dpToAdd.toUpperCase().trim())) { // don't accept anything but entries like DP_1,DP2,dp3
+			this.log.warn("(addUserDps) Datapoints config for " + value + " doesn't follow [A-Z0-9_,] (no blanks allowed!) - Ignoring: " + dpToAdd.toUpperCase().trim());
+			return; 
+		}
+		dpToAdd.toUpperCase().trim().split(",").forEach(item => objectsSet.add(item));
+		this.log.info("(addUserDps) Datapoints config changed for " + value + ": " + dpToAdd.toUpperCase().trim());
 	}
 
     /**
