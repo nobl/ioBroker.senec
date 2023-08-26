@@ -16,6 +16,11 @@ let retry = 0; // retry-counter
 let retryLowPrio = 0; // retry-counter
 let connectVia = "http://";
 
+const allKnownObjects = new Set(["STATISTIC","ENERGY","FEATURES","LOG","SYS_UPDATE","WIZARD","BMS","BAT1","BAT1OBJ1","BAT1OBJ2","BAT1OBJ3","BAT1OBJ4","PWR_UNIT","PM1OBJ1","PM1OBJ2","PV1","FACTORY","GRIDCONFIG","EG_CONTROL","RTC","PM1","TEMPMEASURE","DEBUG","SOCKETS","CASC","WALLBOX","CONNX50","STECA"]);
+const highPrioObjects = new Map;
+let lowPrioForm = "";
+let highPrioForm = "";
+
 let unloaded = false;
 
 const knownObjects = {};
@@ -43,10 +48,11 @@ class Senec extends utils.Adapter {
         // Reset the connection indicator during startup
         this.setState('info.connection', false, true);
         try {
+			await this.initPollSettings();
             await this.checkConfig();
             await this.checkConnection();
-            await this.readSenecV21();
-            await this.readSenecV21LowPrio();
+			await this.pollSenec(true, 0); // highPrio
+			await this.pollSenec(false, 0); // lowPrio
         } catch (error) {
             this.log.error(error);
             this.setState('info.connection', false, true);
@@ -73,6 +79,65 @@ class Senec extends utils.Adapter {
             callback();
         }
     }
+	
+	async initPollSettings() {
+		// creating form for low priority pulling (which means pulling everything we know)
+		// we can do this while preparing values for high prio
+		lowPrioForm = '{';	
+		allKnownObjects.forEach (function(value) {
+			lowPrioForm += '"' + value + '":{},';
+			const objectsSet = new Set();
+			switch (value) {
+				case "BMS":
+					["CELL_TEMPERATURES_MODULE_A","CELL_TEMPERATURES_MODULE_B","CELL_TEMPERATURES_MODULE_C","CELL_TEMPERATURES_MODULE_D","CELL_VOLTAGES_MODULE_A","CELL_VOLTAGES_MODULE_B","CELL_VOLTAGES_MODULE_C","CELL_VOLTAGES_MODULE_D","CURRENT","SOC","SYSTEM_SOC","TEMP_MAX","TEMP_MIN","VOLTAGE"].forEach(item => objectsSet.add(item));
+				break;
+				case "ENERGY":
+					["STAT_STATE","GUI_BAT_DATA_POWER","GUI_INVERTER_POWER","GUI_HOUSE_POW","GUI_GRID_POW","GUI_BAT_DATA_FUEL_CHARGE","GUI_CHARGING_INFO","GUI_BOOSTING_INFO","GUI_BAT_DATA_POWER","GUI_BAT_DATA_VOLTAGE","GUI_BAT_DATA_CURRENT","GUI_BAT_DATA_FUEL_CHARGE","GUI_BAT_DATA_OA_CHARGING","STAT_LIMITED_NET_SKEW"].forEach(item => objectsSet.add(item));
+				break;
+				case "PV1":
+					["POWER_RATIO","MPP_POWER"].forEach(item => objectsSet.add(item));
+				break;
+				case "PWR_UNIT":
+					["POWER_L1","POWER_L2","POWER_L3"].forEach(item => objectsSet.add(item));
+				break;
+				case "PM1OBJ1":
+					["FREQ","U_AC","I_AC","P_AC","P_TOTAL"].forEach(item => objectsSet.add(item));
+				break;
+				case "PM1OBJ2":
+					["FREQ","U_AC","I_AC","P_AC","P_TOTAL"].forEach(item => objectsSet.add(item));
+				break;
+				case "STATISTIC":
+					["LIVE_GRID_EXPORT","LIVE_GRID_IMPORT","LIVE_HOUSE_CONS","LIVE_PV_GEN","LIVE_BAT_CHARGE_MASTER","LIVE_BAT_DISCHARGE_MASTER"].forEach(item => objectsSet.add(item));
+				break;
+				case "WALLBOX":
+					["APPARENT_CHARGING_POWER","PROHIBIT_USAGE","EV_CONNECTED","STATE"].forEach(item => objectsSet.add(item));
+				break;
+				default:
+					// nothing to do here
+				break;
+			}
+			if (objectsSet.size > 0) {
+				highPrioObjects.set(value, objectsSet);
+			}
+		})
+		
+		lowPrioForm = lowPrioForm.slice(0, -1) +  '}';
+		this.log.info("(initPollSettings) lowPrio: " + lowPrioForm);
+		
+		// creating form for high priority pulling
+		highPrioForm = '{';
+		highPrioObjects.forEach( function (mapValue, key, map) {
+			highPrioForm += '"' + key + '":{';
+			mapValue.forEach (function (setValue) {
+				highPrioForm += '"' + setValue + '":"",';
+			})
+			highPrioForm = highPrioForm.slice(0, -1) +  '},';
+		})
+		highPrioForm = highPrioForm.slice(0, -1) +  '}';
+
+		this.log.info("(initPollSettings) highPrio: " + highPrioForm);
+		
+	}
 
     /**
      * checks config paramaters
@@ -85,8 +150,8 @@ class Senec extends utils.Adapter {
             this.config.interval = 10;
         }
         this.log.debug("(checkConf) Configured polling interval low priority: " + this.config.intervalLow);
-        if (this.config.intervalLow < 60 || this.config.intervalLow > 3600) {
-            this.log.warn("(checkConf) Config interval low priority " + this.config.intervalLow + " not [60..3600] minutes. Using default: 60");
+        if (this.config.intervalLow < 10 || this.config.intervalLow > 3600) {
+            this.log.warn("(checkConf) Config interval low priority " + this.config.intervalLow + " not [10..3600] minutes. Using default: 60");
             this.config.intervalLow = 60;
         }
         this.log.debug("(checkConf) Configured polling timeout: " + this.config.pollingTimeout);
@@ -168,34 +233,21 @@ class Senec extends utils.Adapter {
 			);
 		});
 	}
-
-    /**
+	
+	/**
      * Read values from Senec Home V2.1
-     * Leaving out Wallbox info because it won't be supplied by senec if no wallbox configured
+	 * Careful with the amount and interval of HighPrio values polled because this causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
      */
-    async readSenecV21() {
-        // read by webinterface are the following values. Not all are "high priority" though.
-        // "STATISTIC":{"STAT_DAY_E_HOUSE":"","STAT_DAY_E_PV":"","STAT_DAY_BAT_CHARGE":"","STAT_DAY_BAT_DISCHARGE":"","STAT_DAY_E_GRID_IMPORT":"","STAT_DAY_E_GRID_EXPORT":"","STAT_YEAR_E_PU1_ARR":""}
-        // "ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","STAT_MAINT_REQUIRED":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":""}
-        // "WIZARD":{"CONFIG_LOADED":""},"SYS_UPDATE":{"UPDATE_AVAILABLE":""}
-        // "PV1":{"POWER_RATIO":""},"WIZARD":{"MAC_ADDRESS_BYTES":""},"BAT1OBJ1":{"BMS_NR_INSTALLED":"","SPECIAL_TIMEOUT":"","INV_CYCLE":"","TEMP1":"","TEMP2":"","TEMP3":"","TEMP4":"","TEMP5":"","SW_VERSION":"","SW_VERSION2":"","SW_VERSION3":"","I_DC":""},"BAT1OBJ2":{"TEMP1":"","TEMP2":"","TEMP3":"","TEMP4":"","TEMP5":"","I_DC":""},"BAT1OBJ3":{"TEMP1":"","TEMP2":"","TEMP3":"","TEMP4":"","TEMP5":"","I_DC":""},"PWR_UNIT":{"POWER_L1":"","POWER_L2":"","POWER_L3":""},"BAT1":{"CEI_LIMIT":""},"BMS":{}
-        // "PM1OBJ1":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""},"PM1OBJ2":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}
-        // "ENERGY":{"STAT_HOURS_OF_OPERATION":"","STAT_DAYS_SINCE_MAINT":"","GUI_BAT_DATA_POWER":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_BAT_DATA_OA_CHARGING":"","STAT_SULFAT_CHRG_COUNTER":"","STAT_LIMITED_NET_SKEW":"","STAT_LIMITED_NO_STAND_BY":"","GUI_CAP_TEST_DIS_COUNT":"","GUI_SCHARGE_REMAIN":"","GUI_SCHARGE_ELAPSED":"","GUI_CHARGING_INFO":"","OFFPEAK_DURATION":"","OFFPEAK_RUNNING":"","OFFPEAK_CURRENT":"","OFFPEAK_TARGET":""},"SYS_UPDATE":{"NPU_VER":"","NPU_IMAGE_VERSION":""}}
-
-        const url = connectVia + this.config.senecip + '/lala.cgi';
-        var form = '{';
-		form += '"BMS":{"CELL_TEMPERATURES_MODULE_A":"","CELL_TEMPERATURES_MODULE_B":"","CELL_TEMPERATURES_MODULE_C":"","CELL_TEMPERATURES_MODULE_D":"","CELL_VOLTAGES_MODULE_A":"","CELL_VOLTAGES_MODULE_B":"","CELL_VOLTAGES_MODULE_C":"","CELL_VOLTAGES_MODULE_D":"","CURRENT":"","SOC":"","SYSTEM_SOC":"","TEMP_MAX":"","TEMP_MIN":"","VOLTAGE":""}';
-        form += ',"ENERGY":{"STAT_STATE":"","GUI_BAT_DATA_POWER":"","GUI_INVERTER_POWER":"","GUI_HOUSE_POW":"","GUI_GRID_POW":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_CHARGING_INFO":"","GUI_BOOSTING_INFO":"","GUI_BAT_DATA_POWER":"","GUI_BAT_DATA_VOLTAGE":"","GUI_BAT_DATA_CURRENT":"","GUI_BAT_DATA_FUEL_CHARGE":"","GUI_BAT_DATA_OA_CHARGING":"","STAT_LIMITED_NET_SKEW":""}';
-        form += ',"PV1":{"POWER_RATIO":"","MPP_POWER":""}';
-        form += ',"PWR_UNIT":{"POWER_L1":"","POWER_L2":"","POWER_L3":""}';
-        form += ',"PM1OBJ1":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
-        form += ',"PM1OBJ2":{"FREQ":"","U_AC":"","I_AC":"","P_AC":"","P_TOTAL":""}';
-		form += ',"STATISTIC":{"LIVE_GRID_EXPORT":"","LIVE_GRID_IMPORT":"","LIVE_HOUSE_CONS":"","LIVE_PV_GEN":"","LIVE_BAT_CHARGE_MASTER":"","LIVE_BAT_DISCHARGE_MASTER":""}';
-		form += ',"WALLBOX":{"APPARENT_CHARGING_POWER":"","PROHIBIT_USAGE":"","EV_CONNECTED":"","STATE":""}';
-        form += '}';
-			
-        try {
-            var body = await this.doGet(url, form, this, this.config.pollingTimeout);
+	async pollSenec(isHighPrio, retry) {
+		const url = connectVia + this.config.senecip + '/lala.cgi';	
+		var interval = this.config.interval * 1000;
+		if (!isHighPrio) { 
+			this.log.info('LowPrio polling ...');
+			interval = this.config.intervalLow * 1000 * 60
+		}
+		
+		try {
+            var body = await this.doGet(url, (isHighPrio ? highPrioForm : lowPrioForm), this, this.config.pollingTimeout);
 			if (body.includes('\\"')) { 
 				// in rare cases senec reports back extra escape sequences on some machines ...
 				this.log.info("(Poll) Double escapes detected!  Body inc: " + body);
@@ -207,56 +259,19 @@ class Senec extends utils.Adapter {
 
             retry = 0;
 			if (unloaded) return;
-            this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * 1000);
+            this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval);
         } catch (error) {
             if ((retry == this.config.retries) && this.config.retries < 999) {
-                this.log.error("Error reading from Senec (" + this.config.senecip + "). Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
+                this.log.error("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
                 this.setState('info.connection', false, true);
             } else {
                 retry += 1;
-                this.log.warn("Error reading from Senec (" + this.config.senecip + "). Retry " + retry + "/" + this.config.retries + " in " + this.config.interval * this.config.retrymultiplier * retry + " seconds! (" + error + ")");
-                this.timer = setTimeout(() => this.readSenecV21(), this.config.interval * this.config.retrymultiplier * retry * 1000);
+                this.log.warn("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
+                this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval * this.config.retrymultiplier * retry);
             }
         }
-    }
-
-    /**
-     * Read ALL values from Senec Home V2.1
-     * This causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
-     */
-    async readSenecV21LowPrio() {
-        this.log.info('LowPrio polling ...');
-        // we are polling all known objects ...
-
-        const url = connectVia + this.config.senecip + '/lala.cgi';
-        const form = '{"STATISTIC":{},"ENERGY":{},"FEATURES":{},"LOG":{},"SYS_UPDATE":{},"WIZARD":{},"BMS":{},"BAT1":{},"BAT1OBJ1":{},"BAT1OBJ2":{},"BAT1OBJ2":{},"BAT1OBJ3":{},"BAT1OBJ4":{},"PWR_UNIT":{},"PM1OBJ1":{},"PM1OBJ2":{},"PV1":{},"FACTORY":{},"GRIDCONFIG":{},"EG_CONTROL":{},"RTC":{},"PM1":{},"TEMPMEASURE":{},"DEBUG":{},"SOCKETS":{},"CASC":{},"WALLBOX":{},"CONNX50":{},"STECA":{}}';
-
-        try {
-            var body = await this.doGet(url, form, this, this.config.pollingTimeout);
-			if (body.includes('\\"')) { 
-				// in rare cases senec reports back extra escape sequences on some machines ...
-				this.log.info("(Poll) Double escapes detected!  Body inc: " + body);
-				body = body.replace(/\\"/g, '"');
-				this.log.info("(Poll) Double escapes autofixed! Body out: " + body);
-			}
-            var obj = JSON.parse(body, reviverNumParse);
-
-            await this.evalPoll(obj);
-
-            retryLowPrio = 0;
-			if (unloaded) return;
-            this.timerLowPrio = setTimeout(() => this.readSenecV21LowPrio(), this.config.intervalLow * 1000 * 60);
-        } catch (error) {
-            if ((retryLowPrio == this.config.retries) && this.config.retries < 999) {
-                this.log.error("Error reading from Senec lowPrio (" + this.config.senecip + "). Retried " + retryLowPrio + " times. Giving up now. Check config and restart adapter. (" + error + ")");
-                this.setState('info.connection', false, true);
-            } else {
-                retryLowPrio += 1;
-                this.log.warn("Error reading from Senec lowPrio (" + this.config.senecip + "). Retry " + retryLowPrio + "/" + this.config.retries + " in " + this.config.interval * this.config.retrymultiplier * retryLowPrio + " minutes! (" + error + ")");
-                this.timerLowPrio = setTimeout(() => this.readSenecV21LowPrio(), this.config.interval * this.config.retrymultiplier * retryLowPrio * 1000 * 60);
-            }
-        }
-    }
+		
+	}
 
     /**
      * sets a state's value and creates the state if it doesn't exist yet
