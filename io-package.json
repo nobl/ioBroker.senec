@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.5.0",
+        "version": "1.5.1",
         "news": {
+			"1.5.1": {
+				"en": "Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)",
+				"de": "Weitere Datenpunkte hinzugefügt. Du kennst weitere? Bitte PullRequest auf Github für state_attr.",
+				"ru": "Добавили больше точек данных. Если вы испытываете сообщения в логе - не стесняйтесь добавлять их самостоятельно в state_attr на github (по запросу)",
+				"pt": "Adicionado mais datapoints. Se você tiver mensagens no log - sinta-se livre para adicioná-las ao state_attr no github (requisito de envio)",
+				"nl": "Voegde meer datapoints toe. Als je berichten in het logboek ervaart, voel je vrij om ze zelf toe te voegen aan github (pull verzoek)",
+				"fr": "Ajout d'autres points de données. Si vous éprouvez des messages dans log - n'hésitez pas à les ajouter à state_attr sur github (demande de puissance)",
+				"it": "Aggiunti altri datapoint. Se si verificano messaggi in log - sentitevi liberi di aggiungerli a state_attr su github (domanda di voto)",
+				"es": "Se agregaron más puntos de datos. Si experimentas mensajes en el registro - no dudes en añadirlos a state_attr en github (pregunta completa)",
+				"pl": "Dodać więcej danych. Jeśli znajdziesz wiadomości w dzienniku – czuje się wolny, aby dodać ich do stanu_attr na github (pułki)",
+				"uk": "Додано більше точок даних. Якщо ви відчуваєте повідомлення в журналі - не соромтеся додати їх до стану_attr на github",
+				"zh-cn": "增加数据点。 如果你在逻辑上有信息,就认为可以自由地补充你自己的国家:对Tithub(要求)表示怀疑。"
+			},
 			"1.5.0": {
 				"en": "Added configuration section to add datapoints to high priority polling. Please be aware of the possible issues this could cause (if too many datapoints added) and use at your own risk. ALL Wallbox datapoints have been removed from high priority polling. Only some users even have a SENEC wallbox. Please reconfigure via the new config dialogue. Possible Candidate for stable. Please report any findings!",
 				"de": "Konfigurationsabschnitt hinzugefügt, um zusätzliche Datenpunkte mit hoher Priorität abzufragen. Bitte beachten Sie die möglichen Probleme, die dies verursachen könnte (wenn zu viele Datenpunkte hinzugefügt wurden). Nutzung auf eigenes Risiko. Standardgemäß werden nun keine Wallbox-Datenpunkte mehr mit hoher Priorität abgefragt (zu wenige User haben eine SENEC Wallbox). Diese nun bitte über den neuen Configdialog konfigurieren. Möglicher Kandidat für stable - bitte alle Probleme reporten.",

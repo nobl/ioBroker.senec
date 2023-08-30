@@ -366,6 +366,11 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.5.1 (NoBl)
+* Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)
+* Autarky calculations will stopp working because SENEC removed STATISTICS branch.
+* If you experience issues with connecting to your appliance after it got updated, please activate https connection in settings.
+
 ### 1.5.0 (NoBl)
 * Added configuration section to add datapoints to high priority polling. Please be aware of the possible issues this could cause (if too many datapoints added) and use at your own risk.
 * ALL Wallbox datapoints have been removed from high priority polling. Only some users even have a SENEC wallbox. Please reconfigure via the new config dialogue.
