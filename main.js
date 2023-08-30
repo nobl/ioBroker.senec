@@ -16,7 +16,8 @@ let retry = 0; // retry-counter
 let retryLowPrio = 0; // retry-counter
 let connectVia = "http://";
 
-const allKnownObjects = new Set(["STATISTIC","ENERGY","FEATURES","LOG","SYS_UPDATE","WIZARD","BMS","BAT1","BAT1OBJ1","BAT1OBJ2","BAT1OBJ3","BAT1OBJ4","PWR_UNIT","PM1OBJ1","PM1OBJ2","PV1","FACTORY","GRIDCONFIG","EG_CONTROL","RTC","PM1","TEMPMEASURE","DEBUG","SOCKETS","CASC","WALLBOX","CONNX50","STECA"]);
+const allKnownObjects = new Set(["BAT1","BAT1OBJ1","BAT1OBJ2","BAT1OBJ3","BMS","BMS_PARA","CASC","DEBUG","DISPLAY","ENERGY","FACTORY","FEATURES","FILE","GRIDCONFIG","ISKRA","LOG","PM1","PM1OBJ1","PM1OBJ2","PV1","PWR_UNIT","RTC","SELFTEST_RESULTS","SOCKETS","STATISTIC","STECA","SYS_UPDATE","TEMPMEASURE","TEST","UPDATE","WALLBOX","WIZARD"]);
+
 const highPrioObjects = new Map;
 let lowPrioForm = "";
 let highPrioForm = "";
