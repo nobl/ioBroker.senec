@@ -366,6 +366,9 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.5.2 (NoBl)
+* Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)
+
 ### 1.5.1 (NoBl)
 * Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)
 * Autarky calculations will stopp working because SENEC removed STATISTICS branch.
