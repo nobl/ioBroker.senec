@@ -195,7 +195,12 @@
 		"highPrio_BAT1OBJ4": "",
 		"highPrio_BAT1OBJ4_active": false,
 		"highPrio_TEMPMEASURE": "",
-		"highPrio_TEMPMEASURE_active": false
+		"highPrio_TEMPMEASURE_active": false,
+		"api_use": false
+    },
+	"nativeEncrypted": {
+        "api_mail": "",
+        "api_pwd": ""
     },
     "objects": [],
     "instanceObjects": [{
