@@ -11,7 +11,11 @@ const utils = require('@iobroker/adapter-core');
 const axios = require('axios').default;
 const state_attr = require(__dirname + '/lib/state_attr.js');
 const state_trans = require(__dirname + '/lib/state_trans.js');
+const apiUrl = "https://app-gateway-prod.senecops.com/v1/senec";
+const apiLoginUrl = apiUrl + "/login";
 
+let apiConnected = false;
+let apiLoginToken = "";
 let retry = 0; // retry-counter
 let retryLowPrio = 0; // retry-counter
 let connectVia = "http://";
@@ -52,8 +56,10 @@ class Senec extends utils.Adapter {
             await this.checkConfig();
 			await this.initPollSettings();
             await this.checkConnection();
+			await this.initSenecAppApi();
 			await this.pollSenec(true, 0); // highPrio
 			await this.pollSenec(false, 0); // lowPrio
+			this.setState('info.connection', true, true);
         } catch (error) {
             this.log.error(error);
             this.setState('info.connection', false, true);
@@ -219,9 +225,32 @@ class Senec extends utils.Adapter {
             this.log.info('connecting to Senec: ' + url);
             const body = await this.doGet(url, form, this, this.config.pollingTimeout);
             this.log.info('connected to Senec: ' + url);
-            this.setState('info.connection', true, true);
         } catch (error) {
             throw new Error("Error connecting to Senec (IP: " + connectVia + this.config.senecip + "). Exiting! (" + error + "). Try to toggle https-mode in settings and check FQDN of SENEC appliance.");
+        }
+    }
+	
+	/**
+     * Inits connection to senec app api
+     */
+    async initSenecAppApi() {
+		if (!this.config.api_use) {
+			this.log.info('Usage of SENEC App API not configured. Not using it');
+			return;
+		}
+        this.log.info('connecting to Senec App API: ' + apiLoginUrl);
+		const loginData = JSON.stringify({
+			password: this.config.api_pwd,
+			username: this.config.api_mail
+		});
+		try {
+            const body = await this.doGet(apiLoginUrl, loginData, this, this.config.pollingTimeout);
+            this.log.info('connected to Senec AppAPI.');
+			apiLoginToken = JSON.parse(body).token;
+			this.apiConnected = true;
+			this.log.debug('Token received: ' + apiLoginToken);
+        } catch (error) {
+            throw new Error("Error connecting to Senec AppAPI. Exiting! (" + error + ").");
         }
     }
 
@@ -233,6 +262,7 @@ class Senec extends utils.Adapter {
 	doGet(pUrl, pForm, caller, pollingTimeout) {
 		return new Promise(function (resolve, reject) {
 			axios({
+				headers: { 'Content-Type': 'application/json', },
 				method: 'post',
 				httpsAgent: agent,
 				url: pUrl,
