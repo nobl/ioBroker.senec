@@ -17,6 +17,7 @@ const state_trans = require(__dirname + '/lib/state_trans.js');
 const apiUrl = "https://app-gateway-prod.senecops.com/v1/senec";
 const apiLoginUrl = apiUrl + "/login";
 const apiSystemsUrl = apiUrl + "/anlagen";
+const apiKnownSystems = []
 
 let apiConnected = false;
 let apiLoginToken = "";
@@ -272,6 +273,16 @@ class Senec extends utils.Adapter {
 		try {
             const body = await this.doGet(apiSystemsUrl, "", this, this.config.pollingTimeout, false);
             this.log.info('Read Systems Information from Senec AppAPI.');
+			var obj = JSON.parse(body);
+			const systems = [];
+			for (const[key, value] of Object.entries(obj)) {
+				const systemId = value.id;
+				apiKnownSystems.push(systemId);
+				for (const[key2, value2] of Object.entries(value)) {
+					this.doState('_api.Anlagen.' + systemId + "." + key2, JSON.stringify(value2), "", "", false);
+				}
+			}
+			this.doState('_api.Anlagen.IDs', JSON.stringify(apiKnownSystems), "Anlagen IDs", "", false);
         } catch (error) {
             throw new Error("Error reading Systems Information from Senec AppAPI. (" + error + ").");
         }
@@ -464,7 +475,7 @@ class Senec extends utils.Adapter {
                 if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
                     const key = key1 + '.' + key2;
                     if (state_attr[key] === undefined) {
-                        this.log.info('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
+                        this.log.debug('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
                     }	
                     const desc = (state_attr[key] !== undefined) ? state_attr[key].name : key2;
                     const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
