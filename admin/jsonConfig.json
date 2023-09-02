@@ -1086,6 +1086,163 @@
 					"newLine": false
 				}
 			}
+		},
+		"_api": {
+			"type": "panel",
+			"label": {
+				"en": "SENEC API",
+				"de": "SENEC API",
+				"ru": "SENEC API",
+				"pt": "API SENEC",
+				"nl": "SENEC",
+				"fr": "SENEC API",
+				"it": "API SENEC",
+				"es": "SENEC API",
+				"pl": "SENEC API",
+				"uk": "СЕНЕК API",
+				"zh-cn": "SENECAPI"
+			},
+			"items": {
+				"api_use": {
+					"type": "checkbox",
+					"sm": 12,
+                    "md": 6,
+                    "lg": 6,
+					"label": {
+						"en": "Use SENEC API?",
+						"de": "SENEC API nutzen?",
+						"ru": "Используйте SENEC API?",
+						"pt": "Usar API SENEC?",
+						"nl": "SENEC API gebruiken?",
+						"fr": "Utilisez l'API SENEC?",
+						"it": "Utilizzare API SENEC?",
+						"es": "¿Usar SENEC API?",
+						"pl": "Zastosowanie API SENEC?",
+						"uk": "Використовуйте SENEC API?",
+						"zh-cn": "使用ENECAPI?"
+					},
+					"help": {
+						"en": "Check if the adapter shall make use of the SENEC API.",
+						"de": "Aktivieren, falls der Adapter die SENEC API nutzen soll.",
+						"ru": "Проверьте, следует ли адаптер использовать SENEC API.",
+						"pt": "Verifique se o adaptador deve fazer uso da API SENEC.",
+						"nl": "Kijk of de adapter gebruik maakt van de SENEC API.",
+						"fr": "Vérifiez si l'adaptateur doit utiliser l'API SENEC.",
+						"it": "Controllare se l'adattatore deve utilizzare l'API SENEC.",
+						"es": "Compruebe si el adaptador hará uso de la API SENEC.",
+						"pl": "W przypadku, gdy adapter będzie korzystał z API SENEC.",
+						"uk": "Перевірте, чи використовує адаптер SENEC API.",
+						"zh-cn": "如果适应者应使用ENECAPI。."
+					},
+					"default": "",
+					"newLine": true
+				},
+				"api_mail": {
+					"type": "text",
+					"sm": 12,
+                    "md": 6,
+                    "lg": 6,
+					"label": {
+						"en": "Email-Address",
+						"de": "E-Mail-Adresse",
+						"ru": "Email-Адрес",
+						"pt": "Endereço de email",
+						"nl": "E-Addres",
+						"fr": "Email-Address",
+						"it": "Indirizzo e-mail",
+						"es": "Email-Address",
+						"pl": "Email-Addresser",
+						"uk": "Електронна пошта",
+						"zh-cn": "Email-Addres"
+					},
+					"help": {
+						"en": "Email-Address used to login to mein-senec.de",
+						"de": "Email-Adresse, um sich bei mein-senec.de anzumelden",
+						"ru": "Email-адрес используется для входа в mein-senec.de",
+						"pt": "Email-Endereço usado para login para mein-senec.de",
+						"nl": "Email-Address loge in mein-senec",
+						"fr": "Email-Adresse utilisé pour se connecter à mein-senec.de",
+						"it": "Email-Address usato per accedere a mein-senec.de",
+						"es": "Email-Address solía iniciar sesión en mein-senec.de",
+						"pl": "Email-Address używany do logowania mein-senec",
+						"uk": "Email-Address використовується для входу в mein-senec.de",
+						"zh-cn": "Email-Address used to mein-senec.de"
+					},
+					"default": "",
+					"newLine": true
+				},
+				"api_pwd": {
+					"type": "password",
+					"visible": true,
+					"sm": 12,
+                    "md": 6,
+                    "lg": 6,
+					"label": {
+						"en": "Password",
+						"de": "Passwort",
+						"ru": "Пароль",
+						"pt": "Senha",
+						"nl": "Wachtwoord",
+						"fr": "Mot de passe",
+						"it": "Password",
+						"es": "Contraseña",
+						"pl": "Password",
+						"uk": "Логін",
+						"zh-cn": "护照"
+					},
+					"help": {
+						"en": "Password used to login to mein-senec.de",
+						"de": "Passwort für die Anmeldung an mein-senec.de",
+						"ru": "Пароль используется для входа в mein-senec.de",
+						"pt": "Senha usada para login para mein-senec.de",
+						"nl": "Het wachtwoord loginde in mein-senec",
+						"fr": "Mot de passe utilisé pour se connecter à mein-senec.de",
+						"it": "Password usata per accedere a mein-senec.de",
+						"es": "Contraseña usada para iniciar sesión en mein-senec.de",
+						"pl": "Miecz używany do logowania na mein-senec.de",
+						"uk": "Пароль використовується для входу в mein-senec.de",
+						"zh-cn": "目 录"
+					},
+					"default": "",
+					"newLine": false
+				},
+				"api_interval": {
+					"type": "number",
+					"sm": 12,
+                    "md": 6,
+                    "lg": 6,
+					"label": {
+						"en": "Polling Interval (minutes)",
+						"de": "Polling Interval (Minuten)",
+						"ru": "Поллинг Интервал (минуты)",
+						"pt": "Polling Interval (minutos)",
+						"nl": "Polling Interval (minuten)",
+						"fr": "Intervalle de vote (minutes)",
+						"it": "Polling Interval (minuti)",
+						"es": "Intervalo de votación (minutos)",
+						"pl": "Polling Interval (ang.)",
+						"uk": "Поллінг Інтервал (хвилини)",
+						"zh-cn": "中间(分钟)"
+					},
+					"help": {
+						"en": "Here you can define the polling interval [min 3, max 1440 minutes]. Default = 5. SENEC updates API Data every 5 minutes.",
+						"de": "Hier können Sie das Abfrageintervall definieren [min 3, max 1440 Minuten]. Standard = 5. SENEC aktualisiert die API-Daten alle 5 Minuten.",
+						"ru": "Здесь вы можете определить интервал опроса [мин 3, макс 1440 минут]. По умолчанию = 5. SENEC обновление API Данные каждые 5 минут.",
+						"pt": "Aqui você pode definir o intervalo de votação [min 3, max 1440 minutes]. Padrão = 5. API de atualizações do SENEC Dados a cada 5 minutos.",
+						"nl": "Hier kun je de peiling interval definiëren. SenEC updates Data om de vijf minuten.",
+						"fr": "Ici vous pouvez définir l'intervalle de vote [min 3, max 1440 minutes]. Défaut = 5. Données toutes les 5 minutes.",
+						"it": "Qui è possibile definire l'intervallo di polling [min 3, max 1440 minuti]. Default = 5. Aggiornamenti SENEC API Dati ogni 5 minuti.",
+						"es": "Aquí puede definir el intervalo de votación [min 3, max 1440 minutos]. Default = 5. Actualización de SENEC API Datos cada 5 minutos.",
+						"pl": "Może ona zdefiniować przedział wyborczy (min 3, max 1440 minut). Default = 5. Dane co 5 minut.",
+						"uk": "Тут можна визначити інтервал опитування [min 3, макс. 1440 хвилин]. JavaScript licenses API Веб-сайт Дані кожні 5 хвилин.",
+						"zh-cn": "在此,你可以界定投票间隔[3, max1440分钟]。 Default=5 SENEC最新情况 数据每5分钟。."
+					},
+					"default": 5,
+					"min": 3,
+					"max": 1440,
+					"newLine": true
+				},
+			}
 		}
 	}
 }

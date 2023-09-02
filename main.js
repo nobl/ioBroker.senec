@@ -8,10 +8,19 @@ const agent = new https.Agent({
 });
 
 const utils = require('@iobroker/adapter-core');
+
 const axios = require('axios').default;
+axios.defaults.headers.common['Content-Type'] = "application/json";
+
 const state_attr = require(__dirname + '/lib/state_attr.js');
 const state_trans = require(__dirname + '/lib/state_trans.js');
+const apiUrl = "https://app-gateway-prod.senecops.com/v1/senec";
+const apiLoginUrl = apiUrl + "/login";
+const apiSystemsUrl = apiUrl + "/anlagen";
+const apiKnownSystems = []
 
+let apiConnected = false;
+let apiLoginToken = "";
 let retry = 0; // retry-counter
 let retryLowPrio = 0; // retry-counter
 let connectVia = "http://";
@@ -52,8 +61,12 @@ class Senec extends utils.Adapter {
             await this.checkConfig();
 			await this.initPollSettings();
             await this.checkConnection();
+			await this.initSenecAppApi();
+			if (apiConnected) await this.getApiSystems();
 			await this.pollSenec(true, 0); // highPrio
 			await this.pollSenec(false, 0); // lowPrio
+			await this.pollSenecAppApi(0); // App API
+			this.setState('info.connection', true, true);
         } catch (error) {
             this.log.error(error);
             this.setState('info.connection', false, true);
@@ -70,8 +83,8 @@ class Senec extends utils.Adapter {
             if (this.timer) {
                 clearTimeout(this.timer);
             }
-            if (this.timerLowPrio) {
-                clearTimeout(this.timerLowPrio);
+            if (this.timerAPI) {
+                clearTimeout(this.timerAPI);
             }
             this.log.info('cleaned everything up...');
             this.setState('info.connection', false, true);
@@ -207,6 +220,11 @@ class Senec extends utils.Adapter {
 			connectVia = "https://";
 			this.log.debug("(checkConf) Switching to https ... " + this.config.useHttps);
 		}
+		this.log.debug("(checkConf) Configured api polling interval: " + this.config.api_interval);
+        if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
+            this.log.warn("(checkConf) Config api polling interval " + this.config.api_interval + " not [3..1440] seconds. Using default: 5");
+            this.config.api_interval = 5;
+        }
     }
 
     /**
@@ -217,11 +235,62 @@ class Senec extends utils.Adapter {
         const form = '{"ENERGY":{"STAT_STATE":""}}';
         try {
             this.log.info('connecting to Senec: ' + url);
-            const body = await this.doGet(url, form, this, this.config.pollingTimeout);
+            const body = await this.doGet(url, form, this, this.config.pollingTimeout, true);
             this.log.info('connected to Senec: ' + url);
-            this.setState('info.connection', true, true);
         } catch (error) {
             throw new Error("Error connecting to Senec (IP: " + connectVia + this.config.senecip + "). Exiting! (" + error + "). Try to toggle https-mode in settings and check FQDN of SENEC appliance.");
+        }
+    }
+	
+	/**
+     * Inits connection to senec app api
+     */
+    async initSenecAppApi() {
+		if (!this.config.api_use) {
+			this.log.info('Usage of SENEC App API not configured. Not using it');
+			return;
+		}
+        this.log.info('connecting to Senec App API: ' + apiLoginUrl);
+		const loginData = JSON.stringify({
+			password: this.config.api_pwd,
+			username: this.config.api_mail
+		});
+		try {
+            const body = await this.doGet(apiLoginUrl, loginData, this, this.config.pollingTimeout, true);
+            this.log.info('connected to Senec AppAPI.');
+			apiLoginToken = JSON.parse(body).token;
+			apiConnected = true;
+			axios.defaults.headers.common['authorization'] = apiLoginToken;
+        } catch (error) {
+            throw new Error("Error connecting to Senec AppAPI. Exiting! (" + error + ").");
+        }
+    }
+	
+	/**
+     * Reads system data from senec app api
+     */
+    async getApiSystems() {
+		const pfx = "_api.Anlagen.";
+		if (!this.config.api_use || !apiConnected) {
+			this.log.info('Usage of SENEC App API not configured or not connected.');
+			return;
+		}
+        this.log.info('Reading Systems Information from Senec App API ' + apiSystemsUrl);
+		try {
+            const body = await this.doGet(apiSystemsUrl, "", this, this.config.pollingTimeout, false);
+            this.log.info('Read Systems Information from Senec AppAPI.');
+			var obj = JSON.parse(body);
+			const systems = [];
+			for (const[key, value] of Object.entries(obj)) {
+				const systemId = value.id;
+				apiKnownSystems.push(systemId);
+				for (const[key2, value2] of Object.entries(value)) {
+					this.doState(pfx + systemId + "." + key2, JSON.stringify(value2), "", "", false);
+				}
+			}
+			this.doState(pfx + 'IDs', JSON.stringify(apiKnownSystems), "Anlagen IDs", "", false);
+        } catch (error) {
+            throw new Error("Error reading Systems Information from Senec AppAPI. (" + error + ").");
         }
     }
 
@@ -230,10 +299,10 @@ class Senec extends utils.Adapter {
      * @param url to read from
      * @param form to post
      */
-	doGet(pUrl, pForm, caller, pollingTimeout) {
+	doGet(pUrl, pForm, caller, pollingTimeout, isPost) {
 		return new Promise(function (resolve, reject) {
 			axios({
-				method: 'post',
+				method: isPost ? 'post' : 'get',
 				httpsAgent: agent,
 				url: pUrl,
 				data: pForm,
@@ -251,6 +320,10 @@ class Senec extends utils.Adapter {
 					if (error.response) {
 						// The request was made and the server responded with a status code
 						caller.log.warn('(Poll) received error ' + error.response.status + ' response from SENEC with content: ' + JSON.stringify(error.response.data));
+						if (error.response.status == 403 && apiConnected) {
+							apiConnected = false; // apparently the api is inaccessible
+							this.initSenecAppApi();
+						}
 						reject(error.response.status);
 					} else if (error.request) {
 						// The request was made but no response was received
@@ -280,7 +353,7 @@ class Senec extends utils.Adapter {
 		}
 		
 		try {
-            var body = await this.doGet(url, (isHighPrio ? highPrioForm : lowPrioForm), this, this.config.pollingTimeout);
+            var body = await this.doGet(url, (isHighPrio ? highPrioForm : lowPrioForm), this, this.config.pollingTimeout, true);
 			if (body.includes('\\"')) { 
 				// in rare cases senec reports back extra escape sequences on some machines ...
 				this.log.info("(Poll) Double escapes detected!  Body inc: " + body);
@@ -303,6 +376,53 @@ class Senec extends utils.Adapter {
                 this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval * this.config.retrymultiplier * retry);
             }
         }
+	}
+	
+	/**
+     * Read values from Senec App API
+     */
+	async pollSenecAppApi(retry) {
+		var interval = this.config.api_interval * 60000;
+		this.log.debug("Polling API ...");
+		var body = "";
+		try {
+			for (let i = 0; i < apiKnownSystems.length; i++) {
+				// dashboard
+				var url = apiSystemsUrl + "/" + apiKnownSystems[i] + "/dashboard";
+				body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
+				await this.decodeDashboard(apiKnownSystems[i], JSON.parse(body));
+				// // wallboxes - only if wallbox exists? - Without: error 500
+				//var url = apiSystemsUrl + "/" + apiKnownSystems[i] + "/wallboxes/1";
+				//body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
+				//this.log.info("Abilities: " + body);
+				//await this.decodeWallbox(apiKnownSystems[i], JSON.parse(body));
+			}
+			retry = 0;
+			if (unloaded) return;
+			this.timerAPI = setTimeout(() => this.pollSenecAppApi(retry), interval);
+		} catch (error) {
+            if ((retry == this.config.retries) && this.config.retries < 999) {
+                this.log.error("Error reading from Senec AppAPI. Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
+                this.setState('info.connection', false, true);
+            } else {
+                retry += 1;
+                this.log.warn("Error reading from Senec AppAPI. Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
+                this.timerAPI = setTimeout(() => this.pollSenecAppApi(retry), interval * this.config.retrymultiplier * retry);
+            }
+        }
+	}
+	
+	async decodeDashboard(system, obj) {
+		const pfx = "_api.Anlagen." + system + ".Dashboard.";
+		for (const[key, value] of Object.entries(obj)) {
+			if (key == "zeitstempel" || key == "electricVehicleConnected") {
+				this.doState(pfx + key, value, "", "", false);
+			} else {
+				for (const[key2, value2] of Object.entries(value)) {
+					this.doState(pfx + key + "." + key2, value2.wert, "", value2.einheit, false);
+				}
+			}
+		}
 		
 	}
 
@@ -408,7 +528,7 @@ class Senec extends utils.Adapter {
                 if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
                     const key = key1 + '.' + key2;
                     if (state_attr[key] === undefined) {
-                        this.log.info('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
+                        this.log.debug('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
                     }	
                     const desc = (state_attr[key] !== undefined) ? state_attr[key].name : key2;
                     const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";

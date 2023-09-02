@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.5.2",
+        "version": "1.6.0",
         "news": {
+			"1.6.0": {
+				"en": "You can now configure to request SENEC App API.",
+				"de": "Sie können nun die SENEC App API abfragen.",
+				"ru": "Теперь вы можете настроить для запроса SENEC App API.",
+				"pt": "Agora você pode configurar para solicitar a API do SENEC App.",
+				"nl": "Je kunt nu configureren om SENEC App API te vragen.",
+				"fr": "Vous pouvez maintenant configurer pour demander l'API App SENEC.",
+				"it": "Ora è possibile configurare per richiedere l'API SENEC App.",
+				"es": "Ahora puede configurarse para solicitar SENEC App API.",
+				"pl": "Możesz teraz skonfigurować żądanie SENEC App API.",
+				"uk": "Ви можете налаштувати запит на SENEC App API.",
+				"zh-cn": "如今,你可以准备要求SENECSP。."
+			},
 			"1.5.2": {
 				"en": "Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)",
 				"de": "Weitere Datenpunkte hinzugefügt. Du kennst weitere? Bitte PullRequest auf Github für state_attr.",
@@ -195,7 +208,13 @@
 		"highPrio_BAT1OBJ4": "",
 		"highPrio_BAT1OBJ4_active": false,
 		"highPrio_TEMPMEASURE": "",
-		"highPrio_TEMPMEASURE_active": false
+		"highPrio_TEMPMEASURE_active": false,
+		"api_use": false,
+		"api_interval": 5
+    },
+	"nativeEncrypted": {
+        "api_mail": "",
+        "api_pwd": ""
     },
     "objects": [],
     "instanceObjects": [{
