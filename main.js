@@ -391,6 +391,11 @@ class Senec extends utils.Adapter {
 				var url = apiSystemsUrl + "/" + apiKnownSystems[i] + "/dashboard";
 				body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
 				await this.decodeDashboard(apiKnownSystems[i], JSON.parse(body));
+				// // wallboxes - only if wallbox exists? - Without: error 500
+				//var url = apiSystemsUrl + "/" + apiKnownSystems[i] + "/wallboxes/1";
+				//body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
+				//this.log.info("Abilities: " + body);
+				//await this.decodeWallbox(apiKnownSystems[i], JSON.parse(body));
 			}
 			retry = 0;
 			if (unloaded) return;

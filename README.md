@@ -366,8 +366,9 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
-### 1.5.2 (NoBl)
-* Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)
+### 1.6.0 (NoBl)
+* Added option to also poll SENEC App API. This requires user credentials for mein-senec.de
+* We are starting with just some information - more to follow. But with Dashboard we at least have current values and day statistics back.
 
 ### 1.5.1 (NoBl)
 * Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)
