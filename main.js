@@ -10,7 +10,7 @@ const agent = new https.Agent({
 const utils = require('@iobroker/adapter-core');
 
 const axios = require('axios').default;
-axios.defaults.headers.common['Content-Type'] = "application/json";
+axios.defaults.headers.post['Content-Type'] = "application/json";
 
 const state_attr = require(__dirname + '/lib/state_attr.js');
 const state_trans = require(__dirname + '/lib/state_trans.js');
@@ -260,7 +260,7 @@ class Senec extends utils.Adapter {
             this.log.info('connected to Senec AppAPI.');
 			apiLoginToken = JSON.parse(body).token;
 			apiConnected = true;
-			axios.defaults.headers.common['authorization'] = apiLoginToken;
+			axios.defaults.headers.get['authorization'] = apiLoginToken;
         } catch (error) {
             throw new Error("Error connecting to Senec AppAPI. Exiting! (" + error + ").");
         }
