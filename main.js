@@ -300,7 +300,11 @@ class Senec extends utils.Adapter {
                 )
 			.catch(
 				(error) => {
-					if (error.response) {
+					if (error.response.status == 403 && apiConnected) {
+						apiConnected = false; // apparently the api is inaccessible
+						this.initSenecAppApi();
+						reject("Refreshing connection to SENEC App API ...");
+					} else if (error.response) {
 						// The request was made and the server responded with a status code
 						caller.log.warn('(Poll) received error ' + error.response.status + ' response from SENEC with content: ' + JSON.stringify(error.response.data));
 						reject(error.response.status);
