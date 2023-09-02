@@ -8,11 +8,15 @@ const agent = new https.Agent({
 });
 
 const utils = require('@iobroker/adapter-core');
+
 const axios = require('axios').default;
+axios.defaults.headers.common['Content-Type'] = "application/json";
+
 const state_attr = require(__dirname + '/lib/state_attr.js');
 const state_trans = require(__dirname + '/lib/state_trans.js');
 const apiUrl = "https://app-gateway-prod.senecops.com/v1/senec";
 const apiLoginUrl = apiUrl + "/login";
+const apiSystemsUrl = apiUrl + "/anlagen";
 
 let apiConnected = false;
 let apiLoginToken = "";
@@ -57,6 +61,7 @@ class Senec extends utils.Adapter {
 			await this.initPollSettings();
             await this.checkConnection();
 			await this.initSenecAppApi();
+			if (apiConnected) await this.getApiSystems();
 			await this.pollSenec(true, 0); // highPrio
 			await this.pollSenec(false, 0); // lowPrio
 			this.setState('info.connection', true, true);
@@ -223,7 +228,7 @@ class Senec extends utils.Adapter {
         const form = '{"ENERGY":{"STAT_STATE":""}}';
         try {
             this.log.info('connecting to Senec: ' + url);
-            const body = await this.doGet(url, form, this, this.config.pollingTimeout);
+            const body = await this.doGet(url, form, this, this.config.pollingTimeout, true);
             this.log.info('connected to Senec: ' + url);
         } catch (error) {
             throw new Error("Error connecting to Senec (IP: " + connectVia + this.config.senecip + "). Exiting! (" + error + "). Try to toggle https-mode in settings and check FQDN of SENEC appliance.");
@@ -244,13 +249,31 @@ class Senec extends utils.Adapter {
 			username: this.config.api_mail
 		});
 		try {
-            const body = await this.doGet(apiLoginUrl, loginData, this, this.config.pollingTimeout);
+            const body = await this.doGet(apiLoginUrl, loginData, this, this.config.pollingTimeout, true);
             this.log.info('connected to Senec AppAPI.');
 			apiLoginToken = JSON.parse(body).token;
-			this.apiConnected = true;
+			apiConnected = true;
+			axios.defaults.headers.common['authorization'] = apiLoginToken;
 			this.log.debug('Token received: ' + apiLoginToken);
         } catch (error) {
             throw new Error("Error connecting to Senec AppAPI. Exiting! (" + error + ").");
+        }
+    }
+	
+	/**
+     * Reads system data from senec app api
+     */
+    async getApiSystems() {
+		if (!this.config.api_use || !apiConnected) {
+			this.log.info('Usage of SENEC App API not configured or not connected.');
+			return;
+		}
+        this.log.info('Reading Systems Information from Senec App API ' + apiSystemsUrl);
+		try {
+            const body = await this.doGet(apiSystemsUrl, "", this, this.config.pollingTimeout, false);
+            this.log.info('Read Systems Information from Senec AppAPI.');
+        } catch (error) {
+            throw new Error("Error reading Systems Information from Senec AppAPI. (" + error + ").");
         }
     }
 
@@ -259,11 +282,10 @@ class Senec extends utils.Adapter {
      * @param url to read from
      * @param form to post
      */
-	doGet(pUrl, pForm, caller, pollingTimeout) {
+	doGet(pUrl, pForm, caller, pollingTimeout, isPost) {
 		return new Promise(function (resolve, reject) {
 			axios({
-				headers: { 'Content-Type': 'application/json', },
-				method: 'post',
+				method: isPost ? 'post' : 'get',
 				httpsAgent: agent,
 				url: pUrl,
 				data: pForm,
@@ -310,7 +332,7 @@ class Senec extends utils.Adapter {
 		}
 		
 		try {
-            var body = await this.doGet(url, (isHighPrio ? highPrioForm : lowPrioForm), this, this.config.pollingTimeout);
+            var body = await this.doGet(url, (isHighPrio ? highPrioForm : lowPrioForm), this, this.config.pollingTimeout, true);
 			if (body.includes('\\"')) { 
 				// in rare cases senec reports back extra escape sequences on some machines ...
 				this.log.info("(Poll) Double escapes detected!  Body inc: " + body);
