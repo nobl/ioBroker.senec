@@ -209,7 +209,8 @@
 		"highPrio_BAT1OBJ4_active": false,
 		"highPrio_TEMPMEASURE": "",
 		"highPrio_TEMPMEASURE_active": false,
-		"api_use": false
+		"api_use": false,
+		"api_interval": 5
     },
 	"nativeEncrypted": {
         "api_mail": "",

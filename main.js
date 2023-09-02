@@ -220,6 +220,11 @@ class Senec extends utils.Adapter {
 			connectVia = "https://";
 			this.log.debug("(checkConf) Switching to https ... " + this.config.useHttps);
 		}
+		this.log.debug("(checkConf) Configured api polling interval: " + this.config.api_interval);
+        if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
+            this.log.warn("(checkConf) Config api polling interval " + this.config.api_interval + " not [3..1440] seconds. Using default: 5");
+            this.config.api_interval = 5;
+        }
     }
 
     /**
@@ -377,7 +382,8 @@ class Senec extends utils.Adapter {
      * Read values from Senec App API
      */
 	async pollSenecAppApi(retry) {
-		var interval = this.config.interval * 1000;
+		var interval = this.config.api_interval * 60000;
+		this.log.debug("Polling API ...");
 		var body = "";
 		try {
 			for (let i = 0; i < apiKnownSystems.length; i++) {
