@@ -69,7 +69,7 @@ class Senec extends utils.Adapter {
 			if (apiConnected) await this.getApiSystems();
 			await this.pollSenec(true, 0); // highPrio
 			await this.pollSenec(false, 0); // lowPrio
-			await this.pollSenecAppApi(0); // App API
+			if (apiConnected) await this.pollSenecAppApi(0); // App API
 			this.setState('info.connection', true, true);
         } catch (error) {
             this.log.error(error);
@@ -267,6 +267,7 @@ class Senec extends utils.Adapter {
 			apiConnected = true;
 			axios.defaults.headers.get['authorization'] = apiLoginToken;
         } catch (error) {
+			apiConnected = false;
             throw new Error("Error connecting to Senec AppAPI. Exiting! (" + error + ").");
         }
     }
@@ -390,6 +391,10 @@ class Senec extends utils.Adapter {
      * Read values from Senec App API
      */
 	async pollSenecAppApi(retry) {
+		if (!this.config.api_use || !apiConnected) {
+			this.log.info('Usage of SENEC App API not configured or not connected.');
+			return;
+		}
 		const interval = this.config.api_interval * 60000;
 		const dates = new Map([
 			["THIS_DAY", new Date().toISOString().split('T')[0]],

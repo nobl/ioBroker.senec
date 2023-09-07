@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.2",
+        "version": "1.6.3",
         "news": {
+			"1.6.3": {
+				"en": "Bugfixes for API reading.",
+				"de": "Bugfixes im API Handling.",
+				"ru": "Bugfixes для чтения API.",
+				"pt": "Bugfixes para leitura de API.",
+				"nl": "Bugfixes voor API-lezing.",
+				"fr": "Bugfixes pour la lecture de l'API.",
+				"it": "Bugfixes per la lettura API.",
+				"es": "Bugfixes para la lectura de API.",
+				"pl": "Bugfixes for API reading (ang.).",
+				"uk": "Виправлення помилок для читання API.",
+				"zh-cn": "评 注."
+			},
 			"1.6.2": {
 				"en": "Added statistics values from API along with some own calculations.",
 				"de": "Statistikwerte von API zusammen mit einigen eigenen Berechnungen hinzugefügt.",

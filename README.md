@@ -366,6 +366,9 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.6.3 (NoBl)
+* Code optimization
+
 ### 1.6.2 (NoBl)
 * Added statistics values from API along with some own calculations.
 
