@@ -454,9 +454,9 @@ class Senec extends utils.Adapter {
 				this.doState(pfx + key, value, "", "", false);
 			} else {
 				for (const[key2, value2] of Object.entries(value)) {
-					this.doState(pfx + key + "." + key2, (value2.wert).toFixed(2), "", value2.einheit, false);
+					this.doState(pfx + key + "." + key2, Number((value2.wert).toFixed(2)), "", value2.einheit, false);
 					if (kiloList.includes(value2.einheit)) {
-						this.doState(pfx + key + "." + key2 + " (k" + value2.einheit + ")", (value2.wert / 1000).toFixed(2), "", "k" + value2.einheit, false);
+						this.doState(pfx + key + "." + key2 + " (k" + value2.einheit + ")", Number((value2.wert / 1000).toFixed(2)), "", "k" + value2.einheit, false);
 					}
 				}
 			}
@@ -471,9 +471,9 @@ class Senec extends utils.Adapter {
 			if (key == "startzeitpunkt") {
 				this.doState(pfx + key, value, "", "", false);
 			} else {
-				this.doState(pfx + key, (value.wert).toFixed(2), "", value.einheit, false);
+				this.doState(pfx + key, Number((value.wert).toFixed(2)), "", value.einheit, false);
 				if (kiloList.includes(value.einheit)) {
-					this.doState(pfx + key + " (k"+ value.einheit + ")", (value.wert / 1000).toFixed(2), "", "k" + value.einheit, false);
+					this.doState(pfx + key + " (k"+ value.einheit + ")", Number((value.wert / 1000).toFixed(2)), "", "k" + value.einheit, false);
 				}
 			}
 		}

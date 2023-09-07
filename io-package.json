@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.3",
+        "version": "1.6.4",
         "news": {
+			"1.6.4": {
+				"en": "Numbers are numbers again",
+				"de": "Zahlen sind wieder Zahlen",
+				"ru": "Номера снова",
+				"pt": "Os números são números novamente",
+				"nl": "Nummers zijn weer getallen",
+				"fr": "Les nombres sont de nouveau des nombres",
+				"it": "I numeri sono di nuovo numeri",
+				"es": "Números son números de nuevo",
+				"pl": "Liczby są ponownie numerami",
+				"uk": "Кількість чисел знову",
+				"zh-cn": "数字再次编号"
+			},
 			"1.6.3": {
 				"en": "Bugfixes for API reading.",
 				"de": "Bugfixes im API Handling.",
