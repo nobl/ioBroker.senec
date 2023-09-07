@@ -14,6 +14,9 @@ axios.defaults.headers.post['Content-Type'] = "application/json";
 
 const state_attr = require(__dirname + '/lib/state_attr.js');
 const state_trans = require(__dirname + '/lib/state_trans.js');
+const api_trans = require(__dirname + '/lib/api_trans.js');
+const kiloList = ["W", "Wh"];
+
 const apiUrl = "https://app-gateway-prod.senecops.com/v1/senec";
 const apiLoginUrl = apiUrl + "/login";
 const apiSystemsUrl = apiUrl + "/anlagen";
@@ -26,6 +29,7 @@ let retryLowPrio = 0; // retry-counter
 let connectVia = "http://";
 
 const allKnownObjects = new Set(["BAT1","BAT1OBJ1","BAT1OBJ2","BAT1OBJ3","BMS","BMS_PARA","CASC","DEBUG","DISPLAY","ENERGY","FACTORY","FEATURES","FILE","GRIDCONFIG","ISKRA","LOG","PM1","PM1OBJ1","PM1OBJ2","PV1","PWR_UNIT","RTC","SELFTEST_RESULTS","SOCKETS","STATISTIC","STECA","SYS_UPDATE","TEMPMEASURE","TEST","UPDATE","WALLBOX","WIZARD"]);
+// STATISTICS is faded out by senec. Keeping it while we still have machines getting it. This will also deprecate all calculated valued in the "_calc" branch.
 
 const highPrioObjects = new Map;
 let lowPrioForm = "";
@@ -127,6 +131,7 @@ class Senec extends utils.Adapter {
 					if (this.config.disclaimer && this.config.highPrio_PM1OBJ2_active) this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ2);
 				break;
 				case "STATISTIC":
+					// soon to be deprecated
 					["LIVE_GRID_EXPORT","LIVE_GRID_IMPORT","LIVE_HOUSE_CONS","LIVE_PV_GEN","LIVE_BAT_CHARGE_MASTER","LIVE_BAT_DISCHARGE_MASTER"].forEach(item => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_STATISTIC_active) this.addUserDps(value, objectsSet, this.config.highPrio_STATISTIC);
 				break;
@@ -285,7 +290,10 @@ class Senec extends utils.Adapter {
 				const systemId = value.id;
 				apiKnownSystems.push(systemId);
 				for (const[key2, value2] of Object.entries(value)) {
-					this.doState(pfx + systemId + "." + key2, JSON.stringify(value2), "", "", false);
+					if (typeof value2 === "object") 
+						this.doState(pfx + systemId + "." + key2, JSON.stringify(value2), "", "", false);
+					else 
+						this.doState(pfx + systemId + "." + key2, value2, "", "", false);
 				}
 			}
 			this.doState(pfx + 'IDs', JSON.stringify(apiKnownSystems), "Anlagen IDs", "", false);
@@ -382,15 +390,37 @@ class Senec extends utils.Adapter {
      * Read values from Senec App API
      */
 	async pollSenecAppApi(retry) {
-		var interval = this.config.api_interval * 60000;
+		const interval = this.config.api_interval * 60000;
+		const dates = new Map([
+			["THIS_DAY", new Date().toISOString().split('T')[0]],
+			["LAST_DAY", new Date(new Date().setDate(new Date().getDate()-1)).toISOString().split('T')[0]],
+			["THIS_MONTH", new Date().toISOString().split('T')[0]],
+			["LAST_MONTH", new Date(new Date().setDate(0)).toISOString().split('T')[0]],
+			["THIS_YEAR", new Date().toISOString().split('T')[0]],
+			["LAST_YEAR", new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split('T')[0]]
+		]);
+				
 		this.log.debug("Polling API ...");
 		var body = "";
 		try {
 			for (let i = 0; i < apiKnownSystems.length; i++) {
+				const baseUrl = apiSystemsUrl + "/" + apiKnownSystems[i]
+				var url = "";
+				const tzObj = await this.getStateAsync("_api.Anlagen." + apiKnownSystems[i] + ".zeitzone");
+				const tz = tzObj ? encodeURIComponent(tzObj.val) : encodeURIComponent("Europe/Berlin");
+				
 				// dashboard
-				var url = apiSystemsUrl + "/" + apiKnownSystems[i] + "/dashboard";
+				url = baseUrl + "/dashboard";
 				body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
 				await this.decodeDashboard(apiKnownSystems[i], JSON.parse(body));
+				
+				for (let[key, value] of dates.entries()) {
+					// statistik today
+					url = baseUrl + "/statistik?periode=" + api_trans[key].api + "&datum=" + value + "&locale=de_DE&timezone=" + tz;
+					body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
+					await this.decodeStatistik(apiKnownSystems[i], JSON.parse(body), api_trans[key].dp);
+				}
+				
 				// // wallboxes - only if wallbox exists? - Without: error 500
 				//var url = apiSystemsUrl + "/" + apiKnownSystems[i] + "/wallboxes/1";
 				//body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
@@ -419,11 +449,31 @@ class Senec extends utils.Adapter {
 				this.doState(pfx + key, value, "", "", false);
 			} else {
 				for (const[key2, value2] of Object.entries(value)) {
-					this.doState(pfx + key + "." + key2, value2.wert, "", value2.einheit, false);
+					this.doState(pfx + key + "." + key2, (value2.wert).toFixed(2), "", value2.einheit, false);
+					if (kiloList.includes(value2.einheit)) {
+						this.doState(pfx + key + "." + key2 + " (k" + value2.einheit + ")", (value2.wert / 1000).toFixed(2), "", "k" + value2.einheit, false);
+					}
 				}
 			}
 		}
 		
+	}
+	
+	async decodeStatistik(system, obj, period) {
+		const pfx = "_api.Anlagen." + system + ".Statistik." + period + ".";
+		for (const[key, value] of Object.entries(obj.aggregation)) {
+			// only reading 'aggregation' - no interest in fine granular information
+			if (key == "startzeitpunkt") {
+				this.doState(pfx + key, value, "", "", false);
+			} else {
+				this.doState(pfx + key, (value.wert).toFixed(2), "", value.einheit, false);
+				if (kiloList.includes(value.einheit)) {
+					this.doState(pfx + key + " (k"+ value.einheit + ")", (value.wert / 1000).toFixed(2), "", "k" + value.einheit, false);
+				}
+			}
+		}
+		const autarky = (((obj.aggregation.stromerzeugung.wert - obj.aggregation.netzeinspeisung.wert - obj.aggregation.speicherbeladung.wert + obj.aggregation.speicherentnahme.wert) / obj.aggregation.stromverbrauch.wert) * 100).toFixed(2);
+		this.doState(pfx + "Autarkie", autarky, "", "%", false);
 	}
 
     /**
@@ -481,7 +531,7 @@ class Senec extends utils.Adapter {
 			val: value,
 			ack: true
 		});
-		await this.checkUpdateSelfStat(name);
+		await this.checkUpdateSelfStat(name); // soon to be deprecated
 		await this.doDecode(name, value);
 	}
 		
@@ -512,6 +562,7 @@ class Senec extends utils.Adapter {
 	 * Helper routine
 	 */
 	async checkUpdateSelfStat(name) {
+		// soon to be deprecated
 		if (name === "STATISTIC.LIVE_GRID_EXPORT" || name === "STATISTIC.LIVE_GRID_IMPORT" || name === "STATISTIC.LIVE_HOUSE_CONS" || name === "STATISTIC.LIVE_PV_GEN" || name === "STATISTIC.LIVE_BAT_CHARGE_MASTER" || name === "STATISTIC.LIVE_BAT_DISCHARGE_MASTER") {
 			await this.updateSelfStat(name);
 		}
@@ -546,6 +597,7 @@ class Senec extends utils.Adapter {
     }
 	
 	async updateSelfStat(name, value) {
+		// soon to be deprecated
 		await this.updateSelfStatHelper(name, value, ".today", ".yesterday", ".refValue", "Day", getCurDay());
 		await this.updateSelfStatHelper(name, value, ".week", ".lastWeek", ".refValueWeek", "Week", getCurWeek());
 		await this.updateSelfStatHelper(name, value, ".month", ".lastMonth", ".refValueMonth", "Month", getCurMonth());
@@ -554,6 +606,7 @@ class Senec extends utils.Adapter {
 	}
 	
 	async updateSelfStatHelper(name, value, today, yesterday, refValue, day, curDay) {
+		// soon to be deprecated
 		const key = "_calc." + name.substring(10);
 		
 		const refDayObj = await this.getStateAsync(key + ".ref" + day);
@@ -598,6 +651,7 @@ class Senec extends utils.Adapter {
 	}
 	
 	async updateAutarkyHelper(today, yesterday, day, curDay) {
+		// soon to be deprecated
 		const key = "_calc.Autarky";
 		
 		// reference object to decide on change of day

@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.1",
+        "version": "1.6.2",
         "news": {
+			"1.6.2": {
+				"en": "Added statistics values from API along with some own calculations.",
+				"de": "Statistikwerte von API zusammen mit einigen eigenen Berechnungen hinzugefügt.",
+				"ru": "Добавлены статистические значения из API наряду с некоторыми собственными расчетами.",
+				"pt": "Adicionados valores estatísticos da API junto com alguns próprios cálculos.",
+				"nl": "Voeg statistieken toe van API samen met wat eigen berekeningen.",
+				"fr": "Ajout des valeurs statistiques de l'API avec certains propres calculs.",
+				"it": "Aggiunti i valori statistici da API con alcuni propri calcoli.",
+				"es": "Valores estadísticos añadidos de API junto con algunos cálculos propios.",
+				"pl": "Wstępne dane z API wraz z kilkoma własnymi obliczeniami.",
+				"uk": "Додано значення статистичних даних з API разом з деякими власними підрахунками.",
+				"zh-cn": "加上非传染性疾病的统计价值以及一些本身的计算。."
+			},
 			"1.6.1": {
 				"en": "Bugfixes for API reading.",
 				"de": "Bugfixes im API Handling.",
@@ -93,32 +106,6 @@
 				"pl": "Dodana opcja do używania https dla połączenia z SENEC (w sposób aktywowana, jeśli dana osoba obsługuje / wymaga to)",
 				"uk": "Додано можливість використовувати HTTPS для підключення до SENEC (тільки активуйте, якщо підтримує додаток / вимагає цього)",
 				"zh-cn": "增加使用连接到SENEC的网站的选择(如果你的可靠支持/要求这样做)"
-			},
-			"1.4.1": {
-				"en": "Autarky calculations are working again.",
-				"de": "Autarkieberechnungen funktionieren wieder.",
-				"ru": "Расчеты Autarky снова работают.",
-				"pt": "Cálculos autarcos estão a funcionar outra vez.",
-				"nl": "Autarische berekeningen werken weer.",
-				"fr": "Les calculs Autarky fonctionnent à nouveau.",
-				"it": "I calcoli autarky funzionano di nuovo.",
-				"es": "Los cálculos autárquicos están funcionando de nuevo.",
-				"pl": "Ponowne obliczenia autarktyczne działają ponownie.",
-				"uk": "Аутарки знову працюють.",
-				"zh-cn": "Autarky的计算正再次工作。."
-			},
-			"1.4.0": {
-				"en": "Added object caching and minor code updates. Due to the amount of objects we deal with caching is about mandatory.",
-				"de": "Objekt-Caching und kleinere Code-Updates hinzugefügt. Aufgrund der Menge an Objekten, die der Adapter bearbeitet, ist Caching zwingend notwendig.",
-				"ru": "Добавлена кэшировка объекта и незначительные обновления кода. В связи с количеством объектов, с которыми мы занимаемся кэшированием, является обязательным.",
-				"pt": "Adicionado cache de objeto e pequenas atualizações de código. Devido à quantidade de objetos que lidamos com caching é sobre obrigatória.",
-				"nl": "Toegevoegd voorwerp caching en kleine code updates. Gezien de hoeveelheid objecten die we met caching hebben, gaat het over verplichting.",
-				"fr": "Ajout de cache d'objet et de mises à jour de code mineur. En raison de la quantité d'objets que nous traitons avec le cache est environ obligatoire.",
-				"it": "Aggiunti caching oggetto e aggiornamenti di codice minori. A causa della quantità di oggetti che abbiamo a che fare con il caching è circa obbligatorio.",
-				"es": "Añadido objeto caching y actualizaciones de código menor. Debido a la cantidad de objetos que tratamos con el caché es sobre obligatorio.",
-				"pl": "Dodany obiekt caching i drobnych aktualizacji kodu. Ze względu na ilość przedmiotów, które traktują z cachingiem, dotyczy obowiązkowych.",
-				"uk": "Додано кешування об'єкта та оновлення коду неповного розміру. У зв'язку з кількістю об'єктів, які ми маємо справу з кешуванням, є обов'язковим.",
-				"zh-cn": "添加了目标包和小法典的更新。 由于我们所处理的物品数量是强制性的。."
 			}
         },
         "docs": {
