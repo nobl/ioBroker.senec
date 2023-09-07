@@ -477,7 +477,7 @@ class Senec extends utils.Adapter {
 				}
 			}
 		}
-		const autarky = (((obj.aggregation.stromerzeugung.wert - obj.aggregation.netzeinspeisung.wert - obj.aggregation.speicherbeladung.wert + obj.aggregation.speicherentnahme.wert) / obj.aggregation.stromverbrauch.wert) * 100).toFixed(2);
+		const autarky = Number((((obj.aggregation.stromerzeugung.wert - obj.aggregation.netzeinspeisung.wert - obj.aggregation.speicherbeladung.wert + obj.aggregation.speicherentnahme.wert) / obj.aggregation.stromverbrauch.wert) * 100).toFixed(2));
 		this.doState(pfx + "Autarkie", autarky, "", "%", false);
 	}
 
