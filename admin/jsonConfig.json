@@ -83,7 +83,7 @@
 						"uk": "Чи потрібен HTTPS для підключення до SENEC? Тільки перевірте, чи підтримує SENEC HTTPS вже!",
 						"zh-cn": "是否需要与ENEC联系? 只有检查有无国界协会支持已经!"
 					},
-					"default": false,
+					"default": true,
 					"newLine": false
 				},
 				"interval": {
@@ -1240,6 +1240,40 @@
 					"default": 5,
 					"min": 3,
 					"max": 1440,
+					"newLine": true
+				},
+				"api_alltimeRebuild": {
+					"type": "checkbox",
+					"sm": 12,
+                    "md": 6,
+                    "lg": 6,
+					"label": {
+						"en": "Rebuild AllTime history (one-time)",
+						"de": "Gesamthistorie neu berechnen (einmalig)",
+						"ru": "Восстановление истории AllTime (один раз)",
+						"pt": "Reconstruir história AllTime (um tempo)",
+						"nl": "Herbouw AllTime geschiedenis (1-time)",
+						"fr": "Rebuild AllTime history (une fois)",
+						"it": "Ricostruire la storia di AllTime (una volta)",
+						"es": "Recuperar historia de AllTime (una sola vez)",
+						"pl": "Rebuild All Time history (ang.)",
+						"uk": "Історія (один раз)",
+						"zh-cn": "废除所有制度的历史(一次性)"
+					},
+					"help": {
+						"en": "Check this if you want the adapter to rebuild history values back to date of installation.",
+						"de": "Aktivieren, falls der Adapter die Historienwerte seit Installation neu berechnen soll.",
+						"ru": "Проверьте это, если вы хотите, чтобы адаптер восстановить значения истории обратно к дате установки.",
+						"pt": "Verifique se deseja que o adaptador reconstrua os valores do histórico de volta à data da instalação.",
+						"nl": "Controleer dit als je wilt dat de adapter de geschiedeniswaarden herbouwt tot datum van installatie.",
+						"fr": "Vérifiez ceci si vous voulez que l'adaptateur reconstruise les valeurs d'histoire à la date d'installation.",
+						"it": "Controllare questo se si desidera che l'adattatore per ricostruire i valori storici fino alla data di installazione.",
+						"es": "Revise esto si desea que el adaptador reconstruya los valores de historia hasta la fecha de instalación.",
+						"pl": "Umożliwia to, czy chcesz adapterowi odbudować wartości historyczne do daty instalacji.",
+						"uk": "Перевірте це, якщо ви хочете перебудувати значення історії назад до дати установки.",
+						"zh-cn": "如果你想适应者重建历史价值,那么我们就会感到惊讶。."
+					},
+					"default": false,
 					"newLine": true
 				},
 			}

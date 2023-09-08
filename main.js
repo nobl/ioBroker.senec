@@ -292,12 +292,12 @@ class Senec extends utils.Adapter {
 				apiKnownSystems.push(systemId);
 				for (const[key2, value2] of Object.entries(value)) {
 					if (typeof value2 === "object") 
-						this.doState(pfx + systemId + "." + key2, JSON.stringify(value2), "", "", false);
+						await this.doState(pfx + systemId + "." + key2, JSON.stringify(value2), "", "", false);
 					else 
-						this.doState(pfx + systemId + "." + key2, value2, "", "", false);
+						await this.doState(pfx + systemId + "." + key2, value2, "", "", false);
 				}
 			}
-			this.doState(pfx + 'IDs', JSON.stringify(apiKnownSystems), "Anlagen IDs", "", false);
+			await this.doState(pfx + 'IDs', JSON.stringify(apiKnownSystems), "Anlagen IDs", "", false);
         } catch (error) {
             throw new Error("Error reading Systems Information from Senec AppAPI. (" + error + ").");
         }
@@ -409,7 +409,7 @@ class Senec extends utils.Adapter {
 		var body = "";
 		try {
 			for (let i = 0; i < apiKnownSystems.length; i++) {
-				const baseUrl = apiSystemsUrl + "/" + apiKnownSystems[i]
+				const baseUrl = apiSystemsUrl + "/" + apiKnownSystems[i];
 				var url = "";
 				const tzObj = await this.getStateAsync("_api.Anlagen." + apiKnownSystems[i] + ".zeitzone");
 				const tz = tzObj ? encodeURIComponent(tzObj.val) : encodeURIComponent("Europe/Berlin");
@@ -420,17 +420,14 @@ class Senec extends utils.Adapter {
 				await this.decodeDashboard(apiKnownSystems[i], JSON.parse(body));
 				
 				for (let[key, value] of dates.entries()) {
-					// statistik today
+					// statistik for period
 					url = baseUrl + "/statistik?periode=" + api_trans[key].api + "&datum=" + value + "&locale=de_DE&timezone=" + tz;
 					body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
 					await this.decodeStatistik(apiKnownSystems[i], JSON.parse(body), api_trans[key].dp);
 				}
 				
-				// // wallboxes - only if wallbox exists? - Without: error 500
-				//var url = apiSystemsUrl + "/" + apiKnownSystems[i] + "/wallboxes/1";
-				//body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
-				//this.log.info("Abilities: " + body);
-				//await this.decodeWallbox(apiKnownSystems[i], JSON.parse(body));
+				if (this.config.api_alltimeRebuild) await this.rebuildAllTimeHistory(apiKnownSystems[i]);
+				
 			}
 			retry = 0;
 			if (unloaded) return;
@@ -447,16 +444,19 @@ class Senec extends utils.Adapter {
         }
 	}
 	
+	/**
+	 * Decodes Dashboard information from SENEC App API
+	 */
 	async decodeDashboard(system, obj) {
 		const pfx = "_api.Anlagen." + system + ".Dashboard.";
 		for (const[key, value] of Object.entries(obj)) {
 			if (key == "zeitstempel" || key == "electricVehicleConnected") {
-				this.doState(pfx + key, value, "", "", false);
+				await this.doState(pfx + key, value, "", "", false);
 			} else {
 				for (const[key2, value2] of Object.entries(value)) {
-					this.doState(pfx + key + "." + key2, Number((value2.wert).toFixed(2)), "", value2.einheit, false);
+					await this.doState(pfx + key + "." + key2, Number((value2.wert).toFixed(2)), "", value2.einheit, false);
 					if (kiloList.includes(value2.einheit)) {
-						this.doState(pfx + key + "." + key2 + " (k" + value2.einheit + ")", Number((value2.wert / 1000).toFixed(2)), "", "k" + value2.einheit, false);
+						await this.doState(pfx + key + "." + key2 + " (k" + value2.einheit + ")", Number((value2.wert / 1000).toFixed(2)), "", "k" + value2.einheit, false);
 					}
 				}
 			}
@@ -464,21 +464,105 @@ class Senec extends utils.Adapter {
 		
 	}
 	
+	/**
+	 * Decodes Statistik information from SENEC App API
+	 */
 	async decodeStatistik(system, obj, period) {
 		const pfx = "_api.Anlagen." + system + ".Statistik." + period + ".";
 		for (const[key, value] of Object.entries(obj.aggregation)) {
 			// only reading 'aggregation' - no interest in fine granular information
 			if (key == "startzeitpunkt") {
-				this.doState(pfx + key, value, "", "", false);
+				await this.doState(pfx + key, value, "", "", false);
 			} else {
-				this.doState(pfx + key, Number((value.wert).toFixed(2)), "", value.einheit, false);
-				if (kiloList.includes(value.einheit)) {
-					this.doState(pfx + key + " (k"+ value.einheit + ")", Number((value.wert / 1000).toFixed(2)), "", "k" + value.einheit, false);
+				if (!this.config.api_alltimeRebuild) { // don't update DPs if we are AllTime-Rebuild-Process 
+					await this.doState(pfx + key, Number((value.wert).toFixed(2)), "", value.einheit, false);
+					if (kiloList.includes(value.einheit)) {
+						await this.doState(pfx + key + " (k"+ value.einheit + ")", Number((value.wert / 1000).toFixed(2)), "", "k" + value.einheit, false);
+					}
 				}
+				if (period == api_trans["THIS_YEAR"].dp) await this.insertAllTimeHistory(system, key, new Date(obj.aggregation.startzeitpunkt).getFullYear(), Number((value.wert).toFixed(2)), value.einheit);
 			}
 		}
 		const autarky = Number((((obj.aggregation.stromerzeugung.wert - obj.aggregation.netzeinspeisung.wert - obj.aggregation.speicherbeladung.wert + obj.aggregation.speicherentnahme.wert) / obj.aggregation.stromverbrauch.wert) * 100).toFixed(2));
-		this.doState(pfx + "Autarkie", autarky, "", "%", false);
+		await this.doState(pfx + "Autarkie", autarky, "", "%", false);
+		await this.updateAllTimeHistory(system);
+	}
+	
+	/**
+	 * inserts a value for a given key and year into AllTimeValueStore
+	 */
+	async insertAllTimeHistory(system, key, year, value, einheit) {
+		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
+		const valueStore = pfx + "valueStore";
+		const statsObj = await this.getStateAsync(valueStore);
+		const stats = statsObj ? JSON.parse(statsObj.val) : {};
+		if (!stats[key]) stats[key] = {};
+		if (!stats[key][year]) stats[key][year] = {};
+		stats[key][year] = value;
+		stats[key]["einheit"] = einheit;
+		await this.doState(valueStore, JSON.stringify(stats), "", "", false);
+	}
+	
+	/**
+	 * Updated AllTimeHistory based on what we have in our AllTimeValueStore
+	 */
+	async updateAllTimeHistory(system) {
+		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
+		const valueStore = pfx + "valueStore";
+		const statsObj = await this.getStateAsync(valueStore);
+		const stats = statsObj ? JSON.parse(statsObj.val) : {};
+		const sums = {};
+		for (const[key, value] of Object.entries(stats)) {
+			var einheit = "";
+			var sum = 0.0;
+			for (const[key2, value2] of Object.entries(value)) {
+				if (key2 == "einheit") {
+					einheit = value2;
+				} else {
+					sum += value2;
+				}
+			}
+			sums[key] = sum;
+			if (kiloList.includes(einheit)) {
+				await this.doState(pfx + key, Number((sum / 1000).toFixed(0)), "", "k" + einheit, false);
+			} else {
+				await this.doState(pfx + key, Number(sum.toFixed(2)), "", einheit, false);
+			}
+		}
+		const autarky = Number((((sums.stromerzeugung - sums.netzeinspeisung - sums.speicherbeladung + sums.speicherentnahme) / sums.stromverbrauch) * 100).toFixed(0));
+		await this.doState(pfx + "Autarkie", autarky, "", "%", false);
+	}
+	
+	/**
+	 * Rebuilds AllTimeHistory from SENEC App API
+	 */
+	async rebuildAllTimeHistory(system) {
+		if (!this.config.api_use || !apiConnected) {
+			this.log.info('Usage of SENEC App API not configured or not connected.');
+			return;
+		}
+		
+		this.log.info("Rebuilding AllTime History ...");
+		var year = new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split('T')[0]; // starting last year, because we already got current year covered
+		var body = "";
+		try {
+			while (new Date(year).getFullYear() > 2008) { // senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
+				this.log.info("Rebuilding AllTime History - Year: " + new Date(year).getFullYear());
+				const baseUrl = apiSystemsUrl + "/" + system
+				var url = "";
+				const tzObj = await this.getStateAsync("_api.Anlagen." + system + ".zeitzone");
+				const tz = tzObj ? encodeURIComponent(tzObj.val) : encodeURIComponent("Europe/Berlin");
+				url = baseUrl + "/statistik?periode=JAHR&datum=" + year + "&locale=de_DE&timezone=" + tz;
+				body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
+				await this.decodeStatistik(system, JSON.parse(body), api_trans["THIS_YEAR"].dp);
+				year = new Date(new Date(year).getFullYear() - 1, 1, 1).toISOString().split('T')[0];
+				if (unloaded) return;
+			}
+		} catch (error) {
+			this.log.info("Rebuild ended.");
+        }
+		this.log.info("Restarting ...");
+		this.extendForeignObject(`system.adapter.${this.namespace}`, {native: {api_alltimeRebuild: false}});
 	}
 
     /**

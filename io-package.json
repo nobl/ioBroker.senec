@@ -205,7 +205,7 @@
 		"pollingTimeout": 5000,
 		"retries": 10,
 		"retrymultiplier": 2,
-		"useHttps": false,
+		"useHttps": true,
 		"disclaimer": false,
 		"highPrio_BMS": "",
 		"highPrio_BMS_active": false,
@@ -236,7 +236,8 @@
 		"highPrio_TEMPMEASURE": "",
 		"highPrio_TEMPMEASURE_active": false,
 		"api_use": false,
-		"api_interval": 5
+		"api_interval": 5,
+		"api_alltimeRebuild": false
     },
 	"nativeEncrypted": {
         "api_mail": "",
