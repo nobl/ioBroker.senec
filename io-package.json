@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.4",
+        "version": "1.6.5",
         "news": {
+			"1.6.5": {
+				"en": "Added AllTime Statistics (trigger initial calculations in adapter settings), https is now default for new instances.",
+				"de": "AllTime Statistiken hinzugefügt (initiale Berechnung bitte in den Adapter-Einstellungen aktivieren), https ist jetzt Standard für neue Instanzen.",
+				"ru": "Добавлена статистика AllTime (trigger начальные расчеты в настройках адаптера), https теперь по умолчанию для новых инстанций.",
+				"pt": "Adicionado AllTime Statistics ( cálculos iniciais de gatilho em configurações de adaptador), https agora é padrão para novas instâncias.",
+				"nl": "Toegevoegd AllTime Statistieken (trigger initialen berekeningen in adapter settings\" \"htps is nu default voor nieuwe instanties.",
+				"fr": "Ajout de AllTime Statistics (trigger initial calculations in adapt settings), https est maintenant par défaut pour de nouveaux cas.",
+				"it": "Aggiunta AllTime Statistics (configurazioni iniziali del trigger nelle impostazioni dell'adattatore), https è ora predefinito per nuove istanze.",
+				"es": "Añadido AllTime Statistics (trigger inicial calculations in adapter settings), https ahora es predeterminado para nuevas instancias.",
+				"pl": "Added AllTime Statistics (trigger początkowych obliczeń w ustawieniach adapterów), https jest obecnie domyślny do nowych instancji.",
+				"uk": "Додано AllTime Статистика (тригер початкових обчислень в налаштуваннях адаптера), HTTPS тепер за замовчуванням для нових екземплярів.",
+				"zh-cn": "加上《所有制度统计》(在适应环境中的过份初步计算),目前,新情况目前有缺陷。."
+			},
 			"1.6.4": {
 				"en": "Numbers are numbers again",
 				"de": "Zahlen sind wieder Zahlen",

@@ -366,6 +366,10 @@ This channel contains calculated values. Currently these are day/week/month/year
    *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
 
 ## Changelog
+### 1.6.5 (NoBl)
+* Added AllTime Statistics (trigger initial calculations in adapter settings)
+* https is now default for new instances
+
 ### 1.6.4 (NoBl)
 * Bugfix (numbers are numbers again)
 
