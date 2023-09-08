@@ -480,7 +480,7 @@ class Senec extends utils.Adapter {
 						await this.doState(pfx + key + " (k"+ value.einheit + ")", Number((value.wert / 1000).toFixed(2)), "", "k" + value.einheit, false);
 					}
 				}
-				if (period == api_trans["THIS_YEAR"].dp) await this.insertAllTimeHistory(system, key, new Date(obj.aggregation.startzeitpunkt).getFullYear(), Number((value.wert).toFixed(2)), value.einheit);
+				if (period == api_trans["THIS_YEAR"].dp) await this.insertAllTimeHistory(system, key, new Date(obj.aggregation.startzeitpunkt).getFullYear(), Number((value.wert).toFixed(0)), value.einheit);
 			}
 		}
 		const autarky = Number((((obj.aggregation.stromerzeugung.wert - obj.aggregation.netzeinspeisung.wert - obj.aggregation.speicherbeladung.wert + obj.aggregation.speicherentnahme.wert) / obj.aggregation.stromverbrauch.wert) * 100).toFixed(2));
@@ -526,7 +526,7 @@ class Senec extends utils.Adapter {
 			if (kiloList.includes(einheit)) {
 				await this.doState(pfx + key, Number((sum / 1000).toFixed(0)), "", "k" + einheit, false);
 			} else {
-				await this.doState(pfx + key, Number(sum.toFixed(2)), "", einheit, false);
+				await this.doState(pfx + key, Number(sum.toFixed(0)), "", einheit, false);
 			}
 		}
 		const autarky = Number((((sums.stromerzeugung - sums.netzeinspeisung - sums.speicherbeladung + sums.speicherentnahme) / sums.stromverbrauch) * 100).toFixed(0));
