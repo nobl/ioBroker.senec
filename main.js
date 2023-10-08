@@ -453,6 +453,7 @@ class Senec extends utils.Adapter {
 	 * Decodes Statistik information from SENEC App API
 	 */
 	async decodeStatistik(system, obj, period) {
+		if (obj == null || obj == undefined || obj.aggregation == null || obj.aggregation == undefined) return; // could happen (e.g.) if we pull information for "last year" when the appliance isn't that old yet
 		const pfx = "_api.Anlagen." + system + ".Statistik." + period + ".";
 		for (const[key, value] of Object.entries(obj.aggregation)) {
 			// only reading 'aggregation' - no interest in fine granular information
