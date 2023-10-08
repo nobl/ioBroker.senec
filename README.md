@@ -293,6 +293,12 @@ This channel contains values polled from SENEC App-API.
 
 
 ## Changelog
+### 1.6.6 (NoBl)
+* Node 16 required
+* Bugfixes
+* Removed non-existing branches: _calc, Bat1Obj[2-4], Display, Statistic, File
+* Added branches: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT
+
 ### 1.6.5 (NoBl)
 * Added AllTime Statistics (trigger initial calculations in adapter settings)
 * https is now default for new instances

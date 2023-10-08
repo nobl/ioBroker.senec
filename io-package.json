@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.5",
+        "version": "1.6.6",
         "news": {
+			"1.6.6": {
+				  "en": "Node 16 required; Bugfixes; Removed non-existing branches: _calc, Bat1Obj[2-4], Display, Statistic, File; Added branches: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
+				  "de": "Node 16 erforderlich; Bugfixes; Entfernt: _calc, Bat1Obj[2-4,] Display, Statistic, Datei; Hinzugefügt: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
+				  "ru": "Node 16 требуется; Bugfixes; Удаленные несущие филиалы: _calc, Bat1Obj[2-4,] Дисплей, Статистика, Файл; Добавленные филиалы: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
+				  "pt": "Node 16 requerido; Bugfixes; ramos não existentes removidos: _calc, Bat1Obj[2-4,] Exibição, estatística, arquivo; galhos adicionados: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT",
+				  "nl": "Node 16 vereist, Bugfixes, verwijderde niet-vernietigende takken",
+				  "fr": "Node 16 required; Bugfixes; Deleted non-existing branches: _calc, Bat1Obj[2-4,] Display, Statistic, File; Added branches: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
+				  "it": "Nodo 16 richiesto; Bugfixs; Rimuoveto rami non esistenti: _calc, Bat1Obj[2-4,] Visualizzazione, Statistica, File; Aggiungi i rami: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
+				  "es": "Nodo 16 requerido; Bugfixes; ramas no existentes eliminadas: _calc, Bat1Obj[2-4,] Pantalla, Estadística, Archivo; ramas agregadas: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
+				  "pl": "Node 16 wymaga: Bugfixes; Removed non-existing branches: _calc, Bat1Obj2 (4, Display, Statistic, File; Added gałęzi: CURRENT_IMBACE_CONOL, BMZ_CURRE_LIMITS",
+				  "uk": "Node 16 потрібно; Виправлення помилок; Вилучені невибагливі гілки: _calc, Bat1Obj[2-4,] Display, Statistic, File; Додано гілки: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
+				  "zh-cn": "第16条要求:Bugfix; 取消未存在的分支:升级c,Bat1Obj[2-4] Display, Statistic, File; 增加分支:协调局:CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT"
+			},
 			"1.6.5": {
 				"en": "Added AllTime Statistics (trigger initial calculations in adapter settings), https is now default for new instances.",
 				"de": "AllTime Statistiken hinzugefügt (initiale Berechnung bitte in den Adapter-Einstellungen aktivieren), https ist jetzt Standard für neue Instanzen.",
@@ -119,32 +132,6 @@
 				"pl": "Wtedy sekcja konfiguracji dodania punktów danych do wysokiego priorytetu. Poświadczenie o możliwych zagadnieniach może powodować (jeśli są zbyt wiele punktów danych) i wykorzystać swój własny ryzyko. ALL Wallbox datapoints zostały usunięte z wysokiego priorytetu. Tylko niektórzy użytkownicy mają nawet SENEC. Powraca się poprzez nowe dialogi.",
 				"uk": "Додано розділ конфігурації, щоб додати точки даних до високого пріоритетного опитування. Будь ласка, будь ласка, будь ласка, будь ласка, зв'яжіться з нами та користуйтеся власним ризиком. Усі точки даних Wallbox видаляються з високого  пріоритетного опитування. Тільки деякі користувачі навіть мають скриньку SENEC. Будь ласка, переадресація через новий діалог налаштування.",
 				"zh-cn": "增加数据点以进行高度优先投票。 请了解可能出现的问题(如果数据点增加),并利用你自己的风险。 已从高优先投票中删除了所有Wil箱数据点。 只有一些用户甚至有SENEC墙箱。 请通过新的混凝土对话进行改组。."
-			},
-			"1.4.3": {
-				"en": "Working on https connection. Please test and report!",
-				"de": "Arbeiten an https-Verbindung. Bitte testen und melden!",
-				"ru": "Работает на связи https. Пожалуйста, проверьте и сообщите!",
-				"pt": "A trabalhar na ligação https. Por favor, teste e informe!",
-				"nl": "Werken aan HTP's verbinding. test en rapporteer!",
-				"fr": "Travailler sur la connexion https. S'il vous plaît tester et rapporter!",
-				"it": "Lavorare sul collegamento https. Si prega di testare e segnalare!",
-				"es": "Trabajando en la conexión https. ¡Por favor, prueba e informe!",
-				"pl": "Pracuje nad połączeniem https. Protestować i sprawdzić!",
-				"uk": "Робота на підключення HTTPS. Будь ласка, перевірте та звітуйте!",
-				"zh-cn": "关于网址的工作。 请试验和报告!"
-			},
-			"1.4.2": {
-				"en": "Added option to use https for connecting to SENEC (only activate if your appliance supports / requires this!)",
-				"de": "Zusätzliche Option zur Verwendung von https zur Verbindung mit SENEC hinzugefügt (nur aktivieren, wenn Ihr Gerät dies unterstützt / erfordert)",
-				"ru": "Добавлена возможность использования https для подключения к SENEC (только активируйте, если ваше приложение поддерживает / требует этого)",
-				"pt": "Adicionado opção para usar https para conectar-se ao SENEC (apenas ativar se o seu aparelho suporta / requer este)",
-				"nl": "Aangepaste optie om HTP's te gebruiken voor verbinding met SENEC (only geactiveerd als je appliance steunt / vereist dit",
-				"fr": "Ajout de l'option d'utiliser les https pour se connecter à SENEC (seulement activer si votre appareil prend en charge / nécessite ceci) ",
-				"it": "Aggiunta opzione per utilizzare https per il collegamento a SENEC (solo attivare se il tuo elettrodomestici supporta / richiede questo)",
-				"es": "Opción agregada para usar https para conectarse a SENEC (sólo activar si su dispositivo soporta / requiere esto)",
-				"pl": "Dodana opcja do używania https dla połączenia z SENEC (w sposób aktywowana, jeśli dana osoba obsługuje / wymaga to)",
-				"uk": "Додано можливість використовувати HTTPS для підключення до SENEC (тільки активуйте, якщо підтримує додаток / вимагає цього)",
-				"zh-cn": "增加使用连接到SENEC的网站的选择(如果你的可靠支持/要求这样做)"
 			}
         },
         "docs": {
