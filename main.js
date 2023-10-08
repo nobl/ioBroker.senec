@@ -28,8 +28,7 @@ let retry = 0; // retry-counter
 let retryLowPrio = 0; // retry-counter
 let connectVia = "http://";
 
-const allKnownObjects = new Set(["BAT1","BAT1OBJ1","BAT1OBJ2","BAT1OBJ3","BMS","BMS_PARA","CASC","DEBUG","DISPLAY","ENERGY","FACTORY","FEATURES","FILE","GRIDCONFIG","ISKRA","LOG","PM1","PM1OBJ1","PM1OBJ2","PV1","PWR_UNIT","RTC","SELFTEST_RESULTS","SOCKETS","STATISTIC","STECA","SYS_UPDATE","TEMPMEASURE","TEST","UPDATE","WALLBOX","WIZARD"]);
-// STATISTICS is faded out by senec. Keeping it while we still have machines getting it. This will also deprecate all calculated valued in the "_calc" branch.
+const allKnownObjects = new Set(["BAT1","BAT1OBJ1","BMS","BMS_PARA","BMZ_CURRENT_LIMITS","CASC","CELL_DEVIATION_ROC","CURRENT_IMBALANCE_CONTROL","DEBUG","ENERGY","FACTORY","FEATURES","GRIDCONFIG","ISKRA","LOG","PM1","PM1OBJ1","PM1OBJ2","PV1","PWR_UNIT","RTC","SENEC_IO_INPUT","SENEC_IO_OUTPUT","SELFTEST_RESULTS","SOCKETS","STECA","SYS_UPDATE","TEMPMEASURE","TEST","UPDATE","WALLBOX","WIZARD"]);
 
 const highPrioObjects = new Map;
 let lowPrioForm = "";
@@ -130,11 +129,6 @@ class Senec extends utils.Adapter {
 					["FREQ","U_AC","I_AC","P_AC","P_TOTAL"].forEach(item => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_PM1OBJ2_active) this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ2);
 				break;
-				case "STATISTIC":
-					// soon to be deprecated
-					["LIVE_GRID_EXPORT","LIVE_GRID_IMPORT","LIVE_HOUSE_CONS","LIVE_PV_GEN","LIVE_BAT_CHARGE_MASTER","LIVE_BAT_DISCHARGE_MASTER"].forEach(item => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_STATISTIC_active) this.addUserDps(value, objectsSet, this.config.highPrio_STATISTIC);
-				break;
 				case "WALLBOX":
 					if (this.config.disclaimer && this.config.highPrio_WALLBOX_active) this.addUserDps(value, objectsSet, this.config.highPrio_WALLBOX);
 				break;
@@ -143,15 +137,6 @@ class Senec extends utils.Adapter {
 				break;
 				case "BAT1OBJ1":
 					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ1_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT1OBJ1);
-				break;
-				case "BAT1OBJ2":
-					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ2_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT2OBJ1);
-				break;
-				case "BAT1OBJ3":
-					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ3_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT3OBJ1);
-				break;
-				case "BAT1OBJ4":
-					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ4_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT4OBJ1);
 				break;
 				case "TEMPMEASURE":
 					if (this.config.disclaimer && this.config.highPrio_TEMPMEASURE_active) this.addUserDps(value, objectsSet, this.config.highPrio_TEMPMEASURE);
@@ -620,7 +605,6 @@ class Senec extends utils.Adapter {
 			val: value,
 			ack: true
 		});
-		await this.checkUpdateSelfStat(name); // soon to be deprecated
 		await this.doDecode(name, value);
 	}
 		
@@ -644,16 +628,6 @@ class Senec extends utils.Adapter {
 			this.log.silly("(Decode) Trans " + key + ":" + value + " = " + trans);
 			const desc = (state_attr[key + "_Text"] !== undefined) ? state_attr[key + "_Text"].name : key;
 			await this.doState(name + "_Text", trans, desc, "", true);
-		}
-	}
-
-	/** 
-	 * Helper routine
-	 */
-	async checkUpdateSelfStat(name) {
-		// soon to be deprecated
-		if (name === "STATISTIC.LIVE_GRID_EXPORT" || name === "STATISTIC.LIVE_GRID_IMPORT" || name === "STATISTIC.LIVE_HOUSE_CONS" || name === "STATISTIC.LIVE_PV_GEN" || name === "STATISTIC.LIVE_BAT_CHARGE_MASTER" || name === "STATISTIC.LIVE_BAT_DISCHARGE_MASTER") {
-			await this.updateSelfStat(name);
 		}
 	}
 	
@@ -684,109 +658,6 @@ class Senec extends utils.Adapter {
             }
         }
     }
-	
-	async updateSelfStat(name, value) {
-		// soon to be deprecated
-		await this.updateSelfStatHelper(name, value, ".today", ".yesterday", ".refValue", "Day", getCurDay());
-		await this.updateSelfStatHelper(name, value, ".week", ".lastWeek", ".refValueWeek", "Week", getCurWeek());
-		await this.updateSelfStatHelper(name, value, ".month", ".lastMonth", ".refValueMonth", "Month", getCurMonth());
-		await this.updateSelfStatHelper(name, value, ".year", ".lastYear", ".refValueYear", "Year", getCurYear());
-		return;		
-	}
-	
-	async updateSelfStatHelper(name, value, today, yesterday, refValue, day, curDay) {
-		// soon to be deprecated
-		const key = "_calc." + name.substring(10);
-		
-		const refDayObj = await this.getStateAsync(key + ".ref" + day);
-		const refDay = refDayObj ? refDayObj.val : -1;
-		
-		const valCurObj = await this.getStateAsync(name);
-		const valCur = valCurObj ? valCurObj.val : 0;
-		
-		const valRefObj = await this.getStateAsync(key + refValue);
-		const valRef = valRefObj ? valRefObj.val : 0;
-		const valTodayObj = await this.getStateAsync(key + today);
-		const valToday = valTodayObj ? valTodayObj.val : 0;
-		
-		const descToday = (state_attr[key + today] !== undefined) ? state_attr[key + today].name : key;
-        const unitToday = (state_attr[key + today] !== undefined) ? state_attr[key + today].unit : "";
-		const descYesterday = (state_attr[key + yesterday] !== undefined) ? state_attr[key + yesterday].name : key;
-        const unitYesterday = (state_attr[key + yesterday] !== undefined) ? state_attr[key + yesterday].unit : "";
-		const descRef = (state_attr[key + refValue] !== undefined) ? state_attr[key + refValue].name : key;
-        const unitRef = (state_attr[key + refValue] !== undefined) ? state_attr[key + refValue].unit : "";
-		const descRefDay = (state_attr[key + ".ref" + day] !== undefined) ? state_attr[key + ".ref" + day].name : key;
-        const unitRefDay = (state_attr[key + ".ref" + day] !== undefined) ? state_attr[key + ".ref" + day].unit : "";
-		
-		if (refDay != curDay) {
-			this.log.debug("(Calc) New " + day + " (or first value seen). Updating stat data for: " + name.substring(10));
-			// Change of day
-			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, false);
-			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, false);
-			await this.doState(key + today, 0, descToday, unitToday, false);
-			if (valRef < valCur) {
-				await this.doState(key + refValue, valCur, descRef, unitRef, true);
-			} else {
-				this.log.warn("(Calc) Not updating reference value for: " + name.substring(10) + "! Old RefValue (" + valRef + ") >= new RefValue (" + valCur + "). Impossible situation. If this is intentional, please update via admin!");
-			}
-		} else {
-			this.log.debug("(Calc) Updating " + day +" value for: " + name.substring(10) + ": " + Number((valCur - valRef).toFixed(2)));
-			// update today's value
-			await this.doState(key + today, Number((valCur - valRef).toFixed(2)), descToday, unitToday, false);
-		}
-		
-		if (name === "STATISTIC.LIVE_HOUSE_CONS") await this.updateAutarkyHelper(today, yesterday, day, curDay); // otherwise we get way too many updates
-
-	}
-	
-	async updateAutarkyHelper(today, yesterday, day, curDay) {
-		// soon to be deprecated
-		const key = "_calc.Autarky";
-		
-		// reference object to decide on change of day
-		const refDayObj = await this.getStateAsync(key + ".ref" + day);
-		const refDay = refDayObj ? refDayObj.val : -1;
-		// current day's value (needed in case of day-change)
-		const valTodayObj = await this.getStateAsync(key + today);
-		const valToday = valTodayObj ? valTodayObj.val : 0;
-		
-		// reading values required for calc
-		const valBatChargeObj = await this.getStateAsync("_calc.LIVE_BAT_CHARGE_MASTER" + today);
-		const valBatCharge = valBatChargeObj ? valBatChargeObj.val : 0;
-		const valBatDischargeObj = await this.getStateAsync("_calc.LIVE_BAT_DISCHARGE_MASTER" + today);
-		const valBatDischarge = valBatDischargeObj ? valBatDischargeObj.val : 0;
-		const valGridExpObj = await this.getStateAsync("_calc.LIVE_GRID_EXPORT" + today);
-		const valGridExp = valGridExpObj ? valGridExpObj.val : 0;
-		const valGridImpObj = await this.getStateAsync("_calc.LIVE_GRID_IMPORT" + today);
-		const valGridImp = valGridImpObj ? valGridImpObj.val : 0;
-		const valHouseConsObj = await this.getStateAsync("_calc.LIVE_HOUSE_CONS" + today);
-		const valHouseCons = valHouseConsObj ? valHouseConsObj.val : 1;
-		const valPVGenObj = await this.getStateAsync("_calc.LIVE_PV_GEN" + today);
-		const valPVGen = valPVGenObj ? valPVGenObj.val : 0;
-			
-		const descToday = (state_attr[key + today] !== undefined) ? state_attr[key + today].name : key;
-        const unitToday = (state_attr[key + today] !== undefined) ? state_attr[key + today].unit : "%";
-		const descYesterday = (state_attr[key + yesterday] !== undefined) ? state_attr[key + yesterday].name : key;
-        const unitYesterday = (state_attr[key + yesterday] !== undefined) ? state_attr[key + yesterday].unit : "%";
-		const descRefDay = (state_attr[key + ".ref" + day] !== undefined) ? state_attr[key + ".ref" + day].name : key;
-        const unitRefDay = (state_attr[key + ".ref" + day] !== undefined) ? state_attr[key + ".ref" + day].unit : "";
-		
-		if (refDay != curDay) {
-			this.log.debug("(Autarky) New " + day + " (or first value seen). Updating Autarky data for: " + key + " " + day);
-			// Change of day
-			await this.doState(key + ".ref" + day, curDay, descRefDay, unitRefDay, false);
-			await this.doState(key + yesterday, valToday, descYesterday, unitYesterday, false);
-			// await this.doState(key + today, 0, descToday, unitToday, false); // we don't need to reset autarky to 0 because it is calculated by reference values.
-			// instead do the regular calc right after the change of day
-		}
-		// update today's value - but beware of div/0
-		var newVal = 0;
-		if (valHouseCons > 0) {
-			newVal = Number((((valPVGen - valGridExp - valBatCharge + valBatDischarge) / valHouseCons) * 100).toFixed(0));
-			this.log.debug("(Autarky) Updating Autarky " + day +" value for: " + key + today + ": " + newVal);
-			await this.doState(key + today, newVal, descToday, unitToday, false);
-		}
-	}
 
 }
 
