@@ -293,6 +293,9 @@ This channel contains values polled from SENEC App-API.
 
 
 ## Changelog
+### 1.6.7 (NoBl)
+* Added option to turn off local polling.
+
 ### 1.6.6 (NoBl)
 * Node 16 required
 * Bugfixes

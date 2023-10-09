@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.6",
+        "version": "1.6.7",
         "news": {
+			"1.6.7": {
+				  "en": "Added option to turn off local polling.",
+				  "de": "Option hinzugefügt, um die lokale Abfrage der Appliance abzuschalten.",
+				  "ru": "Добавлена возможность отключить локальный опрос.",
+				  "pt": "Opção adicionada para desligar a sondagem local.",
+				  "nl": "Toegevoegd optie om lokale peilingen uit te zetten.",
+				  "fr": "Ajout de l'option pour désactiver le vote local.",
+				  "it": "Aggiunta opzione per spegnere polling locale.",
+				  "es": "Se agregó la opción de apagar las encuestas locales.",
+				  "pl": "Wstępna opcja, aby odwołać lokalną sondę.",
+				  "uk": "Додана можливість вимкнути локальне опитування.",
+				  "zh-cn": "增加地方投票的选择。."
+			},
 			"1.6.6": {
 				  "en": "Node 16 required; Bugfixes; Removed non-existing branches: _calc, Bat1Obj[2-4], Display, Statistic, File; Added branches: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
 				  "de": "Node 16 erforderlich; Bugfixes; Entfernt: _calc, Bat1Obj[2-4,] Display, Statistic, Datei; Hinzugefügt: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
