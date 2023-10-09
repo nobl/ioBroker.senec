@@ -199,6 +199,7 @@
 	        ]
     },
     "native": {
+		"lala_use": true,
         "senecip": "0.0.0.0",
         "interval": 10,
 		"intervalLow": 60,

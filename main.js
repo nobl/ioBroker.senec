@@ -23,6 +23,7 @@ const apiSystemsUrl = apiUrl + "/anlagen";
 const apiKnownSystems = []
 
 let apiConnected = false;
+let lalaConnected = false;
 let apiLoginToken = "";
 let retry = 0; // retry-counter
 let retryLowPrio = 0; // retry-counter
@@ -62,14 +63,32 @@ class Senec extends utils.Adapter {
         this.setState('info.connection', false, true);
         try {
             await this.checkConfig();
-			await this.initPollSettings();
-            await this.checkConnection();
-			await this.initSenecAppApi();
-			if (apiConnected) await this.getApiSystems();
-			await this.pollSenec(true, 0); // highPrio
-			await this.pollSenec(false, 0); // lowPrio
-			if (apiConnected) await this.pollSenecAppApi(0); // App API
-			this.setState('info.connection', true, true);
+			if (this.config.lala_use) {
+				this.log.info("Usage of lala.cgi configured.");
+				await this.initPollSettings();
+				await this.checkConnection();
+				if (lalaConnected) {
+					await this.pollSenec(true, 0); // highPrio
+					await this.pollSenec(false, 0); // lowPrio
+				}
+			} else {
+				this.log.warn("Usage of lala.cgi not configured. Only polling SENEC App API if configured.");
+			}
+			if (this.config.api_use) {
+				this.log.info("Usage of SENEC App API configured.");
+				await this.initSenecAppApi();
+				if (apiConnected) {
+					await this.getApiSystems();
+					await this.pollSenecAppApi(0); // App API
+				}
+			} else {
+				this.log.warn("Usage of SENEC App API not configured. Only polling appliance via local network if configured.");
+			}
+			if (lalaConnected || apiConnected) {
+				this.setState('info.connection', true, true);
+			} else {
+				this.log.error("Neither local connection nor API connection configured. Please check config!");
+			}
         } catch (error) {
             this.log.error(error);
             this.setState('info.connection', false, true);
@@ -227,6 +246,7 @@ class Senec extends utils.Adapter {
             this.log.info('connecting to Senec: ' + url);
             const body = await this.doGet(url, form, this, this.config.pollingTimeout, true);
             this.log.info('connected to Senec: ' + url);
+			lalaConnected = true;
         } catch (error) {
             throw new Error("Error connecting to Senec (IP: " + connectVia + this.config.senecip + "). Exiting! (" + error + "). Try to toggle https-mode in settings and check FQDN of SENEC appliance.");
         }

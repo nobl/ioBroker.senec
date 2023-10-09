@@ -18,6 +18,40 @@
 				"zh-cn": "一般环境"
 			},
 			"items": {
+				"lala_use": {
+					"type": "checkbox",
+					"sm": 12,
+                    "md": 6,
+                    "lg": 6,
+					"label": {
+						  "en": "Connect via lala.cgi?",
+						  "de": "Verbinden über lala.cgi?",
+						  "ru": "Подключитесь через lala.cgi?",
+						  "pt": "Ligar via lala.cgi?",
+						  "nl": "Connecteren via lala.cgi?",
+						  "fr": "Connectez-vous via lala.cgi?",
+						  "it": "Collegare via lala.cgi?",
+						  "es": "¿Conectar vía lala.cgi?",
+						  "pl": "Połączenie przez lala.cgi?",
+						  "uk": "Підключення через lala.cgi?",
+						  "zh-cn": "陪审团?"
+					},
+					"help": {
+						  "en": "Connect to SENEC appliance via local network. This requires access to local monitoring.",
+						  "de": "Verbindung zum SENEC Gerät wird über lokales Netzwerk hergestellt. Dies erfordert den Zugang zur lokalen Überwachung.",
+						  "ru": "Подключитесь к SENEC Appliance через местную сеть. Это требует доступа к местному мониторингу.",
+						  "pt": "Conecte-se ao aparelho SENEC via rede local. Isso requer acesso ao monitoramento local.",
+						  "nl": "Verbinding met SENEC appliance via het lokale netwerk. Dit vereist toegang tot de lokale monitoring.",
+						  "fr": "Connectez-vous à l'appareil SENEC via le réseau local. Cela nécessite l'accès à la surveillance locale.",
+						  "it": "Collegare l'apparecchio SENEC tramite rete locale. Ciò richiede l'accesso al monitoraggio locale.",
+						  "es": "Conéctese a SENEC appliance vía red local. Esto requiere acceso a la vigilancia local.",
+						  "pl": "Złącza się do SENEC poprzez lokalną sieć. Potrzebuje to dostęp do monitorowania miejscowego.",
+						  "uk": "Підключення до додатку SENEC через локальну мережу. Це вимагає доступу до локального моніторингу.",
+						  "zh-cn": "通过当地网络,与SENEC的观察站一致。 这需要获得地方监测。."
+					},
+					"default": true,
+					"newLine": true
+				},
 				"senecip": {
 					"type": "text",
 					"sm": 12,
