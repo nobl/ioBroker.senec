@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.7",
+        "version": "1.6.8",
         "news": {
+			"1.6.8": {
+				"en": "Added switch control.ForceLoadBattery to start/stop charging battery. Use this to start/stop forced charging (like with dynamic power prices, ...).",
+			    "de": "Schalter control.ForceLoadBattery hinzugefügt, um ein Laden des Speichers zu forcieren (analog zur Funktion im lokalen Interface). Nützlich in Verbindung mit dynamischen Stromtarifen, etc.",
+		  	    "ru": "Добавлен контроль переключателя. СилаLoad Батарея для начала / остановки зарядки батареи. Используйте это для начала / остановки принудительного зарядки (например, с динамическими ценами питания, ...).",
+			    "pt": "Adicionado controle de interruptor. Força Bateria para iniciar / parar de carregar bateria. Use isso para iniciar / parar de carga forçada (como com preços de energia dinâmica, ...).",
+			    "nl": "Veranderingscontrole. Force Batterijen om te starten/ stop met batterijen. Gebruik dit om te beginnen en stop met het opladen van dynamische krachtprijzen.",
+			    "fr": "Ajout de la commande. ForceLoad Batterie de démarrage/arrêt de batterie de charge. Utilisez ceci pour commencer / arrêter la charge forcée (comme avec les prix de puissance dynamique, ...).",
+			    "it": "Aggiunta di controllo dell'interruttore. Forza! Batteria per avviare / fermare la batteria di ricarica. Utilizzare questo per avviare / fermare la ricarica forzata (come con i prezzi di potenza dinamica, ...).",
+			    "es": "Control de cambio añadido. ForceLoad Batería para iniciar / detener la batería de carga. Utilice esto para iniciar / detener la carga forzada (como con los precios de potencia dinámicos, ...).",
+			    "pl": "Kontrola przełącznikowa. ForceLoad Bateria rozpoczynająca/zatrzymanie baterii. Wykorzystuje to do rozpoczęcia/stopowania (jak z dynamicznymi cenami mocy).",
+			    "uk": "Додано контроль перемикання. Приват24 Акумулятор для запуску / зарядки акумулятора. Використовуйте це для запуску / stop примусової зарядки (наприклад, з динамічними цінами потужності, ...).",
+			    "zh-cn": "添加了转换控制。 部队 开始/禁止劫持电池。 利用这开始/禁止强迫征集(与动态发电价格相似,......)。."
+			},
 			"1.6.7": {
 				  "en": "Added option to turn off local polling.",
 				  "de": "Option hinzugefügt, um die lokale Abfrage der Appliance abzuschalten.",
@@ -250,14 +263,16 @@
         "api_pwd": ""
     },
     "objects": [],
-    "instanceObjects": [{
+    "instanceObjects": [
+		{
             "_id": "info",
             "type": "channel",
             "common": {
                 "name": "Information"
             },
             "native": {}
-        }, {
+        },
+		{
             "_id": "info.connection",
             "type": "state",
             "common": {
@@ -269,6 +284,27 @@
                 "def": false
             },
             "native": {}
-        }
+        },
+		{
+			"_id": "control",
+			"type": "channel",
+			"common": {
+				"name": "Control Buttons"
+			},
+			"native": {}
+		},
+		{
+			"_id": "control.ForceLoadBattery",
+			"type": "state",
+			"common": {
+				"role": "switch",
+				"name": "Force Load Battery",
+				"type": "boolean",
+				"read": true,
+				"write": true,
+				"def": false
+			},
+			"native": {}
+		}
     ]
 }

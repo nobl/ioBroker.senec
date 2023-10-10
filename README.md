@@ -293,6 +293,9 @@ This channel contains values polled from SENEC App-API.
 
 
 ## Changelog
+### 1.6.8 (NoBl)
+* Added switch control.ForceLoadBattery to start/stop charging battery. Use this to start/stop forced charging (like with dynamic power prices, ...).
+
 ### 1.6.7 (NoBl)
 * Added option to turn off local polling.
 

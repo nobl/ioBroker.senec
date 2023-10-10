@@ -22,6 +22,9 @@ const apiLoginUrl = apiUrl + "/login";
 const apiSystemsUrl = apiUrl + "/anlagen";
 const apiKnownSystems = []
 
+const batteryOn = '{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01"}}';
+const batteryOff = '{"ENERGY":{"SAFE_CHARGE_PROHIBIT":"u8_01"}}';
+
 let apiConnected = false;
 let lalaConnected = false;
 let apiLoginToken = "";
@@ -50,6 +53,7 @@ class Senec extends utils.Adapter {
             name: 'senec',
         });
         this.on('ready', this.onReady.bind(this));
+		this.on('stateChange', this.onStateChange.bind(this));
         this.on('unload', this.onUnload.bind(this));
     }
 
@@ -84,14 +88,46 @@ class Senec extends utils.Adapter {
 			} else {
 				this.log.warn("Usage of SENEC App API not configured. Only polling appliance via local network if configured.");
 			}
+			
 			if (lalaConnected || apiConnected) {
 				this.setState('info.connection', true, true);
 			} else {
 				this.log.error("Neither local connection nor API connection configured. Please check config!");
 			}
+			await this.subscribeStatesAsync("control.*"); // subscribe on all state changes in control.
         } catch (error) {
             this.log.error(error);
             this.setState('info.connection', false, true);
+        }
+    }
+	
+	/**
+     * @param {string} id
+     * @param {ioBroker.State | null | undefined} state
+     */
+    onStateChange(id, state) {
+        if (state && !state.ack) {
+			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
+			
+			if (id === this.namespace + '.control.ForceLoadBattery' && lalaConnected) {
+				const url = connectVia + this.config.senecip + '/lala.cgi';
+				try {
+					if (state.val) {
+						this.log.info('Enable force battery charging ...');
+						this.doGet(url, batteryOn, this, this.config.pollingTimeout, true);
+					} else {
+						this.log.info('Disable force battery charging ...');
+						this.doGet(url, batteryOff, this, this.config.pollingTimeout, true);
+					}
+				} catch (error) {
+					this.log.error(error);
+					this.log.error("Failed to control: setting force battery charging mode to " + state.val);
+					return;
+				}
+			}
+			
+            // Verarbeitung bestätigen
+            this.setStateAsync(id, { val: state.val, ack: true });
         }
     }
 
@@ -353,6 +389,7 @@ class Senec extends utils.Adapter {
 			);
 		});
 	}
+
 	
 	/**
      * Read values from Senec Home V2.1
