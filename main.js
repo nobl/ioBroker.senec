@@ -547,8 +547,10 @@ class Senec extends utils.Adapter {
 				if (period == api_trans["THIS_YEAR"].dp) await this.insertAllTimeHistory(system, key, new Date(obj.aggregation.startzeitpunkt).getFullYear(), Number((value.wert).toFixed(0)), value.einheit);
 			}
 		}
-		const autarky = Number((((obj.aggregation.stromerzeugung.wert - obj.aggregation.netzeinspeisung.wert - obj.aggregation.speicherbeladung.wert + obj.aggregation.speicherentnahme.wert) / obj.aggregation.stromverbrauch.wert) * 100).toFixed(2));
-		await this.doState(pfx + "Autarkie", autarky, "", "%", false);
+		if (obj.aggregation.stromverbrauch.wert != 0) {
+			const autarky = Number((((obj.aggregation.stromerzeugung.wert - obj.aggregation.netzeinspeisung.wert - obj.aggregation.speicherbeladung.wert + obj.aggregation.speicherentnahme.wert) / obj.aggregation.stromverbrauch.wert) * 100).toFixed(2));
+			await this.doState(pfx + "Autarkie", autarky, "", "%", false);
+		}
 		await this.updateAllTimeHistory(system);
 	}
 	
@@ -593,8 +595,10 @@ class Senec extends utils.Adapter {
 				await this.doState(pfx + key, Number(sum.toFixed(0)), "", einheit, false);
 			}
 		}
-		const autarky = Number((((sums.stromerzeugung - sums.netzeinspeisung - sums.speicherbeladung + sums.speicherentnahme) / sums.stromverbrauch) * 100).toFixed(0));
-		await this.doState(pfx + "Autarkie", autarky, "", "%", false);
+		if (sums.stromverbrauch != 0) {
+			const autarky = Number((((sums.stromerzeugung - sums.netzeinspeisung - sums.speicherbeladung + sums.speicherentnahme) / sums.stromverbrauch) * 100).toFixed(0));
+			await this.doState(pfx + "Autarkie", autarky, "", "%", false);
+		}
 	}
 	
 	/**
