@@ -2,8 +2,8 @@
 # ioBroker.senec
 
 ## SENEC Adapter für ioBroker
-Der Adapter wurde für Senec Home V2.1 Systeme entwickelt.
-Im Senec.Home System können keine Werte verändert werden. Auf die Einbindung der Sicherheitsladung wurde bewusst verzichtet.
+Der Adapter wurde initial für Senec Home V2.1 Systeme entwickelt.
+Im Senec.Home System können nur ausgewählte Werte durch den Adapter verändert werden. Die Nutzung dieser Funktionalität geschieht auf eigenes Risiko und muss vorher manuell in der Konfiguration aktiviert werden.
 Senec stellt derzeit über die Webschnittstelle auch keine zuverlässige Möglichkeit mehr zur Verfügung, das Peak Shaving zu beeinflussen. Hierzu muss mein-senec.de bemüht werden.
 Ob andere Systeme (z.B. V3) ebenfalls damit funktionieren, ist davon abhängig, ob diese ebenfalls auf lala.cgi basieren und die gleichen JSON Informationen zur Verfügung stellen.
 Auch bei Einbindung in die Senec.Clound ist nicht gewährleistet, dass die Daten weiterhin über die Webschnittstelle abgerufen werden können (hierzu bitte Erfahrungsberichte).
@@ -28,6 +28,8 @@ Systeme, die funktionieren dürften, da sie die gleiche Schnittstelle nutzen sin
 * ADS Tec
 * OEM LG
 * Solarinvert Storage 10.0 / Blei
+
+Senec Systeme, die über kein lokales Webinterface verfügen, können möglicherweise über die API Option dennoch überwacht werden. Rückmeldungen jeglicher Art diesbezüglich sind gerne gesehen.
 
 ## Haftungsausschluss
 **Alle Produkt- und Firmennamen oder -logos sind Warenzeichen™ oder eingetragene® Warenzeichen der jeweiligen Inhaber. Ihre Verwendung impliziert keine Zugehörigkeit oder Befürwortung durch diese oder zugehörige Tochtergesellschaften! Dieses persönliche Projekt wird in der Freizeit gepflegt und hat kein geschäftliches Ziel.

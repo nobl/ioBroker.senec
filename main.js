@@ -22,8 +22,8 @@ const apiLoginUrl = apiUrl + "/login";
 const apiSystemsUrl = apiUrl + "/anlagen";
 const apiKnownSystems = []
 
-const batteryOn = '{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01"}}';
-const batteryOff = '{"ENERGY":{"SAFE_CHARGE_PROHIBIT":"u8_01"}}';
+const batteryOn = '{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
+const batteryOff = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 
 let apiConnected = false;
 let lalaConnected = false;
@@ -94,7 +94,11 @@ class Senec extends utils.Adapter {
 			} else {
 				this.log.error("Neither local connection nor API connection configured. Please check config!");
 			}
-			await this.subscribeStatesAsync("control.*"); // subscribe on all state changes in control.
+			if (this.config.control_active) {
+				this.log.info("Active appliance control activated!");
+				await this.subscribeStatesAsync("control.*"); // subscribe on all state changes in control.
+				await this.subscribeStatesAsync("ENERGY.STAT_STATE"); 
+			}
         } catch (error) {
             this.log.error(error);
             this.setState('info.connection', false, true);
@@ -105,30 +109,47 @@ class Senec extends utils.Adapter {
      * @param {string} id
      * @param {ioBroker.State | null | undefined} state
      */
-    onStateChange(id, state) {
+    async onStateChange(id, state) {
         if (state && !state.ack) {
 			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
 			
-			if (id === this.namespace + '.control.ForceLoadBattery' && lalaConnected) {
-				const url = connectVia + this.config.senecip + '/lala.cgi';
-				try {
-					if (state.val) {
-						this.log.info('Enable force battery charging ...');
-						this.doGet(url, batteryOn, this, this.config.pollingTimeout, true);
-					} else {
-						this.log.info('Disable force battery charging ...');
-						this.doGet(url, batteryOff, this, this.config.pollingTimeout, true);
+			if (this.config.control_active) { // All state-changes for .control.* need active config value
+				if (id === this.namespace + ".control.ForceLoadBattery" && lalaConnected) {
+					const url = connectVia + this.config.senecip + "/lala.cgi";
+					try {
+						if (state.val) {
+							this.log.info("Enable force battery charging ...");			
+							this.evalPoll(JSON.parse(await this.doGet(url, batteryOn, this, this.config.pollingTimeout, true), reviverNumParse));          
+						} else {
+							this.log.info("Disable force battery charging ...");
+							this.evalPoll(JSON.parse(await this.doGet(url, batteryOff, this, this.config.pollingTimeout, true), reviverNumParse));
+						}
+					} catch (error) {
+						this.log.error(error);
+						this.log.error("Failed to control: setting force battery charging mode to " + state.val);
+						return;
 					}
-				} catch (error) {
-					this.log.error(error);
-					this.log.error("Failed to control: setting force battery charging mode to " + state.val);
-					return;
 				}
 			}
 			
-            // Verarbeitung bestätigen
-            this.setStateAsync(id, { val: state.val, ack: true });
-        }
+            this.setStateAsync(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
+			
+        } else if (state && id === this.namespace + ".ENERGY.STAT_STATE") { // states that do have state.ack already
+			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
+			const forceLoad = await this.getStateAsync(this.namespace + ".control.ForceLoadBattery");
+			if (state.val == 8 || state.val == 9) {
+				if (state.val == 9) this.log.info("Battery forced loading completed (battery full).");
+				if (!forceLoad.val) {
+					this.log.info("Battery forced loading activated (from outside or just lag). Syncing control-state.");
+					this.setStateChangedAsync(this.namespace + ".control.ForceLoadBattery", { val: true, ack: true });
+				}
+			} else {
+				if (forceLoad.val) {
+					this.log.info("Battery forced loading deactivated (from outside or just lag). Syncing control-state.");
+					this.setStateChangedAsync(this.namespace + ".control.ForceLoadBattery", { val: false, ack: true });
+				}
+			}
+		}
     }
 
     /**
@@ -165,7 +186,7 @@ class Senec extends utils.Adapter {
 					if (this.config.disclaimer && this.config.highPrio_BMS_active) this.addUserDps(value, objectsSet, this.config.highPrio_BMS);
 				break;
 				case "ENERGY":
-					["STAT_STATE","GUI_BAT_DATA_POWER","GUI_INVERTER_POWER","GUI_HOUSE_POW","GUI_GRID_POW","GUI_BAT_DATA_FUEL_CHARGE","GUI_CHARGING_INFO","GUI_BOOSTING_INFO","GUI_BAT_DATA_POWER","GUI_BAT_DATA_VOLTAGE","GUI_BAT_DATA_CURRENT","GUI_BAT_DATA_FUEL_CHARGE","GUI_BAT_DATA_OA_CHARGING","STAT_LIMITED_NET_SKEW"].forEach(item => objectsSet.add(item));
+					["STAT_STATE","GUI_BAT_DATA_POWER","GUI_INVERTER_POWER","GUI_HOUSE_POW","GUI_GRID_POW","GUI_BAT_DATA_FUEL_CHARGE","GUI_CHARGING_INFO","GUI_BOOSTING_INFO","GUI_BAT_DATA_POWER","GUI_BAT_DATA_VOLTAGE","GUI_BAT_DATA_CURRENT","GUI_BAT_DATA_FUEL_CHARGE","GUI_BAT_DATA_OA_CHARGING","STAT_LIMITED_NET_SKEW","SAFE_CHARGE_FORCE","SAFE_CHARGE_PROHIBIT","SAFE_CHARGE_RUNNING"].forEach(item => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_ENERGY_active) this.addUserDps(value, objectsSet, this.config.highPrio_ENERGY);
 				break;
 				case "PV1":

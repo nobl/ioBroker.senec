@@ -1,5 +1,23 @@
 The newest change log is [README.md](README.md)
 
+### 1.4.3 (NoBl)
+* Working on https connection. Please test and report!
+
+### 1.4.2 (NoBl)
+* Added option to use https for connecting to SENEC (only activate if your appliance supports / requires this!)
+
+### 1.4.1 (NoBl)
+* Fix: Autarky calculations are working again.
+
+### 1.4.0 (NoBl)
+* Added object caching along with some minor code updates. Due to the amount of objects we deal with caching is about mandatory.
+
+### 1.3.10 (NoBl)
+* Fixed wrong Unit for STATISTIC.LIVE_WB_ENERGY
+* Updated to json Admin UI
+* Technical Updates
+* Added more state_attr definitions
+
 ### 1.3.9 (Nobl)
 * Added (some) Wallbox Datapoints to high-prio polling
 * Added more state definitions

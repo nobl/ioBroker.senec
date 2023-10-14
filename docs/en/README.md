@@ -2,8 +2,11 @@
 # ioBroker.senec
 
 ## senec adapter for ioBroker
-Targeted at the Senec Home V2.1 System.
-Other systems should work, as long as they use lala.cgi. Although datapoints may differ (missing, additional, changed).
+Initially targeted at the Senec Home V2.1 System.
+In the Senec.Home system, only selected values can be changed by the adapter. Use of this functionality is at your own risk and must be activated manually in the configuration beforehand.
+Senec currently also no longer provides a reliable way to influence peak shaving via the web interface. For this purpose, mein-senec.de must be used.
+Whether other systems (e.g. V3) also work with it depends on whether they are also based on lala.cgi and provide the same JSON information.
+Even with integration into the Senec.Clound it is not guaranteed that the data can still be retrieved via the web interface (for this please report your experiences).
 
 Systems that might work:
 * Senec Home 4.0 / Blei
@@ -25,6 +28,8 @@ Systems that might work:
 * ADS Tec
 * OEM LG
 * Solarinvert Storage 10.0 / Blei
+
+SENEC Systems that don't provide a local webinterface might be monitored by using the API functionality only. Please contact the developer if you have any input on this.
 
 ## Disclaimer
 **All product and company names or logos are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them or any associated subsidiaries! This personal project is maintained in spare time and has no business goal.**

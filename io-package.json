@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.8",
+        "version": "1.6.9",
         "news": {
+			"1.6.9": {
+				  "en": "Improved battery forced loading, added switch in config to allow active control of appliance.",
+				  "de": "Manuelles Laden verbessert, zusätzlicher Schalter in Config, um aktive Steuerung des Gerätes zu erlauben.",
+				  "ru": "Улучшенная батарея принудительная загрузка, добавил переключатель в config, чтобы позволить активный контроль прибора.",
+				  "pt": "Carga forçada da bateria melhorada, interruptor adicionado em config para permitir o controle ativo do aparelho.",
+				  "nl": "Geïmproviseerde batterij geforceerde lading, toegevoegd schakelaar in config om actieve controle over goedkeuring toe te staan.",
+				  "fr": "Amélioration du chargement forcé de la batterie, commutateur ajouté dans la configuration pour permettre le contrôle actif de l'appareil.",
+				  "it": "Caricamento forzato della batteria migliorato, interruttore aggiunto in configurazione per consentire il controllo attivo dell'apparecchio.",
+				  "es": "Carga forzada de batería mejorada, interruptor añadido en configuración para permitir el control activo del aparato.",
+				  "pl": "Poprawione baterie wymusiły obciążenie, dodano przełącznik w celu umożliwienia aktywnej kontroli urządzenia.",
+				  "uk": "Покращений акумулятор примусового навантаження, доданий перемикач в настройку, щоб забезпечити активний контроль за приладом.",
+				  "zh-cn": "改善强迫装载的电池,加起来,允许积极控制输电。."
+			},
 			"1.6.8": {
 				"en": "Added switch control.ForceLoadBattery to start/stop charging battery. Use this to start/stop forced charging (like with dynamic power prices, ...).",
 			    "de": "Schalter control.ForceLoadBattery hinzugefügt, um ein Laden des Speichers zu forcieren (analog zur Funktion im lokalen Interface). Nützlich in Verbindung mit dynamischen Stromtarifen, etc.",
@@ -119,45 +132,6 @@
 				"pl": "Możesz teraz skonfigurować żądanie SENEC App API.",
 				"uk": "Ви можете налаштувати запит на SENEC App API.",
 				"zh-cn": "如今,你可以准备要求SENECSP。."
-			},
-			"1.5.2": {
-				"en": "Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)",
-				"de": "Weitere Datenpunkte hinzugefügt. Du kennst weitere? Bitte PullRequest auf Github für state_attr.",
-				"ru": "Добавили больше точек данных. Если вы испытываете сообщения в логе - не стесняйтесь добавлять их самостоятельно в state_attr на github (по запросу)",
-				"pt": "Adicionado mais datapoints. Se você tiver mensagens no log - sinta-se livre para adicioná-las ao state_attr no github (requisito de envio)",
-				"nl": "Voegde meer datapoints toe. Als je berichten in het logboek ervaart, voel je vrij om ze zelf toe te voegen aan github (pull verzoek)",
-				"fr": "Ajout d'autres points de données. Si vous éprouvez des messages dans log - n'hésitez pas à les ajouter à state_attr sur github (demande de puissance)",
-				"it": "Aggiunti altri datapoint. Se si verificano messaggi in log - sentitevi liberi di aggiungerli a state_attr su github (domanda di voto)",
-				"es": "Se agregaron más puntos de datos. Si experimentas mensajes en el registro - no dudes en añadirlos a state_attr en github (pregunta completa)",
-				"pl": "Dodać więcej danych. Jeśli znajdziesz wiadomości w dzienniku – czuje się wolny, aby dodać ich do stanu_attr na github (pułki)",
-				"uk": "Додано більше точок даних. Якщо ви відчуваєте повідомлення в журналі - не соромтеся додати їх до стану_attr на github",
-				"zh-cn": "增加数据点。 如果你在逻辑上有信息,就认为可以自由地补充你自己的国家:对Tithub(要求)表示怀疑。"
-			},
-			"1.5.1": {
-				"en": "Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)",
-				"de": "Weitere Datenpunkte hinzugefügt. Du kennst weitere? Bitte PullRequest auf Github für state_attr.",
-				"ru": "Добавили больше точек данных. Если вы испытываете сообщения в логе - не стесняйтесь добавлять их самостоятельно в state_attr на github (по запросу)",
-				"pt": "Adicionado mais datapoints. Se você tiver mensagens no log - sinta-se livre para adicioná-las ao state_attr no github (requisito de envio)",
-				"nl": "Voegde meer datapoints toe. Als je berichten in het logboek ervaart, voel je vrij om ze zelf toe te voegen aan github (pull verzoek)",
-				"fr": "Ajout d'autres points de données. Si vous éprouvez des messages dans log - n'hésitez pas à les ajouter à state_attr sur github (demande de puissance)",
-				"it": "Aggiunti altri datapoint. Se si verificano messaggi in log - sentitevi liberi di aggiungerli a state_attr su github (domanda di voto)",
-				"es": "Se agregaron más puntos de datos. Si experimentas mensajes en el registro - no dudes en añadirlos a state_attr en github (pregunta completa)",
-				"pl": "Dodać więcej danych. Jeśli znajdziesz wiadomości w dzienniku – czuje się wolny, aby dodać ich do stanu_attr na github (pułki)",
-				"uk": "Додано більше точок даних. Якщо ви відчуваєте повідомлення в журналі - не соромтеся додати їх до стану_attr на github",
-				"zh-cn": "增加数据点。 如果你在逻辑上有信息,就认为可以自由地补充你自己的国家:对Tithub(要求)表示怀疑。"
-			},
-			"1.5.0": {
-				"en": "Added configuration section to add datapoints to high priority polling. Please be aware of the possible issues this could cause (if too many datapoints added) and use at your own risk. ALL Wallbox datapoints have been removed from high priority polling. Only some users even have a SENEC wallbox. Please reconfigure via the new config dialogue. Possible Candidate for stable. Please report any findings!",
-				"de": "Konfigurationsabschnitt hinzugefügt, um zusätzliche Datenpunkte mit hoher Priorität abzufragen. Bitte beachten Sie die möglichen Probleme, die dies verursachen könnte (wenn zu viele Datenpunkte hinzugefügt wurden). Nutzung auf eigenes Risiko. Standardgemäß werden nun keine Wallbox-Datenpunkte mehr mit hoher Priorität abgefragt (zu wenige User haben eine SENEC Wallbox). Diese nun bitte über den neuen Configdialog konfigurieren. Möglicher Kandidat für stable - bitte alle Probleme reporten.",
-				"ru": "Добавлен раздел конфигурации, чтобы добавить данные точки к высокому приоритетному опросу. Пожалуйста, имейте в виду возможные проблемы, которые могут вызвать (если слишком много добавленных данных) и использовать на вашем собственном риске. Все точки данных Wallbox были удалены из высококачественного опроса. Только некоторые пользователи даже имеют SENEC wallbox. Пожалуйста, обратите внимание на новый диалог.",
-				"pt": "Seção de configuração adicionada para adicionar datapoints a votação de alta prioridade. Por favor, esteja ciente dos possíveis problemas que isso poderia causar (se muitos datapoints adicionados) e usar em seu próprio risco. TODOS os datapoints da Wallbox foram removidos da votação de alta prioridade. Apenas alguns usuários têm uma caixa de parede SENEC. Por favor, reconfigure através do novo diálogo de configuração.",
-				"nl": "Toegevoegd configuration sectie om gegevens toe te voegen aan hoge prioriteitsvervuiling. Wees alsjeblieft op de hoogte van de mogelijke kwesties die dit kan veroorzaken... als te veel datapoints toegevoegd zijn en gebruik maken van je eigen risico. Alle Wallbox datapoints zijn verwijderd van hoge prioriteitsvervuiling. Alleen sommige gebruikers hebben zelfs een SENEC muurdoos. Herconfiguur via de nieuwe dialoog.",
-				"fr": "Ajout de la section de configuration pour ajouter des points de données à un sondage prioritaire. S'il vous plaît être conscient des problèmes possibles qui pourraient causer (si trop de points de données ajoutés) et utiliser à vos propres risques. Tous les points de données de Wallbox ont été retirés du vote prioritaire. Seuls certains utilisateurs ont même une boîte murale SENEC. Veuillez reconfigurer via le nouveau dialogue de configuration.",
-				"it": "Aggiunta sezione di configurazione per aggiungere datapoints ad inquinamento ad alta priorità. Si prega di essere consapevoli dei possibili problemi che questo potrebbe causare (se troppi punti di dati aggiunti) e utilizzare a proprio rischio. Tutti i datapoint di Wallbox sono stati rimossi dall'inquinamento ad alta priorità. Solo alcuni utenti hanno anche una parete SENEC. Si prega di riconfigurare tramite il nuovo dialogo di configurazione.",
-				"es": "Se agregó la sección de configuración para añadir puntos de datos a encuestas de alta prioridad. Tenga en cuenta los posibles problemas que esto podría causar (si se añaden demasiados datos) y utilizar a su propio riesgo. Todos los puntos de datos de Wallbox han sido eliminados de encuestas de alta prioridad. Sólo algunos usuarios tienen una caja de pared SENEC. Por favor reconfigure a través del nuevo diálogo de configuración.",
-				"pl": "Wtedy sekcja konfiguracji dodania punktów danych do wysokiego priorytetu. Poświadczenie o możliwych zagadnieniach może powodować (jeśli są zbyt wiele punktów danych) i wykorzystać swój własny ryzyko. ALL Wallbox datapoints zostały usunięte z wysokiego priorytetu. Tylko niektórzy użytkownicy mają nawet SENEC. Powraca się poprzez nowe dialogi.",
-				"uk": "Додано розділ конфігурації, щоб додати точки даних до високого пріоритетного опитування. Будь ласка, будь ласка, будь ласка, будь ласка, зв'яжіться з нами та користуйтеся власним ризиком. Усі точки даних Wallbox видаляються з високого  пріоритетного опитування. Тільки деякі користувачі навіть мають скриньку SENEC. Будь ласка, переадресація через новий діалог налаштування.",
-				"zh-cn": "增加数据点以进行高度优先投票。 请了解可能出现的问题(如果数据点增加),并利用你自己的风险。 已从高优先投票中删除了所有Wil箱数据点。 只有一些用户甚至有SENEC墙箱。 请通过新的混凝土对话进行改组。."
 			}
         },
         "docs": {
@@ -226,6 +200,7 @@
     },
     "native": {
 		"lala_use": true,
+		"control_active": false,
         "senecip": "0.0.0.0",
         "interval": 10,
 		"intervalLow": 60,
