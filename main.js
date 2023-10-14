@@ -558,6 +558,8 @@ class Senec extends utils.Adapter {
 	 * inserts a value for a given key and year into AllTimeValueStore
 	 */
 	async insertAllTimeHistory(system, key, year, value, einheit) {
+		if (key === '__proto__' || key === 'constructor' || key === 'prototype') return; // Security fix
+		if (!isNaN(year) || !isNaN(value)) return; // Security fix
 		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
 		const valueStore = pfx + "valueStore";
 		const statsObj = await this.getStateAsync(valueStore);
