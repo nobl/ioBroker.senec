@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.9",
+        "version": "1.6.10",
         "news": {
+			"1.6.10": {
+				  "en": "Bugfix for AllTimeHistory",
+				  "de": "Bugfix für AllTimeHistory",
+				  "ru": "Bugfix для AllTimeИстория",
+				  "pt": "Bugfix para AllTimeHistory",
+				  "nl": "Bugfix voor AllTimeHistory",
+				  "fr": "Bugfix pour AllTimeHistory",
+				  "it": "Bugfix per AllTimeHistory",
+				  "es": "Bugfix para AllTimeHistory",
+				  "pl": "Bugfix for AllTimeHistory (ang.)",
+				  "uk": "Виправлення помилок для AllTimeHistory",
+				  "zh-cn": "九. 一切制度"
+			},
 			"1.6.9": {
 				  "en": "Improved battery forced loading, added switch in config to allow active control of appliance.",
 				  "de": "Manuelles Laden verbessert, zusätzlicher Schalter in Config, um aktive Steuerung des Gerätes zu erlauben.",

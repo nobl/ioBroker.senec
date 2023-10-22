@@ -298,6 +298,9 @@ This channel contains values polled from SENEC App-API.
 
 
 ## Changelog
+### 1.6.10 (NoBl)
+* Bugfix for AllTimeHistory (should work again)
+
 ### 1.6.9 (NoBl)
 * Added switch in config to enable active control of appliance (you will need activate this, if you want to control the appliance via the adapter)
 * Improved handling of forced loading (please report if we need more appliance-states covered by this)
