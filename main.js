@@ -17,9 +17,10 @@ const state_trans = require(__dirname + '/lib/state_trans.js');
 const api_trans = require(__dirname + '/lib/api_trans.js');
 const kiloList = ["W", "Wh"];
 
-const apiUrl = "https://app-gateway-prod.senecops.com/v1/senec";
+const apiUrl = "https://app-gateway.prod.senec.dev/v1/senec";
 const apiLoginUrl = apiUrl + "/login";
-const apiSystemsUrl = apiUrl + "/anlagen";
+const apiSystemsUrl = apiUrl + "/systems";
+const apiMonitorUrl = apiUrl + "/monitor";
 const apiKnownSystems = []
 
 const batteryOn = '{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
@@ -473,6 +474,7 @@ class Senec extends utils.Adapter {
 		try {
 			for (let i = 0; i < apiKnownSystems.length; i++) {
 				const baseUrl = apiSystemsUrl + "/" + apiKnownSystems[i];
+				const baseUrlMonitor = apiMonitorUrl + "/" + apiKnownSystems[i];
 				var url = "";
 				const tzObj = await this.getStateAsync("_api.Anlagen." + apiKnownSystems[i] + ".zeitzone");
 				const tz = tzObj ? encodeURIComponent(tzObj.val) : encodeURIComponent("Europe/Berlin");
@@ -484,7 +486,8 @@ class Senec extends utils.Adapter {
 				
 				for (let[key, value] of dates.entries()) {
 					// statistik for period
-					url = baseUrl + "/statistik?periode=" + api_trans[key].api + "&datum=" + value + "&locale=de_DE&timezone=" + tz;
+					url = baseUrlMonitor + "/data?period=" + api_trans[key].api + "&date=" + value + "&locale=de_DE&timezone=" + tz;
+					this.log.debug("Calling: " + url);
 					body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
 					await this.decodeStatistik(apiKnownSystems[i], JSON.parse(body), api_trans[key].dp);
 				}
@@ -535,20 +538,20 @@ class Senec extends utils.Adapter {
 		const pfx = "_api.Anlagen." + system + ".Statistik." + period + ".";
 		for (const[key, value] of Object.entries(obj.aggregation)) {
 			// only reading 'aggregation' - no interest in fine granular information
-			if (key == "startzeitpunkt") {
+			if (key == "startDate") {
 				await this.doState(pfx + key, value, "", "", false);
 			} else {
 				if (!this.config.api_alltimeRebuild) { // don't update DPs if we are AllTime-Rebuild-Process 
-					await this.doState(pfx + key, Number((value.wert).toFixed(2)), "", value.einheit, false);
-					if (kiloList.includes(value.einheit)) {
-						await this.doState(pfx + key + " (k"+ value.einheit + ")", Number((value.wert / 1000).toFixed(2)), "", "k" + value.einheit, false);
+					await this.doState(pfx + key, Number((value.value).toFixed(2)), "", value.unit, false);
+					if (kiloList.includes(value.unit)) {
+						await this.doState(pfx + key + " (k"+ value.unit + ")", Number((value.value / 1000).toFixed(2)), "", "k" + value.unit, false);
 					}
 				}
-				if (period == api_trans["THIS_YEAR"].dp) await this.insertAllTimeHistory(system, key, new Date(obj.aggregation.startzeitpunkt).getFullYear(), Number((value.wert).toFixed(0)), value.einheit);
+				if (period == api_trans["THIS_YEAR"].dp) await this.insertAllTimeHistory(system, key, new Date(obj.aggregation.startDate).getFullYear(), Number((value.value).toFixed(0)), value.unit);
 			}
 		}
-		if (obj.aggregation.stromverbrauch.wert != 0) {
-			const autarky = Number((((obj.aggregation.stromerzeugung.wert - obj.aggregation.netzeinspeisung.wert - obj.aggregation.speicherbeladung.wert + obj.aggregation.speicherentnahme.wert) / obj.aggregation.stromverbrauch.wert) * 100).toFixed(2));
+		if (obj.aggregation.totalUsage.value != 0) {
+			const autarky = Number((((obj.aggregation.generation.value - obj.aggregation.gridFeedIn.value - obj.aggregation.storageLoad.value + obj.aggregation.storageConsumption.value) / obj.aggregation.totalUsage.value) * 100).toFixed(2));
 			await this.doState(pfx + "Autarkie", autarky, "", "%", false);
 		}
 		await this.updateAllTimeHistory(system);
@@ -558,6 +561,7 @@ class Senec extends utils.Adapter {
 	 * inserts a value for a given key and year into AllTimeValueStore
 	 */
 	async insertAllTimeHistory(system, key, year, value, einheit) {
+		this.log.debug("Insert AllTimeHistory: " + system + "/" + "key" + "/" + year + "/" + value + "/" + einheit);
 		if (key === '__proto__' || key === 'constructor' || key === 'prototype') return; // Security fix
 		if (isNaN(year) || isNaN(value)) return; // Security fix
 		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
@@ -597,8 +601,8 @@ class Senec extends utils.Adapter {
 				await this.doState(pfx + key, Number(sum.toFixed(0)), "", einheit, false);
 			}
 		}
-		if (sums.stromverbrauch != 0) {
-			const autarky = Number((((sums.stromerzeugung - sums.netzeinspeisung - sums.speicherbeladung + sums.speicherentnahme) / sums.stromverbrauch) * 100).toFixed(0));
+		if (sums.totalUsage != 0) {
+			const autarky = Number((((sums.generation - sums.gridFeedIn - sums.storageLoad + sums.storageConsumption) / sums.totalUsage) * 100).toFixed(0));
 			await this.doState(pfx + "Autarkie", autarky, "", "%", false);
 		}
 	}
@@ -618,11 +622,12 @@ class Senec extends utils.Adapter {
 		try {
 			while (new Date(year).getFullYear() > 2008) { // senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
 				this.log.info("Rebuilding AllTime History - Year: " + new Date(year).getFullYear());
-				const baseUrl = apiSystemsUrl + "/" + system
+				const baseUrl = apiMonitorUrl + "/" + system;
 				var url = "";
 				const tzObj = await this.getStateAsync("_api.Anlagen." + system + ".zeitzone");
 				const tz = tzObj ? encodeURIComponent(tzObj.val) : encodeURIComponent("Europe/Berlin");
-				url = baseUrl + "/statistik?periode=JAHR&datum=" + year + "&locale=de_DE&timezone=" + tz;
+				url = baseUrl + "/data?period=YEAR&date=" + year + "&locale=de_DE&timezone=" + tz;
+				this.log.debug("Polling: " + url);
 				body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
 				await this.decodeStatistik(system, JSON.parse(body), api_trans["THIS_YEAR"].dp);
 				year = new Date(new Date(year).getFullYear() - 1, 1, 1).toISOString().split('T')[0];
