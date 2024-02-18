@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.11",
+        "version": "1.6.12",
         "news": {
+			"1.6.12": {
+				"en": "Updated license",
+				"de": "Lizenz aktualisiert",
+				"ru": "Обновленная лицензия",
+				"pt": "Licença atualizada",
+				"nl": "Bijgewerkte licentie",
+				"fr": "Licence actualisée",
+				"it": "Licenza aggiornata",
+				"es": "Licencia actualizada",
+				"pl": "Aktualizacja licencji",
+				"uk": "Оновлена ліцензія",
+				"zh-cn": "更新许可证"
+			},
 			"1.6.11": {
 				"en": "Moving from Senec App API 3.12.0 to 4.3.3 (thanks to oakdesign@github for providing the new API!). This WILL invalidate all current API datapoints in the Statistik branch. Easiest solution to this: Delete the Statistik branch. Remember to force a rebuild of historic data in adapter settings!",
 				"de": "Update der Senec App API 3.12.0 auf 4.3.3 (Dank an Oakdesign@github für die Analyse der neuen API.)! Dadurch werden leider alle aktuellen API-Datenpunkte im Statistik-Zweig ungültig. Einfachste Lösung hierfür: Den gesamten Statistik-Zweig löschen. Beachten: Die Gesamthistorie muss neu berechnet werden (Parameter in den Adaptereinstellungen)!",
@@ -132,32 +145,6 @@
 				"pl": "Wstępne dane z API wraz z kilkoma własnymi obliczeniami.",
 				"uk": "Додано значення статистичних даних з API разом з деякими власними підрахунками.",
 				"zh-cn": "加上非传染性疾病的统计价值以及一些本身的计算。."
-			},
-			"1.6.1": {
-				"en": "Bugfixes for API reading.",
-				"de": "Bugfixes im API Handling.",
-				"ru": "Bugfixes для чтения API.",
-				"pt": "Bugfixes para leitura de API.",
-				"nl": "Bugfixes voor API-lezing.",
-				"fr": "Bugfixes pour la lecture de l'API.",
-				"it": "Bugfixes per la lettura API.",
-				"es": "Bugfixes para la lectura de API.",
-				"pl": "Bugfixes for API reading (ang.).",
-				"uk": "Виправлення помилок для читання API.",
-				"zh-cn": "评 注."
-			},
-			"1.6.0": {
-				"en": "You can now configure to request SENEC App API.",
-				"de": "Sie können nun die SENEC App API abfragen.",
-				"ru": "Теперь вы можете настроить для запроса SENEC App API.",
-				"pt": "Agora você pode configurar para solicitar a API do SENEC App.",
-				"nl": "Je kunt nu configureren om SENEC App API te vragen.",
-				"fr": "Vous pouvez maintenant configurer pour demander l'API App SENEC.",
-				"it": "Ora è possibile configurare per richiedere l'API SENEC App.",
-				"es": "Ahora puede configurarse para solicitar SENEC App API.",
-				"pl": "Możesz teraz skonfigurować żądanie SENEC App API.",
-				"uk": "Ви можете налаштувати запит на SENEC App API.",
-				"zh-cn": "如今,你可以准备要求SENECSP。."
 			}
         },
         "docs": {
