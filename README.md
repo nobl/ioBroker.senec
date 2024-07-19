@@ -299,6 +299,10 @@ This channel contains values polled from SENEC App-API.
 
 ## Changelog
 
+### 1.6.13 (NoBl)
+* Removed Support for node 16
+* Added more translations
+
 ### 1.6.12 (NoBl)
 * Updated license
 

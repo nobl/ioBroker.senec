@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.12",
+        "version": "1.6.13",
         "news": {
+			"1.6.13": {
+				"en": "Removed Support for node 16, Added more translations",
+				"de": "Entfernen Support für Knoten 16, weitere Übersetzungen hinzugefügt",
+				"ru": "Удаленная поддержка узла 16, добавлено больше переводов",
+				"pt": "Suporte removido para nó 16, Adicionado mais traduções",
+				"nl": "Verwijderde Ondersteuning voor node 16, Toegevoegd meer vertalingen",
+				"fr": "Supprimé Support pour noeud 16, Ajout d'autres traductions",
+				"it": "Supporto rimosso per nodo 16, Aggiunto più traduzioni",
+				"es": "Soporte eliminado para nodo 16, Añadido más traducciones",
+				"pl": "Usunięty Wsparcie dla węzła 16, Dodano więcej tłumaczeń",
+				"uk": "Видалити підтримку для вершини 16, Додано більше перекладів",
+				"zh-cn": "删除对节点16的支持, 添加更多翻译"
+			},
 			"1.6.12": {
 				"en": "Updated license",
 				"de": "Lizenz aktualisiert",
@@ -132,19 +145,6 @@
 				"pl": "Bugfixes for API reading (ang.).",
 				"uk": "Виправлення помилок для читання API.",
 				"zh-cn": "评 注."
-			},
-			"1.6.2": {
-				"en": "Added statistics values from API along with some own calculations.",
-				"de": "Statistikwerte von API zusammen mit einigen eigenen Berechnungen hinzugefügt.",
-				"ru": "Добавлены статистические значения из API наряду с некоторыми собственными расчетами.",
-				"pt": "Adicionados valores estatísticos da API junto com alguns próprios cálculos.",
-				"nl": "Voeg statistieken toe van API samen met wat eigen berekeningen.",
-				"fr": "Ajout des valeurs statistiques de l'API avec certains propres calculs.",
-				"it": "Aggiunti i valori statistici da API con alcuni propri calcoli.",
-				"es": "Valores estadísticos añadidos de API junto con algunos cálculos propios.",
-				"pl": "Wstępne dane z API wraz z kilkoma własnymi obliczeniami.",
-				"uk": "Додано значення статистичних даних з API разом з деякими власними підрахунками.",
-				"zh-cn": "加上非传染性疾病的统计价值以及一些本身的计算。."
 			}
         },
         "docs": {
