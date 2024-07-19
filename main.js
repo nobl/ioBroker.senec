@@ -155,14 +155,16 @@ class Senec extends utils.Adapter {
 							this.log.info("Enable force battery charging ...");
 							this.evalPoll(
 								JSON.parse(
-									await this.doGet(url, batteryOn, this, this.config.pollingTimeout, true), reviverNumParse
+									await this.doGet(url, batteryOn, this, this.config.pollingTimeout, true),
+									reviverNumParse,
 								),
 							);
 						} else {
 							this.log.info("Disable force battery charging ...");
 							this.evalPoll(
 								JSON.parse(
-									await this.doGet(url, batteryOff, this, this.config.pollingTimeout, true), reviverNumParse
+									await this.doGet(url, batteryOff, this, this.config.pollingTimeout, true),
+									reviverNumParse,
 								),
 							);
 						}
@@ -270,22 +272,22 @@ class Senec extends utils.Adapter {
 						this.addUserDps(value, objectsSet, this.config.highPrio_ENERGY);
 					break;
 				case "PV1":
-					["POWER_RATIO", "MPP_POWER"].forEach(item => objectsSet.add(item));
+					["POWER_RATIO", "MPP_POWER"].forEach((item) => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_PV1_active)
 						this.addUserDps(value, objectsSet, this.config.highPrio_PV1);
 					break;
 				case "PWR_UNIT":
-					["POWER_L1", "POWER_L2", "POWER_L3"].forEach(item => objectsSet.add(item));
+					["POWER_L1", "POWER_L2", "POWER_L3"].forEach((item) => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_PWR_UNIT_active)
 						this.addUserDps(value, objectsSet, this.config.highPrio_PWR_UNIT);
 					break;
 				case "PM1OBJ1":
-					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach(item => objectsSet.add(item));
+					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach((item) => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_PM1OBJ1_active)
 						this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ1);
 					break;
 				case "PM1OBJ2":
-					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach(item => objectsSet.add(item));
+					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach((item) => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_PM1OBJ2_active)
 						this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ2);
 					break;
@@ -307,34 +309,36 @@ class Senec extends utils.Adapter {
 					break;
 				default:
 					// nothing to do here
-				break;
+					break;
 			}
 			if (objectsSet.size > 0) {
 				highPrioObjects.set(value, objectsSet);
 			}
 		}
-		
-		lowPrioForm = lowPrioForm.slice(0, -1) +  "}";
+
+		lowPrioForm = lowPrioForm.slice(0,-1) +  "}";
 		this.log.info("(initPollSettings) lowPrio: " + lowPrioForm);
-		
+
 		// creating form for high priority pulling
 		highPrioForm = "{";
-		highPrioObjects.forEach( function (mapValue, key, map) {
+		highPrioObjects.forEach(function (mapValue, key, map) {
 			highPrioForm += '"' + key + '":{';
-			mapValue.forEach (function (setValue) {
+			mapValue.forEach(function (setValue) {
 				highPrioForm += '"' + setValue + '":"",';
 			});
-			highPrioForm = highPrioForm.slice(0, -1) +  "},";
+			highPrioForm = highPrioForm.slice(0,-1) +  "},";
 		});
-		highPrioForm = highPrioForm.slice(0, -1) +  "}";
+		highPrioForm = highPrioForm.slice(0,-1) +  "}";
 		this.log.info("(initPollSettings) highPrio: " + highPrioForm);
 	}
-	
+
 	addUserDps(value, objectsSet, dpToAdd) {
-		if (dpToAdd.trim().length < 1 || !/^[A-Z0-9_,]*$/.test(dpToAdd.toUpperCase().trim())) { // don't accept anything but entries like DP_1,DP2,dp3
+		if (dpToAdd.trim().length < 1 || !/^[A-Z0-9_,]*$/.test(dpToAdd.toUpperCase().trim())) {
+			// don't accept anything but entries like DP_1,DP2,dp3
 			this.log.warn(
-				"(addUserDps) Datapoints config for " + 
-					value + " doesn't follow [A-Z0-9_,] (no blanks allowed!) - Ignoring: " + 
+				"(addUserDps) Datapoints config for " +
+					value +
+					" doesn't follow [A-Z0-9_,] (no blanks allowed!) - Ignoring: " +
 					dpToAdd.toUpperCase().trim(),
 			);
 			return;
@@ -343,7 +347,7 @@ class Senec extends utils.Adapter {
 			.toUpperCase()
 			.trim()
 			.split(",")
-			.forEach(item => objectsSet.add(item));
+			.forEach((item) => objectsSet.add(item));
 		this.log.info("(addUserDps) Datapoints config changed for " + value + ": " + dpToAdd.toUpperCase().trim());
 	}
 
@@ -356,7 +360,8 @@ class Senec extends utils.Adapter {
 		if (this.config.interval < 1 || this.config.interval > 3600) {
 			this.log.warn(
 				"(checkConf) Config interval high priority " +
-					this.config.interval + " not [1..3600] seconds. Using default: 10",
+					this.config.interval +
+					" not [1..3600] seconds. Using default: 10",
 			);
 			this.config.interval = 10;
 		}
@@ -364,7 +369,8 @@ class Senec extends utils.Adapter {
 		if (this.config.intervalLow < 10 || this.config.intervalLow > 3600) {
 			this.log.warn(
 				"(checkConf) Config interval low priority " +
-					this.config.intervalLow + " not [10..3600] minutes. Using default: 60",
+					this.config.intervalLow +
+					" not [10..3600] minutes. Using default: 60",
 			);
 			this.config.intervalLow = 60;
 		}
@@ -372,7 +378,8 @@ class Senec extends utils.Adapter {
 		if (this.config.pollingTimeout < 1000 || this.config.pollingTimeout > 10000) {
 			this.log.warn(
 				"(checkConf) Config timeout " +
-					this.config.pollingTimeout + " not [1000..10000] ms. Using default: 5000",
+					this.config.pollingTimeout +
+					" not [1000..10000] ms. Using default: 5000",
 			);
 			this.config.pollingTimeout = 5000;
 		}
@@ -380,7 +387,8 @@ class Senec extends utils.Adapter {
 		if (this.config.retries < 0 || this.config.retries > 999) {
 			this.log.warn(
 				"(checkConf) Config num of retries " +
-					this.config.retries + " not [0..999] seconds. Using default: 10",
+					this.config.retries +
+					" not [0..999] seconds. Using default: 10",
 			);
 			this.config.retries = 10;
 		}
@@ -388,7 +396,8 @@ class Senec extends utils.Adapter {
 		if (this.config.retrymultiplier < 1 || this.config.retrymultiplier > 10) {
 			this.log.warn(
 				"(checkConf) Config retry multiplier " +
-					this.config.retrymultiplier + " not [1..10] seconds. Using default: 2",
+					this.config.retrymultiplier +
+					" not [1..10] seconds. Using default: 2",
 			);
 			this.config.retrymultiplier = 2;
 		}
@@ -420,7 +429,7 @@ class Senec extends utils.Adapter {
 			lalaConnected = true;
 		} catch (error) {
 			throw new Error(
-				"Error connecting to Senec (IP: " + 
+				"Error connecting to Senec (IP: " +
 					connectVia +
 					this.config.senecip +
 					"). Exiting! (" +
@@ -429,7 +438,7 @@ class Senec extends utils.Adapter {
 			);
 		}
 	}
-	
+
 	/**
 	 * Inits connection to senec app api
 	 */
@@ -441,7 +450,7 @@ class Senec extends utils.Adapter {
 		this.log.info("connecting to Senec App API: " + apiLoginUrl);
 		const loginData = JSON.stringify({
 			password: this.config.api_pwd,
-			username: this.config.api_mail
+			username: this.config.api_mail,
 		});
 		try {
 			const body = await this.doGet(apiLoginUrl, loginData, this, this.config.pollingTimeout, true);
@@ -454,7 +463,7 @@ class Senec extends utils.Adapter {
 			throw new Error("Error connecting to Senec AppAPI. Exiting! (" + error + ").");
 		}
 	}
-	
+
 	/**
 	 * Reads system data from senec app api
 	 */
@@ -469,13 +478,14 @@ class Senec extends utils.Adapter {
 			const body = await this.doGet(apiSystemsUrl, "", this, this.config.pollingTimeout, false);
 			this.log.info("Read Systems Information from Senec AppAPI.");
 			const obj = JSON.parse(body);
-			for (const[, value] of Object.entries(obj)) {
+			for (const[key, value] of Object.entries(obj)) {
+				this.log.debug("ApiPull: " + key + ":" + JSON.stringify(value));
 				const systemId = value.id;
 				apiKnownSystems.push(systemId);
 				for (const[key2, value2] of Object.entries(value)) {
 					if (typeof value2 === "object") 
 						await this.doState(pfx + systemId + "." + key2, JSON.stringify(value2), "", "", false);
-					else 
+					else
 						await this.doState(pfx + systemId + "." + key2, value2, "", "", false);
 				}
 			}
@@ -499,18 +509,23 @@ class Senec extends utils.Adapter {
 				data: pForm,
 				timeout: pollingTimeout
 			})
-			.then(
+				.then(
 				async (response) => {
-						const content = response.data;
-						caller.log.debug("(Poll) received data (" + response.status + "): " + JSON.stringify(content));
-						resolve(JSON.stringify(content));
-					}
-				)
-			.catch(
+					const content = response.data;
+					caller.log.debug("(Poll) received data (" + response.status + "): " + JSON.stringify(content));
+					resolve(JSON.stringify(content));
+				}
+			)
+				.catch(
 				(error) => {
 					if (error.response) {
 						// The request was made and the server responded with a status code
-						caller.log.warn("(Poll) received error " + error.response.status + " response from SENEC with content: " + JSON.stringify(error.response.data));
+						caller.log.warn(
+							"(Poll) received error " + 
+								error.response.status + 
+								" response from SENEC with content: " + 
+								JSON.stringify(error.response.data),
+						);
 						if (error.response.status == 403 && apiConnected) {
 							apiConnected = false; // apparently the api is inaccessible
 							this.initSenecAppApi();
@@ -545,8 +560,14 @@ class Senec extends utils.Adapter {
 		}
 		
 		try {
-			var body = await this.doGet(url, (isHighPrio ? highPrioForm : lowPrioForm), this, this.config.pollingTimeout, true);
-			if (body.includes('\\"')) { 
+			var body = await this.doGet(
+				url, 
+				(isHighPrio ? highPrioForm : lowPrioForm), 
+				this, 
+				this.config.pollingTimeout, 
+				true,
+			);
+			if (body.includes('\\"')) {
 				// in rare cases senec reports back extra escape sequences on some machines ...
 				this.log.info("(Poll) Double escapes detected!  Body inc: " + body);
 				body = body.replace(/\\"/g, '"');
@@ -559,17 +580,41 @@ class Senec extends utils.Adapter {
 			if (unloaded) return;
 			this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval);
 		} catch (error) {
-			if ((retry == this.config.retries) && this.config.retries < 999) {
-				this.log.error("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
+			if (retry == this.config.retries && this.config.retries < 999) {
+				this.log.error(
+					"Error reading from Senec " + 
+						(isHighPrio ? "high" : "low") + 
+						"Prio (" + 
+						this.config.senecip + 
+						"). Retried " + 
+						retry + 
+						" times. Giving up now. Check config and restart adapter. (" 
+						+ error 
+						+ ")",
+				);
 				this.setState("info.connection", false, true);
 			} else {
 				retry += 1;
-				this.log.warn("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
+				this.log.warn(
+					"Error reading from Senec " + 
+					(isHighPrio ? "high" : "low") + 
+					"Prio (" + 
+					this.config.senecip + 
+					"). Retry " + 
+					retry + 
+					"/" + 
+					this.config.retries + 
+					" in " + 
+					(interval * this.config.retrymultiplier * retry) / 1000 + 
+					" seconds! (" + 
+					error + 
+					")",
+				);
 				this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval * this.config.retrymultiplier * retry);
 			}
 		}
 	}
-	
+
 	/**
 	 * Read values from Senec App API
 	 */
@@ -580,14 +625,14 @@ class Senec extends utils.Adapter {
 		}
 		const interval = this.config.api_interval * 60000;
 		const dates = new Map([
-			["THIS_DAY", new Date().toISOString().split('T')[0]],
-			["LAST_DAY", new Date(new Date().setDate(new Date().getDate()-1)).toISOString().split('T')[0]],
-			["THIS_MONTH", new Date().toISOString().split('T')[0]],
-			["LAST_MONTH", new Date(new Date().setDate(0)).toISOString().split('T')[0]],
-			["THIS_YEAR", new Date().toISOString().split('T')[0]],
-			["LAST_YEAR", new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split('T')[0]]
+			["THIS_DAY", new Date().toISOString().split("T")[0]],
+			["LAST_DAY", new Date(new Date().setDate(new Date().getDate()-1)).toISOString().split("T")[0]],
+			["THIS_MONTH", new Date().toISOString().split("T")[0]],
+			["LAST_MONTH", new Date(new Date().setDate(0)).toISOString().split("T")[0]],
+			["THIS_YEAR", new Date().toISOString().split("T")[0]],
+			["LAST_YEAR", new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split("T")[0]],
 		]);
-				
+
 		this.log.debug("Polling API ...");
 		var body = "";
 		try {
@@ -597,91 +642,151 @@ class Senec extends utils.Adapter {
 				var url = "";
 				const tzObj = await this.getStateAsync("_api.Anlagen." + apiKnownSystems[i] + ".zeitzone");
 				const tz = tzObj ? encodeURIComponent(tzObj.val) : encodeURIComponent("Europe/Berlin");
-				
+
 				// dashboard
 				url = baseUrl + "/dashboard";
 				body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
 				await this.decodeDashboard(apiKnownSystems[i], JSON.parse(body));
-				
+
 				for (let[key, value] of dates.entries()) {
 					// statistik for period
-					url = baseUrlMonitor + "/data?period=" + api_trans[key].api + "&date=" + value + "&locale=de_DE&timezone=" + tz;
+					url =
+						baseUrlMonitor + 
+						"/data?period=" + 
+						api_trans[key].api + 
+						"&date=" + 
+						value + 
+						"&locale=de_DE&timezone=" + 
+						tz;
 					this.log.debug("Calling: " + url);
 					body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
 					await this.decodeStatistik(apiKnownSystems[i], JSON.parse(body), api_trans[key].dp);
 				}
-				
+
 				if (this.config.api_alltimeRebuild) await this.rebuildAllTimeHistory(apiKnownSystems[i]);
-				
+
 			}
 			retry = 0;
 			if (unloaded) return;
 			this.timerAPI = setTimeout(() => this.pollSenecAppApi(retry), interval);
 		} catch (error) {
-			if ((retry == this.config.retries) && this.config.retries < 999) {
-				this.log.error("Error reading from Senec AppAPI. Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
+			if (retry == this.config.retries && this.config.retries < 999) {
+				this.log.error(
+					"Error reading from Senec AppAPI. Retried " +
+					retry +
+					" times. Giving up now. Check config and restart adapter. (" +
+					error +
+					")",
+				);
 				this.setState("info.connection", false, true);
 			} else {
 				retry += 1;
-				this.log.warn("Error reading from Senec AppAPI. Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
-				this.timerAPI = setTimeout(() => this.pollSenecAppApi(retry), interval * this.config.retrymultiplier * retry);
+				this.log.warn(
+					"Error reading from Senec AppAPI. Retry " +
+						retry +
+						"/" +
+						this.config.retries +
+						" in " +
+						(interval * this.config.retrymultiplier * retry) / 1000 +
+						" seconds! (" +
+						error +
+						")",
+				);
+				this.timerAPI = setTimeout(
+					() => this.pollSenecAppApi(retry),
+					interval * this.config.retrymultiplier * retry
+				);
 			}
 		}
 	}
-	
+
 	/**
 	 * Decodes Dashboard information from SENEC App API
 	 */
 	async decodeDashboard(system, obj) {
 		const pfx = "_api.Anlagen." + system + ".Dashboard.";
-		for (const[key, value] of Object.entries(obj)) {
+		for ( const[key, value] of Object.entries(obj) ) {
 			if (key == "zeitstempel" || key == "electricVehicleConnected") {
 				await this.doState(pfx + key, value, "", "", false);
 			} else {
-				for (const[key2, value2] of Object.entries(value)) {
-					await this.doState(pfx + key + "." + key2, Number((value2.wert).toFixed(2)), "", value2.einheit, false);
+				for ( const[key2, value2] of Object.entries(value) ) {
+					await this.doState(
+						pfx + key + "." + key2,
+						Number((value2.wert).toFixed(2)),
+						"",
+						value2.einheit,
+						false,
+					);
 					if (kiloList.includes(value2.einheit)) {
-						await this.doState(pfx + key + "." + key2 + " (k" + value2.einheit + ")", Number((value2.wert / 1000).toFixed(2)), "", "k" + value2.einheit, false);
+						await this.doState(
+							pfx + key + "." + key2 + " (k" + value2.einheit + ")",
+							Number((value2.wert / 1000).toFixed(2)),
+							"",
+							"k" + value2.einheit,
+							false,
+						);
 					}
 				}
 			}
 		}
-		
 	}
-	
+
 	/**
 	 * Decodes Statistik information from SENEC App API
 	 */
 	async decodeStatistik(system, obj, period) {
 		if (obj == null || obj == undefined || obj.aggregation == null || obj.aggregation == undefined) return; // could happen (e.g.) if we pull information for "last year" when the appliance isn't that old yet
 		const pfx = "_api.Anlagen." + system + ".Statistik." + period + ".";
-		for (const[key, value] of Object.entries(obj.aggregation)) {
+		for ( const[key, value] of Object.entries(obj.aggregation) ) {
 			// only reading 'aggregation' - no interest in fine granular information
 			if (key == "startDate") {
 				await this.doState(pfx + key, value, "", "", false);
 			} else {
-				if (!this.config.api_alltimeRebuild) { // don't update DPs if we are AllTime-Rebuild-Process 
-					await this.doState(pfx + key, Number((value.value).toFixed(2)), "", value.unit, false);
+				if (!this.config.api_alltimeRebuild) { 
+					// don't update DPs if we are AllTime-Rebuild-Process 
+					await this.doState(pfx + key, Number(value.value.toFixed(2)), "", value.unit, false);
 					if (kiloList.includes(value.unit)) {
-						await this.doState(pfx + key + " (k"+ value.unit + ")", Number((value.value / 1000).toFixed(2)), "", "k" + value.unit, false);
+						await this.doState(
+							pfx + key + " (k"+ value.unit + ")", 
+							Number((value.value / 1000).toFixed(2)),
+							"",
+							"k" + value.unit,
+							false,
+						);
 					}
 				}
-				if (period == api_trans["THIS_YEAR"].dp) await this.insertAllTimeHistory(system, key, new Date(obj.aggregation.startDate).getFullYear(), Number((value.value).toFixed(0)), value.unit);
+				if (period == api_trans["THIS_YEAR"].dp)
+					await this.insertAllTimeHistory(
+						system, 
+						key, 
+						new Date(obj.aggregation.startDate).getFullYear(), 
+						Number(value.value.toFixed(0)), 
+						value.unit,
+					);
 			}
 		}
 		if (obj.aggregation.totalUsage.value != 0) {
-			const autarky = Number((((obj.aggregation.generation.value - obj.aggregation.gridFeedIn.value - obj.aggregation.storageLoad.value + obj.aggregation.storageConsumption.value) / obj.aggregation.totalUsage.value) * 100).toFixed(2));
+			const autarky = Number(
+				(
+					((obj.aggregation.generation.value -
+						obj.aggregation.gridFeedIn.value -
+						obj.aggregation.storageLoad.value +
+						obj.aggregation.storageConsumption.value) /
+						obj.aggregation.totalUsage.value) *
+					100
+				).toFixed(2),
+			);
 			await this.doState(pfx + "Autarkie", autarky, "", "%", false);
 		}
 		await this.updateAllTimeHistory(system);
 	}
-	
+
 	/**
 	 * inserts a value for a given key and year into AllTimeValueStore
 	 */
 	async insertAllTimeHistory(system, key, year, value, einheit) {
 		this.log.debug("Insert AllTimeHistory: " + system + "/" + "key" + "/" + year + "/" + value + "/" + einheit);
-		if (key === '__proto__' || key === 'constructor' || key === 'prototype') return; // Security fix
+		if (key === "__proto__" || key === "constructor" || key === "prototype") return; // Security fix
 		if (isNaN(year) || isNaN(value)) return; // Security fix
 		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
 		const valueStore = pfx + "valueStore";
@@ -693,7 +798,7 @@ class Senec extends utils.Adapter {
 		stats[key]["einheit"] = einheit;
 		await this.doState(valueStore, JSON.stringify(stats), "", "", false);
 	}
-	
+
 	/**
 	 * Updated AllTimeHistory based on what we have in our AllTimeValueStore
 	 */
@@ -703,10 +808,10 @@ class Senec extends utils.Adapter {
 		const statsObj = await this.getStateAsync(valueStore);
 		const stats = statsObj ? JSON.parse(statsObj.val) : {};
 		const sums = {};
-		for (const[key, value] of Object.entries(stats)) {
-			var einheit = "";
-			var sum = 0.0;
-			for (const[key2, value2] of Object.entries(value)) {
+		for ( const[key, value] of Object.entries(stats) ) {
+			let einheit = "";
+			let sum = 0.0;
+			for ( const[key2, value2] of Object.entries(value) ) {
 				if (key2 == "einheit") {
 					einheit = value2;
 				} else {
@@ -721,11 +826,17 @@ class Senec extends utils.Adapter {
 			}
 		}
 		if (sums.totalUsage != 0) {
-			const autarky = Number((((sums.generation - sums.gridFeedIn - sums.storageLoad + sums.storageConsumption) / sums.totalUsage) * 100).toFixed(0));
+			const autarky = Number(
+				(
+					((sums.generation - sums.gridFeedIn - sums.storageLoad + sums.storageConsumption) /
+						sums.totalUsage) *
+					100
+				).toFixed(0),
+			);
 			await this.doState(pfx + "Autarkie", autarky, "", "%", false);
 		}
 	}
-	
+
 	/**
 	 * Rebuilds AllTimeHistory from SENEC App API
 	 */
@@ -734,29 +845,30 @@ class Senec extends utils.Adapter {
 			this.log.info("Usage of SENEC App API not configured or not connected.");
 			return;
 		}
-		
+
 		this.log.info("Rebuilding AllTime History ...");
-		var year = new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split("T")[0]; // starting last year, because we already got current year covered
-		var body = "";
+		let year = new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split("T")[0]; // starting last year, because we already got current year covered
+		let body = "";
 		try {
-			while (new Date(year).getFullYear() > 2008) { // senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
+			while (new Date(year).getFullYear() > 2008) {
+				// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
 				this.log.info("Rebuilding AllTime History - Year: " + new Date(year).getFullYear());
 				const baseUrl = apiMonitorUrl + "/" + system;
-				var url = "";
+				let url = "";
 				const tzObj = await this.getStateAsync("_api.Anlagen." + system + ".zeitzone");
 				const tz = tzObj ? encodeURIComponent(tzObj.val) : encodeURIComponent("Europe/Berlin");
 				url = baseUrl + "/data?period=YEAR&date=" + year + "&locale=de_DE&timezone=" + tz;
 				this.log.debug("Polling: " + url);
 				body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
 				await this.decodeStatistik(system, JSON.parse(body), api_trans["THIS_YEAR"].dp);
-				year = new Date(new Date(year).getFullYear() - 1, 1, 1).toISOString().split('T')[0];
+				year = new Date(new Date(year).getFullYear() - 1, 1, 1).toISOString().split("T")[0];
 				if (unloaded) return;
 			}
 		} catch (error) {
-			this.log.info("Rebuild ended.");
+			this.log.info("Rebuild ended: " + error);
 		}
 		this.log.info("Restarting ...");
-		this.extendForeignObject(`system.adapter.${this.namespace}`, {native: {api_alltimeRebuild: false}});
+		this.extendForeignObject(`system.adapter.${this.namespace}`, {native: { api_alltimeRebuild: false } });
 	}
 
 	/**
@@ -769,27 +881,35 @@ class Senec extends utils.Adapter {
 			return;
 		}
 		this.log.silly("(doState) Update: " + name + ": " + value);
-	   
+
 		const valueType = value !== null && value !== undefined ? typeof value : "mixed";
-	
+
 		// Check object for changes:
 		const obj = knownObjects[name] ? knownObjects[name] : await this.getObjectAsync(name);
 		if (obj) {
 			const newCommon = {};
 			if (obj.common.name !== description) {
-				this.log.debug("(doState) Updating object: " + name + " (desc): " + obj.common.name + " -> " + description);
+				this.log.debug(
+					"(doState) Updating object: " + name + " (desc): " + obj.common.name + " -> " + description,
+				);
 				newCommon.name = description;
 			}
 			if (obj.common.type !== valueType) {
-				this.log.debug("(doState) Updating object: " + name + " (type): " + obj.common.type + " -> " + typeof value);
+				this.log.debug(
+					"(doState) Updating object: " + name + " (type): " + obj.common.type + " -> " + typeof value,
+				);
 				newCommon.type = valueType;
 			}
 			if (obj.common.unit !== unit) {
-				this.log.debug("(doState) Updating object: " + name + " (unit): " + obj.common.unit + " -> " + unit);
+				this.log.debug(
+					"(doState) Updating object: " + name + " (unit): " + obj.common.unit + " -> " + unit,
+				);
 				newCommon.unit = unit;
 			}
 			if (obj.common.write !== write) {
-				this.log.debug("(doState) Updating object: " + name + " (write): " + obj.common.write + " -> " + write);
+				this.log.debug(
+					"(doState) Updating object: " + name + " (write): " + obj.common.write + " -> " + write,
+				);
 				newCommon.write = write;
 			}
 			if (Object.keys(newCommon).length > 0) {
@@ -816,7 +936,7 @@ class Senec extends utils.Adapter {
 		});
 		await this.doDecode(name, value);
 	}
-		
+
 	/**
 	 * Checks if there is decoding possible for a given value and creates/updates a decoded state
 	 * Language used for translations is the language of the SENEC appliance
@@ -824,40 +944,47 @@ class Senec extends utils.Adapter {
 	async doDecode(name, value) {
 		// Lang: WIZARD.GUI_LANG 0=German, 1=English, 2=Italian
 		var lang = 1; // fallback to english
-		var langState = await this.getStateAsync('WIZARD.GUI_LANG');
+		var langState = await this.getStateAsync("WIZARD.GUI_LANG");
 		if (langState) lang = langState.val;
 		this.log.silly("(Decode) Senec language: " + lang);
-		var key = name;
-		if (!isNaN(name.substring(name.lastIndexOf('.')) + 1)) key = name.substring(0, name.lastIndexOf('.'));
+		let key = name;
+		if (!isNaN(name.substring(name.lastIndexOf(".")) + 1)) key = name.substring(0, name.lastIndexOf("."));
 		this.log.silly("(Decode) Checking: " + name + " -> " + key);
-		
+
 		if (state_trans[key + "." + lang] !== undefined) {
 			this.log.silly("(Decode) Trans found for: " + key + "." + lang);
-			const trans = (state_trans[key + "." + lang] !== undefined ? (state_trans[key + "." + lang][value] !== undefined ? state_trans[key + "." + lang][value] : "(unknown)") : "(unknown)");
+			const trans = (
+				state_trans[key + "." + lang] !== undefined
+					? (state_trans[key + "." + lang][value] !== undefined
+						? state_trans[key + "." + lang][value]
+						: "(unknown)")
+					: "(unknown)");
 			this.log.silly("(Decode) Trans " + key + ":" + value + " = " + trans);
-			const desc = (state_attr[key + "_Text"] !== undefined) ? state_attr[key + "_Text"].name : key;
+			const desc = state_attr[key + "_Text"] !== undefined ? state_attr[key + "_Text"].name : key;
 			await this.doState(name + "_Text", trans, desc, "", true);
 		}
 	}
-	
+
 	/**
 	 * evaluates data polled from SENEC system.
 	 * creates / updates the state.
 	 */
 	async evalPoll(obj) {
 		if (unloaded) return;
-		for (const[key1, value1] of Object.entries(obj)) {
-			for (const[key2, value2] of Object.entries(value1)) {
+		for ( const[key1, value1] of Object.entries(obj) ) {
+			for ( const[key2, value2] of Object.entries(value1) ) {
 				if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
-					const key = key1 + '.' + key2;
+					const key = key1 + "." + key2;
 					if (state_attr[key] === undefined) {
-						this.log.debug("REPORT_TO_DEV: State attribute definition missing for: " + key + ", Val: " + value2);
-					}	
-					const desc = (state_attr[key] !== undefined) ? state_attr[key].name : key2;
-					const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
+						this.log.debug(
+							"REPORT_TO_DEV: State attribute definition missing for: " + key + ", Val: " + value2,
+						);
+					}
+					const desc = state_attr[key] !== undefined ? state_attr[key].name : key2;
+					const unit = state_attr[key] !== undefined ? state_attr[key].unit : "";
 
 					if (Array.isArray(value2)) {
-						for (var i = 0; i < value2.length; i++) {
+						for (let i = 0; i < value2.length; i++) {
 							this.doState(key + "." + i, ValueTyping(key, value2[i]), desc + "[" + i + "]", unit, false);
 						}
 					} else {
@@ -867,7 +994,6 @@ class Senec extends utils.Adapter {
 			}
 		}
 	}
-
 }
 
 /**
@@ -879,12 +1005,12 @@ const ValueTyping = (key, value) => {
 	if (state_attr[key] === undefined) {
 		return value;
 	}
-	const isBool = (state_attr[key] !== undefined && state_attr[key].booltype) ? state_attr[key].booltype : false;
-	const isDate = (state_attr[key] !== undefined && state_attr[key].datetype) ? state_attr[key].datetype : false;
-	const isIP = (state_attr[key] !== undefined && state_attr[key].iptype) ? state_attr[key].iptype : false;
-	const multiply = (state_attr[key] !== undefined && state_attr[key].multiply) ? state_attr[key].multiply : 1;
+	const isBool = state_attr[key] !== undefined && state_attr[key].booltype ? state_attr[key].booltype : false;
+	const isDate = state_attr[key] !== undefined && state_attr[key].datetype ? state_attr[key].datetype : false;
+	const isIP = state_attr[key] !== undefined && state_attr[key].iptype ? state_attr[key].iptype : false;
+	const multiply = state_attr[key] !== undefined && state_attr[key].multiply ? state_attr[key].multiply : 1;
 	if (isBool) {
-		return (value === 0) ? false : true;
+		return value === 0 ? false : true;
 	} else if (isDate) {
 		return new Date(value * 1000).toString();
 	} else if (isIP) {
@@ -894,7 +1020,7 @@ const ValueTyping = (key, value) => {
 	} else {
 		return value;
 	}
-}
+};
 
 /**
  * Converts float value in hex format to js float32.
@@ -902,14 +1028,14 @@ const ValueTyping = (key, value) => {
  * @param string with hex value
  */
 const HexToFloat32 = (str) => {
-	var int = parseInt(str, 16);
+	const int = parseInt(str, 16);
 	if (int > 0 || int < 0) {
 		// var sign = (int >>> 31) ? -1 : 1;
-		var sign = (int & 0x80000000) ? -1 : 1;
-		var exp = (int >>> 23 & 0xff) - 127;
-		var mantissa = ((int & 0x7fffff) + 0x800000).toString(2);
-		var float32 = 0;
-		for (var i = 0; i < mantissa.length; i++) {
+		const sign = (int & 0x80000000) ? -1 : 1;
+		let exp = ((int >>> 23) & 0xff) - 127;
+		const mantissa = (int & 0x7fffff + 0x800000).toString(2);
+		let float32 = 0;
+		for (let i = 0; i < mantissa.length; i++) {
 			float32 += parseInt(mantissa[i]) ? Math.pow(2, exp) : 0;
 			exp--;
 		}
@@ -917,7 +1043,7 @@ const HexToFloat32 = (str) => {
 	} else {
 		return 0;
 	}
-}
+};
 
 /**
  * Converts a given decimal to a properly formatted IP address.
@@ -926,16 +1052,16 @@ const HexToFloat32 = (str) => {
  * for proper human reading.
  */
 const DecToIP = (str) => {
-	var ipHex = str.toString(16);
+	const ipHex = str.toString(16);
 	while (ipHex.length < 8) {
-		ipHex = '0' + ipHex;
+		ipHex = "0" + ipHex;
 	}
 	const fourth = ipHex.substring(0, 2);
 	const third = ipHex.substring(2, 4);
 	const second = ipHex.substring(4, 6);
 	const first = ipHex.substring(6);
-	return (parseInt(first, 16) + '.' + parseInt(second, 16) + '.' + parseInt(third, 16) + '.' + parseInt(fourth, 16));
-}
+	return parseInt(first, 16) + '.' + parseInt(second, 16) + '.' + parseInt(third, 16) + '.' + parseInt(fourth, 16);
+};
 
 /**
  * Reviver function to convert numeric values to float or int.
@@ -945,26 +1071,29 @@ const DecToIP = (str) => {
 const reviverNumParse = (key, value) => {
 	// prepare values for output using reviver function
 	if (typeof value === "string") {
-		if (value.startsWith("fl_")) { // float in hex IEEE754
+		if (value.startsWith("fl_")) {
+			// float in hex IEEE754
 			return HexToFloat32(value.substring(3));
-		} else if (value.startsWith("u")) { // unsigned int in hex
+		} else if (value.startsWith("u")) {
+			// unsigned int in hex
 			return parseInt(value.substring(3), 16);
-		} else if (value.startsWith("st_")) { // string?
+		} else if (value.startsWith("st_")) {
+			// string?
 			return value.substring(3);
-		} else if (value.startsWith("i1")) { // int
-			var val = parseInt(value.substring(3), 16);
+		} else if (value.startsWith("i1")) {
+			// int
+			let val = parseInt(value.substring(3), 16);
 			if (!isNaN(val)) {
 				if ((val & 0x8000) > 0) {
 					val = val - 0x10000;
 				}
 				return val;
-			} else
-				return 0;
+			} else return 0;
 
 		} else if (value.startsWith("i3")) { // int
-			var val = parseInt(value.substring(3), 16);
+			let val = parseInt(value.substring(3), 16);
 			if (!isNaN(val)) {
-				if ((Math.abs(value & 0x80000000)) > 0) {
+				if (Math.abs(value & 0x80000000) > 0) {
 					val = val - 0x100000000;
 				}
 				return val;
@@ -972,7 +1101,7 @@ const reviverNumParse = (key, value) => {
 				return 0;
 
 		} else if (value.startsWith("i8")) { // int
-			var val = parseInt(value.substring(3), 16);
+			let val = parseInt(value.substring(3), 16);
 			if (!isNaN(val)) {
 				if ((value & 0x80) > 0) {
 					val = val - 0x100;
