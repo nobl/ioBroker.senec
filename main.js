@@ -322,7 +322,7 @@ class Senec extends utils.Adapter {
 		// creating form for high priority pulling
 		highPrioForm = "{";
 		//highPrioObjects.forEach(function (mapValue, key, map) {
-		highPrioObjects.forEach(function (mapValue, key, ) {
+		highPrioObjects.forEach(function (mapValue, key) {
 			highPrioForm += '"' + key + '":{';
 			mapValue.forEach(function (setValue) {
 				highPrioForm += '"' + setValue + '":"",';
@@ -751,7 +751,7 @@ class Senec extends utils.Adapter {
 						);
 					}
 				}
-				if (period == api_trans["THIS_YEAR"].dp) 
+				if (period == api_trans["THIS_YEAR"].dp)
 					await this.insertAllTimeHistory(
 						system,
 						key,

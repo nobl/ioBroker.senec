@@ -4,17 +4,17 @@
         "version": "1.6.13",
         "news": {
 			"1.6.13": {
-				"en": "Removed Support for node 16, Added more translations",
-				"de": "Entfernen Support für Knoten 16, weitere Übersetzungen hinzugefügt",
-				"ru": "Удаленная поддержка узла 16, добавлено больше переводов",
-				"pt": "Suporte removido para nó 16, Adicionado mais traduções",
-				"nl": "Verwijderde Ondersteuning voor node 16, Toegevoegd meer vertalingen",
-				"fr": "Supprimé Support pour noeud 16, Ajout d'autres traductions",
-				"it": "Supporto rimosso per nodo 16, Aggiunto più traduzioni",
-				"es": "Soporte eliminado para nodo 16, Añadido más traducciones",
-				"pl": "Usunięty Wsparcie dla węzła 16, Dodano więcej tłumaczeń",
-				"uk": "Видалити підтримку для вершини 16, Додано більше перекладів",
-				"zh-cn": "删除对节点16的支持, 添加更多翻译"
+				"en": "Removed Support for node 16, Added more translations, Code cleanup",
+				"de": "Removed Support for node 16, Weitere Übersetzungen hinzugefügt, Code cleanup",
+				"ru": "Удаленная поддержка узла 16, добавлено больше переводов, очистка кода",
+				"pt": "Suporte removido para nó 16, Adicionado mais traduções, Limpeza de código",
+				"nl": "Verwijderde Ondersteuning voor node 16, Toegevoegd meer vertalingen, Code opruiming",
+				"fr": "Supprimé Support pour noeud 16, Ajout d'autres traductions, Nettoyage de code",
+				"it": "Removed Supporto per nodo 16, Aggiunto più traduzioni, Codice pulizia",
+				"es": "Soporte eliminado para nodo 16, Añadido más traducciones, limpieza de código",
+				"pl": "Usunięty Wsparcie dla węzła 16, Dodano więcej tłumaczeń, Czyszczenie kodu",
+				"uk": "Видалити підтримку вузла 16, Додано більше перекладів, очищення коду",
+				"zh-cn": "删除对节点16的支持, 添加更多翻译, 代码清理"
 			},
 			"1.6.12": {
 				"en": "Updated license",
