@@ -2,9 +2,9 @@
 //process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'; // not cool, not nice - but well ... just a last option if everything else fails
 
 const https = require("https");
-const agent = new https.Agent({ 
+const agent = new https.Agent({
 	requestCert: true,
-	rejectUnauthorized: false 
+	rejectUnauthorized: false,
 });
 
 const utils = require("@iobroker/adapter-core");
@@ -21,19 +21,52 @@ const apiUrl = "https://app-gateway.prod.senec.dev/v1/senec";
 const apiLoginUrl = apiUrl + "/login";
 const apiSystemsUrl = apiUrl + "/systems";
 const apiMonitorUrl = apiUrl + "/monitor";
-const apiKnownSystems = []
+const apiKnownSystems = [];
 
-const batteryOn = '{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
-const batteryOff = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
+const batteryOn =
+	'{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
+const batteryOff =
+	'{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 
 let apiConnected = false;
 let lalaConnected = false;
 let apiLoginToken = "";
-let retry = 0; // retry-counter
-let retryLowPrio = 0; // retry-counter
 let connectVia = "http://";
 
-const allKnownObjects = new Set(["BAT1","BAT1OBJ1","BMS","BMS_PARA","BMZ_CURRENT_LIMITS","CASC","CELL_DEVIATION_ROC","CURRENT_IMBALANCE_CONTROL","DEBUG","ENERGY","FACTORY","FEATURES","GRIDCONFIG","ISKRA","LOG","PM1","PM1OBJ1","PM1OBJ2","PV1","PWR_UNIT","RTC","SENEC_IO_INPUT","SENEC_IO_OUTPUT","SELFTEST_RESULTS","SOCKETS","STECA","SYS_UPDATE","TEMPMEASURE","TEST","UPDATE","WALLBOX","WIZARD"]);
+const allKnownObjects = new Set([
+	"BAT1",
+	"BAT1OBJ1",
+	"BMS",
+	"BMS_PARA",
+	"BMZ_CURRENT_LIMITS",
+	"CASC",
+	"CELL_DEVIATION_ROC",
+	"CURRENT_IMBALANCE_CONTROL",
+	"DEBUG",
+	"ENERGY",
+	"FACTORY",
+	"FEATURES",
+	"GRIDCONFIG",
+	"ISKRA",
+	"LOG",
+	"PM1",
+	"PM1OBJ1",
+	"PM1OBJ2",
+	"PV1",
+	"PWR_UNIT",
+	"RTC",
+	"SENEC_IO_INPUT",
+	"SENEC_IO_OUTPUT",
+	"SELFTEST_RESULTS",
+	"SOCKETS",
+	"STECA",
+	"SYS_UPDATE",
+	"TEMPMEASURE",
+	"TEST",
+	"UPDATE",
+	"WALLBOX",
+	"WIZARD",
+	]);
 
 const highPrioObjects = new Map;
 let lowPrioForm = "";
@@ -87,9 +120,10 @@ class Senec extends utils.Adapter {
 					await this.pollSenecAppApi(0); // App API
 				}
 			} else {
-				this.log.warn("Usage of SENEC App API not configured. Only polling appliance via local network if configured.");
+				this.log.warn(
+					"Usage of SENEC App API not configured. Only polling appliance via local network if configured."
+				);
 			}
-			
 			if (lalaConnected || apiConnected) {
 				this.setState("info.connection", true, true);
 			} else {
@@ -113,17 +147,20 @@ class Senec extends utils.Adapter {
 	async onStateChange(id, state) {
 		if (state && !state.ack) {
 			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
-
 			if (this.config.control_active) { // All state-changes for .control.* need active config value
 				if (id === this.namespace + ".control.ForceLoadBattery" && lalaConnected) {
 					const url = connectVia + this.config.senecip + "/lala.cgi";
 					try {
 						if (state.val) {
 							this.log.info("Enable force battery charging ...");			
-							this.evalPoll(JSON.parse(await this.doGet(url, batteryOn, this, this.config.pollingTimeout, true), reviverNumParse));          
+							this.evalPoll(
+								JSON.parse(await this.doGet(url, batteryOn, this, this.config.pollingTimeout, true), reviverNumParse)
+							);
 						} else {
 							this.log.info("Disable force battery charging ...");
-							this.evalPoll(JSON.parse(await this.doGet(url, batteryOff, this, this.config.pollingTimeout, true), reviverNumParse));
+							this.evalPoll(
+								JSON.parse(await this.doGet(url, batteryOff, this, this.config.pollingTimeout, true), reviverNumParse)
+							);
 						}
 					} catch (error) {
 						this.log.error(error);
@@ -132,21 +169,24 @@ class Senec extends utils.Adapter {
 					}
 				}
 			}
-
 			this.setStateAsync(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
-
-		} else if (state && id === this.namespace + ".ENERGY.STAT_STATE") { // states that do have state.ack already
+		} else if (state && id === this.namespace + ".ENERGY.STAT_STATE") {
+			// states that do have state.ack already
 			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
 			const forceLoad = await this.getStateAsync(this.namespace + ".control.ForceLoadBattery");
 			if (state.val == 8 || state.val == 9) {
 				if (state.val == 9) this.log.info("Battery forced loading completed (battery full).");
 				if (!forceLoad.val) {
-					this.log.info("Battery forced loading activated (from outside or just lag). Syncing control-state.");
+					this.log.info(
+						"Battery forced loading activated (from outside or just lag). Syncing control-state."
+					);
 					this.setStateChangedAsync(this.namespace + ".control.ForceLoadBattery", { val: true, ack: true });
 				}
 			} else {
 				if (forceLoad.val) {
-					this.log.info("Battery forced loading deactivated (from outside or just lag). Syncing control-state.");
+					this.log.info(
+						"Battery forced loading deactivated (from outside or just lag). Syncing control-state."
+					);
 					this.setStateChangedAsync(this.namespace + ".control.ForceLoadBattery", { val: false, ack: true });
 				}
 			}
@@ -166,44 +206,77 @@ class Senec extends utils.Adapter {
 			if (this.timerAPI) {
 				clearTimeout(this.timerAPI);
 			}
-			this.log.info('cleaned everything up...');
-			this.setState('info.connection', false, true);
+			this.log.info("cleaned everything up...");
+			this.setState("info.connection", false, true);
 			callback();
 		} catch (e) {
-			callback();
+			callback(e);
 		}
 	}
-	
+
 	async initPollSettings() {
 		// creating form for low priority pulling (which means pulling everything we know)
 		// we can do this while preparing values for high prio
-		lowPrioForm = "{";	
+		lowPrioForm = "{";
 		for (const value of allKnownObjects) {
 			lowPrioForm += '"' + value + '":{},';
 			const objectsSet = new Set();
 			switch (value) {
 				case "BMS":
-					["CELL_TEMPERATURES_MODULE_A","CELL_TEMPERATURES_MODULE_B","CELL_TEMPERATURES_MODULE_C","CELL_TEMPERATURES_MODULE_D","CELL_VOLTAGES_MODULE_A","CELL_VOLTAGES_MODULE_B","CELL_VOLTAGES_MODULE_C","CELL_VOLTAGES_MODULE_D","CURRENT","SOC","SYSTEM_SOC","TEMP_MAX","TEMP_MIN","VOLTAGE"].forEach(item => objectsSet.add(item));
+					[
+						"CELL_TEMPERATURES_MODULE_A",
+						"CELL_TEMPERATURES_MODULE_B",
+						"CELL_TEMPERATURES_MODULE_C",
+						"CELL_TEMPERATURES_MODULE_D",
+						"CELL_VOLTAGES_MODULE_A",
+						"CELL_VOLTAGES_MODULE_B",
+						"CELL_VOLTAGES_MODULE_C",
+						"CELL_VOLTAGES_MODULE_D",
+						"CURRENT",
+						"SOC",
+						"SYSTEM_SOC",
+						"TEMP_MAX",
+						"TEMP_MIN",
+						"VOLTAGE",
+					].forEach(item => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_BMS_active) this.addUserDps(value, objectsSet, this.config.highPrio_BMS);
 				break;
 				case "ENERGY":
-					["STAT_STATE","GUI_BAT_DATA_POWER","GUI_INVERTER_POWER","GUI_HOUSE_POW","GUI_GRID_POW","GUI_BAT_DATA_FUEL_CHARGE","GUI_CHARGING_INFO","GUI_BOOSTING_INFO","GUI_BAT_DATA_POWER","GUI_BAT_DATA_VOLTAGE","GUI_BAT_DATA_CURRENT","GUI_BAT_DATA_FUEL_CHARGE","GUI_BAT_DATA_OA_CHARGING","STAT_LIMITED_NET_SKEW","SAFE_CHARGE_FORCE","SAFE_CHARGE_PROHIBIT","SAFE_CHARGE_RUNNING"].forEach(item => objectsSet.add(item));
+					[
+						"STAT_STATE",
+						"GUI_BAT_DATA_POWER",
+						"GUI_INVERTER_POWER",
+						"GUI_HOUSE_POW",
+						"GUI_GRID_POW",
+						"GUI_BAT_DATA_FUEL_CHARGE",
+						"GUI_CHARGING_INFO",
+						"GUI_BOOSTING_INFO",
+						"GUI_BAT_DATA_POWER",
+						"GUI_BAT_DATA_VOLTAGE",
+						"GUI_BAT_DATA_CURRENT",
+						"GUI_BAT_DATA_FUEL_CHARGE",
+						"GUI_BAT_DATA_OA_CHARGING",
+						"STAT_LIMITED_NET_SKEW",
+						"SAFE_CHARGE_FORCE",
+						"SAFE_CHARGE_PROHIBIT",
+						"SAFE_CHARGE_RUNNING",
+					].forEach(item => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_ENERGY_active) this.addUserDps(value, objectsSet, this.config.highPrio_ENERGY);
 				break;
 				case "PV1":
-					["POWER_RATIO","MPP_POWER"].forEach(item => objectsSet.add(item));
+					["POWER_RATIO", "MPP_POWER"].forEach(item => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_PV1_active) this.addUserDps(value, objectsSet, this.config.highPrio_PV1);
 				break;
 				case "PWR_UNIT":
-					["POWER_L1","POWER_L2","POWER_L3"].forEach(item => objectsSet.add(item));
+					["POWER_L1", "POWER_L2", "POWER_L3"].forEach(item => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_PWR_UNIT_active) this.addUserDps(value, objectsSet, this.config.highPrio_PWR_UNIT);
 				break;
 				case "PM1OBJ1":
-					["FREQ","U_AC","I_AC","P_AC","P_TOTAL"].forEach(item => objectsSet.add(item));
+					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach(item => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_PM1OBJ1_active) this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ1);
 				break;
 				case "PM1OBJ2":
-					["FREQ","U_AC","I_AC","P_AC","P_TOTAL"].forEach(item => objectsSet.add(item));
+					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach(item => objectsSet.add(item));
 					if (this.config.disclaimer && this.config.highPrio_PM1OBJ2_active) this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ2);
 				break;
 				case "WALLBOX":
@@ -245,7 +318,9 @@ class Senec extends utils.Adapter {
 	
 	addUserDps(value, objectsSet, dpToAdd) {
 		if (dpToAdd.trim().length < 1 || !/^[A-Z0-9_,]*$/.test(dpToAdd.toUpperCase().trim())) { // don't accept anything but entries like DP_1,DP2,dp3
-			this.log.warn("(addUserDps) Datapoints config for " + value + " doesn't follow [A-Z0-9_,] (no blanks allowed!) - Ignoring: " + dpToAdd.toUpperCase().trim());
+			this.log.warn(
+				"(addUserDps) Datapoints config for " + value + " doesn't follow [A-Z0-9_,] (no blanks allowed!) - Ignoring: " + dpToAdd.toUpperCase().trim()
+			);
 			return; 
 		}
 		dpToAdd.toUpperCase().trim().split(",").forEach(item => objectsSet.add(item));
