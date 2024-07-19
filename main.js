@@ -321,7 +321,8 @@ class Senec extends utils.Adapter {
 
 		// creating form for high priority pulling
 		highPrioForm = "{";
-		highPrioObjects.forEach(function (mapValue, key, map) {
+		//highPrioObjects.forEach(function (mapValue, key, map) {
+		highPrioObjects.forEach(function (mapValue, key, ) {
 			highPrioForm += '"' + key + '":{';
 			mapValue.forEach(function (setValue) {
 				highPrioForm += '"' + setValue + '":"",';
@@ -732,6 +733,7 @@ class Senec extends utils.Adapter {
 		if (obj == null || obj == undefined || obj.aggregation == null || obj.aggregation == undefined) return; // could happen (e.g.) if we pull information for "last year" when the appliance isn't that old yet
 		const pfx = "_api.Anlagen." + system + ".Statistik." + period + ".";
 		for (const [key, value] of Object.entries(obj.aggregation)) {
+			this.log.debug("decodeStatistic: " + pfx + key + ":" + value);
 			// only reading 'aggregation' - no interest in fine granular information
 			if (key == "startDate") {
 				await this.doState(pfx + key, value, "", "", false);
@@ -749,7 +751,7 @@ class Senec extends utils.Adapter {
 						);
 					}
 				}
-				if (period == api_trans["THIS_YEAR"].dp)
+				if (period == api_trans["THIS_YEAR"].dp) 
 					await this.insertAllTimeHistory(
 						system,
 						key,
@@ -779,7 +781,7 @@ class Senec extends utils.Adapter {
 	 * inserts a value for a given key and year into AllTimeValueStore
 	 */
 	async insertAllTimeHistory(system, key, year, value, einheit) {
-		this.log.debug("Insert AllTimeHistory: " + system + "/" + "key" + "/" + year + "/" + value + "/" + einheit);
+		this.log.debug("Insert AllTimeHistory: " + system + "/" + key + "/" + year + "/" + value + "/" + einheit);
 		if (key === "__proto__" || key === "constructor" || key === "prototype") return; // Security fix
 		if (isNaN(year) || isNaN(value)) return; // Security fix
 		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
