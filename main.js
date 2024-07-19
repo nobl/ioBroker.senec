@@ -555,7 +555,7 @@ class Senec extends utils.Adapter {
 		try {
 			let body = await this.doGet(
 				url,
-				(isHighPrio ? highPrioForm : lowPrioForm),
+				isHighPrio ? highPrioForm : lowPrioForm,
 				this,
 				this.config.pollingTimeout,
 				true,
