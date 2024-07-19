@@ -1,20 +1,20 @@
-'use strict';
+"use strict";
 //process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'; // not cool, not nice - but well ... just a last option if everything else fails
 
-const https = require('https');
+const https = require("https");
 const agent = new https.Agent({ 
 	requestCert: true,
 	rejectUnauthorized: false 
 });
 
-const utils = require('@iobroker/adapter-core');
+const utils = require("@iobroker/adapter-core");
 
-const axios = require('axios').default;
-axios.defaults.headers.post['Content-Type'] = "application/json";
+const axios = require("axios").default;
+axios.defaults.headers.post["Content-Type"] = "application/json";
 
-const state_attr = require(__dirname + '/lib/state_attr.js');
-const state_trans = require(__dirname + '/lib/state_trans.js');
-const api_trans = require(__dirname + '/lib/api_trans.js');
+const state_attr = require(__dirname + "/lib/state_attr.js");
+const state_trans = require(__dirname + "/lib/state_trans.js");
+const api_trans = require(__dirname + "/lib/api_trans.js");
 const kiloList = ["W", "Wh"];
 
 const apiUrl = "https://app-gateway.prod.senec.dev/v1/senec";
@@ -51,11 +51,11 @@ class Senec extends utils.Adapter {
 	constructor(options) {
 		super({
 			...options,
-			name: 'senec',
+			name: "senec",
 		});
-		this.on('ready', this.onReady.bind(this));
-		this.on('stateChange', this.onStateChange.bind(this));
-		this.on('unload', this.onUnload.bind(this));
+		this.on("ready", this.onReady.bind(this));
+		this.on("stateChange", this.onStateChange.bind(this));
+		this.on("unload", this.onUnload.bind(this));
 	}
 
 	/**
@@ -65,7 +65,7 @@ class Senec extends utils.Adapter {
 		// Initialize your adapter here
 
 		// Reset the connection indicator during startup
-		this.setState('info.connection', false, true);
+		this.setState("info.connection", false, true);
 		try {
 			await this.checkConfig();
 			if (this.config.lala_use) {
@@ -91,7 +91,7 @@ class Senec extends utils.Adapter {
 			}
 			
 			if (lalaConnected || apiConnected) {
-				this.setState('info.connection', true, true);
+				this.setState("info.connection", true, true);
 			} else {
 				this.log.error("Neither local connection nor API connection configured. Please check config!");
 			}
@@ -102,10 +102,10 @@ class Senec extends utils.Adapter {
 			}
 		} catch (error) {
 			this.log.error(error);
-			this.setState('info.connection', false, true);
+			this.setState("info.connection", false, true);
 		}
 	}
-	
+
 	/**
 	 * @param {string} id
 	 * @param {ioBroker.State | null | undefined} state
@@ -113,7 +113,7 @@ class Senec extends utils.Adapter {
 	async onStateChange(id, state) {
 		if (state && !state.ack) {
 			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
-			
+
 			if (this.config.control_active) { // All state-changes for .control.* need active config value
 				if (id === this.namespace + ".control.ForceLoadBattery" && lalaConnected) {
 					const url = connectVia + this.config.senecip + "/lala.cgi";
@@ -132,9 +132,9 @@ class Senec extends utils.Adapter {
 					}
 				}
 			}
-			
+
 			this.setStateAsync(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
-			
+
 		} else if (state && id === this.namespace + ".ENERGY.STAT_STATE") { // states that do have state.ack already
 			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
 			const forceLoad = await this.getStateAsync(this.namespace + ".control.ForceLoadBattery");
@@ -177,7 +177,7 @@ class Senec extends utils.Adapter {
 	async initPollSettings() {
 		// creating form for low priority pulling (which means pulling everything we know)
 		// we can do this while preparing values for high prio
-		lowPrioForm = '{';	
+		lowPrioForm = "{";	
 		for (const value of allKnownObjects) {
 			lowPrioForm += '"' + value + '":{},';
 			const objectsSet = new Set();
@@ -227,19 +227,19 @@ class Senec extends utils.Adapter {
 			}
 		}
 		
-		lowPrioForm = lowPrioForm.slice(0, -1) +  '}';
+		lowPrioForm = lowPrioForm.slice(0, -1) +  "}";
 		this.log.info("(initPollSettings) lowPrio: " + lowPrioForm);
 		
 		// creating form for high priority pulling
-		highPrioForm = '{';
+		highPrioForm = "{";
 		highPrioObjects.forEach( function (mapValue, key, map) {
 			highPrioForm += '"' + key + '":{';
 			mapValue.forEach (function (setValue) {
 				highPrioForm += '"' + setValue + '":"",';
-			})
-			highPrioForm = highPrioForm.slice(0, -1) +  '},';
-		})
-		highPrioForm = highPrioForm.slice(0, -1) +  '}';
+			});
+			highPrioForm = highPrioForm.slice(0, -1) +  "},";
+		});
+		highPrioForm = highPrioForm.slice(0, -1) +  "}";
 		this.log.info("(initPollSettings) highPrio: " + highPrioForm);
 	}
 	
@@ -298,12 +298,12 @@ class Senec extends utils.Adapter {
 	 * checks connection to senec service
 	 */
 	async checkConnection() {
-		const url = connectVia + this.config.senecip + '/lala.cgi';
+		const url = connectVia + this.config.senecip + "/lala.cgi";
 		const form = '{"ENERGY":{"STAT_STATE":""}}';
 		try {
-			this.log.info('connecting to Senec: ' + url);
+			this.log.info("connecting to Senec: " + url);
 			const body = await this.doGet(url, form, this, this.config.pollingTimeout, true);
-			this.log.info('connected to Senec: ' + url);
+			this.log.info("connected to Senec: " + url);
 			lalaConnected = true;
 		} catch (error) {
 			throw new Error("Error connecting to Senec (IP: " + connectVia + this.config.senecip + "). Exiting! (" + error + "). Try to toggle https-mode in settings and check FQDN of SENEC appliance.");
@@ -315,20 +315,20 @@ class Senec extends utils.Adapter {
 	 */
 	async initSenecAppApi() {
 		if (!this.config.api_use) {
-			this.log.info('Usage of SENEC App API not configured. Not using it');
+			this.log.info("Usage of SENEC App API not configured. Not using it");
 			return;
 		}
-		this.log.info('connecting to Senec App API: ' + apiLoginUrl);
+		this.log.info("connecting to Senec App API: " + apiLoginUrl);
 		const loginData = JSON.stringify({
 			password: this.config.api_pwd,
 			username: this.config.api_mail
 		});
 		try {
 			const body = await this.doGet(apiLoginUrl, loginData, this, this.config.pollingTimeout, true);
-			this.log.info('connected to Senec AppAPI.');
+			this.log.info("connected to Senec AppAPI.");
 			apiLoginToken = JSON.parse(body).token;
 			apiConnected = true;
-			axios.defaults.headers.get['authorization'] = apiLoginToken;
+			axios.defaults.headers.get["authorization"] = apiLoginToken;
 		} catch (error) {
 			apiConnected = false;
 			throw new Error("Error connecting to Senec AppAPI. Exiting! (" + error + ").");
@@ -341,13 +341,13 @@ class Senec extends utils.Adapter {
 	async getApiSystems() {
 		const pfx = "_api.Anlagen.";
 		if (!this.config.api_use || !apiConnected) {
-			this.log.info('Usage of SENEC App API not configured or not connected.');
+			this.log.info("Usage of SENEC App API not configured or not connected.");
 			return;
 		}
-		this.log.info('Reading Systems Information from Senec App API ' + apiSystemsUrl);
+		this.log.info("Reading Systems Information from Senec App API " + apiSystemsUrl);
 		try {
 			const body = await this.doGet(apiSystemsUrl, "", this, this.config.pollingTimeout, false);
-			this.log.info('Read Systems Information from Senec AppAPI.');
+			this.log.info("Read Systems Information from Senec AppAPI.");
 			var obj = JSON.parse(body);
 			const systems = [];
 			for (const[key, value] of Object.entries(obj)) {
@@ -360,7 +360,7 @@ class Senec extends utils.Adapter {
 						await this.doState(pfx + systemId + "." + key2, value2, "", "", false);
 				}
 			}
-			await this.doState(pfx + 'IDs', JSON.stringify(apiKnownSystems), "Anlagen IDs", "", false);
+			await this.doState(pfx + "IDs", JSON.stringify(apiKnownSystems), "Anlagen IDs", "", false);
 		} catch (error) {
 			throw new Error("Error reading Systems Information from Senec AppAPI. (" + error + ").");
 		}
@@ -374,7 +374,7 @@ class Senec extends utils.Adapter {
 	doGet(pUrl, pForm, caller, pollingTimeout, isPost) {
 		return new Promise(function (resolve, reject) {
 			axios({
-				method: isPost ? 'post' : 'get',
+				method: isPost ? "post" : "get",
 				httpsAgent: agent,
 				url: pUrl,
 				data: pForm,
@@ -383,7 +383,7 @@ class Senec extends utils.Adapter {
 			.then(
 				async (response) => {
 						const content = response.data;
-						caller.log.debug('(Poll) received data (' + response.status + '): ' + JSON.stringify(content));
+						caller.log.debug("(Poll) received data (" + response.status + "): " + JSON.stringify(content));
 						resolve(JSON.stringify(content));
 					}
 				)
@@ -391,7 +391,7 @@ class Senec extends utils.Adapter {
 				(error) => {
 					if (error.response) {
 						// The request was made and the server responded with a status code
-						caller.log.warn('(Poll) received error ' + error.response.status + ' response from SENEC with content: ' + JSON.stringify(error.response.data));
+						caller.log.warn("(Poll) received error " + error.response.status + " response from SENEC with content: " + JSON.stringify(error.response.data));
 						if (error.response.status == 403 && apiConnected) {
 							apiConnected = false; // apparently the api is inaccessible
 							this.initSenecAppApi();
@@ -418,10 +418,10 @@ class Senec extends utils.Adapter {
 	 * Careful with the amount and interval of HighPrio values polled because this causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
 	 */
 	async pollSenec(isHighPrio, retry) {
-		const url = connectVia + this.config.senecip + '/lala.cgi';	
+		const url = connectVia + this.config.senecip + "/lala.cgi";	
 		var interval = this.config.interval * 1000;
 		if (!isHighPrio) { 
-			this.log.info('LowPrio polling ...');
+			this.log.info("LowPrio polling ...");
 			interval = this.config.intervalLow * 1000 * 60
 		}
 		
@@ -442,7 +442,7 @@ class Senec extends utils.Adapter {
 		} catch (error) {
 			if ((retry == this.config.retries) && this.config.retries < 999) {
 				this.log.error("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
-				this.setState('info.connection', false, true);
+				this.setState("info.connection", false, true);
 			} else {
 				retry += 1;
 				this.log.warn("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
@@ -456,7 +456,7 @@ class Senec extends utils.Adapter {
 	 */
 	async pollSenecAppApi(retry) {
 		if (!this.config.api_use || !apiConnected) {
-			this.log.info('Usage of SENEC App API not configured or not connected.');
+			this.log.info("Usage of SENEC App API not configured or not connected.");
 			return;
 		}
 		const interval = this.config.api_interval * 60000;
@@ -501,7 +501,7 @@ class Senec extends utils.Adapter {
 		} catch (error) {
 			if ((retry == this.config.retries) && this.config.retries < 999) {
 				this.log.error("Error reading from Senec AppAPI. Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
-				this.setState('info.connection', false, true);
+				this.setState("info.connection", false, true);
 			} else {
 				retry += 1;
 				this.log.warn("Error reading from Senec AppAPI. Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
@@ -612,12 +612,12 @@ class Senec extends utils.Adapter {
 	 */
 	async rebuildAllTimeHistory(system) {
 		if (!this.config.api_use || !apiConnected) {
-			this.log.info('Usage of SENEC App API not configured or not connected.');
+			this.log.info("Usage of SENEC App API not configured or not connected.");
 			return;
 		}
 		
 		this.log.info("Rebuilding AllTime History ...");
-		var year = new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split('T')[0]; // starting last year, because we already got current year covered
+		var year = new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split("T")[0]; // starting last year, because we already got current year covered
 		var body = "";
 		try {
 			while (new Date(year).getFullYear() > 2008) { // senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
@@ -646,10 +646,10 @@ class Senec extends utils.Adapter {
 	async doState(name, value, description, unit, write) {
 		if (!isNaN(name.substring(0, 1))) {
 			// keys cannot start with digits! Possibly SENEC delivering erraneous data
-			this.log.debug('(doState) Invalid datapoint: ' + name + ': ' + value);
+			this.log.debug("(doState) Invalid datapoint: " + name + ": " + value);
 			return;
 		}
-		this.log.silly('(doState) Update: ' + name + ': ' + value);
+		this.log.silly("(doState) Update: " + name + ": " + value);
 	   
 		const valueType = value !== null && value !== undefined ? typeof value : "mixed";
 	
@@ -732,14 +732,14 @@ class Senec extends utils.Adapter {
 				if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
 					const key = key1 + '.' + key2;
 					if (state_attr[key] === undefined) {
-						this.log.debug('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
+						this.log.debug("REPORT_TO_DEV: State attribute definition missing for: " + key + ", Val: " + value2);
 					}	
 					const desc = (state_attr[key] !== undefined) ? state_attr[key].name : key2;
 					const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
 
 					if (Array.isArray(value2)) {
 						for (var i = 0; i < value2.length; i++) {
-							this.doState(key + '.' + i, ValueTyping(key, value2[i]), desc + '[' + i + ']', unit, false);
+							this.doState(key + "." + i, ValueTyping(key, value2[i]), desc + "[" + i + "]", unit, false);
 						}
 					} else {
 						this.doState(key, ValueTyping(key, value2), desc, unit, false);
