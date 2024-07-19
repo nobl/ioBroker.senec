@@ -1,9 +1,9 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.13",
+        "version": "1.6.13b",
         "news": {
-			"1.6.13": {
+			"1.6.13b": {
 				"en": "Removed Support for node 16, Added more translations",
 				"de": "Entfernen Support für Knoten 16, weitere Übersetzungen hinzugefügt",
 				"ru": "Удаленная поддержка узла 16, добавлено больше переводов",

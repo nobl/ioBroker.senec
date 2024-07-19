@@ -66,9 +66,9 @@ const allKnownObjects = new Set([
 	"UPDATE",
 	"WALLBOX",
 	"WIZARD",
-	]);
+]);
 
-const highPrioObjects = new Map;
+const highPrioObjects = new Map();
 let lowPrioForm = "";
 let highPrioForm = "";
 
@@ -77,7 +77,6 @@ let unloaded = false;
 const knownObjects = {};
 
 class Senec extends utils.Adapter {
-
 	/**
 	 * @param {Partial<ioBroker.AdapterOptions>} [options={}]
 	 */
@@ -121,7 +120,7 @@ class Senec extends utils.Adapter {
 				}
 			} else {
 				this.log.warn(
-					"Usage of SENEC App API not configured. Only polling appliance via local network if configured."
+					"Usage of SENEC App API not configured. Only polling appliance via local network if configured.",
 				);
 			}
 			if (lalaConnected || apiConnected) {
@@ -132,7 +131,7 @@ class Senec extends utils.Adapter {
 			if (this.config.control_active) {
 				this.log.info("Active appliance control activated!");
 				await this.subscribeStatesAsync("control.*"); // subscribe on all state changes in control.
-				await this.subscribeStatesAsync("ENERGY.STAT_STATE"); 
+				await this.subscribeStatesAsync("ENERGY.STAT_STATE");
 			}
 		} catch (error) {
 			this.log.error(error);
@@ -147,19 +146,24 @@ class Senec extends utils.Adapter {
 	async onStateChange(id, state) {
 		if (state && !state.ack) {
 			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
-			if (this.config.control_active) { // All state-changes for .control.* need active config value
+			if (this.config.control_active) {
+				// All state-changes for .control.* need active config value
 				if (id === this.namespace + ".control.ForceLoadBattery" && lalaConnected) {
 					const url = connectVia + this.config.senecip + "/lala.cgi";
 					try {
 						if (state.val) {
-							this.log.info("Enable force battery charging ...");			
+							this.log.info("Enable force battery charging ...");
 							this.evalPoll(
-								JSON.parse(await this.doGet(url, batteryOn, this, this.config.pollingTimeout, true), reviverNumParse)
+								JSON.parse(
+									await this.doGet(url, batteryOn, this, this.config.pollingTimeout, true), reviverNumParse
+								),
 							);
 						} else {
 							this.log.info("Disable force battery charging ...");
 							this.evalPoll(
-								JSON.parse(await this.doGet(url, batteryOff, this, this.config.pollingTimeout, true), reviverNumParse)
+								JSON.parse(
+									await this.doGet(url, batteryOff, this, this.config.pollingTimeout, true), reviverNumParse
+								),
 							);
 						}
 					} catch (error) {
@@ -178,14 +182,14 @@ class Senec extends utils.Adapter {
 				if (state.val == 9) this.log.info("Battery forced loading completed (battery full).");
 				if (!forceLoad.val) {
 					this.log.info(
-						"Battery forced loading activated (from outside or just lag). Syncing control-state."
+						"Battery forced loading activated (from outside or just lag). Syncing control-state.",
 					);
 					this.setStateChangedAsync(this.namespace + ".control.ForceLoadBattery", { val: true, ack: true });
 				}
 			} else {
 				if (forceLoad.val) {
 					this.log.info(
-						"Battery forced loading deactivated (from outside or just lag). Syncing control-state."
+						"Battery forced loading deactivated (from outside or just lag). Syncing control-state.",
 					);
 					this.setStateChangedAsync(this.namespace + ".control.ForceLoadBattery", { val: false, ack: true });
 				}
@@ -238,9 +242,10 @@ class Senec extends utils.Adapter {
 						"TEMP_MAX",
 						"TEMP_MIN",
 						"VOLTAGE",
-					].forEach(item => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_BMS_active) this.addUserDps(value, objectsSet, this.config.highPrio_BMS);
-				break;
+					].forEach((item) => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_BMS_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_BMS);
+					break;
 				case "ENERGY":
 					[
 						"STAT_STATE",
@@ -260,37 +265,46 @@ class Senec extends utils.Adapter {
 						"SAFE_CHARGE_FORCE",
 						"SAFE_CHARGE_PROHIBIT",
 						"SAFE_CHARGE_RUNNING",
-					].forEach(item => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_ENERGY_active) this.addUserDps(value, objectsSet, this.config.highPrio_ENERGY);
-				break;
+					].forEach((item) => objectsSet.add(item));
+					if (this.config.disclaimer && this.config.highPrio_ENERGY_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_ENERGY);
+					break;
 				case "PV1":
 					["POWER_RATIO", "MPP_POWER"].forEach(item => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_PV1_active) this.addUserDps(value, objectsSet, this.config.highPrio_PV1);
-				break;
+					if (this.config.disclaimer && this.config.highPrio_PV1_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_PV1);
+					break;
 				case "PWR_UNIT":
 					["POWER_L1", "POWER_L2", "POWER_L3"].forEach(item => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_PWR_UNIT_active) this.addUserDps(value, objectsSet, this.config.highPrio_PWR_UNIT);
-				break;
+					if (this.config.disclaimer && this.config.highPrio_PWR_UNIT_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_PWR_UNIT);
+					break;
 				case "PM1OBJ1":
 					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach(item => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_PM1OBJ1_active) this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ1);
-				break;
+					if (this.config.disclaimer && this.config.highPrio_PM1OBJ1_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ1);
+					break;
 				case "PM1OBJ2":
 					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach(item => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_PM1OBJ2_active) this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ2);
-				break;
+					if (this.config.disclaimer && this.config.highPrio_PM1OBJ2_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ2);
+					break;
 				case "WALLBOX":
-					if (this.config.disclaimer && this.config.highPrio_WALLBOX_active) this.addUserDps(value, objectsSet, this.config.highPrio_WALLBOX);
-				break;
+					if (this.config.disclaimer && this.config.highPrio_WALLBOX_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_WALLBOX);
+					break;
 				case "BAT1":
-					if (this.config.disclaimer && this.config.highPrio_BAT1_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT1);
-				break;
+					if (this.config.disclaimer && this.config.highPrio_BAT1_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_BAT1);
+					break;
 				case "BAT1OBJ1":
-					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ1_active) this.addUserDps(value, objectsSet, this.config.highPrio_BAT1OBJ1);
-				break;
+					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ1_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_BAT1OBJ1);
+					break;
 				case "TEMPMEASURE":
-					if (this.config.disclaimer && this.config.highPrio_TEMPMEASURE_active) this.addUserDps(value, objectsSet, this.config.highPrio_TEMPMEASURE);
-				break;
+					if (this.config.disclaimer && this.config.highPrio_TEMPMEASURE_active)
+						this.addUserDps(value, objectsSet, this.config.highPrio_TEMPMEASURE);
+					break;
 				default:
 					// nothing to do here
 				break;
@@ -319,11 +333,17 @@ class Senec extends utils.Adapter {
 	addUserDps(value, objectsSet, dpToAdd) {
 		if (dpToAdd.trim().length < 1 || !/^[A-Z0-9_,]*$/.test(dpToAdd.toUpperCase().trim())) { // don't accept anything but entries like DP_1,DP2,dp3
 			this.log.warn(
-				"(addUserDps) Datapoints config for " + value + " doesn't follow [A-Z0-9_,] (no blanks allowed!) - Ignoring: " + dpToAdd.toUpperCase().trim()
+				"(addUserDps) Datapoints config for " + 
+					value + " doesn't follow [A-Z0-9_,] (no blanks allowed!) - Ignoring: " + 
+					dpToAdd.toUpperCase().trim(),
 			);
-			return; 
+			return;
 		}
-		dpToAdd.toUpperCase().trim().split(",").forEach(item => objectsSet.add(item));
+		dpToAdd
+			.toUpperCase()
+			.trim()
+			.split(",")
+			.forEach(item => objectsSet.add(item));
 		this.log.info("(addUserDps) Datapoints config changed for " + value + ": " + dpToAdd.toUpperCase().trim());
 	}
 
@@ -334,27 +354,42 @@ class Senec extends utils.Adapter {
 	async checkConfig() {
 		this.log.debug("(checkConf) Configured polling interval high priority: " + this.config.interval);
 		if (this.config.interval < 1 || this.config.interval > 3600) {
-			this.log.warn("(checkConf) Config interval high priority " + this.config.interval + " not [1..3600] seconds. Using default: 10");
+			this.log.warn(
+				"(checkConf) Config interval high priority " +
+					this.config.interval + " not [1..3600] seconds. Using default: 10",
+			);
 			this.config.interval = 10;
 		}
 		this.log.debug("(checkConf) Configured polling interval low priority: " + this.config.intervalLow);
 		if (this.config.intervalLow < 10 || this.config.intervalLow > 3600) {
-			this.log.warn("(checkConf) Config interval low priority " + this.config.intervalLow + " not [10..3600] minutes. Using default: 60");
+			this.log.warn(
+				"(checkConf) Config interval low priority " +
+					this.config.intervalLow + " not [10..3600] minutes. Using default: 60",
+			);
 			this.config.intervalLow = 60;
 		}
 		this.log.debug("(checkConf) Configured polling timeout: " + this.config.pollingTimeout);
 		if (this.config.pollingTimeout < 1000 || this.config.pollingTimeout > 10000) {
-			this.log.warn("(checkConf) Config timeout " + this.config.pollingTimeout + " not [1000..10000] ms. Using default: 5000");
+			this.log.warn(
+				"(checkConf) Config timeout " +
+					this.config.pollingTimeout + " not [1000..10000] ms. Using default: 5000",
+			);
 			this.config.pollingTimeout = 5000;
 		}
 		this.log.debug("(checkConf) Configured num of retries: " + this.config.retries);
 		if (this.config.retries < 0 || this.config.retries > 999) {
-			this.log.warn("(checkConf) Config num of retries " + this.config.retries + " not [0..999] seconds. Using default: 10");
+			this.log.warn(
+				"(checkConf) Config num of retries " +
+					this.config.retries + " not [0..999] seconds. Using default: 10",
+			);
 			this.config.retries = 10;
 		}
 		this.log.debug("(checkConf) Configured retry multiplier: " + this.config.retrymultiplier);
 		if (this.config.retrymultiplier < 1 || this.config.retrymultiplier > 10) {
-			this.log.warn("(checkConf) Config retry multiplier " + this.config.retrymultiplier + " not [1..10] seconds. Using default: 2");
+			this.log.warn(
+				"(checkConf) Config retry multiplier " +
+					this.config.retrymultiplier + " not [1..10] seconds. Using default: 2",
+			);
 			this.config.retrymultiplier = 2;
 		}
 		this.log.debug("(checkConf) Configured https-usage: " + this.config.useHttps);
@@ -364,7 +399,10 @@ class Senec extends utils.Adapter {
 		}
 		this.log.debug("(checkConf) Configured api polling interval: " + this.config.api_interval);
 		if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
-			this.log.warn("(checkConf) Config api polling interval " + this.config.api_interval + " not [3..1440] seconds. Using default: 5");
+			this.log.warn(
+				"(checkConf) Config api polling interval " +
+					this.config.api_interval + " not [3..1440] seconds. Using default: 5",
+			);
 			this.config.api_interval = 5;
 		}
 	}
@@ -377,11 +415,18 @@ class Senec extends utils.Adapter {
 		const form = '{"ENERGY":{"STAT_STATE":""}}';
 		try {
 			this.log.info("connecting to Senec: " + url);
-			const body = await this.doGet(url, form, this, this.config.pollingTimeout, true);
+			await this.doGet(url, form, this, this.config.pollingTimeout, true);
 			this.log.info("connected to Senec: " + url);
 			lalaConnected = true;
 		} catch (error) {
-			throw new Error("Error connecting to Senec (IP: " + connectVia + this.config.senecip + "). Exiting! (" + error + "). Try to toggle https-mode in settings and check FQDN of SENEC appliance.");
+			throw new Error(
+				"Error connecting to Senec (IP: " + 
+					connectVia +
+					this.config.senecip +
+					"). Exiting! (" +
+					error +
+					"). Try to toggle https-mode in settings and check FQDN of SENEC appliance.",
+			);
 		}
 	}
 	
@@ -423,9 +468,8 @@ class Senec extends utils.Adapter {
 		try {
 			const body = await this.doGet(apiSystemsUrl, "", this, this.config.pollingTimeout, false);
 			this.log.info("Read Systems Information from Senec AppAPI.");
-			var obj = JSON.parse(body);
-			const systems = [];
-			for (const[key, value] of Object.entries(obj)) {
+			const obj = JSON.parse(body);
+			for (const[, value] of Object.entries(obj)) {
 				const systemId = value.id;
 				apiKnownSystems.push(systemId);
 				for (const[key2, value2] of Object.entries(value)) {
