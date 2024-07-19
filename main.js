@@ -45,29 +45,29 @@ const knownObjects = {};
 
 class Senec extends utils.Adapter {
 
-    /**
-     * @param {Partial<ioBroker.AdapterOptions>} [options={}]
-     */
-    constructor(options) {
-        super({
-            ...options,
-            name: 'senec',
-        });
-        this.on('ready', this.onReady.bind(this));
+	/**
+	 * @param {Partial<ioBroker.AdapterOptions>} [options={}]
+	 */
+	constructor(options) {
+		super({
+			...options,
+			name: 'senec',
+		});
+		this.on('ready', this.onReady.bind(this));
 		this.on('stateChange', this.onStateChange.bind(this));
-        this.on('unload', this.onUnload.bind(this));
-    }
+		this.on('unload', this.onUnload.bind(this));
+	}
 
-    /**
-     * Is called when databases are connected and adapter received configuration.
-     */
-    async onReady() {
-        // Initialize your adapter here
+	/**
+	 * Is called when databases are connected and adapter received configuration.
+	 */
+	async onReady() {
+		// Initialize your adapter here
 
-        // Reset the connection indicator during startup
-        this.setState('info.connection', false, true);
-        try {
-            await this.checkConfig();
+		// Reset the connection indicator during startup
+		this.setState('info.connection', false, true);
+		try {
+			await this.checkConfig();
 			if (this.config.lala_use) {
 				this.log.info("Usage of lala.cgi configured.");
 				await this.initPollSettings();
@@ -100,18 +100,18 @@ class Senec extends utils.Adapter {
 				await this.subscribeStatesAsync("control.*"); // subscribe on all state changes in control.
 				await this.subscribeStatesAsync("ENERGY.STAT_STATE"); 
 			}
-        } catch (error) {
-            this.log.error(error);
-            this.setState('info.connection', false, true);
-        }
-    }
+		} catch (error) {
+			this.log.error(error);
+			this.setState('info.connection', false, true);
+		}
+	}
 	
 	/**
-     * @param {string} id
-     * @param {ioBroker.State | null | undefined} state
-     */
-    async onStateChange(id, state) {
-        if (state && !state.ack) {
+	 * @param {string} id
+	 * @param {ioBroker.State | null | undefined} state
+	 */
+	async onStateChange(id, state) {
+		if (state && !state.ack) {
 			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
 			
 			if (this.config.control_active) { // All state-changes for .control.* need active config value
@@ -133,9 +133,9 @@ class Senec extends utils.Adapter {
 				}
 			}
 			
-            this.setStateAsync(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
+			this.setStateAsync(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
 			
-        } else if (state && id === this.namespace + ".ENERGY.STAT_STATE") { // states that do have state.ack already
+		} else if (state && id === this.namespace + ".ENERGY.STAT_STATE") { // states that do have state.ack already
 			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
 			const forceLoad = await this.getStateAsync(this.namespace + ".control.ForceLoadBattery");
 			if (state.val == 8 || state.val == 9) {
@@ -151,28 +151,28 @@ class Senec extends utils.Adapter {
 				}
 			}
 		}
-    }
+	}
 
-    /**
-     * Is called when adapter shuts down - callback has to be called under any circumstances!
-     * @param {() => void} callback
-     */
-    onUnload(callback) {
-        try {
+	/**
+	 * Is called when adapter shuts down - callback has to be called under any circumstances!
+	 * @param {() => void} callback
+	 */
+	onUnload(callback) {
+		try {
 			unloaded = true;
-            if (this.timer) {
-                clearTimeout(this.timer);
-            }
-            if (this.timerAPI) {
-                clearTimeout(this.timerAPI);
-            }
-            this.log.info('cleaned everything up...');
-            this.setState('info.connection', false, true);
-            callback();
-        } catch (e) {
-            callback();
-        }
-    }
+			if (this.timer) {
+				clearTimeout(this.timer);
+			}
+			if (this.timerAPI) {
+				clearTimeout(this.timerAPI);
+			}
+			this.log.info('cleaned everything up...');
+			this.setState('info.connection', false, true);
+			callback();
+		} catch (e) {
+			callback();
+		}
+	}
 	
 	async initPollSettings() {
 		// creating form for low priority pulling (which means pulling everything we know)
@@ -252,102 +252,102 @@ class Senec extends utils.Adapter {
 		this.log.info("(addUserDps) Datapoints config changed for " + value + ": " + dpToAdd.toUpperCase().trim());
 	}
 
-    /**
-     * checks config paramaters
-     * Fallback to default values in case they are out of scope
-     */
-    async checkConfig() {
-        this.log.debug("(checkConf) Configured polling interval high priority: " + this.config.interval);
-        if (this.config.interval < 1 || this.config.interval > 3600) {
-            this.log.warn("(checkConf) Config interval high priority " + this.config.interval + " not [1..3600] seconds. Using default: 10");
-            this.config.interval = 10;
-        }
-        this.log.debug("(checkConf) Configured polling interval low priority: " + this.config.intervalLow);
-        if (this.config.intervalLow < 10 || this.config.intervalLow > 3600) {
-            this.log.warn("(checkConf) Config interval low priority " + this.config.intervalLow + " not [10..3600] minutes. Using default: 60");
-            this.config.intervalLow = 60;
-        }
-        this.log.debug("(checkConf) Configured polling timeout: " + this.config.pollingTimeout);
-        if (this.config.pollingTimeout < 1000 || this.config.pollingTimeout > 10000) {
-            this.log.warn("(checkConf) Config timeout " + this.config.pollingTimeout + " not [1000..10000] ms. Using default: 5000");
-            this.config.pollingTimeout = 5000;
-        }
-        this.log.debug("(checkConf) Configured num of retries: " + this.config.retries);
-        if (this.config.retries < 0 || this.config.retries > 999) {
-            this.log.warn("(checkConf) Config num of retries " + this.config.retries + " not [0..999] seconds. Using default: 10");
-            this.config.retries = 10;
-        }
-        this.log.debug("(checkConf) Configured retry multiplier: " + this.config.retrymultiplier);
-        if (this.config.retrymultiplier < 1 || this.config.retrymultiplier > 10) {
-            this.log.warn("(checkConf) Config retry multiplier " + this.config.retrymultiplier + " not [1..10] seconds. Using default: 2");
-            this.config.retrymultiplier = 2;
-        }
+	/**
+	 * checks config paramaters
+	 * Fallback to default values in case they are out of scope
+	 */
+	async checkConfig() {
+		this.log.debug("(checkConf) Configured polling interval high priority: " + this.config.interval);
+		if (this.config.interval < 1 || this.config.interval > 3600) {
+			this.log.warn("(checkConf) Config interval high priority " + this.config.interval + " not [1..3600] seconds. Using default: 10");
+			this.config.interval = 10;
+		}
+		this.log.debug("(checkConf) Configured polling interval low priority: " + this.config.intervalLow);
+		if (this.config.intervalLow < 10 || this.config.intervalLow > 3600) {
+			this.log.warn("(checkConf) Config interval low priority " + this.config.intervalLow + " not [10..3600] minutes. Using default: 60");
+			this.config.intervalLow = 60;
+		}
+		this.log.debug("(checkConf) Configured polling timeout: " + this.config.pollingTimeout);
+		if (this.config.pollingTimeout < 1000 || this.config.pollingTimeout > 10000) {
+			this.log.warn("(checkConf) Config timeout " + this.config.pollingTimeout + " not [1000..10000] ms. Using default: 5000");
+			this.config.pollingTimeout = 5000;
+		}
+		this.log.debug("(checkConf) Configured num of retries: " + this.config.retries);
+		if (this.config.retries < 0 || this.config.retries > 999) {
+			this.log.warn("(checkConf) Config num of retries " + this.config.retries + " not [0..999] seconds. Using default: 10");
+			this.config.retries = 10;
+		}
+		this.log.debug("(checkConf) Configured retry multiplier: " + this.config.retrymultiplier);
+		if (this.config.retrymultiplier < 1 || this.config.retrymultiplier > 10) {
+			this.log.warn("(checkConf) Config retry multiplier " + this.config.retrymultiplier + " not [1..10] seconds. Using default: 2");
+			this.config.retrymultiplier = 2;
+		}
 		this.log.debug("(checkConf) Configured https-usage: " + this.config.useHttps);
 		if (this.config.useHttps) {
 			connectVia = "https://";
 			this.log.debug("(checkConf) Switching to https ... " + this.config.useHttps);
 		}
 		this.log.debug("(checkConf) Configured api polling interval: " + this.config.api_interval);
-        if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
-            this.log.warn("(checkConf) Config api polling interval " + this.config.api_interval + " not [3..1440] seconds. Using default: 5");
-            this.config.api_interval = 5;
-        }
-    }
+		if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
+			this.log.warn("(checkConf) Config api polling interval " + this.config.api_interval + " not [3..1440] seconds. Using default: 5");
+			this.config.api_interval = 5;
+		}
+	}
 
-    /**
-     * checks connection to senec service
-     */
-    async checkConnection() {
-        const url = connectVia + this.config.senecip + '/lala.cgi';
-        const form = '{"ENERGY":{"STAT_STATE":""}}';
-        try {
-            this.log.info('connecting to Senec: ' + url);
-            const body = await this.doGet(url, form, this, this.config.pollingTimeout, true);
-            this.log.info('connected to Senec: ' + url);
+	/**
+	 * checks connection to senec service
+	 */
+	async checkConnection() {
+		const url = connectVia + this.config.senecip + '/lala.cgi';
+		const form = '{"ENERGY":{"STAT_STATE":""}}';
+		try {
+			this.log.info('connecting to Senec: ' + url);
+			const body = await this.doGet(url, form, this, this.config.pollingTimeout, true);
+			this.log.info('connected to Senec: ' + url);
 			lalaConnected = true;
-        } catch (error) {
-            throw new Error("Error connecting to Senec (IP: " + connectVia + this.config.senecip + "). Exiting! (" + error + "). Try to toggle https-mode in settings and check FQDN of SENEC appliance.");
-        }
-    }
+		} catch (error) {
+			throw new Error("Error connecting to Senec (IP: " + connectVia + this.config.senecip + "). Exiting! (" + error + "). Try to toggle https-mode in settings and check FQDN of SENEC appliance.");
+		}
+	}
 	
 	/**
-     * Inits connection to senec app api
-     */
-    async initSenecAppApi() {
+	 * Inits connection to senec app api
+	 */
+	async initSenecAppApi() {
 		if (!this.config.api_use) {
 			this.log.info('Usage of SENEC App API not configured. Not using it');
 			return;
 		}
-        this.log.info('connecting to Senec App API: ' + apiLoginUrl);
+		this.log.info('connecting to Senec App API: ' + apiLoginUrl);
 		const loginData = JSON.stringify({
 			password: this.config.api_pwd,
 			username: this.config.api_mail
 		});
 		try {
-            const body = await this.doGet(apiLoginUrl, loginData, this, this.config.pollingTimeout, true);
-            this.log.info('connected to Senec AppAPI.');
+			const body = await this.doGet(apiLoginUrl, loginData, this, this.config.pollingTimeout, true);
+			this.log.info('connected to Senec AppAPI.');
 			apiLoginToken = JSON.parse(body).token;
 			apiConnected = true;
 			axios.defaults.headers.get['authorization'] = apiLoginToken;
-        } catch (error) {
+		} catch (error) {
 			apiConnected = false;
-            throw new Error("Error connecting to Senec AppAPI. Exiting! (" + error + ").");
-        }
-    }
+			throw new Error("Error connecting to Senec AppAPI. Exiting! (" + error + ").");
+		}
+	}
 	
 	/**
-     * Reads system data from senec app api
-     */
-    async getApiSystems() {
+	 * Reads system data from senec app api
+	 */
+	async getApiSystems() {
 		const pfx = "_api.Anlagen.";
 		if (!this.config.api_use || !apiConnected) {
 			this.log.info('Usage of SENEC App API not configured or not connected.');
 			return;
 		}
-        this.log.info('Reading Systems Information from Senec App API ' + apiSystemsUrl);
+		this.log.info('Reading Systems Information from Senec App API ' + apiSystemsUrl);
 		try {
-            const body = await this.doGet(apiSystemsUrl, "", this, this.config.pollingTimeout, false);
-            this.log.info('Read Systems Information from Senec AppAPI.');
+			const body = await this.doGet(apiSystemsUrl, "", this, this.config.pollingTimeout, false);
+			this.log.info('Read Systems Information from Senec AppAPI.');
 			var obj = JSON.parse(body);
 			const systems = [];
 			for (const[key, value] of Object.entries(obj)) {
@@ -361,16 +361,16 @@ class Senec extends utils.Adapter {
 				}
 			}
 			await this.doState(pfx + 'IDs', JSON.stringify(apiKnownSystems), "Anlagen IDs", "", false);
-        } catch (error) {
-            throw new Error("Error reading Systems Information from Senec AppAPI. (" + error + ").");
-        }
-    }
+		} catch (error) {
+			throw new Error("Error reading Systems Information from Senec AppAPI. (" + error + ").");
+		}
+	}
 
-    /**
-     * Read from url via axios
-     * @param url to read from
-     * @param form to post
-     */
+	/**
+	 * Read from url via axios
+	 * @param url to read from
+	 * @param form to post
+	 */
 	doGet(pUrl, pForm, caller, pollingTimeout, isPost) {
 		return new Promise(function (resolve, reject) {
 			axios({
@@ -382,11 +382,11 @@ class Senec extends utils.Adapter {
 			})
 			.then(
 				async (response) => {
-                        const content = response.data;
-                        caller.log.debug('(Poll) received data (' + response.status + '): ' + JSON.stringify(content));
+						const content = response.data;
+						caller.log.debug('(Poll) received data (' + response.status + '): ' + JSON.stringify(content));
 						resolve(JSON.stringify(content));
-                    }
-                )
+					}
+				)
 			.catch(
 				(error) => {
 					if (error.response) {
@@ -414,9 +414,9 @@ class Senec extends utils.Adapter {
 
 	
 	/**
-     * Read values from Senec Home V2.1
+	 * Read values from Senec Home V2.1
 	 * Careful with the amount and interval of HighPrio values polled because this causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
-     */
+	 */
 	async pollSenec(isHighPrio, retry) {
 		const url = connectVia + this.config.senecip + '/lala.cgi';	
 		var interval = this.config.interval * 1000;
@@ -426,34 +426,34 @@ class Senec extends utils.Adapter {
 		}
 		
 		try {
-            var body = await this.doGet(url, (isHighPrio ? highPrioForm : lowPrioForm), this, this.config.pollingTimeout, true);
+			var body = await this.doGet(url, (isHighPrio ? highPrioForm : lowPrioForm), this, this.config.pollingTimeout, true);
 			if (body.includes('\\"')) { 
 				// in rare cases senec reports back extra escape sequences on some machines ...
 				this.log.info("(Poll) Double escapes detected!  Body inc: " + body);
 				body = body.replace(/\\"/g, '"');
 				this.log.info("(Poll) Double escapes autofixed! Body out: " + body);
 			}
-            var obj = JSON.parse(body, reviverNumParse);
-            await this.evalPoll(obj);
+			var obj = JSON.parse(body, reviverNumParse);
+			await this.evalPoll(obj);
 
-            retry = 0;
+			retry = 0;
 			if (unloaded) return;
-            this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval);
-        } catch (error) {
-            if ((retry == this.config.retries) && this.config.retries < 999) {
-                this.log.error("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
-                this.setState('info.connection', false, true);
-            } else {
-                retry += 1;
-                this.log.warn("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
-                this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval * this.config.retrymultiplier * retry);
-            }
-        }
+			this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval);
+		} catch (error) {
+			if ((retry == this.config.retries) && this.config.retries < 999) {
+				this.log.error("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
+				this.setState('info.connection', false, true);
+			} else {
+				retry += 1;
+				this.log.warn("Error reading from Senec " + (isHighPrio ? "high" : "low") + "Prio (" + this.config.senecip + "). Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
+				this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval * this.config.retrymultiplier * retry);
+			}
+		}
 	}
 	
 	/**
-     * Read values from Senec App API
-     */
+	 * Read values from Senec App API
+	 */
 	async pollSenecAppApi(retry) {
 		if (!this.config.api_use || !apiConnected) {
 			this.log.info('Usage of SENEC App API not configured or not connected.');
@@ -499,15 +499,15 @@ class Senec extends utils.Adapter {
 			if (unloaded) return;
 			this.timerAPI = setTimeout(() => this.pollSenecAppApi(retry), interval);
 		} catch (error) {
-            if ((retry == this.config.retries) && this.config.retries < 999) {
-                this.log.error("Error reading from Senec AppAPI. Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
-                this.setState('info.connection', false, true);
-            } else {
-                retry += 1;
-                this.log.warn("Error reading from Senec AppAPI. Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
-                this.timerAPI = setTimeout(() => this.pollSenecAppApi(retry), interval * this.config.retrymultiplier * retry);
-            }
-        }
+			if ((retry == this.config.retries) && this.config.retries < 999) {
+				this.log.error("Error reading from Senec AppAPI. Retried " + retry + " times. Giving up now. Check config and restart adapter. (" + error + ")");
+				this.setState('info.connection', false, true);
+			} else {
+				retry += 1;
+				this.log.warn("Error reading from Senec AppAPI. Retry " + retry + "/" + this.config.retries + " in " + (interval * this.config.retrymultiplier * retry) / 1000 + " seconds! (" + error + ")");
+				this.timerAPI = setTimeout(() => this.pollSenecAppApi(retry), interval * this.config.retrymultiplier * retry);
+			}
+		}
 	}
 	
 	/**
@@ -635,22 +635,22 @@ class Senec extends utils.Adapter {
 			}
 		} catch (error) {
 			this.log.info("Rebuild ended.");
-        }
+		}
 		this.log.info("Restarting ...");
 		this.extendForeignObject(`system.adapter.${this.namespace}`, {native: {api_alltimeRebuild: false}});
 	}
 
-    /**
-     * sets a state's value and creates the state if it doesn't exist yet
-     */
-    async doState(name, value, description, unit, write) {
+	/**
+	 * sets a state's value and creates the state if it doesn't exist yet
+	 */
+	async doState(name, value, description, unit, write) {
 		if (!isNaN(name.substring(0, 1))) {
 			// keys cannot start with digits! Possibly SENEC delivering erraneous data
 			this.log.debug('(doState) Invalid datapoint: ' + name + ': ' + value);
 			return;
 		}
 		this.log.silly('(doState) Update: ' + name + ': ' + value);
-       
+	   
 		const valueType = value !== null && value !== undefined ? typeof value : "mixed";
 	
 		// Check object for changes:
@@ -725,29 +725,29 @@ class Senec extends utils.Adapter {
 	 * evaluates data polled from SENEC system.
 	 * creates / updates the state.
 	 */
-    async evalPoll(obj) {
+	async evalPoll(obj) {
 		if (unloaded) return;
-        for (const[key1, value1] of Object.entries(obj)) {
-            for (const[key2, value2] of Object.entries(value1)) {
-                if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
-                    const key = key1 + '.' + key2;
-                    if (state_attr[key] === undefined) {
-                        this.log.debug('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
-                    }	
-                    const desc = (state_attr[key] !== undefined) ? state_attr[key].name : key2;
-                    const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
+		for (const[key1, value1] of Object.entries(obj)) {
+			for (const[key2, value2] of Object.entries(value1)) {
+				if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
+					const key = key1 + '.' + key2;
+					if (state_attr[key] === undefined) {
+						this.log.debug('REPORT_TO_DEV: State attribute definition missing for: ' + key + ', Val: ' + value2);
+					}	
+					const desc = (state_attr[key] !== undefined) ? state_attr[key].name : key2;
+					const unit = (state_attr[key] !== undefined) ? state_attr[key].unit : "";
 
-                    if (Array.isArray(value2)) {
-                        for (var i = 0; i < value2.length; i++) {
-                            this.doState(key + '.' + i, ValueTyping(key, value2[i]), desc + '[' + i + ']', unit, false);
-                        }
-                    } else {
-                        this.doState(key, ValueTyping(key, value2), desc, unit, false);
-                    }
-                }
-            }
-        }
-    }
+					if (Array.isArray(value2)) {
+						for (var i = 0; i < value2.length; i++) {
+							this.doState(key + '.' + i, ValueTyping(key, value2[i]), desc + '[' + i + ']', unit, false);
+						}
+					} else {
+						this.doState(key, ValueTyping(key, value2), desc, unit, false);
+					}
+				}
+			}
+		}
+	}
 
 }
 
@@ -757,24 +757,24 @@ class Senec extends utils.Adapter {
  */
 const ValueTyping = (key, value) => {
 	if (!isNaN(value)) value = Number(value); // otherwise iobroker will note it as string
-    if (state_attr[key] === undefined) {
-        return value;
-    }
+	if (state_attr[key] === undefined) {
+		return value;
+	}
 	const isBool = (state_attr[key] !== undefined && state_attr[key].booltype) ? state_attr[key].booltype : false;
 	const isDate = (state_attr[key] !== undefined && state_attr[key].datetype) ? state_attr[key].datetype : false;
 	const isIP = (state_attr[key] !== undefined && state_attr[key].iptype) ? state_attr[key].iptype : false;
 	const multiply = (state_attr[key] !== undefined && state_attr[key].multiply) ? state_attr[key].multiply : 1;
-    if (isBool) {
-        return (value === 0) ? false : true;
-    } else if (isDate) {
-        return new Date(value * 1000).toString();
-    } else if (isIP) {
-        return DecToIP(value);
-    } else if (multiply !== 1) {
-        return parseFloat((value * multiply).toFixed(2));
-    } else {
-        return value;
-    }
+	if (isBool) {
+		return (value === 0) ? false : true;
+	} else if (isDate) {
+		return new Date(value * 1000).toString();
+	} else if (isIP) {
+		return DecToIP(value);
+	} else if (multiply !== 1) {
+		return parseFloat((value * multiply).toFixed(2));
+	} else {
+		return value;
+	}
 }
 
 /**
@@ -783,21 +783,21 @@ const ValueTyping = (key, value) => {
  * @param string with hex value
  */
 const HexToFloat32 = (str) => {
-    var int = parseInt(str, 16);
-    if (int > 0 || int < 0) {
-        // var sign = (int >>> 31) ? -1 : 1;
-        var sign = (int & 0x80000000) ? -1 : 1;
-        var exp = (int >>> 23 & 0xff) - 127;
-        var mantissa = ((int & 0x7fffff) + 0x800000).toString(2);
-        var float32 = 0;
-        for (var i = 0; i < mantissa.length; i++) {
-            float32 += parseInt(mantissa[i]) ? Math.pow(2, exp) : 0;
-            exp--;
-        }
-        return (float32 * sign).toFixed(2);
-    } else {
-        return 0;
-    }
+	var int = parseInt(str, 16);
+	if (int > 0 || int < 0) {
+		// var sign = (int >>> 31) ? -1 : 1;
+		var sign = (int & 0x80000000) ? -1 : 1;
+		var exp = (int >>> 23 & 0xff) - 127;
+		var mantissa = ((int & 0x7fffff) + 0x800000).toString(2);
+		var float32 = 0;
+		for (var i = 0; i < mantissa.length; i++) {
+			float32 += parseInt(mantissa[i]) ? Math.pow(2, exp) : 0;
+			exp--;
+		}
+		return (float32 * sign).toFixed(2);
+	} else {
+		return 0;
+	}
 }
 
 /**
@@ -807,15 +807,15 @@ const HexToFloat32 = (str) => {
  * for proper human reading.
  */
 const DecToIP = (str) => {
-    var ipHex = str.toString(16);
-    while (ipHex.length < 8) {
-        ipHex = '0' + ipHex;
-    }
-    const fourth = ipHex.substring(0, 2);
-    const third = ipHex.substring(2, 4);
-    const second = ipHex.substring(4, 6);
-    const first = ipHex.substring(6);
-    return (parseInt(first, 16) + '.' + parseInt(second, 16) + '.' + parseInt(third, 16) + '.' + parseInt(fourth, 16));
+	var ipHex = str.toString(16);
+	while (ipHex.length < 8) {
+		ipHex = '0' + ipHex;
+	}
+	const fourth = ipHex.substring(0, 2);
+	const third = ipHex.substring(2, 4);
+	const second = ipHex.substring(4, 6);
+	const first = ipHex.substring(6);
+	return (parseInt(first, 16) + '.' + parseInt(second, 16) + '.' + parseInt(third, 16) + '.' + parseInt(fourth, 16));
 }
 
 /**
@@ -824,54 +824,54 @@ const DecToIP = (str) => {
  * @param key value pair as defined in reviver option
  */
 const reviverNumParse = (key, value) => {
-    // prepare values for output using reviver function
-    if (typeof value === "string") {
-        if (value.startsWith("fl_")) { // float in hex IEEE754
-            return HexToFloat32(value.substring(3));
-        } else if (value.startsWith("u")) { // unsigned int in hex
-            return parseInt(value.substring(3), 16);
-        } else if (value.startsWith("st_")) { // string?
-            return value.substring(3);
-        } else if (value.startsWith("i1")) { // int
-            var val = parseInt(value.substring(3), 16);
-            if (!isNaN(val)) {
-                if ((val & 0x8000) > 0) {
-                    val = val - 0x10000;
-                }
-                return val;
-            } else
-                return 0;
+	// prepare values for output using reviver function
+	if (typeof value === "string") {
+		if (value.startsWith("fl_")) { // float in hex IEEE754
+			return HexToFloat32(value.substring(3));
+		} else if (value.startsWith("u")) { // unsigned int in hex
+			return parseInt(value.substring(3), 16);
+		} else if (value.startsWith("st_")) { // string?
+			return value.substring(3);
+		} else if (value.startsWith("i1")) { // int
+			var val = parseInt(value.substring(3), 16);
+			if (!isNaN(val)) {
+				if ((val & 0x8000) > 0) {
+					val = val - 0x10000;
+				}
+				return val;
+			} else
+				return 0;
 
-        } else if (value.startsWith("i3")) { // int
-            var val = parseInt(value.substring(3), 16);
-            if (!isNaN(val)) {
-                if ((Math.abs(value & 0x80000000)) > 0) {
-                    val = val - 0x100000000;
-                }
-                return val;
-            } else
-                return 0;
+		} else if (value.startsWith("i3")) { // int
+			var val = parseInt(value.substring(3), 16);
+			if (!isNaN(val)) {
+				if ((Math.abs(value & 0x80000000)) > 0) {
+					val = val - 0x100000000;
+				}
+				return val;
+			} else
+				return 0;
 
-        } else if (value.startsWith("i8")) { // int
-            var val = parseInt(value.substring(3), 16);
-            if (!isNaN(val)) {
-                if ((value & 0x80) > 0) {
-                    val = val - 0x100;
-                }
-                return val;
-            } else
-                return 0;
-        } else if (value.startsWith("VARIABLE_NOT_FOUND")) {
-            return "VARIABLE_NOT_FOUND";
+		} else if (value.startsWith("i8")) { // int
+			var val = parseInt(value.substring(3), 16);
+			if (!isNaN(val)) {
+				if ((value & 0x80) > 0) {
+					val = val - 0x100;
+				}
+				return val;
+			} else
+				return 0;
+		} else if (value.startsWith("VARIABLE_NOT_FOUND")) {
+			return "VARIABLE_NOT_FOUND";
 		} else if (value.startsWith("FILE_VARIABLE_NOT_READABLE")) {
-            return "";
-        } else {
-            return "REPORT TO DEV: " + key + ":" + value;
-            //throw new Error("Unknown value in JSON: " + key + ":" + value);
-        }
-    } else {
-        return value;
-    }
+			return "";
+		} else {
+			return "REPORT TO DEV: " + key + ":" + value;
+			//throw new Error("Unknown value in JSON: " + key + ":" + value);
+		}
+	} else {
+		return value;
+	}
 }
 
 /**
@@ -901,23 +901,23 @@ const getCurYear = () => {
  */
 const getCurWeek = () => {
 	var tdt = new Date();
-    var dayn = (tdt.getDay() + 6) % 7;
-    tdt.setDate(tdt.getDate() - dayn + 3);
-    var firstThursday = tdt.valueOf();
-    tdt.setMonth(0, 1);
-    if (tdt.getDay() !== 4) {
+	var dayn = (tdt.getDay() + 6) % 7;
+	tdt.setDate(tdt.getDate() - dayn + 3);
+	var firstThursday = tdt.valueOf();
+	tdt.setMonth(0, 1);
+	if (tdt.getDay() !== 4) {
 		tdt.setMonth(0, 1 + ((4 - tdt.getDay()) + 7) % 7);
-    }
-    return 1 + Math.ceil((firstThursday - tdt) / 604800000);
+	}
+	return 1 + Math.ceil((firstThursday - tdt) / 604800000);
 }
 
 if (require.main !== module) {
-    // Export the constructor in compact mode
-    /**
-     * @param {Partial<ioBroker.AdapterOptions>} [options={}]
-     */
-    module.exports = (options) => new Senec(options);
+	// Export the constructor in compact mode
+	/**
+	 * @param {Partial<ioBroker.AdapterOptions>} [options={}]
+	 */
+	module.exports = (options) => new Senec(options);
 } else {
-    // otherwise start the instance directly
-    new Senec();
+	// otherwise start the instance directly
+	new Senec();
 }
