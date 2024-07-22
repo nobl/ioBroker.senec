@@ -1025,7 +1025,7 @@ const HexToFloat32 = (str) => {
 		// var sign = (int >>> 31) ? -1 : 1;
 		const sign = int & 0x80000000 ? -1 : 1;
 		let exp = ((int >>> 23) & 0xff) - 127;
-		const mantissa = ((int & 0x7fffff + 0x800000).toString(2);
+		const mantissa = ((int & 0x7fffff) + 0x800000).toString(2);
 		let float32 = 0;
 		for (let i = 0; i < mantissa.length; i++) {
 			float32 += parseInt(mantissa[i]) ? Math.pow(2, exp) : 0;
