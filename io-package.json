@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.13",
+        "version": "1.6.14",
         "news": {
+			"1.6.14": {
+				"en": "Bugfix (values were way off)",
+				"de": "Bugfix (Falsche Werte)",
+				"ru": "Bugfix (значения были удалены)",
+				"pt": "Bugfix (valores estavam muito fora)",
+				"nl": "Bugfix (waarden waren ver weg)",
+				"fr": "Bugfix (les valeurs étaient loin)",
+				"it": "Bugfix (i valori erano lontani)",
+				"es": "Bugfix (los valores estaban lejos)",
+				"pl": "Bugfix (wartości były daleko poza)",
+				"uk": "Помилки (вартості були вимкнені)",
+				"zh-cn": "错误修正( 值远差 )"
+			}
 			"1.6.13": {
 				"en": "Removed Support for node 16, Added more translations, Code cleanup",
 				"de": "Removed Support for node 16, Weitere Übersetzungen hinzugefügt, Code cleanup",
@@ -132,19 +145,6 @@
 				"pl": "Liczby są ponownie numerami",
 				"uk": "Кількість чисел знову",
 				"zh-cn": "数字再次编号"
-			},
-			"1.6.3": {
-				"en": "Bugfixes for API reading.",
-				"de": "Bugfixes im API Handling.",
-				"ru": "Bugfixes для чтения API.",
-				"pt": "Bugfixes para leitura de API.",
-				"nl": "Bugfixes voor API-lezing.",
-				"fr": "Bugfixes pour la lecture de l'API.",
-				"it": "Bugfixes per la lettura API.",
-				"es": "Bugfixes para la lectura de API.",
-				"pl": "Bugfixes for API reading (ang.).",
-				"uk": "Виправлення помилок для читання API.",
-				"zh-cn": "评 注."
 			}
         },
         "docs": {
