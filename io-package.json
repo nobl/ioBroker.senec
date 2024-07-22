@@ -15,7 +15,7 @@
 				"pl": "Bugfix (wartości były daleko poza)",
 				"uk": "Помилки (вартості були вимкнені)",
 				"zh-cn": "错误修正( 值远差 )"
-			}
+			},
 			"1.6.13": {
 				"en": "Removed Support for node 16, Added more translations, Code cleanup",
 				"de": "Removed Support for node 16, Weitere Übersetzungen hinzugefügt, Code cleanup",
