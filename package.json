@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "axios": "^1.7.7",
-    "@iobroker/adapter-core": "^3.1.6"
+    "@iobroker/adapter-core": "^3.2.1"
   },
   "devDependencies": {
     "@alcalzone/release-script": "^3.8.0",
