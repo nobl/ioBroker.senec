@@ -15,6 +15,7 @@
   "homepage": "https://github.com/nobl/ioBroker.senec",
   "license": "MIT",
   "keywords": [
+	"ioBroker",
     "senec",
     "solar",
 	"photovoltaic"
