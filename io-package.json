@@ -93,58 +93,6 @@
 			    "pl": "Kontrola przełącznikowa. ForceLoad Bateria rozpoczynająca/zatrzymanie baterii. Wykorzystuje to do rozpoczęcia/stopowania (jak z dynamicznymi cenami mocy).",
 			    "uk": "Додано контроль перемикання. Приват24 Акумулятор для запуску / зарядки акумулятора. Використовуйте це для запуску / stop примусової зарядки (наприклад, з динамічними цінами потужності, ...).",
 			    "zh-cn": "添加了转换控制。 部队 开始/禁止劫持电池。 利用这开始/禁止强迫征集(与动态发电价格相似,......)。."
-			},
-			"1.6.7": {
-				  "en": "Added option to turn off local polling.",
-				  "de": "Option hinzugefügt, um die lokale Abfrage der Appliance abzuschalten.",
-				  "ru": "Добавлена возможность отключить локальный опрос.",
-				  "pt": "Opção adicionada para desligar a sondagem local.",
-				  "nl": "Toegevoegd optie om lokale peilingen uit te zetten.",
-				  "fr": "Ajout de l'option pour désactiver le vote local.",
-				  "it": "Aggiunta opzione per spegnere polling locale.",
-				  "es": "Se agregó la opción de apagar las encuestas locales.",
-				  "pl": "Wstępna opcja, aby odwołać lokalną sondę.",
-				  "uk": "Додана можливість вимкнути локальне опитування.",
-				  "zh-cn": "增加地方投票的选择。."
-			},
-			"1.6.6": {
-				  "en": "Node 16 required; Bugfixes; Removed non-existing branches: _calc, Bat1Obj[2-4], Display, Statistic, File; Added branches: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
-				  "de": "Node 16 erforderlich; Bugfixes; Entfernt: _calc, Bat1Obj[2-4,] Display, Statistic, Datei; Hinzugefügt: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
-				  "ru": "Node 16 требуется; Bugfixes; Удаленные несущие филиалы: _calc, Bat1Obj[2-4,] Дисплей, Статистика, Файл; Добавленные филиалы: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
-				  "pt": "Node 16 requerido; Bugfixes; ramos não existentes removidos: _calc, Bat1Obj[2-4,] Exibição, estatística, arquivo; galhos adicionados: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT",
-				  "nl": "Node 16 vereist, Bugfixes, verwijderde niet-vernietigende takken",
-				  "fr": "Node 16 required; Bugfixes; Deleted non-existing branches: _calc, Bat1Obj[2-4,] Display, Statistic, File; Added branches: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
-				  "it": "Nodo 16 richiesto; Bugfixs; Rimuoveto rami non esistenti: _calc, Bat1Obj[2-4,] Visualizzazione, Statistica, File; Aggiungi i rami: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
-				  "es": "Nodo 16 requerido; Bugfixes; ramas no existentes eliminadas: _calc, Bat1Obj[2-4,] Pantalla, Estadística, Archivo; ramas agregadas: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
-				  "pl": "Node 16 wymaga: Bugfixes; Removed non-existing branches: _calc, Bat1Obj2 (4, Display, Statistic, File; Added gałęzi: CURRENT_IMBACE_CONOL, BMZ_CURRE_LIMITS",
-				  "uk": "Node 16 потрібно; Виправлення помилок; Вилучені невибагливі гілки: _calc, Bat1Obj[2-4,] Display, Statistic, File; Додано гілки: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT",
-				  "zh-cn": "第16条要求:Bugfix; 取消未存在的分支:升级c,Bat1Obj[2-4] Display, Statistic, File; 增加分支:协调局:CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT"
-			},
-			"1.6.5": {
-				"en": "Added AllTime Statistics (trigger initial calculations in adapter settings), https is now default for new instances.",
-				"de": "AllTime Statistiken hinzugefügt (initiale Berechnung bitte in den Adapter-Einstellungen aktivieren), https ist jetzt Standard für neue Instanzen.",
-				"ru": "Добавлена статистика AllTime (trigger начальные расчеты в настройках адаптера), https теперь по умолчанию для новых инстанций.",
-				"pt": "Adicionado AllTime Statistics ( cálculos iniciais de gatilho em configurações de adaptador), https agora é padrão para novas instâncias.",
-				"nl": "Toegevoegd AllTime Statistieken (trigger initialen berekeningen in adapter settings\" \"htps is nu default voor nieuwe instanties.",
-				"fr": "Ajout de AllTime Statistics (trigger initial calculations in adapt settings), https est maintenant par défaut pour de nouveaux cas.",
-				"it": "Aggiunta AllTime Statistics (configurazioni iniziali del trigger nelle impostazioni dell'adattatore), https è ora predefinito per nuove istanze.",
-				"es": "Añadido AllTime Statistics (trigger inicial calculations in adapter settings), https ahora es predeterminado para nuevas instancias.",
-				"pl": "Added AllTime Statistics (trigger początkowych obliczeń w ustawieniach adapterów), https jest obecnie domyślny do nowych instancji.",
-				"uk": "Додано AllTime Статистика (тригер початкових обчислень в налаштуваннях адаптера), HTTPS тепер за замовчуванням для нових екземплярів.",
-				"zh-cn": "加上《所有制度统计》(在适应环境中的过份初步计算),目前,新情况目前有缺陷。."
-			},
-			"1.6.4": {
-				"en": "Numbers are numbers again",
-				"de": "Zahlen sind wieder Zahlen",
-				"ru": "Номера снова",
-				"pt": "Os números são números novamente",
-				"nl": "Nummers zijn weer getallen",
-				"fr": "Les nombres sont de nouveau des nombres",
-				"it": "I numeri sono di nuovo numeri",
-				"es": "Números son números de nuevo",
-				"pl": "Liczby są ponownie numerami",
-				"uk": "Кількість чисел знову",
-				"zh-cn": "数字再次编号"
 			}
         },
         "docs": {
@@ -184,9 +132,12 @@
             "senec",
             "solar"
         ],
-        "license": "MIT",
+		"licenseInformation": {
+			"license": "MIT",
+			"type": "free"
+		},
         "platform": "Javascript/Node.js",
-        "main": "main.js",
+		"tier": 2,
         "icon": "senec.png",
         "enabled": false,
         "extIcon": "https://raw.githubusercontent.com/nobl/ioBroker.senec/master/admin/senec.png",
@@ -202,7 +153,7 @@
 		},
         "dependencies": [
 			{
-                "js-controller": ">=4.0.0"
+                "js-controller": ">=5.0.19"
             }
         ],
 	        "globalDependencies": [

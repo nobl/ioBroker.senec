@@ -1,6 +1,9 @@
 {
 	"i18n": false,
 	"type": "tabs",
+	"tabsStyle": {
+		width: "calc(100% - 100px)"
+	},
 	"items": {
 		"_options": {
 			"type": "panel",
@@ -20,9 +23,11 @@
 			"items": {
 				"lala_use": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						  "en": "Connect via lala.cgi?",
 						  "de": "Verbinden über lala.cgi?",
@@ -54,9 +59,11 @@
 				},
 				"control_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						  "en": "Activate active appliance control",
 						  "de": "Aktive Gerätesteuerung aktivieren",
@@ -88,9 +95,11 @@
 				},
 				"senecip": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "IP / FQDN of SENEC System",
 						"de": "IP / FQDN des SENEC Systems",
@@ -122,9 +131,11 @@
 				},
 				"useHttps": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Use https?",
 						"de": "https verwenden?",
@@ -156,9 +167,11 @@
 				},
 				"interval": {
 					"type": "number",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Polling Interval (seconds) High Priority Data",
 						"de": "Polling Interval (Sekunden) Hohe Priorität",
@@ -192,9 +205,11 @@
 				},
 				"intervalLow": {
 					"type": "number",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Polling Interval (minutes) Low Priority Data",
 						"de": "Polling Interval (Minuten) Niedrige Priorität",
@@ -228,9 +243,11 @@
 				},
 				"pollingTimeout": {
 					"type": "number",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Request-Timeout (ms)",
 						"de": "Request-Timeout (ms)",
@@ -264,9 +281,11 @@
 				},
 				"retries": {
 					"type": "number",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Polling Retries",
 						"de": "Wiederholungsversuche",
@@ -300,9 +319,11 @@
 				},
 				"retrymultiplier": {
 					"type": "number",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Polling Retry Factor",
 						"de": "Polling-Wiederholungsfaktor",
@@ -354,6 +375,11 @@
 			"items": {
 				"disclaimer": {
 					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "I hereby acknowledge that it is in my very own responsibility alone to ensure these settings are valid. I also acknowledge that problematic settings can cause my SENEC appliance to malfunction and that I willingly accept these risks.",
 						"de": "Ich erkenne hiermit an, dass es allein in meiner eigenen Verantwortung liegt, dass diese Einstellungen gültig sind. Ich erkenne auch an, dass problematische Einstellungen zu einer Störung meines SENEC-Geräts führen können und dass ich diese Risiken akzeptiere.",
@@ -385,9 +411,11 @@
 				},
 				"highPrio_BMS": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling BMS-Datapoints",
 						"de": "HighPrio Polling BMS-Datenpunkte",
@@ -419,9 +447,11 @@
 				},
 				"highPrio_BMS_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -440,9 +470,11 @@
 				},
 				"highPrio_ENERGY": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling ENERGY-Datapoints",
 						"de": "HighPrio Polling ENERGY-Datenpunkte",
@@ -474,9 +506,11 @@
 				},
 				"highPrio_ENERGY_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -495,9 +529,11 @@
 				},
 				"highPrio_PV1": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling PV1-Datapoints",
 						"de": "HighPrio Polling PV1-Datenpunkte",
@@ -529,9 +565,11 @@
 				},
 				"highPrio_PV1_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -550,9 +588,11 @@
 				},
 				"highPrio_PWR_UNIT": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling PWR_UNIT-Datapoints",
 						"de": "HighPrio Polling PWR_UNIT-Datenpunkte",
@@ -584,9 +624,11 @@
 				},
 				"highPrio_PWR_UNIT_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -605,9 +647,11 @@
 				},
 				"highPrio_PM1OBJ1": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling PM1OBJ1-Datapoints",
 						"de": "HighPrio Polling PM1OBJ1-Datenpunkte",
@@ -639,9 +683,11 @@
 				},
 				"highPrio_PM1OBJ1_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -660,9 +706,11 @@
 				},
 				"highPrio_PM1OBJ2": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling PM1OBJ2-Datapoints",
 						"de": "HighPrio Polling PM1OBJ2-Datenpunkte",
@@ -694,9 +742,11 @@
 				},
 				"highPrio_PM1OBJ2_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -715,9 +765,11 @@
 				},
 				"highPrio_WALLBOX": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling WALLBOX-Datapoints",
 						"de": "HighPrio Polling WALLBOX-Datenpunkte",
@@ -749,9 +801,11 @@
 				},
 				"highPrio_WALLBOX_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -770,9 +824,11 @@
 				},
 				"highPrio_BAT1": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling BAT1-Datapoints",
 						"de": "HighPrio Polling BAT1-Datenpunkte",
@@ -804,9 +860,11 @@
 				},
 				"highPrio_BAT1_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -825,9 +883,11 @@
 				},
 				"highPrio_BAT1OBJ1": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling BAT1OBJ1-Datapoints",
 						"de": "HighPrio Polling BAT1OBJ1-Datenpunkte",
@@ -859,9 +919,11 @@
 				},
 				"highPrio_BAT1OBJ1_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -880,9 +942,11 @@
 				},
 				"highPrio_TEMPMEASURE": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "HighPrio Polling TEMPMEASURE-Datapoints",
 						"de": "HighPrio Polling TEMPMEASURE-Datenpunkte",
@@ -914,9 +978,11 @@
 				},
 				"highPrio_TEMPMEASURE_active": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Add Datapoints to polling?",
 						"de": "Datapoints zum Abruf hinzufügen?",
@@ -953,9 +1019,11 @@
 			"items": {
 				"api_use": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Use SENEC API?",
 						"de": "SENEC API nutzen?",
@@ -987,9 +1055,11 @@
 				},
 				"api_mail": {
 					"type": "text",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Email-Address",
 						"de": "E-Mail-Adresse",
@@ -1022,9 +1092,11 @@
 				"api_pwd": {
 					"type": "password",
 					"visible": true,
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Password",
 						"de": "Passwort",
@@ -1056,9 +1128,11 @@
 				},
 				"api_interval": {
 					"type": "number",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Polling Interval (minutes)",
 						"de": "Polling Interval (Minuten)",
@@ -1092,9 +1166,11 @@
 				},
 				"api_alltimeRebuild": {
 					"type": "checkbox",
+					"xs": 12,
 					"sm": 12,
-                    "md": 6,
-                    "lg": 6,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"label": {
 						"en": "Rebuild AllTime history (one-time)",
 						"de": "Gesamthistorie neu berechnen (einmalig)",
