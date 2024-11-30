@@ -1,5 +1,37 @@
 The newest change log is [README.md](README.md)
 
+### 1.6.8 (NoBl)
+* Added switch control.ForceLoadBattery to start/stop charging battery. Use this to start/stop forced charging (like with dynamic power prices, ...).
+
+### 1.6.7 (NoBl)
+* Added option to turn off local polling.
+
+### 1.6.6 (NoBl)
+* Node 16 required
+* Bugfixes
+* Removed non-existing branches: _calc, Bat1Obj[2-4], Display, Statistic, File
+* Added branches: CURRENT_IMBALANCE_CONTROL, BMZ_CURRENT_LIMITS, CELL_DEVIATION_ROC, SENEC_IO_OUTPUT, SENEC_IO_INPUT
+
+### 1.6.5 (NoBl)
+* Added AllTime Statistics (trigger initial calculations in adapter settings)
+* https is now default for new instances
+
+### 1.6.4 (NoBl)
+* Bugfix (numbers are numbers again)
+
+### 1.6.3 (NoBl)
+* Code optimization
+
+### 1.6.2 (NoBl)
+* Added statistics values from API along with some own calculations.
+
+### 1.6.1 (NoBl)
+* Bugfixes
+
+### 1.6.0 (NoBl)
+* Added option to also poll SENEC App API. This requires user credentials for mein-senec.de
+* We are starting with just some information - more to follow. But with Dashboard we at least have current values and day statistics back.
+
 ### 1.5.1 (NoBl)
 * Added more datapoints. If you experience messages in log - feel free to add them yourself to state_attr on github (pull request)
 * Autarky calculations will stopp working because SENEC removed STATISTICS branch.
