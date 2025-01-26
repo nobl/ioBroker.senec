@@ -18,8 +18,10 @@ const api_trans = require(__dirname + "/lib/api_trans.js");
 const kiloList = ["W", "Wh"];
 
 const apiUrl = "https://app-gateway.prod.senec.dev/v1/senec";
+const api2Url = "https://app-gateway.prod.senec.dev/v2/senec";
 const apiLoginUrl = apiUrl + "/login";
 const apiSystemsUrl = apiUrl + "/systems";
+const api2SystemsUrl = api2Url + "/systems";
 const apiMonitorUrl = apiUrl + "/monitor";
 const apiKnownSystems = [];
 
@@ -27,6 +29,10 @@ const batteryOn =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 const batteryOff =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
+const blockDischargeOn =
+	'{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
+const blockDischargeOff =
+	'{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 
 let apiConnected = false;
 let lalaConnected = false;
@@ -500,6 +506,7 @@ class Senec extends utils.Adapter {
 	 * @param form to post
 	 */
 	doGet(pUrl, pForm, caller, pollingTimeout, isPost) {
+		this.log.debug("Calling: " + pUrl);
 		return new Promise(function (resolve, reject) {
 			axios({
 				method: isPost ? "post" : "get",
@@ -634,7 +641,8 @@ class Senec extends utils.Adapter {
 		let body = "";
 		try {
 			for (let i = 0; i < apiKnownSystems.length; i++) {
-				const baseUrl = apiSystemsUrl + "/" + apiKnownSystems[i];
+				// const baseUrl = apiSystemsUrl + "/" + apiKnownSystems[i];
+				const baseUrl = api2SystemsUrl + "/" + apiKnownSystems[i];
 				const baseUrlMonitor = apiMonitorUrl + "/" + apiKnownSystems[i];
 				let url = "";
 				const tzObj = await this.getStateAsync("_api.Anlagen." + apiKnownSystems[i] + ".zeitzone");
@@ -655,7 +663,6 @@ class Senec extends utils.Adapter {
 						value +
 						"&locale=de_DE&timezone=" +
 						tz;
-					this.log.debug("Calling: " + url);
 					body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
 					await this.decodeStatistik(apiKnownSystems[i], JSON.parse(body), api_trans[key].dp);
 				}
@@ -701,23 +708,26 @@ class Senec extends utils.Adapter {
 	async decodeDashboard(system, obj) {
 		const pfx = "_api.Anlagen." + system + ".Dashboard.";
 		for (const [key, value] of Object.entries(obj)) {
-			if (key == "zeitstempel" || key == "electricVehicleConnected") {
+			this.log.debug("(decodeDashboard) Key: " + key + " - Value:" + JSON.stringify(value));
+			if (key == "timestamp" || key == "electricVehicleConnected") {
 				await this.doState(pfx + key, value, "", "", false);
 			} else {
 				for (const [key2, value2] of Object.entries(value)) {
+					this.log.debug("(decodeDashboard) Key2: " + key2 + " - Value: " + JSON.stringify(value2));
+					const keyParts = ParseApi2KeyParts(key2);
 					await this.doState(
 						pfx + key + "." + key2,
-						Number(value2.wert.toFixed(2)),
+						Number(value2.toFixed(2)),
 						"",
-						value2.einheit,
+						keyParts.unit,
 						false,
 					);
-					if (kiloList.includes(value2.einheit)) {
+					if (kiloList.includes(keyParts.unit)) {
 						await this.doState(
-							pfx + key + "." + key2 + " (k" + value2.einheit + ")",
-							Number((value2.wert / 1000).toFixed(2)),
+							pfx + key + "." + keyParts.prefix + " (k" + keyParts.unit + ")",
+							Number((value2 / 1000).toFixed(2)),
 							"",
-							"k" + value2.einheit,
+							"k" + keyParts.unit,
 							false,
 						);
 					}
@@ -1013,6 +1023,24 @@ const ValueTyping = (key, value) => {
 		return value;
 	}
 };
+
+const ParseApi2KeyParts = (key) => {
+	//const match = key.match(/In([A-Za-z]+)$/);
+	//var unit = match ? match[1] : "";
+	//if (unit == "Percent") unit = "%";
+	//return unit;
+	const match = key.match(/^(.*)In([A-Za-z]+)$/);
+	if (match) {
+		return {
+			prefix: match[1], // part before "In"
+			unit: match[2] === "Percent" ? "%" : match[2] // replace "Percent" with "%"
+		};
+	}
+	return { // default response for error
+		prefix: "unknownKey",
+		unit: ""
+	};
+}
 
 /**
  * Converts float value in hex format to js float32.

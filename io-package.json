@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.15",
+        "version": "1.6.16",
         "news": {
+			"1.6.16": {
+			  "en": "Migrated Dashboard to ApiV2. This invalidates existing datapoints under /Dashboard/ and introduces \"Dashboard/currently\" and \"Dashboard/today\" due to changes in the API.",
+			  "de": "Dashboard auf ApiV2 migriert. Dadurch werden bestehende Datenpunkte unter /Dashboard/ ungültig. Neu sind aufgrund von Änderungen in der API: \\\"Dashboard/current\\\" und \\\"Dashboard/today\\\".",
+			  "ru": "Migrated Dashboard to ApiV2. Это аннулирует существующие точки данных под /Dashboard/ и вводит \\\"Dashboard/currently\\\" и \\\"Dashboard/today\\\" из-за изменений в API.",
+			  "pt": "Painel Migrado para ApiV2. Isso invalida os datapoints existentes em /Dashboard/ e introduz \\\"Dashboard/currently\\\" e \\\"Dashboard/hoje\\\" devido a alterações na API.",
+			  "nl": "Gemigreerd Dashboard naar ApiV2. Dit maakt bestaande datapunten ongeldig onder /Dashboard/ en introduceert \\\"Dashboard/momenteel\\\" en \\\"Dashboard/today\\\" vanwege wijzigingen in de API.",
+			  "fr": "Tableau de bord modifié vers ApiV2. Cela invalide les points de données existants sous /Dashboard/ et introduit \\\"Dashboard/currently\\\" et \\\"Dashboard/today\\\" en raison des changements dans l'API.",
+			  "it": "Migrato Dashboard ad ApiV2. Questo invalida i datapoint esistenti in /Dashboard/ e introduce \\\"Dashboard/currently\\\" e \\\"Dashboard/today\\\" a causa delle modifiche nell'API.",
+			  "es": "Migrated Dashboard to ApiV2. Esto invalida los puntos de datos existentes bajo /Dashboard/ e introduce \\\"Dashboard/currently\\\" y \\\"Dashboard/today\\\" debido a cambios en la API.",
+			  "pl": "Migrated Dashboard do ApiV2. To unieważnia istniejące punkty danych pod / Deska rozdzielcza / i wprowadza\\ \"Deska rozdzielcza / obecnie\\\" i\\ \"Deska rozdzielcza / dzisiaj\\\" ze względu na zmiany w API.",
+			  "uk": "Migrated Dashboard до ApiV2. Це недійсні існуючі точки даних під / панель / і вводить \\ \"Дашборд/поточно\\\" і \\\"Dashboard/today\\\" через зміни в API.",
+			  "zh-cn": "将 Dashboard 移动到 ApiV2. 这使得/Dashboard/下的现有数据点无效,并由于API的改变,引入了\\\"Dashboard/today\\\"和\\\"Dashboard/today\\\"."
+			},
 			"1.6.15": {
 			  "en": "Maintenance update (dependencies, ...)",
 			  "de": "Wartungsupdate (Abhängigkeiten, ..",
@@ -80,19 +93,6 @@
 				  "pl": "Bugfix for AllTimeHistory (ang.)",
 				  "uk": "Виправлення помилок для AllTimeHistory",
 				  "zh-cn": "九. 一切制度"
-			},
-			"1.6.9": {
-				  "en": "Improved battery forced loading, added switch in config to allow active control of appliance.",
-				  "de": "Manuelles Laden verbessert, zusätzlicher Schalter in Config, um aktive Steuerung des Gerätes zu erlauben.",
-				  "ru": "Улучшенная батарея принудительная загрузка, добавил переключатель в config, чтобы позволить активный контроль прибора.",
-				  "pt": "Carga forçada da bateria melhorada, interruptor adicionado em config para permitir o controle ativo do aparelho.",
-				  "nl": "Geïmproviseerde batterij geforceerde lading, toegevoegd schakelaar in config om actieve controle over goedkeuring toe te staan.",
-				  "fr": "Amélioration du chargement forcé de la batterie, commutateur ajouté dans la configuration pour permettre le contrôle actif de l'appareil.",
-				  "it": "Caricamento forzato della batteria migliorato, interruttore aggiunto in configurazione per consentire il controllo attivo dell'apparecchio.",
-				  "es": "Carga forzada de batería mejorada, interruptor añadido en configuración para permitir el control activo del aparato.",
-				  "pl": "Poprawione baterie wymusiły obciążenie, dodano przełącznik w celu umożliwienia aktywnej kontroli urządzenia.",
-				  "uk": "Покращений акумулятор примусового навантаження, доданий перемикач в настройку, щоб забезпечити активний контроль за приладом.",
-				  "zh-cn": "改善强迫装载的电池,加起来,允许积极控制输电。."
 			}
         },
         "docs": {
