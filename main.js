@@ -29,10 +29,8 @@ const batteryOn =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 const batteryOff =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
-const blockDischargeOn =
-	'{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
-const blockDischargeOff =
-	'{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
+//const blockDischargeOn = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
+//const blockDischargeOff = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 
 let apiConnected = false;
 let lalaConnected = false;
@@ -715,13 +713,7 @@ class Senec extends utils.Adapter {
 				for (const [key2, value2] of Object.entries(value)) {
 					this.log.debug("(decodeDashboard) Key2: " + key2 + " - Value: " + JSON.stringify(value2));
 					const keyParts = ParseApi2KeyParts(key2);
-					await this.doState(
-						pfx + key + "." + key2,
-						Number(value2.toFixed(2)),
-						"",
-						keyParts.unit,
-						false,
-					);
+					await this.doState(pfx + key + "." + key2, Number(value2.toFixed(2)), "", keyParts.unit, false);
 					if (kiloList.includes(keyParts.unit)) {
 						await this.doState(
 							pfx + key + "." + keyParts.prefix + " (k" + keyParts.unit + ")",
@@ -1033,14 +1025,15 @@ const ParseApi2KeyParts = (key) => {
 	if (match) {
 		return {
 			prefix: match[1], // part before "In"
-			unit: match[2] === "Percent" ? "%" : match[2] // replace "Percent" with "%"
+			unit: match[2] === "Percent" ? "%" : match[2], // replace "Percent" with "%"
 		};
 	}
-	return { // default response for error
+	return {
+		// default response for error
 		prefix: "unknownKey",
-		unit: ""
+		unit: "",
 	};
-}
+};
 
 /**
  * Converts float value in hex format to js float32.
