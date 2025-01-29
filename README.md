@@ -299,6 +299,9 @@ This channel contains values polled from SENEC App-API.
 
 ## Changelog
 
+### 1.6.17
+* License update
+
 ### 1.6.16
 * Moved Dashboard to ApiV2. This invalidates existing datapoints under /Dashboard/ and introduces "Dashboard/currently" and "Dashboard/today" due to changes in the API.
 
