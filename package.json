@@ -38,7 +38,7 @@
     "@alcalzone/release-script-plugin-manual-review": "^3.7.0",
 	"@iobroker/adapter-dev": "^1.4.0",
     "@iobroker/testing": "^5.0.0",
-	"@eslint/eslintrc": "^3.2.0",
+	"@eslint/eslintrc": "^3.3.0",
 	"@eslint/js": "^9.17.0",
 	"@tsconfig/node20": "^20.1.4",
     "@types/chai": "^4.3.19",
