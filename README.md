@@ -338,7 +338,7 @@ This channel contains values polled from SENEC App-API.
 ## License
 MIT License
 
-Copyright (c) 2025 Norbert Bluemle <github@bluemle.org>
+Copyright (c) 2025-2026 Norbert Bluemle <github@bluemle.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
