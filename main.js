@@ -476,7 +476,9 @@ class Senec extends utils.Adapter {
 			this.log.info("STEP 1: fetch login portal page...");
 			const resp1 = await webClient.get(apiLoginUrl);
 			this.log.debug("Portal GET status: " + resp1.status);
-			this.log.silly("Portal GET response url: " + (resp1.request && resp1.request.res ? resp1.request.res.responseUrl : ""));
+			this.log.silly(
+				"Portal GET response url: " + (resp1.request && resp1.request.res ? resp1.request.res.responseUrl : "")
+			);
 
 			// parse form
 			const $ = cheerio.load(resp1.data);
@@ -499,16 +501,14 @@ class Senec extends utils.Adapter {
 
 			this.log.debug("Posting login to Keycloak action URL: " + actionUrl);
 
-			const resp2 = await webClient.post(
-				actionUrl, new URLSearchParams(formData).toString(),
-				{
-					headers: {
-						"Content-Type": "application/x-www-form-urlencoded",
-						Referer: resp1.request.res.responseUrl,
-					},
-					maxRedirects: 5,
-					validateStatus: () => true,
+			const resp2 = await webClient.post(actionUrl, new URLSearchParams(formData).toString(), {
+				headers: {
+					"Content-Type": "application/x-www-form-urlencoded",
+					Referer: resp1.request.res.responseUrl,
 				},
+				maxRedirects: 5,
+				validateStatus: () => true,
+			},
 			);
 
 			this.log.debug("Login POST status: " + resp2.status);
@@ -727,14 +727,7 @@ class Senec extends utils.Adapter {
 		// also interesting endpoints:
 
 		// also prepare getstatus types
-		const statusTypes = [
-			"accuexport",
-			"accuimport",
-			"gridexport",
-			"gridimport",
-			"powergenerated",
-			"consumption",
-		];
+		const statusTypes = ["accuexport", "accuimport", "gridexport", "gridimport", "powergenerated", "consumption"];
 
 		this.log.debug("Polling Portal API ...");
 
@@ -793,8 +786,8 @@ class Senec extends utils.Adapter {
 				const url = base + "/getstatus.php?type=" + encodeURIComponent(t) + "&period=all&anlageNummer=0";
 				try {
 					const res = await this.senecWebClient.get(url);
-					if (res.status === 200) {	
-						await this.decodeStatus(res.data, t);										
+					if (res.status === 200) {
+						await this.decodeStatus(res.data, t);
 					} else {
 						this.log.warn("getstatus(" + t + ") returned HTTP " + res.status);
 					}
@@ -837,42 +830,56 @@ class Senec extends utils.Adapter {
 		}
 	}
 
-	/** 
-	 * Decodes StatusOverview from WebAPI
-	 */
-	async decodeStatusOverview(obj) {		
+	/**
+	* Decodes StatusOverview from WebAPI
+	*/
+	async decodeStatusOverview(obj) {
 		const pfx = "_api.Portal.StatusOverview.";
 		// store raw data
 		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Status Overview", "", false);
 		for (const [key, value] of Object.entries(obj)) {
-			if (key == "wartungsplan" || key === "gridimport" || key === "gridexport" || key === "powergenerated" || key === "consumption" || key === "accuexport" || key === "accuimport" || key === "acculevel") {
+			if (
+				key == "wartungsplan" ||
+				key === "gridimport" ||
+				key === "gridexport" ||
+				key === "powergenerated" ||
+				key === "consumption" ||
+				key === "accuexport" ||
+				key === "accuimport" ||
+				key === "acculevel"
+			) {
 				for (const [key2, value2] of Object.entries(value)) {
 					if (key2 == "possibleMaintenanceTypes") continue; // skip this one
 					this.log.debug("decodeStatusOverview: " + pfx + key + "." + key2 + ":" + value);
-					await this.doState(pfx + key + "." + key2, ValueTyping(key2, JSON.stringify(value2)), "", "", false);
+					await this.doState(
+						pfx + key + "." + key2, ValueTyping(key2, JSON.stringify(value2)),
+						"",
+						"",
+						false
+					);
 				}
 			} else if (key === "lastupdated") {
-				let date = new Date(value);
+				const date = new Date(value);
 				this.log.debug("decodeStatusOverview: " + pfx + key + ":" + date.toString());
 				await this.doState(pfx + key, date.toString(), "", "", false);
 			} else {
-				if (key === "suppressedNotificationIds")	continue; // skip this one - empty array
+				if (key === "suppressedNotificationIds") continue; // skip this one - empty array
 				this.log.debug("decodeStatusOverview: " + pfx + key + ":" + value);
 				await this.doState(pfx + key, ValueTyping(key, value), "", "", false);
 			}
 		}
 	}
 
-	/** 
-     * Decodes technischeDaten from WebAPI
-	 */
-	async decodeTechnischeDaten(obj) {		
+	/**
+	* Decodes technischeDaten from WebAPI
+	*/
+	async decodeTechnischeDaten(obj) {
 		const pfx = "_api.Portal.TechnischeDaten.";
 		// store raw data
 		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Status Overview", "", false);
 		for (const [key, value] of Object.entries(obj)) {
 			if (key == "installationsdatum") {
-				let date = new Date(value);
+				const date = new Date(value);
 				this.log.debug("decodeTechnischeDaten: " + pfx + key + ":" + date.toString());
 				await this.doState(pfx + key, date.toString(), "", "", false);
 			} else {
@@ -882,10 +889,10 @@ class Senec extends utils.Adapter {
 		}
 	}
 
-	/** 
-    * Decodes Status24 from WebAPI
+	/**
+	* Decodes Status24 from WebAPI
 	*/
-	async decodeStatus24(obj) {		
+	async decodeStatus24(obj) {
 		const pfx = "_api.Portal.Status24.";
 		// store raw data
 		await this.doState(pfx + "json", JSON.stringify(obj), "Portal Status24", "", false);
@@ -949,7 +956,7 @@ class Senec extends utils.Adapter {
 				await this.doState(pfx + "PowerGenerated.json", JSON.stringify(powergeneratedArr), "", "", false);
 
 				// Consumption
-				i = 0; 
+				i = 0;
 				for (const [ts, val] of consumptionArr) {
 					i++;
 					const dateStr = new Date(ts).toString();
@@ -963,10 +970,10 @@ class Senec extends utils.Adapter {
 		}
 	}
 
-	/** 
-    * Decodes decodeAutarky from WebAPI	* 
+	/**
+	* Decodes decodeAutarky from WebAPI	*
 	*/
-	async decodeAutarky(obj) {		
+	async decodeAutarky(obj) {
 		const pfx = "_api.Portal.Autarky.";
 		// store raw data
 		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Autarky", "", false);
@@ -976,10 +983,10 @@ class Senec extends utils.Adapter {
 		}
 	}
 
-	/** 
-    * Decodes AccuState from WebAPI
+	/**
+	* Decodes AccuState from WebAPI
 	*/
-	async decodeAccuState(obj) {		
+	async decodeAccuState(obj) {
 		const pfx = "_api.Portal.AccuState.";
 		// store raw json
 		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Accu State", "", false);
@@ -1013,10 +1020,10 @@ class Senec extends utils.Adapter {
 		}
 	}
 
-	/** 
-    * Decodes AccuSavings from WebAPI
+	/**
+	* Decodes AccuSavings from WebAPI
 	*/
-	async decodeAccuSavings(obj) {		
+	async decodeAccuSavings(obj) {
 		const pfx = "_api.Portal.AccuSavings.";
 		// store raw json
 		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Accu Savings", "", false);
@@ -1029,15 +1036,16 @@ class Senec extends utils.Adapter {
 		}
 	}
 
-	/** 
-    * Decodes Status from WebAPI
+	/**
+	* Decodes Status from WebAPI
 	*/
-	async decodeStatus(obj, typ) {		
+	async decodeStatus(obj, typ) {
 		const pfx = "_api.Portal.Status." + typ + ".";
 		// store raw json
 		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Status", "", false);
 		for (const [key, value] of Object.entries(obj)) {
-			if (key == "val") { // includes six arrays for the last 24 hours for different metrics (order? : accu import, accu export, grid import, grid export, power generated, consumption)
+		if (key == "val") {
+			// includes six arrays for the last 24 hours for different metrics (order? : accu import, accu export, grid import, grid export, power generated, consumption)
 				const yearly = await this.decodeYearlyValues(value);
 				for (const [year, aggregation] of Object.entries(yearly)) {
 					await this.doState(pfx + year, Number(aggregation.toFixed(3)), "", "", false);
@@ -1060,7 +1068,7 @@ class Senec extends utils.Adapter {
 
 		for (const [ts, value] of val) {
 			const year = new Date(ts).getFullYear(); // get year from timestamp
-			result[year] = Number(value.toFixed(3)); // round to 3 decimal places 
+			result[year] = Number(value.toFixed(3)); // round to 3 decimal places
 		}
 		return result;
 	}
@@ -1119,40 +1127,6 @@ class Senec extends utils.Adapter {
 			);
 			await this.doState(pfx + "Autarkie", autarky, "", "%", false);
 		}
-	}
-
-	/**
-	 * Rebuilds AllTimeHistory from SENEC App API
-	 */
-	async rebuildAllTimeHistory(system) {
-		if (!this.config.api_use || !apiConnected) {
-			this.log.info("Usage of SENEC App API not configured or not connected.");
-			return;
-		}
-
-		this.log.info("Rebuilding AllTime History ...");
-		let year = new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split("T")[0]; // starting last year, because we already got current year covered
-		let body = "";
-		try {
-			while (new Date(year).getFullYear() > 2008) {
-				// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
-				this.log.info("Rebuilding AllTime History - Year: " + new Date(year).getFullYear());
-				const baseUrl = apiMonitorUrl + "/" + system;
-				let url = "";
-				const tzObj = await this.getStateAsync("_api.Anlagen." + system + ".zeitzone");
-				const tz = tzObj ? encodeURIComponent(tzObj.val) : encodeURIComponent("Europe/Berlin");
-				url = baseUrl + "/data?period=YEAR&date=" + year + "&locale=de_DE&timezone=" + tz;
-				this.log.debug("Polling: " + url);
-				body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
-				await this.decodeStatistik(system, JSON.parse(body), api_trans["THIS_YEAR"].dp);
-				year = new Date(new Date(year).getFullYear() - 1, 1, 1).toISOString().split("T")[0];
-				if (unloaded) return;
-			}
-		} catch (error) {
-			this.log.info("Rebuild ended: " + error);
-		}
-		this.log.info("Restarting ...");
-		this.extendForeignObject(`system.adapter.${this.namespace}`, { native: { api_alltimeRebuild: false } });
 	}
 
 	/**
@@ -1302,24 +1276,24 @@ const ValueTyping = (key, value) => {
 	}
 };
 
-const ParseApi2KeyParts = (key) => {
-	//const match = key.match(/In([A-Za-z]+)$/);
-	//var unit = match ? match[1] : "";
-	//if (unit == "Percent") unit = "%";
-	//return unit;
-	const match = key.match(/^(.*)In([A-Za-z]+)$/);
-	if (match) {
-		return {
-			prefix: match[1], // part before "In"
-			unit: match[2] === "Percent" ? "%" : match[2], // replace "Percent" with "%"
-		};
-	}
-	return {
-		// default response for error
-		prefix: "unknownKey",
-		unit: "",
-	};
-};
+// const ParseApi2KeyParts = (key) => {
+// 	//const match = key.match(/In([A-Za-z]+)$/);
+// 	//var unit = match ? match[1] : "";
+// 	//if (unit == "Percent") unit = "%";
+// 	//return unit;
+// 	const match = key.match(/^(.*)In([A-Za-z]+)$/);
+// 	if (match) {
+// 		return {
+// 			prefix: match[1], // part before "In"
+// 			unit: match[2] === "Percent" ? "%" : match[2], // replace "Percent" with "%"
+// 		};
+// 	}
+// 	return {
+// 		// default response for error
+// 		prefix: "unknownKey",
+// 		unit: "",
+// 	};
+// };
 
 /**
  * Converts float value in hex format to js float32.
