@@ -21,7 +21,6 @@ let wrapper;
 
 const state_attr = require(__dirname + "/lib/state_attr.js");
 const state_trans = require(__dirname + "/lib/state_trans.js");
-const api_trans = require(__dirname + "/lib/api_trans.js");
 const kiloList = ["W", "Wh"];
 
 const apiLoginUrl = "https://mein-senec.de/endkunde/oauth2/authorization/endkunde-portal";
@@ -477,7 +476,7 @@ class Senec extends utils.Adapter {
 			const resp1 = await webClient.get(apiLoginUrl);
 			this.log.debug("Portal GET status: " + resp1.status);
 			this.log.silly(
-				"Portal GET response url: " + (resp1.request && resp1.request.res ? resp1.request.res.responseUrl : "")
+				"Portal GET response url: " + (resp1.request && resp1.request.res ? resp1.request.res.responseUrl : ""),
 			);
 
 			// parse form
@@ -508,8 +507,7 @@ class Senec extends utils.Adapter {
 				},
 				maxRedirects: 5,
 				validateStatus: () => true,
-			},
-			);
+			});
 
 			this.log.debug("Login POST status: " + resp2.status);
 			// check cookies in jar
@@ -831,8 +829,8 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	* Decodes StatusOverview from WebAPI
-	*/
+	 * Decodes StatusOverview from WebAPI
+	 */
 	async decodeStatusOverview(obj) {
 		const pfx = "_api.Portal.StatusOverview.";
 		// store raw data
@@ -852,10 +850,11 @@ class Senec extends utils.Adapter {
 					if (key2 == "possibleMaintenanceTypes") continue; // skip this one
 					this.log.debug("decodeStatusOverview: " + pfx + key + "." + key2 + ":" + value);
 					await this.doState(
-						pfx + key + "." + key2, ValueTyping(key2, JSON.stringify(value2)),
+						pfx + key + "." + key2,
+						ValueTyping(key2, JSON.stringify(value2)),
 						"",
 						"",
-						false
+						false,
 					);
 				}
 			} else if (key === "lastupdated") {
@@ -871,8 +870,8 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	* Decodes technischeDaten from WebAPI
-	*/
+	 * Decodes technischeDaten from WebAPI
+	 */
 	async decodeTechnischeDaten(obj) {
 		const pfx = "_api.Portal.TechnischeDaten.";
 		// store raw data
@@ -890,8 +889,8 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	* Decodes Status24 from WebAPI
-	*/
+	 * Decodes Status24 from WebAPI
+	 */
 	async decodeStatus24(obj) {
 		const pfx = "_api.Portal.Status24.";
 		// store raw data
@@ -971,8 +970,8 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	* Decodes decodeAutarky from WebAPI	*
-	*/
+	 * Decodes decodeAutarky from WebAPI	*
+	 */
 	async decodeAutarky(obj) {
 		const pfx = "_api.Portal.Autarky.";
 		// store raw data
@@ -984,8 +983,8 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	* Decodes AccuState from WebAPI
-	*/
+	 * Decodes AccuState from WebAPI
+	 */
 	async decodeAccuState(obj) {
 		const pfx = "_api.Portal.AccuState.";
 		// store raw json
@@ -1021,8 +1020,8 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	* Decodes AccuSavings from WebAPI
-	*/
+	 * Decodes AccuSavings from WebAPI
+	 */
 	async decodeAccuSavings(obj) {
 		const pfx = "_api.Portal.AccuSavings.";
 		// store raw json
@@ -1037,15 +1036,15 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	* Decodes Status from WebAPI
-	*/
+	 * Decodes Status from WebAPI
+	 */
 	async decodeStatus(obj, typ) {
 		const pfx = "_api.Portal.Status." + typ + ".";
 		// store raw json
 		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Status", "", false);
 		for (const [key, value] of Object.entries(obj)) {
-		if (key == "val") {
-			// includes six arrays for the last 24 hours for different metrics (order? : accu import, accu export, grid import, grid export, power generated, consumption)
+			if (key == "val") {
+				// includes six arrays for the last 24 hours for different metrics (order? : accu import, accu export, grid import, grid export, power generated, consumption)
 				const yearly = await this.decodeYearlyValues(value);
 				for (const [year, aggregation] of Object.entries(yearly)) {
 					await this.doState(pfx + year, Number(aggregation.toFixed(3)), "", "", false);
