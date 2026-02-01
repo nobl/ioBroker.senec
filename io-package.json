@@ -197,7 +197,7 @@
 		"api_interval": 5,
 		"api_alltimeRebuild": false
     },
-	"nativeEncrypted": {
+	"encryptedNative": {
         "api_mail": "",
         "api_pwd": ""
     },
