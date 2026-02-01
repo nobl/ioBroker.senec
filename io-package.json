@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "senec",
-        "version": "1.6.17",
+        "version": "2.0.0",
         "news": {
+			"2.0.0": {
+				"en": "Update to use API via mein-senec.de (Thanks to maett81)",
+				"de": "Aktualisierung der API über mein-senec.de (Danke an maett81)",
+				"ru": "Использование API через mein-senec.de (перенаправлено с «Maett81»)",
+				"pt": "Atualizar para usar API via mein-senec.de (Graças a Maett81)",
+				"nl": "Update om API te gebruiken via mein-senec.de (Dankzij maett81)",
+				"fr": "Mise à jour pour utiliser l'API via mein-senec.de (Merci à maett81)",
+				"it": "Aggiornamento all'utilizzo API tramite mein-senec.de (Grazie a maett81)",
+				"es": "Actualización para utilizar API a través de mein-senec.de (Gracias a maett81)",
+				"pl": "Aktualizacja do użycia API poprzez mein- senec.de (Dzięki maett81)",
+				"uk": "Update to use API через mein-senec.de (Шанки до maett81)",
+				"zh-cn": "通过 mein-senec.de 使用 API 的更新 (谢谢Maett81)"
+			},
 			"1.6.17": {
 				  "en": "License update",
 				  "de": "Lizenz-Update",
@@ -80,19 +93,6 @@
 				"pl": "Aktualizacja licencji",
 				"uk": "Оновлена ліцензія",
 				"zh-cn": "更新许可证"
-			},
-			"1.6.11": {
-				"en": "Moving from Senec App API 3.12.0 to 4.3.3 (thanks to oakdesign@github for providing the new API!). This WILL invalidate all current API datapoints in the Statistik branch. Easiest solution to this: Delete the Statistik branch. Remember to force a rebuild of historic data in adapter settings!",
-				"de": "Update der Senec App API 3.12.0 auf 4.3.3 (Dank an Oakdesign@github für die Analyse der neuen API.)! Dadurch werden leider alle aktuellen API-Datenpunkte im Statistik-Zweig ungültig. Einfachste Lösung hierfür: Den gesamten Statistik-Zweig löschen. Beachten: Die Gesamthistorie muss neu berechnet werden (Parameter in den Adaptereinstellungen)!",
-				"ru": "Переезд с Senec App API 3.12.0 до 4.3.3 (спасибо oakdesign@github для предоставления нового API.)! Это недействит все текущие точки API в филиале Statistik. Самое легкое решение для этого: Удалите филиал Statistik. Не забудьте заставить восстановить исторические данные в настройках адаптера!",
-				"pt": "Movendo de Senec App API 3.12.0 para 4.3.3 (graças para oakdesign@github para fornecer a nova API.)! Esta WILL invalida todos os datapoints API atuais no ramo Statistik. Solução mais fácil para isso: Excluir o ramo Statistik. Lembre-se de forçar uma reconstrução de dados históricos em configurações de adaptador!",
-				"nl": "Verhuizen van Senec App API 3.12.0 tot 4.3.3.3 uur tot Oakdesign @github voor de nieuwe API. Dit zal alle huidige API gegevens in de Statistik Branch invaliden. Verwijder de statistik tak. Vergeet niet een herbouw van historische gegevens te forceren in adapter settings!",
-				"fr": "Déplacement de Senec App API 3.12.0 à 4.3.3 (merci à Oakdesign@github pour fournir la nouvelle API.)! Ce WILL invalide tous les points de données API actuels dans la branche Statistik. Solution la plus facile à cela: Supprimer la branche Statistik. N'oubliez pas de forcer une reconstruction des données historiques dans les réglages d'adaptateur!",
-				"it": "Passando da Senec App API 3.12.0 a 4.3.3 (grazie a Oakdesign@github per fornire la nuova API.)! Questo WILL invalida tutti i datapoint API attuali nel ramo Statistik. Soluzione più semplice a questo: Elimina il ramo Statistik. Ricordatevi di forzare una ricostruzione dei dati storici nelle impostazioni dell'adattatore!",
-				"es": "Moving from Senec App API 3.12.0 to 4.3.3 (gracias a oakdesign@github para proporcionar la nueva API.)! Esto invalidará todos los puntos de datos actuales de la API en la rama Statistik. Solución más fácil: Eliminar la rama Statistik. Recuerde forzar una reconstrucción de datos históricos en la configuración del adaptador!",
-				"pl": "Przewidując się z interfejsu Senec App API 3,12.0 to 4.3.3 (dodatki do dębowego @github dla zapewnienia nowego API). WILL uszkodził wszystkie aktualne punkty danych API w oddziale Statistik. Najwięcej rozwiązań do tego: Dete the Statistik branch. Pamiętaj, aby odbudować historyczne dane w ustawieniach adapterów!",
-				"uk": "Переміщення від Senec App API 3.12.0 до 4.3.3 (завдяки до дубdesign@github для надання нового API.)! Це недійсне використання всіх поточних точок даних API у відділенні Statistik. Найсвіжіші рішення для цього: Видаліть статутне відділення. Пам'ятайте, що змусити перебудувати історичні дані в налаштуваннях адаптера!",
-				"zh-cn": "Moving from Senecapp API3.12.0 to 4.3.3 (as to oakdesign@github for the new API.!) 本协会在斯塔特斯科分处停止了目前所有阿联酋数据点。 最容易解决这一问题:删除斯塔特主义分支。 重新成员在适应环境中重建历史数据!"
 			}
         },
         "docs": {
@@ -197,7 +197,7 @@
 		"api_interval": 5,
 		"api_alltimeRebuild": false
     },
-	"nativeEncrypted": {
+	"encryptedNative": {
         "api_mail": "",
         "api_pwd": ""
     },
