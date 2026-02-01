@@ -24,7 +24,6 @@ const state_trans = require(__dirname + "/lib/state_trans.js");
 const api_trans = require(__dirname + "/lib/api_trans.js");
 const kiloList = ["W", "Wh"];
 
-const apiUrl = "https://mein-senec.de/endkunde/api/status/getstatusoverview.php?anlageNummer=0";
 const apiLoginUrl = "https://mein-senec.de/endkunde/oauth2/authorization/endkunde-portal";
 const apiKnownSystems = [];
 
@@ -37,7 +36,6 @@ const batteryOff =
 
 let apiConnected = false;
 let lalaConnected = false;
-let apiLoginToken = "";
 let connectVia = "http://";
 
 const allKnownObjects = new Set([
@@ -502,8 +500,7 @@ class Senec extends utils.Adapter {
 			this.log.debug("Posting login to Keycloak action URL: " + actionUrl);
 
 			const resp2 = await webClient.post(
-				actionUrl,
-				new URLSearchParams(formData).toString(),
+				actionUrl, new URLSearchParams(formData).toString(),
 				{
 					headers: {
 						"Content-Type": "application/x-www-form-urlencoded",
@@ -585,37 +582,6 @@ class Senec extends utils.Adapter {
 			//await this.doState(pfx + "IDs", JSON.stringify(apiKnownSystems), "Portal detected system IDs", "", false);
 		} catch (error) {
 			throw new Error("Error reading Systems Information from SENEC Portal. (" + error + ").");
-		}
-	}
-
-	/**
-	 * Reads system data from senec app api
-	 * @deprecated
-	 */
-	async getApiSystems() {
-		const pfx = "_api.Anlagen.";
-		if (!this.config.api_use || !apiConnected) {
-			this.log.info("Usage of SENEC App API not configured or not connected.");
-			return;
-		}
-		this.log.info("Reading Systems Information from Senec App API " + apiSystemsUrl);
-		try {
-			const body = await this.doGet(apiSystemsUrl, "", this, this.config.pollingTimeout, false);
-			this.log.info("Read Systems Information from Senec AppAPI.");
-			const obj = JSON.parse(body);
-			for (const [key, value] of Object.entries(obj)) {
-				this.log.debug("ApiPull: " + key + ":" + JSON.stringify(value));
-				const systemId = value.id;
-				apiKnownSystems.push(systemId);
-				for (const [key2, value2] of Object.entries(value)) {
-					if (typeof value2 === "object")
-						await this.doState(pfx + systemId + "." + key2, JSON.stringify(value2), "", "", false);
-					else await this.doState(pfx + systemId + "." + key2, value2, "", "", false);
-				}
-			}
-			await this.doState(pfx + "IDs", JSON.stringify(apiKnownSystems), "Anlagen IDs", "", false);
-		} catch (error) {
-			throw new Error("Error reading Systems Information from Senec AppAPI. (" + error + ").");
 		}
 	}
 
@@ -733,90 +699,6 @@ class Senec extends utils.Adapter {
 				);
 				this.timer = setTimeout(
 					() => this.pollSenec(isHighPrio, retry),
-					interval * this.config.retrymultiplier * retry,
-				);
-			}
-		}
-	}
-
-	/**
-	 * Read values from Senec App API - old style
-	 * @deprecated
-	 */
-	async pollSenecAppApi(retry) {
-		if (!this.config.api_use || !apiConnected) {
-			this.log.info("Usage of SENEC App API not configured or not connected.");
-			return;
-		}
-		const interval = this.config.api_interval * 60000;
-		const dates = new Map([
-			["THIS_DAY", new Date().toISOString().split("T")[0]],
-			["LAST_DAY", new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split("T")[0]],
-			["THIS_MONTH", new Date().toISOString().split("T")[0]],
-			["LAST_MONTH", new Date(new Date().setDate(0)).toISOString().split("T")[0]],
-			["THIS_YEAR", new Date().toISOString().split("T")[0]],
-			["LAST_YEAR", new Date(new Date().getFullYear() - 1, 1, 1).toISOString().split("T")[0]],
-		]);
-
-		this.log.debug("Polling API ...");
-		let body = "";
-		try {
-			for (let i = 0; i < apiKnownSystems.length; i++) {
-				// const baseUrl = apiSystemsUrl + "/" + apiKnownSystems[i];
-				const baseUrl = api2SystemsUrl + "/" + apiKnownSystems[i];
-				const baseUrlMonitor = apiMonitorUrl + "/" + apiKnownSystems[i];
-				let url = "";
-				const tzObj = await this.getStateAsync("_api.Anlagen." + apiKnownSystems[i] + ".zeitzone");
-				const tz = tzObj ? encodeURIComponent(tzObj.val) : encodeURIComponent("Europe/Berlin");
-
-				// dashboard
-				url = baseUrl + "/dashboard";
-				body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
-				await this.decodeDashboard(apiKnownSystems[i], JSON.parse(body));
-
-				for (const [key, value] of dates.entries()) {
-					// statistik for period
-					url =
-						baseUrlMonitor +
-						"/data?period=" +
-						api_trans[key].api +
-						"&date=" +
-						value +
-						"&locale=de_DE&timezone=" +
-						tz;
-					body = await this.doGet(url, "", this, this.config.pollingTimeout, false);
-					await this.decodeStatistik(apiKnownSystems[i], JSON.parse(body), api_trans[key].dp);
-				}
-				if (this.config.api_alltimeRebuild) await this.rebuildAllTimeHistory(apiKnownSystems[i]);
-			}
-			retry = 0;
-			if (unloaded) return;
-			this.timerAPI = setTimeout(() => this.pollSenecAppApi(retry), interval);
-		} catch (error) {
-			if (retry == this.config.retries && this.config.retries < 999) {
-				this.log.error(
-					"Error reading from Senec AppAPI. Retried " +
-						retry +
-						" times. Giving up now. Check config and restart adapter. (" +
-						error +
-						")",
-				);
-				this.setState("info.connection", false, true);
-			} else {
-				retry += 1;
-				this.log.warn(
-					"Error reading from Senec AppAPI. Retry " +
-						retry +
-						"/" +
-						this.config.retries +
-						" in " +
-						(interval * this.config.retrymultiplier * retry) / 1000 +
-						" seconds! (" +
-						error +
-						")",
-				);
-				this.timerAPI = setTimeout(
-					() => this.pollSenecAppApi(retry),
 					interval * this.config.retrymultiplier * retry,
 				);
 			}
@@ -1181,87 +1063,6 @@ class Senec extends utils.Adapter {
 			result[year] = Number(value.toFixed(3)); // round to 3 decimal places 
 		}
 		return result;
-	}
-
-	/**
-	 * Decodes Dashboard information from SENEC App API
-	 * @deprecated
-	 */
-	async decodeDashboard(system, obj) {
-		const pfx = "_api.Anlagen." + system + ".Dashboard.";
-		for (const [key, value] of Object.entries(obj)) {
-			this.log.debug("(decodeDashboard) Key: " + key + " - Value:" + JSON.stringify(value));
-			if (key == "timestamp" || key == "electricVehicleConnected") {
-				await this.doState(pfx + key, value, "", "", false);
-			} else {
-				for (const [key2, value2] of Object.entries(value)) {
-					this.log.debug("(decodeDashboard) Key2: " + key2 + " - Value: " + JSON.stringify(value2));
-					const keyParts = ParseApi2KeyParts(key2);
-					await this.doState(pfx + key + "." + key2, Number(value2.toFixed(2)), "", keyParts.unit, false);
-					if (kiloList.includes(keyParts.unit)) {
-						await this.doState(
-							pfx + key + "." + keyParts.prefix + " (k" + keyParts.unit + ")",
-							Number((value2 / 1000).toFixed(2)),
-							"",
-							"k" + keyParts.unit,
-							false,
-						);
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * Decodes Statistik information from SENEC App API
-	 * @deprecated
-	 */
-	async decodeStatistik(system, obj, period) {
-		if (obj == null || obj == undefined || obj.aggregation == null || obj.aggregation == undefined) return; // could happen (e.g.) if we pull information for "last year" when the appliance isn't that old yet
-		const pfx = "_api.Anlagen." + system + ".Statistik." + period + ".";
-		for (const [key, value] of Object.entries(obj.aggregation)) {
-			this.log.debug("decodeStatistic: " + pfx + key + ":" + value);
-			// only reading 'aggregation' - no interest in fine granular information
-			if (key == "startDate") {
-				await this.doState(pfx + key, value, "", "", false);
-			} else {
-				if (!this.config.api_alltimeRebuild) {
-					// don't update DPs if we are AllTime-Rebuild-Process
-					await this.doState(pfx + key, Number(value.value.toFixed(2)), "", value.unit, false);
-					if (kiloList.includes(value.unit)) {
-						await this.doState(
-							pfx + key + " (k" + value.unit + ")",
-							Number((value.value / 1000).toFixed(2)),
-							"",
-							"k" + value.unit,
-							false,
-						);
-					}
-				}
-				if (period == api_trans["THIS_YEAR"].dp)
-					await this.insertAllTimeHistory(
-						system,
-						key,
-						new Date(obj.aggregation.startDate).getFullYear(),
-						Number(value.value.toFixed(0)),
-						value.unit,
-					);
-			}
-		}
-		if (obj.aggregation.totalUsage.value != 0) {
-			const autarky = Number(
-				(
-					((obj.aggregation.generation.value -
-						obj.aggregation.gridFeedIn.value -
-						obj.aggregation.storageLoad.value +
-						obj.aggregation.storageConsumption.value) /
-						obj.aggregation.totalUsage.value) *
-					100
-				).toFixed(2),
-			);
-			await this.doState(pfx + "Autarkie", autarky, "", "%", false);
-		}
-		await this.updateAllTimeHistory(system);
 	}
 
 	/**
