@@ -195,12 +195,18 @@
 		"highPrio_TEMPMEASURE_active": false,
 		"api_use": false,
 		"api_interval": 5,
-		"api_alltimeRebuild": false
+		"api_alltimeRebuild": false,
+		"api_mail": "",
+		"api_pwd": ""
     },
-	"encryptedNative": {
-        "api_mail": "",
-        "api_pwd": ""
-    },
+	"encryptedNative": [
+        "api_mail",
+        "api_pwd"
+    ],
+	"protectedNative": [
+		"api_mail",
+		"api_pwd"
+	],
     "objects": [],
     "instanceObjects": [
 		{
