@@ -303,6 +303,10 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+- less log noise
+
 ### 2.1.2 (2026-02-04)
 - more silencing log messages
 - housekeeping

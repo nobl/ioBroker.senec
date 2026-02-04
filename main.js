@@ -363,7 +363,7 @@ class Senec extends utils.Adapter {
 			highPrioForm = `${highPrioForm.slice(0, -1)}},`;
 		});
 		highPrioForm = `${highPrioForm.slice(0, -1)}}`;
-		this.log.info(`(initPollSettings) highPrio: ${highPrioForm}`);
+		this.log.debug(`(initPollSettings) highPrio: ${highPrioForm}`);
 	}
 
 	addUserDps(value, objectsSet, dpToAdd) {
