@@ -20,7 +20,7 @@ const agent = new https.Agent({
 const utils = require("@iobroker/adapter-core");
 const state_attr = require(__dirname + "/lib/state_attr.js");
 const state_trans = require(__dirname + "/lib/state_trans.js");
-const api_trans = require(__dirname + "/lib/api_trans.js");
+//const api_trans = require(__dirname + "/lib/api_trans.js");
 const kiloList = ["W", "Wh"];
 const API_PFX = "_api.";
 const ID_TOKEN_STATE = API_PFX + "AuthToken";
@@ -683,7 +683,6 @@ class Senec extends utils.Adapter {
 		const sums = Object.fromEntries(data.measurements.map((key) => [key, 0]));
 		const year = new Date(data.timeSeries[0].date).getUTCFullYear();
 
-
 		// Durch timeSeries iterieren und Werte addieren
 		data.timeSeries.forEach((entry) => {
 			entry.measurements.values.forEach((value, index) => {
@@ -1046,11 +1045,11 @@ const ValueTyping = (key, value) => {
 	}
 };
 
-const toFloat = (val) => {
-	if (val === null || val === undefined) return 0;
-	const num = Number(val);
-	return Number.isNaN(num) ? 0 : parseFloat(num.toFixed(2));
-};
+//const toFloat = (val) => {
+//	if (val === null || val === undefined) return 0;
+//	const num = Number(val);
+//	return Number.isNaN(num) ? 0 : parseFloat(num.toFixed(2));
+//};
 
 /**
  * Converts float value in hex format to js float32.
