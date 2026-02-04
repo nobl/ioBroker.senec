@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.1.1",
+    "version": "2.1.2",
     "news": {
+      "2.1.2": {
+        "en": "more silencing log messages\nhousekeeping",
+        "de": "mehr silent-log-nachrichten\nhauswirtschaft",
+        "ru": "больше бревенчатых сообщений\nдомашнее хозяйство",
+        "pt": "mais mensagens de log silenciando\nserviço de limpeza",
+        "nl": "meer logberichten tot zwijgen brengen\nhuishouden",
+        "fr": "plus silencieux messages de journal\nménage",
+        "it": "più silenziare messaggi di registro\npulizia",
+        "es": "más mensajes de registro\nlimpieza",
+        "pl": "więcej wiadomości dziennika tłumiącego\nsprzątanie",
+        "uk": "більше спильних повідомлень журналу\nприбирання будинків",
+        "zh-cn": "更多静音日志消息\n家务"
+      },
       "2.1.1": {
         "en": "fixed datatype for WIZARD.SG_READY_CURR_MODE\nless logging (moved some info to debug again)",
         "de": "fester Datentyp für WIZARD.SG_READY_CURR_MODE\nweniger protokollierung (erweitert einige infos zum debug wieder)",
@@ -80,19 +93,6 @@
         "pl": "Aktualizacja utrzymania (zależności,...)",
         "uk": "Оновлення технічного обслуговування (в залежності, ...)",
         "zh-cn": "更新维护(独立性, . ) )"
-      },
-      "1.6.14": {
-        "en": "Bugfix (values were way off)",
-        "de": "Bugfix (Falsche Werte)",
-        "ru": "Bugfix (значения были удалены)",
-        "pt": "Bugfix (valores estavam muito fora)",
-        "nl": "Bugfix (waarden waren ver weg)",
-        "fr": "Bugfix (les valeurs étaient loin)",
-        "it": "Bugfix (i valori erano lontani)",
-        "es": "Bugfix (los valores estaban lejos)",
-        "pl": "Bugfix (wartości były daleko poza)",
-        "uk": "Помилки (вартості були вимкнені)",
-        "zh-cn": "错误修正( 值远差 )"
       }
     },
     "docs": {
