@@ -1,7 +1,5 @@
 "use strict";
 
-//process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'; // not cool, not nice - but well ... just a last option if everything else fails
-
 const crypto = require("crypto");
 const { URL, URLSearchParams } = require("url");
 const axiosRaw = require("axios");

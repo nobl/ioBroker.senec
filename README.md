@@ -299,7 +299,16 @@ This channel contains values polled from SENEC App-API.
 
 ## Changelog
 
-### **WORK IN PROGRESS**
+<!--
+  Placeholder for the next version (at the beginning of the line):
+  ### **WORK IN PROGRESS**
+-->
+
+### **WORK IN PROGRESS** - the API returns - finally finally hopefully finally
+
+- Complete rewrite of the Senec API functionality. Thanks to @timfxtones for pointing me in the right direction
+- No longer using the web-interface at mein-senec.de - it didn't work properly on the long run ...
+- Still missing some datapoints so far. They will be implemented in the future.
 
 ### 2.0.0 (maett81, NoBl)
 * Updated to use new SENEC API via mein-senec.de - Thanks to @maett81
