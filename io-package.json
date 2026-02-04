@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.1.2",
+    "version": "2.1.3",
     "news": {
+      "2.1.3": {
+        "en": "– reading all previous years (up to inception of SENEC) added again (to make this happen: activate recalculation of full history via settings)\n- added today / yesterday again\n- optimizations for measurements handling\n- less log noise",
+        "de": "– Lesen Sie alle Vorjahre (bis zu Beginn der SENEC) erneut hinzugefügt (um dies zu machen: Aktivieren Sie die Neuberechnung der vollen Geschichte über Einstellungen)\n- heute / gestern wieder hinzugefügt\n- optimierungen für messungen\n- weniger log lärm",
+        "ru": "- чтение всех предыдущих лет (до создания SENEC) добавлено снова (чтобы это произошло: активируйте пересчет полной истории через настройки)\nдобавлено сегодня / вчера снова\n- оптимизация для обработки измерений\n- меньше бревенчатого шума",
+        "pt": "– ler todos os anos anteriores (até o início do SENEC) adicionado novamente (para fazer isso acontecer: ativar o recalculamento do histórico completo através de configurações)\n- adicionado hoje / ontem novamente\n- otimizações para manuseio de medições\n- menos ruído de log",
+        "nl": "Het lezen van alle voorgaande jaren (tot het begin van SENEC) opnieuw toegevoegd (om dit te laten gebeuren: activeer herberekening van volledige geschiedenis via instellingen)\n- vandaag toegevoegd / gisteren weer\n- optimalisaties voor metingen\n- minder logruis",
+        "fr": "– lecture de toutes les années précédentes (jusqu'à la création du SENEC) ajoutée à nouveau (pour y arriver : activer le recalcul de l'historique complet via les paramètres)\n- ajouté aujourd'hui / hier encore\n- optimisations pour la manipulation des mesures\n- moins de bruit de bûcherons",
+        "it": "– lettura di tutti gli anni precedenti (fino all'inizio di SENEC) aggiunto di nuovo (per farlo accadere: attivare il ricalcolo della storia completa attraverso le impostazioni)\n- aggiunto oggi / di nuovo ieri\n- ottimizzazioni per la gestione delle misurazioni\n- meno rumore di log",
+        "es": "– leer todos los años anteriores (hasta la creación de SENEC) añadió de nuevo (para hacer que esto suceda: activar la recalculación de la historia completa a través de ajustes)\n- añadido hoy / ayer otra vez\n- optimizaciones para el manejo de mediciones\n- menos ruido de registro",
+        "pl": "- czytanie wszystkich poprzednich lat (aż do powstania SENEC) dodano ponownie (aby tak się stało: aktywować ponowne obliczanie pełnej historii za pomocą ustawień)\n- dodany dzisiaj / wczoraj ponownie\n- optymalizacje do obsługi pomiarów\n- mniej hałasu logowania",
+        "uk": "– читати всі попередні роки (до вступу до SENEC) додано ще раз (для цього трапляються: активувати перерахунок повної історії через налаштування)\n- додано сьогодні / вчора знову\n- оптимізація обробки вимірювань\n- менше шуму входу",
+        "zh-cn": "- 阅读所有往年(直到SENEC的建立)再次添加(为了实现这一点:通过设置激活全部历史的重新计算)\n- 今天/昨天又增加了一个\n- 优化测量处理\n- 别吵了"
+      },
       "2.1.2": {
         "en": "more silencing log messages\nhousekeeping",
         "de": "mehr silent-log-nachrichten\nhauswirtschaft",
@@ -80,19 +93,6 @@
         "pl": "Migrated Dashboard do ApiV2. To unieważnia istniejące punkty danych pod / Deska rozdzielcza / i wprowadza\\ \"Deska rozdzielcza / obecnie\\\" i\\ \"Deska rozdzielcza / dzisiaj\\\" ze względu na zmiany w API.",
         "uk": "Migrated Dashboard до ApiV2. Це недійсні існуючі точки даних під / панель / і вводить \\ \"Дашборд/поточно\\\" і \\\"Dashboard/today\\\" через зміни в API.",
         "zh-cn": "将 Dashboard 移动到 ApiV2. 这使得/Dashboard/下的现有数据点无效,并由于API的改变,引入了\\\"Dashboard/today\\\"和\\\"Dashboard/today\\\"."
-      },
-      "1.6.15": {
-        "en": "Maintenance update (dependencies, ...)",
-        "de": "Wartungsupdate (Abhängigkeiten, ..",
-        "ru": "Обновление (в зависимости от обстоятельств, ..",
-        "pt": "Atualização de manutenção (dependências, ..",
-        "nl": "Onderhoudsupdate (afhankelijkheden, ...)",
-        "fr": "Mise à jour de maintenance (dépendances, ...)",
-        "it": "Aggiornamento di manutenzione (dipendenze, ..",
-        "es": "Actualización de mantenimiento (dependencias, ...)",
-        "pl": "Aktualizacja utrzymania (zależności,...)",
-        "uk": "Оновлення технічного обслуговування (в залежності, ...)",
-        "zh-cn": "更新维护(独立性, . ) )"
       }
     },
     "docs": {
