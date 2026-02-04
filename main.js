@@ -350,7 +350,7 @@ class Senec extends utils.Adapter {
 		}
 
 		lowPrioForm = `${lowPrioForm.slice(0, -1)}}`;
-		this.log.info(`(initPollSettings) lowPrio: ${lowPrioForm}`);
+		this.log.debug(`(initPollSettings) lowPrio: ${lowPrioForm}`);
 
 		// creating form for high priority pulling
 		highPrioForm = "{";
@@ -711,7 +711,7 @@ class Senec extends utils.Adapter {
 			});
 		});
 
-		this.log.info(`Sums: ${JSON.stringify(sums)}`);
+		this.log.debug(`Sums: ${JSON.stringify(sums)}`);
 		let groupBy;
 		switch (period) {
 			case "year":
