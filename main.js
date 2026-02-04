@@ -989,7 +989,7 @@ class Senec extends utils.Adapter {
 							"REPORT_TO_DEV: State attribute definition missing for: " + fullKey + ", Val: " + value,
 						);
 					}
-					this.log.info("API Array Value: " + fullKey + " = " + value);
+					this.log.debug("API Array Value: " + fullKey + " = " + value);
 					const desc = state_attr[fullKey] !== undefined ? state_attr[fullKey].name : fullKey;
 					const unit = state_attr[fullKey] !== undefined ? state_attr[fullKey].unit : "";
 					this.doState(pfx + fullKey, ValueTyping(value), desc, unit, false);
