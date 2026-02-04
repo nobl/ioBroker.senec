@@ -299,6 +299,8 @@ This channel contains values polled from SENEC App-API.
 
 ## Changelog
 
+### **WORK IN PROGRESS**
+
 ### 2.0.0 (maett81, NoBl)
 * Updated to use new SENEC API via mein-senec.de - Thanks to @maett81
 * Some code and dependency housekeeping
