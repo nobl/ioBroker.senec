@@ -303,6 +303,9 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
 ### 2.1.1 (2026-02-04)
 - fixed datatype for WIZARD.SG_READY_CURR_MODE
 - less logging (moved some info to debug again)

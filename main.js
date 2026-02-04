@@ -16,12 +16,12 @@ const agent = new https.Agent({
 });
 
 const utils = require("@iobroker/adapter-core");
-const state_attr = require(__dirname + "/lib/state_attr.js");
-const state_trans = require(__dirname + "/lib/state_trans.js");
+const state_attr = require(`${__dirname}/lib/state_attr.js`);
+const state_trans = require(`${__dirname}/lib/state_trans.js`);
 //const api_trans = require(__dirname + "/lib/api_trans.js");
 const kiloList = ["W", "Wh"];
 const API_PFX = "_api.";
-const ID_TOKEN_STATE = API_PFX + "AuthToken";
+const ID_TOKEN_STATE = `${API_PFX}AuthToken`;
 
 // API Endpoints
 const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
@@ -93,10 +93,10 @@ const knownObjects = {};
 
 class Senec extends utils.Adapter {
 	/**
-	 * @param {Partial<ioBroker.AdapterOptions>} [options={}]
+	 * @param {Partial<ioBroker.AdapterOptions>} [options] some options
 	 */
 	constructor(options) {
-		// @ts-ignore
+		// @ts-expect-error Allow spreading user-supplied options into Adapter constructor despite type mismatch
 		super({
 			...options,
 			name: "senec",
@@ -155,16 +155,16 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * @param {string} id
-	 * @param {ioBroker.State | null | undefined} state
+	 * @param {string} id The id of the state that changed
+	 * @param {ioBroker.State | null | undefined} state The state object that changed
 	 */
 	async onStateChange(id, state) {
 		if (state && !state.ack) {
-			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
+			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
 			if (this.config.control_active) {
 				// All state-changes for .control.* need active config value
-				if (id === this.namespace + ".control.ForceLoadBattery" && lalaConnected) {
-					const url = connectVia + this.config.senecip + "/lala.cgi";
+				if (id === `${this.namespace}.control.ForceLoadBattery` && lalaConnected) {
+					const url = `${connectVia + this.config.senecip}/lala.cgi`;
 					try {
 						if (state.val) {
 							this.log.info("Enable force battery charging ...");
@@ -189,30 +189,32 @@ class Senec extends utils.Adapter {
 						}
 					} catch (error) {
 						this.log.error(error);
-						this.log.error("Failed to control: setting force battery charging mode to " + state.val);
+						this.log.error(`Failed to control: setting force battery charging mode to ${state.val}`);
 						return;
 					}
 				}
 			}
 			this.setStateAsync(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
-		} else if (state && id === this.namespace + ".ENERGY.STAT_STATE") {
+		} else if (state && id === `${this.namespace}.ENERGY.STAT_STATE`) {
 			// states that do have state.ack already
-			this.log.debug("State changed: " + id + " ( " + JSON.stringify(state) + " )");
-			const forceLoad = await this.getStateAsync(this.namespace + ".control.ForceLoadBattery");
+			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
+			const forceLoad = await this.getStateAsync(`${this.namespace}.control.ForceLoadBattery`);
 			if (state.val == 8 || state.val == 9) {
-				if (state.val == 9) this.log.info("Battery forced loading completed (battery full).");
+				if (state.val == 9) {
+					this.log.info("Battery forced loading completed (battery full).");
+				}
 				if (forceLoad != null && !forceLoad.val) {
 					this.log.info(
 						"Battery forced loading activated (from outside or just lag). Syncing control-state.",
 					);
-					this.setStateChangedAsync(this.namespace + ".control.ForceLoadBattery", { val: true, ack: true });
+					this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, { val: true, ack: true });
 				}
 			} else {
 				if (forceLoad != null && forceLoad.val) {
 					this.log.info(
 						"Battery forced loading deactivated (from outside or just lag). Syncing control-state.",
 					);
-					this.setStateChangedAsync(this.namespace + ".control.ForceLoadBattery", { val: false, ack: true });
+					this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, { val: false, ack: true });
 				}
 			}
 		}
@@ -220,7 +222,8 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!
-	 * @param {() => void} callback
+	 *
+	 * @param {() => void} callback The shutdown callback
 	 */
 	onUnload(callback) {
 		try {
@@ -235,7 +238,8 @@ class Senec extends utils.Adapter {
 			this.setState("info.connection", false, true);
 			callback();
 		} catch (e) {
-			callback(e);
+			this.log.error(e);
+			callback();
 		}
 	}
 
@@ -244,7 +248,7 @@ class Senec extends utils.Adapter {
 		// we can do this while preparing values for high prio
 		lowPrioForm = "{";
 		for (const value of allKnownObjects) {
-			lowPrioForm += '"' + value + '":{},';
+			lowPrioForm += `"${value}":{},`;
 			const objectsSet = new Set();
 			switch (value) {
 				case "BMS":
@@ -264,8 +268,9 @@ class Senec extends utils.Adapter {
 						"TEMP_MIN",
 						"VOLTAGE",
 					].forEach((item) => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_BMS_active)
+					if (this.config.disclaimer && this.config.highPrio_BMS_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_BMS);
+					}
 					break;
 				case "ENERGY":
 					[
@@ -287,44 +292,53 @@ class Senec extends utils.Adapter {
 						"SAFE_CHARGE_PROHIBIT",
 						"SAFE_CHARGE_RUNNING",
 					].forEach((item) => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_ENERGY_active)
+					if (this.config.disclaimer && this.config.highPrio_ENERGY_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_ENERGY);
+					}
 					break;
 				case "PV1":
 					["POWER_RATIO", "MPP_POWER"].forEach((item) => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_PV1_active)
+					if (this.config.disclaimer && this.config.highPrio_PV1_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_PV1);
+					}
 					break;
 				case "PWR_UNIT":
 					["POWER_L1", "POWER_L2", "POWER_L3"].forEach((item) => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_PWR_UNIT_active)
+					if (this.config.disclaimer && this.config.highPrio_PWR_UNIT_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_PWR_UNIT);
+					}
 					break;
 				case "PM1OBJ1":
 					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach((item) => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_PM1OBJ1_active)
+					if (this.config.disclaimer && this.config.highPrio_PM1OBJ1_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ1);
+					}
 					break;
 				case "PM1OBJ2":
 					["FREQ", "U_AC", "I_AC", "P_AC", "P_TOTAL"].forEach((item) => objectsSet.add(item));
-					if (this.config.disclaimer && this.config.highPrio_PM1OBJ2_active)
+					if (this.config.disclaimer && this.config.highPrio_PM1OBJ2_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_PM1OBJ2);
+					}
 					break;
 				case "WALLBOX":
-					if (this.config.disclaimer && this.config.highPrio_WALLBOX_active)
+					if (this.config.disclaimer && this.config.highPrio_WALLBOX_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_WALLBOX);
+					}
 					break;
 				case "BAT1":
-					if (this.config.disclaimer && this.config.highPrio_BAT1_active)
+					if (this.config.disclaimer && this.config.highPrio_BAT1_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_BAT1);
+					}
 					break;
 				case "BAT1OBJ1":
-					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ1_active)
+					if (this.config.disclaimer && this.config.highPrio_BAT1OBJ1_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_BAT1OBJ1);
+					}
 					break;
 				case "TEMPMEASURE":
-					if (this.config.disclaimer && this.config.highPrio_TEMPMEASURE_active)
+					if (this.config.disclaimer && this.config.highPrio_TEMPMEASURE_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_TEMPMEASURE);
+					}
 					break;
 				default:
 					// nothing to do here
@@ -335,31 +349,30 @@ class Senec extends utils.Adapter {
 			}
 		}
 
-		lowPrioForm = lowPrioForm.slice(0, -1) + "}";
-		this.log.info("(initPollSettings) lowPrio: " + lowPrioForm);
+		lowPrioForm = `${lowPrioForm.slice(0, -1)}}`;
+		this.log.info(`(initPollSettings) lowPrio: ${lowPrioForm}`);
 
 		// creating form for high priority pulling
 		highPrioForm = "{";
 		//highPrioObjects.forEach(function (mapValue, key, map) {
 		highPrioObjects.forEach(function (mapValue, key) {
-			highPrioForm += '"' + key + '":{';
+			highPrioForm += `"${key}":{`;
 			mapValue.forEach(function (setValue) {
-				highPrioForm += '"' + setValue + '":"",';
+				highPrioForm += `"${setValue}":"",`;
 			});
-			highPrioForm = highPrioForm.slice(0, -1) + "},";
+			highPrioForm = `${highPrioForm.slice(0, -1)}},`;
 		});
-		highPrioForm = highPrioForm.slice(0, -1) + "}";
-		this.log.info("(initPollSettings) highPrio: " + highPrioForm);
+		highPrioForm = `${highPrioForm.slice(0, -1)}}`;
+		this.log.info(`(initPollSettings) highPrio: ${highPrioForm}`);
 	}
 
 	addUserDps(value, objectsSet, dpToAdd) {
 		if (dpToAdd.trim().length < 1 || !/^[A-Z0-9_,]*$/.test(dpToAdd.toUpperCase().trim())) {
 			// don't accept anything but entries like DP_1,DP2,dp3
 			this.log.warn(
-				"(addUserDps) Datapoints config for " +
-					value +
-					" doesn't follow [A-Z0-9_,] (no blanks allowed!) - Ignoring: " +
-					dpToAdd.toUpperCase().trim(),
+				`(addUserDps) Datapoints config for ${
+					value
+				} doesn't follow [A-Z0-9_,] (no blanks allowed!) - Ignoring: ${dpToAdd.toUpperCase().trim()}`,
 			);
 			return;
 		}
@@ -368,7 +381,7 @@ class Senec extends utils.Adapter {
 			.trim()
 			.split(",")
 			.forEach((item) => objectsSet.add(item));
-		this.log.info("(addUserDps) Datapoints config changed for " + value + ": " + dpToAdd.toUpperCase().trim());
+		this.log.info(`(addUserDps) Datapoints config changed for ${value}: ${dpToAdd.toUpperCase().trim()}`);
 	}
 
 	/**
@@ -376,60 +389,58 @@ class Senec extends utils.Adapter {
 	 * Fallback to default values in case they are out of scope
 	 */
 	async checkConfig() {
-		this.log.debug("(checkConf) Configured polling interval high priority: " + this.config.interval);
+		this.log.debug(`(checkConf) Configured polling interval high priority: ${this.config.interval}`);
 		if (this.config.interval < 1 || this.config.interval > 3600) {
 			this.log.warn(
-				"(checkConf) Config interval high priority " +
-					this.config.interval +
-					" not [1..3600] seconds. Using default: 10",
+				`(checkConf) Config interval high priority ${
+					this.config.interval
+				} not [1..3600] seconds. Using default: 10`,
 			);
 			this.config.interval = 10;
 		}
-		this.log.debug("(checkConf) Configured polling interval low priority: " + this.config.intervalLow);
+		this.log.debug(`(checkConf) Configured polling interval low priority: ${this.config.intervalLow}`);
 		if (this.config.intervalLow < 10 || this.config.intervalLow > 3600) {
 			this.log.warn(
-				"(checkConf) Config interval low priority " +
-					this.config.intervalLow +
-					" not [10..3600] minutes. Using default: 60",
+				`(checkConf) Config interval low priority ${
+					this.config.intervalLow
+				} not [10..3600] minutes. Using default: 60`,
 			);
 			this.config.intervalLow = 60;
 		}
-		this.log.debug("(checkConf) Configured polling timeout: " + this.config.pollingTimeout);
+		this.log.debug(`(checkConf) Configured polling timeout: ${this.config.pollingTimeout}`);
 		if (this.config.pollingTimeout < 1000 || this.config.pollingTimeout > 10000) {
 			this.log.warn(
-				"(checkConf) Config timeout " +
-					this.config.pollingTimeout +
-					" not [1000..10000] ms. Using default: 5000",
+				`(checkConf) Config timeout ${this.config.pollingTimeout} not [1000..10000] ms. Using default: 5000`,
 			);
 			this.config.pollingTimeout = 5000;
 		}
-		this.log.debug("(checkConf) Configured num of retries: " + this.config.retries);
+		this.log.debug(`(checkConf) Configured num of retries: ${this.config.retries}`);
 		if (this.config.retries < 0 || this.config.retries > 999) {
 			this.log.warn(
-				"(checkConf) Config num of retries " + this.config.retries + " not [0..999] seconds. Using default: 10",
+				`(checkConf) Config num of retries ${this.config.retries} not [0..999] seconds. Using default: 10`,
 			);
 			this.config.retries = 10;
 		}
-		this.log.debug("(checkConf) Configured retry multiplier: " + this.config.retrymultiplier);
+		this.log.debug(`(checkConf) Configured retry multiplier: ${this.config.retrymultiplier}`);
 		if (this.config.retrymultiplier < 1 || this.config.retrymultiplier > 10) {
 			this.log.warn(
-				"(checkConf) Config retry multiplier " +
-					this.config.retrymultiplier +
-					" not [1..10] seconds. Using default: 2",
+				`(checkConf) Config retry multiplier ${
+					this.config.retrymultiplier
+				} not [1..10] seconds. Using default: 2`,
 			);
 			this.config.retrymultiplier = 2;
 		}
-		this.log.debug("(checkConf) Configured https-usage: " + this.config.useHttps);
+		this.log.debug(`(checkConf) Configured https-usage: ${this.config.useHttps}`);
 		if (this.config.useHttps) {
 			connectVia = "https://";
-			this.log.debug("(checkConf) Switching to https ... " + this.config.useHttps);
+			this.log.debug(`(checkConf) Switching to https ... ${this.config.useHttps}`);
 		}
-		this.log.debug("(checkConf) Configured api polling interval: " + this.config.api_interval);
+		this.log.debug(`(checkConf) Configured api polling interval: ${this.config.api_interval}`);
 		if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
 			this.log.warn(
-				"(checkConf) Config api polling interval " +
-					this.config.api_interval +
-					" not [3..1440] seconds. Using default: 5",
+				`(checkConf) Config api polling interval ${
+					this.config.api_interval
+				} not [3..1440] seconds. Using default: 5`,
 			);
 			this.config.api_interval = 5;
 		}
@@ -439,21 +450,18 @@ class Senec extends utils.Adapter {
 	 * checks connection to senec service
 	 */
 	async checkConnection() {
-		const url = connectVia + this.config.senecip + "/lala.cgi";
+		const url = `${connectVia + this.config.senecip}/lala.cgi`;
 		const form = '{"ENERGY":{"STAT_STATE":""}}';
 		try {
-			this.log.info("connecting to Senec: " + url);
+			this.log.info(`connecting to Senec: ${url}`);
 			await this.doGet(url, form, this, this.config.pollingTimeout, true);
-			this.log.info("connected to Senec: " + url);
+			this.log.info(`connected to Senec: ${url}`);
 			lalaConnected = true;
 		} catch (error) {
 			throw new Error(
-				"Error connecting to Senec (IP: " +
-					connectVia +
-					this.config.senecip +
-					"). Exiting! (" +
-					error +
-					"). Try to toggle https-mode in settings and check FQDN of SENEC appliance.",
+				`Error connecting to Senec (IP: ${connectVia}${this.config.senecip}). Exiting! (${
+					error
+				}). Try to toggle https-mode in settings and check FQDN of SENEC appliance.`,
 			);
 		}
 	}
@@ -476,7 +484,9 @@ class Senec extends utils.Adapter {
 			);
 
 			const actionUrl = extractFormAction(pageRes.data);
-			if (!actionUrl) throw new Error("Login-Formular URL nicht gefunden.");
+			if (!actionUrl) {
+				throw new Error("Login-Formular URL nicht gefunden.");
+			}
 
 			const formData = new URLSearchParams();
 			formData.append("username", this.config.api_mail);
@@ -494,14 +504,18 @@ class Senec extends utils.Adapter {
 
 			const redirectLocation = loginRes.headers["location"];
 			if (!redirectLocation) {
-				if (loginRes.status === 200) throw new Error("Login fehlgeschlagen (Kein Redirect).");
+				if (loginRes.status === 200) {
+					throw new Error("Login fehlgeschlagen (Kein Redirect).");
+				}
 				throw new Error(`Login unerwarteter Status: ${loginRes.status}`);
 			}
 
 			const authCode = new URL(redirectLocation.replace("senec-app-auth://", "https://")).searchParams.get(
 				"code",
 			);
-			if (!authCode) throw new Error("Authorization code not found in redirect.");
+			if (!authCode) {
+				throw new Error("Authorization code not found in redirect.");
+			}
 
 			const tokenRes = await axiosApi.post(
 				CONFIG.tokenUrl,
@@ -533,21 +547,27 @@ class Senec extends utils.Adapter {
 		const interval = this.config.api_interval * 60000;
 
 		this.log.info("🔄 Polling SENEC App API...");
-		const tokenState = await this.getStateAsync(this.namespace + "." + ID_TOKEN_STATE);
+		const tokenState = await this.getStateAsync(`${this.namespace}.${ID_TOKEN_STATE}`);
 		let token = tokenState ? tokenState.val : null;
 
 		if (!token) {
-			if (isRetry) return;
+			if (isRetry) {
+				return;
+			}
 			token = await this.senecLogin();
 		}
-		if (!token) return;
+		if (!token) {
+			return;
+		}
 
 		try {
 			// get Systems
 			const sysRes = await axiosApi.get(`${HOST_SYSTEMS}/v1/systems`, {
 				headers: { Authorization: `Bearer ${token}` },
 			});
-			if (!sysRes.data || !sysRes.data[0]) throw new Error("Keine Anlagen gefunden.");
+			if (!sysRes.data || !sysRes.data[0]) {
+				throw new Error("Keine Anlagen gefunden.");
+			}
 
 			// collect all systems
 			for (const data of sysRes.data) {
@@ -556,8 +576,8 @@ class Senec extends utils.Adapter {
 			const systemData = sysRes.data[0];
 
 			const anlagenId = systemData.id;
-			this.evalPoll(systemData, API_PFX + "Anlagen." + anlagenId + ".");
-			this.log.debug("Sysres" + JSON.stringify(systemData));
+			this.evalPoll(systemData, `${API_PFX}Anlagen.${anlagenId}.`);
+			this.log.debug(`Sysres${JSON.stringify(systemData)}`);
 
 			for (const anlagenId of apiKnownSystems) {
 				this.log.info(`🔄 Polling data for system ${anlagenId}...`);
@@ -565,8 +585,8 @@ class Senec extends utils.Adapter {
 				const dashRes = await axiosApi.get(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`, {
 					headers: { Authorization: `Bearer ${token}` },
 				});
-				this.log.debug("DashRes" + JSON.stringify(dashRes.data));
-				this.evalPoll(dashRes.data, API_PFX + "Anlagen." + anlagenId + "." + "Dashboard.");
+				this.log.debug(`DashRes${JSON.stringify(dashRes.data)}`);
+				this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.` + `Dashboard.`);
 
 				// get Measurements for current year
 				await this.doMeasurementsCurrentYear(anlagenId, token);
@@ -581,33 +601,29 @@ class Senec extends utils.Adapter {
 			}
 		} catch (e) {
 			if (e.response && e.response.status === 401) {
-				if (isRetry) return;
+				if (isRetry) {
+					return;
+				}
 				this.log.info("⚠️ Token abgelaufen. Starte Re-Login...");
 				const newToken = await this.senecLogin();
-				if (newToken) setTimeout(() => this.pollSenecApi(true, retry), 2000);
+				if (newToken) {
+					setTimeout(() => this.pollSenecApi(true, retry), 2000);
+				}
 			} else {
 				this.log.error(`❌ Fehler beim Datenabruf: ${e.message}`);
 				if (retry == this.config.retries && this.config.retries < 999) {
 					this.log.error(
-						"Error reading from Senec AppAPI. Retried " +
-							retry +
-							" times. Giving up now. Check config and restart adapter. (" +
-							e +
-							")",
+						`Error reading from Senec AppAPI. Retried ${
+							retry
+						} times. Giving up now. Check config and restart adapter. (${e})`,
 					);
 					this.setState("info.connection", false, true);
 				} else {
 					retry += 1;
 					this.log.warn(
-						"Error reading from Senec AppAPI. Retry " +
-							retry +
-							"/" +
-							this.config.retries +
-							" in " +
-							(interval * this.config.retrymultiplier * retry) / 1000 +
-							" seconds! (" +
-							e +
-							")",
+						`Error reading from Senec AppAPI. Retry ${retry}/${this.config.retries} in ${
+							(interval * this.config.retrymultiplier * retry) / 1000
+						} seconds! (${e})`,
 					);
 					this.timerAPI = setTimeout(
 						() => this.pollSenecApi(false, retry),
@@ -619,18 +635,18 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * @param {any} token
-	 * @param {string | number | boolean} anlagenId
+	 * @param {string | number | boolean} anlagenId	Anlagen ID to read measurements for
+	 * @param {any} token AccessToken
 	 */
 	async doMeasurementsCurrentYear(anlagenId, token) {
-		const pfx = API_PFX + "Anlagen." + anlagenId + "." + "Measurements.Yearly.";
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Yearly.`;
 		const now = new Date();
 		const startDate = new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 0, 0, 0));
 		const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) - 1);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
-		this.log.debug("🔄 Polling measurements for " + url);
+		this.log.debug(`🔄 Polling measurements for ${url}`);
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
@@ -638,18 +654,18 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * @param {any} token
-	 * @param {string | number | boolean} anlagenId
+	 * @param {string | number | boolean} anlagenId	Anlagen ID to read measurements for
+	 * @param {any} token AccessToken
 	 */
 	async doMeasurementsCurrentMonth(anlagenId, token) {
-		const pfx = API_PFX + "Anlagen." + anlagenId + "." + "Measurements.Monthly.";
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Monthly.`;
 		const now = new Date();
 		const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
 		const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) - 1);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
-		this.log.debug("🔄 Polling measurements for " + url);
+		this.log.debug(`🔄 Polling measurements for ${url}`);
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
@@ -657,11 +673,11 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * @param {any} token
-	 * @param {string | number | boolean} anlagenId
+	 * @param {string | number | boolean} anlagenId	Anlagen ID to read measurements for
+	 * @param {any} token AccessToken
 	 */
 	async doMeasurementsPreviousMonth(anlagenId, token) {
-		const pfx = API_PFX + "Anlagen." + anlagenId + "." + "Measurements.Monthly.";
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Monthly.`;
 		const now = new Date();
 		const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1, 0, 0, 0));
 		const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0) - 1);
@@ -669,15 +685,21 @@ class Senec extends utils.Adapter {
 		const end = encodeURIComponent(endDate.toISOString());
 
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
-		this.log.debug("🔄 Polling measurements for " + url);
+		this.log.debug(`🔄 Polling measurements for ${url}`);
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, "previous_month");
 	}
 
+	/**
+	 * @param {any} data measurement data
+	 * @param {string | number | boolean} anlagenId Anlagen ID
+	 * @param {string} pfx prefix for state
+	 * @param {string} period period to sum for
+	 */
 	async doSumMeasurements(data, anlagenId, pfx, period) {
-		this.log.debug("Measurements: " + JSON.stringify(data));
+		this.log.debug(`Measurements: ${JSON.stringify(data)}`);
 		const sums = Object.fromEntries(data.measurements.map((key) => [key, 0]));
 		const year = new Date(data.timeSeries[0].date).getUTCFullYear();
 
@@ -689,7 +711,7 @@ class Senec extends utils.Adapter {
 			});
 		});
 
-		this.log.info("Sums: " + JSON.stringify(sums));
+		this.log.info(`Sums: ${JSON.stringify(sums)}`);
 		let groupBy;
 		switch (period) {
 			case "year":
@@ -702,18 +724,23 @@ class Senec extends utils.Adapter {
 				groupBy = "previous_month";
 				break;
 			default:
-				throw new Error("Unknown period for doSumMeasurements: " + period);
+				throw new Error(`Unknown period for doSumMeasurements: ${period}`);
 		}
-		this.evalPoll(sums, pfx + groupBy + ".");
+		this.evalPoll(sums, `${pfx + groupBy}.`);
 	}
 
 	/**
-	 * Read from url via axios
-	 * @param url to read from
-	 * @param form to post
+	 * Perform GET or POST request
+	 *
+	 * @param {string} pUrl URL to call
+	 * @param {string} pForm Form to send
+	 * @param {Senec} caller Calling instance
+	 * @param {number} pollingTimeout Timeout for call
+	 * @param {boolean} isPost true for POST, false for GET
+	 * @returns {Promise<string>} Promise with result
 	 */
 	doGet(pUrl, pForm, caller, pollingTimeout, isPost) {
-		this.log.debug("Calling: " + pUrl);
+		this.log.debug(`Calling: ${pUrl}`);
 		return new Promise(function (resolve, reject) {
 			axios({
 				method: isPost ? "post" : "get",
@@ -724,17 +751,16 @@ class Senec extends utils.Adapter {
 			})
 				.then(async (response) => {
 					const content = response.data;
-					caller.log.debug("(Poll) received data (" + response.status + "): " + JSON.stringify(content));
+					caller.log.debug(`(Poll) received data (${response.status}): ${JSON.stringify(content)}`);
 					resolve(JSON.stringify(content));
 				})
 				.catch((error) => {
 					if (error.response) {
 						// The request was made and the server responded with a status code
 						caller.log.warn(
-							"(Poll) received error " +
-								error.response.status +
-								" response from SENEC with content: " +
-								JSON.stringify(error.response.data),
+							`(Poll) received error ${
+								error.response.status
+							} response from SENEC with content: ${JSON.stringify(error.response.data)}`,
 						);
 						reject(error.response.status);
 					} else if (error.request) {
@@ -754,9 +780,12 @@ class Senec extends utils.Adapter {
 	/**
 	 * Read values from Senec Home V2.1
 	 * Careful with the amount and interval of HighPrio values polled because this causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
+	 *
+	 * @param isHighPrio high priority poll
+	 * @param retry retry count
 	 */
 	async pollSenecLocal(isHighPrio, retry) {
-		const url = connectVia + this.config.senecip + "/lala.cgi";
+		const url = `${connectVia + this.config.senecip}/lala.cgi`;
 		let interval = this.config.interval * 1000;
 		if (!isHighPrio) {
 			this.log.info("LowPrio polling ...");
@@ -773,48 +802,36 @@ class Senec extends utils.Adapter {
 			);
 			if (body.includes('\\"')) {
 				// in rare cases senec reports back extra escape sequences on some machines ...
-				this.log.info("(Poll) Double escapes detected!  Body inc: " + body);
+				this.log.info(`(Poll) Double escapes detected!  Body inc: ${body}`);
 				body = body.replace(/\\"/g, '"');
-				this.log.info("(Poll) Double escapes autofixed! Body out: " + body);
+				this.log.info(`(Poll) Double escapes autofixed! Body out: ${body}`);
 			}
 			const obj = JSON.parse(body, reviverNumParse);
-			this.log.debug("(Poll) Parsed object: " + JSON.stringify(obj));
+			this.log.debug(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
 			//await this.evalPollLocal(obj);
 			await this.evalPoll(obj, "", "");
 
 			retry = 0;
-			if (unloaded) return;
+			if (unloaded) {
+				return;
+			}
 			this.timer = setTimeout(() => this.pollSenecLocal(isHighPrio, retry), interval);
 		} catch (error) {
 			if (retry == this.config.retries && this.config.retries < 999) {
 				this.log.error(
-					"Error reading from Senec " +
-						(isHighPrio ? "high" : "low") +
-						"Prio (" +
-						this.config.senecip +
-						"). Retried " +
-						retry +
-						" times. Giving up now. Check config and restart adapter. (" +
-						error +
-						")",
+					`Error reading from Senec ${isHighPrio ? "high" : "low"}Prio (${this.config.senecip}). Retried ${
+						retry
+					} times. Giving up now. Check config and restart adapter. (${error})`,
 				);
 				this.setState("info.connection", false, true);
 			} else {
 				retry += 1;
 				this.log.warn(
-					"Error reading from Senec " +
-						(isHighPrio ? "high" : "low") +
-						"Prio (" +
-						this.config.senecip +
-						"). Retry " +
-						retry +
-						"/" +
-						this.config.retries +
-						" in " +
-						(interval * this.config.retrymultiplier * retry) / 1000 +
-						" seconds! (" +
-						error +
-						")",
+					`Error reading from Senec ${isHighPrio ? "high" : "low"}Prio (${this.config.senecip}). Retry ${
+						retry
+					}/${this.config.retries} in ${(interval * this.config.retrymultiplier * retry) / 1000} seconds! (${
+						error
+					})`,
 				);
 				this.timer = setTimeout(
 					() => this.pollSenecLocal(isHighPrio, retry),
@@ -825,18 +842,39 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * inserts a value for a given key and year into AllTimeValueStore
+	 * Insert value into AllTimeHistory
+	 *
+	 * @param system Anlagen ID
+	 * @param key Key to insert
+	 * @param year Year to insert
+	 * @param value Value to insert
+	 * @param einheit Einheit of the value
 	 */
 	async insertAllTimeHistory(system, key, year, value, einheit) {
-		this.log.debug("Insert AllTimeHistory: " + system + "/" + key + "/" + year + "/" + value + "/" + einheit);
-		if (key === "__proto__" || key === "constructor" || key === "prototype") return; // Security fix
-		if (isNaN(year) || isNaN(value)) return; // Security fix
-		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
-		const valueStore = pfx + "valueStore";
+		this.log.debug(`Insert AllTimeHistory: ${system}/${key}/${year}/${value}/${einheit}`);
+		if (key === "__proto__" || key === "constructor" || key === "prototype") {
+			return;
+		} // Security fix
+		if (isNaN(year) || isNaN(value)) {
+			return;
+		} // Security fix
+		const pfx = `_api.Anlagen.${system}.Statistik.AllTime.`;
+		const valueStore = `${pfx}valueStore`;
 		const statsObj = await this.getStateAsync(valueStore);
-		const stats = statsObj && statsObj.val ? JSON.parse(statsObj.val) : {};
-		if (!stats[key]) stats[key] = {};
-		if (!stats[key][year]) stats[key][year] = {};
+		const stats =
+			statsObj && statsObj.val
+				? typeof statsObj.val === "string"
+					? JSON.parse(statsObj.val)
+					: typeof statsObj.val === "object" && statsObj.val !== null
+						? statsObj.val
+						: {}
+				: {};
+		if (!stats[key]) {
+			stats[key] = {};
+		}
+		if (!stats[key][year]) {
+			stats[key][year] = {};
+		}
 		stats[key][year] = value;
 		stats[key]["einheit"] = einheit;
 		await this.doState(valueStore, JSON.stringify(stats), "", "", false);
@@ -844,12 +882,21 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Updated AllTimeHistory based on what we have in our AllTimeValueStore
+	 *
+	 * @param system Anlagen ID
 	 */
 	async updateAllTimeHistory(system) {
-		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
-		const valueStore = pfx + "valueStore";
+		const pfx = `_api.Anlagen.${system}.Statistik.AllTime.`;
+		const valueStore = `${pfx}valueStore`;
 		const statsObj = await this.getStateAsync(valueStore);
-		const stats = statsObj && statsObj.val ? JSON.parse(statsObj.val) : {};
+		const stats =
+			statsObj && statsObj.val
+				? typeof statsObj.val === "string"
+					? JSON.parse(statsObj.val)
+					: typeof statsObj.val === "object" && statsObj.val !== null
+						? statsObj.val
+						: {}
+				: {};
 		const sums = {};
 		for (const [key, value] of Object.entries(stats)) {
 			let einheit = "";
@@ -863,7 +910,7 @@ class Senec extends utils.Adapter {
 			}
 			sums[key] = sum;
 			if (kiloList.includes(einheit)) {
-				await this.doState(pfx + key, Number((sum / 1000).toFixed(0)), "", "k" + einheit, false);
+				await this.doState(pfx + key, Number((sum / 1000).toFixed(0)), "", `k${einheit}`, false);
 			} else {
 				await this.doState(pfx + key, Number(sum.toFixed(0)), "", einheit, false);
 			}
@@ -876,20 +923,26 @@ class Senec extends utils.Adapter {
 					100
 				).toFixed(0),
 			);
-			await this.doState(pfx + "Autarkie", autarky, "", "%", false);
+			await this.doState(`${pfx}Autarkie`, autarky, "", "%", false);
 		}
 	}
 
 	/**
 	 * sets a state's value and creates the state if it doesn't exist yet
+	 *
+	 * @param name Name of the state
+	 * @param value Value of the state
+	 * @param description Description of the state
+	 * @param unit Unit of the state
+	 * @param write Writable state
 	 */
 	async doState(name, value, description, unit, write) {
 		if (!isNaN(name.substring(0, 1))) {
 			// keys cannot start with digits! Possibly SENEC delivering erraneous data
-			this.log.debug("(doState) Invalid datapoint: " + name + ": " + value);
+			this.log.debug(`(doState) Invalid datapoint: ${name}: ${value}`);
 			return;
 		}
-		this.log.silly("(doState) Update: " + name + ": " + value);
+		this.log.silly(`(doState) Update: ${name}: ${value}`);
 
 		const valueType = value !== null && value !== undefined ? typeof value : "mixed";
 
@@ -898,23 +951,19 @@ class Senec extends utils.Adapter {
 		if (obj) {
 			const newCommon = {};
 			if (obj.common.name !== description) {
-				this.log.debug(
-					"(doState) Updating object: " + name + " (desc): " + obj.common.name + " -> " + description,
-				);
+				this.log.debug(`(doState) Updating object: ${name} (desc): ${obj.common.name} -> ${description}`);
 				newCommon.name = description;
 			}
 			if (obj.common.type !== valueType) {
-				this.log.debug(
-					"(doState) Updating object: " + name + " (type): " + obj.common.type + " -> " + typeof value,
-				);
+				this.log.debug(`(doState) Updating object: ${name} (type): ${obj.common.type} -> ${typeof value}`);
 				newCommon.type = valueType;
 			}
 			if (obj.common.unit !== unit) {
-				this.log.debug("(doState) Updating object: " + name + " (unit): " + obj.common.unit + " -> " + unit);
+				this.log.debug(`(doState) Updating object: ${name} (unit): ${obj.common.unit} -> ${unit}`);
 				newCommon.unit = unit;
 			}
 			if (obj.common.write !== write) {
-				this.log.debug("(doState) Updating object: " + name + " (write): " + obj.common.write + " -> " + write);
+				this.log.debug(`(doState) Updating object: ${name} (write): ${obj.common.write} -> ${write}`);
 				newCommon.write = write;
 			}
 			if (Object.keys(newCommon).length > 0) {
@@ -945,39 +994,50 @@ class Senec extends utils.Adapter {
 	/**
 	 * Checks if there is decoding possible for a given value and creates/updates a decoded state
 	 * Language used for translations is the language of the SENEC appliance
+	 *
+	 * @param name Name of State
+	 * @param value Value of State
 	 */
 	async doDecode(name, value) {
 		// Lang: WIZARD.GUI_LANG 0=German, 1=English, 2=Italian
-		let lang = 1; // fallback to english
+		let lang = "1"; // fallback to english
 		const langState = await this.getStateAsync("WIZARD.GUI_LANG");
-		if (langState) lang = langState.val;
-		this.log.silly("(Decode) Senec language: " + lang);
+		if (langState && langState.val !== null && langState.val !== undefined) {
+			lang = String(langState.val);
+		}
+		this.log.silly(`(Decode) Senec language: ${lang}`);
 		let key = name;
-		if (!isNaN(name.substring(name.lastIndexOf(".")) + 1)) key = name.substring(0, name.lastIndexOf("."));
-		this.log.silly("(Decode) Checking: " + name + " -> " + key);
+		if (!isNaN(name.substring(name.lastIndexOf(".")) + 1)) {
+			key = name.substring(0, name.lastIndexOf("."));
+		}
+		this.log.silly(`(Decode) Checking: ${name} -> ${key}`);
 
-		if (state_trans[key + "." + lang] !== undefined) {
-			this.log.silly("(Decode) Trans found for: " + key + "." + lang);
+		if (state_trans[`${key}.${lang}`] !== undefined) {
+			this.log.silly(`(Decode) Trans found for: ${key}.${lang}`);
 			const trans =
-				state_trans[key + "." + lang] !== undefined
-					? state_trans[key + "." + lang][value] !== undefined
-						? state_trans[key + "." + lang][value]
+				state_trans[`${key}.${lang}`] !== undefined
+					? state_trans[`${key}.${lang}`][value] !== undefined
+						? state_trans[`${key}.${lang}`][value]
 						: "(unknown)"
 					: "(unknown)";
-			this.log.silly("(Decode) Trans " + key + ":" + value + " = " + trans);
-			const desc = state_attr[key + "_Text"] !== undefined ? state_attr[key + "_Text"].name : key;
-			await this.doState(name + "_Text", trans, desc, "", true);
+			this.log.silly(`(Decode) Trans ${key}:${value} = ${trans}`);
+			const desc = state_attr[`${key}_Text`] !== undefined ? state_attr[`${key}_Text`].name : key;
+			await this.doState(`${name}_Text`, trans, desc, "", true);
 		}
 	}
 
 	/**
 	 * evaluates data polled from SENEC system.
 	 * creates / updates the state.
-	 * @param {{ [s: string]: any; } | ArrayLike<any>} obj
-	 * @param {string} pfx
+	 *
+	 * @param {{ [s: string]: any; } | ArrayLike<any>} obj object to evaluate
+	 * @param {string} pfx prefix for state
+	 * @param keyPrefix current key prefix for nested objects
 	 */
 	async evalPoll(obj, pfx, keyPrefix = "") {
-		if (unloaded) return;
+		if (unloaded) {
+			return;
+		}
 		if (Array.isArray(obj)) {
 			obj.forEach((value, index) => {
 				const fullKey = `${keyPrefix}.${index}`;
@@ -986,13 +1046,13 @@ class Senec extends utils.Adapter {
 				} else {
 					if (state_attr[fullKey] === undefined) {
 						this.log.debug(
-							"REPORT_TO_DEV: State attribute definition missing for: " + fullKey + ", Val: " + value,
+							`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`,
 						);
 					}
-					this.log.debug("API Array Value: " + fullKey + " = " + value);
+					this.log.debug(`API Array Value: ${fullKey} = ${value}`);
 					const desc = state_attr[fullKey] !== undefined ? state_attr[fullKey].name : fullKey;
 					const unit = state_attr[fullKey] !== undefined ? state_attr[fullKey].unit : "";
-					this.doState(pfx + fullKey, ValueTyping(value), desc, unit, false);
+					this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
 				}
 			});
 			return;
@@ -1004,11 +1064,9 @@ class Senec extends utils.Adapter {
 				this.evalPoll(value, pfx, fullKey);
 			} else {
 				if (state_attr[fullKey] === undefined) {
-					this.log.debug(
-						"REPORT_TO_DEV: State attribute definition missing for: " + fullKey + ", Val: " + value,
-					);
+					this.log.debug(`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`);
 				}
-				this.log.debug("API Value: " + fullKey + " = " + value);
+				this.log.debug(`API Value: ${fullKey} = ${value}`);
 				const desc = state_attr[fullKey] !== undefined ? state_attr[fullKey].name : fullKey;
 				const unit = state_attr[fullKey] !== undefined ? state_attr[fullKey].unit : "";
 				this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
@@ -1020,9 +1078,14 @@ class Senec extends utils.Adapter {
 /**
  * modifies the supplied value based upon flags set for the specific key.
  * currently handles bool, date, ip objects
+ *
+ * @param key key to check
+ * @param value value to modify
  */
 const ValueTyping = (key, value) => {
-	if (!isNaN(value)) value = Number(value); // otherwise iobroker will note it as string
+	if (!isNaN(value)) {
+		value = Number(value);
+	} // otherwise iobroker will note it as string
 	if (state_attr[key] === undefined) {
 		return value;
 	}
@@ -1038,9 +1101,8 @@ const ValueTyping = (key, value) => {
 		return DecToIP(value);
 	} else if (multiply !== 1) {
 		return parseFloat((value * multiply).toFixed(2));
-	} else {
-		return value;
 	}
+	return value;
 };
 
 //const toFloat = (val) => {
@@ -1052,7 +1114,8 @@ const ValueTyping = (key, value) => {
 /**
  * Converts float value in hex format to js float32.
  * Also fixes to 2 decimals.
- * @param string with hex value
+ *
+ * @param str return value
  */
 const HexToFloat32 = (str) => {
 	const int = parseInt(str, 16);
@@ -1067,9 +1130,8 @@ const HexToFloat32 = (str) => {
 			exp--;
 		}
 		return (float32 * sign).toFixed(2);
-	} else {
-		return 0;
 	}
+	return 0;
 };
 
 /**
@@ -1077,23 +1139,26 @@ const HexToFloat32 = (str) => {
  * We have to do that because Senec stores IPs as regular hex values and due to the fact that we
  * are using a reviver function for the JSON we have to back-convert to hex and then build the IP
  * for proper human reading.
+ *
+ * @param str decimal value
  */
 const DecToIP = (str) => {
 	let ipHex = str.toString(16);
 	while (ipHex.length < 8) {
-		ipHex = "0" + ipHex;
+		ipHex = `0${ipHex}`;
 	}
 	const fourth = ipHex.substring(0, 2);
 	const third = ipHex.substring(2, 4);
 	const second = ipHex.substring(4, 6);
 	const first = ipHex.substring(6);
-	return parseInt(first, 16) + "." + parseInt(second, 16) + "." + parseInt(third, 16) + "." + parseInt(fourth, 16);
+	return `${parseInt(first, 16)}.${parseInt(second, 16)}.${parseInt(third, 16)}.${parseInt(fourth, 16)}`;
 };
 
 /**
- * Reviver function to convert numeric values to float or int.
- * Senec supplies them as hex.
- * @param key value pair as defined in reviver option
+ * Reviver function for JSON.parse to convert Senec specific value formats to proper js types.
+ *
+ * @param key key of the value
+ * @param value value to convert
  */
 const reviverNumParse = (key, value) => {
 	// prepare values for output using reviver function
@@ -1115,42 +1180,43 @@ const reviverNumParse = (key, value) => {
 					val = val - 0x10000;
 				}
 				return val;
-			} else return 0;
+			}
+			return 0;
 		} else if (value.startsWith("i3")) {
 			// int
 			let val = parseInt(value.substring(3), 16);
 			if (!isNaN(val)) {
-				if (Math.abs(value & 0x80000000) > 0) {
+				if ((val & 0x80000000) !== 0) {
 					val = val - 0x100000000;
 				}
 				return val;
-			} else return 0;
+			}
+			return 0;
 		} else if (value.startsWith("i8")) {
 			// int
 			let val = parseInt(value.substring(3), 16);
 			if (!isNaN(val)) {
-				if ((value & 0x80) > 0) {
+				if ((val & 0x80) !== 0) {
 					val = val - 0x100;
 				}
 				return val;
-			} else return 0;
+			}
+			return 0;
 		} else if (value.startsWith("VARIABLE_NOT_FOUND")) {
 			return "VARIABLE_NOT_FOUND";
 		} else if (value.startsWith("FILE_VARIABLE_NOT_READABLE")) {
 			return "";
-		} else {
-			return "REPORT TO DEV: " + key + ":" + value;
-			//throw new Error("Unknown value in JSON: " + key + ":" + value);
 		}
-	} else {
-		return value;
+		return `REPORT TO DEV: ${key}:${value}`;
+		//throw new Error("Unknown value in JSON: " + key + ":" + value);
 	}
+	return value;
 };
 
 if (require.main !== module) {
 	// Export the constructor in compact mode
 	/**
-	 * @param {Partial<ioBroker.AdapterOptions>} [options={}]
+	 * @param {Partial<ioBroker.AdapterOptions>} [options] options
 	 */
 	module.exports = (options) => new Senec(options);
 } else {
@@ -1173,7 +1239,9 @@ function base64UrlEncode(buffer) {
 
 function formatCookies(headers) {
 	const setCookie = headers["set-cookie"];
-	if (!setCookie) return "";
+	if (!setCookie) {
+		return "";
+	}
 	return Array.isArray(setCookie) ? setCookie.map((c) => c.split(";")[0]).join("; ") : setCookie.split(";")[0];
 }
 
