@@ -1,255 +1,255 @@
 {
-    "common": {
-        "name": "senec",
-        "version": "2.0.0",
-        "news": {
-			"2.0.0": {
-				"en": "Update to use API via mein-senec.de (Thanks to maett81)",
-				"de": "Aktualisierung der API über mein-senec.de (Danke an maett81)",
-				"ru": "Использование API через mein-senec.de (перенаправлено с «Maett81»)",
-				"pt": "Atualizar para usar API via mein-senec.de (Graças a Maett81)",
-				"nl": "Update om API te gebruiken via mein-senec.de (Dankzij maett81)",
-				"fr": "Mise à jour pour utiliser l'API via mein-senec.de (Merci à maett81)",
-				"it": "Aggiornamento all'utilizzo API tramite mein-senec.de (Grazie a maett81)",
-				"es": "Actualización para utilizar API a través de mein-senec.de (Gracias a maett81)",
-				"pl": "Aktualizacja do użycia API poprzez mein- senec.de (Dzięki maett81)",
-				"uk": "Update to use API через mein-senec.de (Шанки до maett81)",
-				"zh-cn": "通过 mein-senec.de 使用 API 的更新 (谢谢Maett81)"
-			},
-			"1.6.17": {
-				  "en": "License update",
-				  "de": "Lizenz-Update",
-				  "ru": "Обновление лицензии",
-				  "pt": "Atualização da licença",
-				  "nl": "Licentie-update",
-				  "fr": "Mise à jour de licence",
-				  "it": "Aggiornamento della licenza",
-				  "es": "Actualización de la licencia",
-				  "pl": "Aktualizacja licencji",
-				  "uk": "Оновлення ліцензії",
-				  "zh-cn": "许可证更新"
-			},
-			"1.6.16": {
-			  "en": "Migrated Dashboard to ApiV2. This invalidates existing datapoints under /Dashboard/ and introduces \"Dashboard/currently\" and \"Dashboard/today\" due to changes in the API.",
-			  "de": "Dashboard auf ApiV2 migriert. Dadurch werden bestehende Datenpunkte unter /Dashboard/ ungültig. Neu sind aufgrund von Änderungen in der API: \\\"Dashboard/current\\\" und \\\"Dashboard/today\\\".",
-			  "ru": "Migrated Dashboard to ApiV2. Это аннулирует существующие точки данных под /Dashboard/ и вводит \\\"Dashboard/currently\\\" и \\\"Dashboard/today\\\" из-за изменений в API.",
-			  "pt": "Painel Migrado para ApiV2. Isso invalida os datapoints existentes em /Dashboard/ e introduz \\\"Dashboard/currently\\\" e \\\"Dashboard/hoje\\\" devido a alterações na API.",
-			  "nl": "Gemigreerd Dashboard naar ApiV2. Dit maakt bestaande datapunten ongeldig onder /Dashboard/ en introduceert \\\"Dashboard/momenteel\\\" en \\\"Dashboard/today\\\" vanwege wijzigingen in de API.",
-			  "fr": "Tableau de bord modifié vers ApiV2. Cela invalide les points de données existants sous /Dashboard/ et introduit \\\"Dashboard/currently\\\" et \\\"Dashboard/today\\\" en raison des changements dans l'API.",
-			  "it": "Migrato Dashboard ad ApiV2. Questo invalida i datapoint esistenti in /Dashboard/ e introduce \\\"Dashboard/currently\\\" e \\\"Dashboard/today\\\" a causa delle modifiche nell'API.",
-			  "es": "Migrated Dashboard to ApiV2. Esto invalida los puntos de datos existentes bajo /Dashboard/ e introduce \\\"Dashboard/currently\\\" y \\\"Dashboard/today\\\" debido a cambios en la API.",
-			  "pl": "Migrated Dashboard do ApiV2. To unieważnia istniejące punkty danych pod / Deska rozdzielcza / i wprowadza\\ \"Deska rozdzielcza / obecnie\\\" i\\ \"Deska rozdzielcza / dzisiaj\\\" ze względu na zmiany w API.",
-			  "uk": "Migrated Dashboard до ApiV2. Це недійсні існуючі точки даних під / панель / і вводить \\ \"Дашборд/поточно\\\" і \\\"Dashboard/today\\\" через зміни в API.",
-			  "zh-cn": "将 Dashboard 移动到 ApiV2. 这使得/Dashboard/下的现有数据点无效,并由于API的改变,引入了\\\"Dashboard/today\\\"和\\\"Dashboard/today\\\"."
-			},
-			"1.6.15": {
-			  "en": "Maintenance update (dependencies, ...)",
-			  "de": "Wartungsupdate (Abhängigkeiten, ..",
-			  "ru": "Обновление (в зависимости от обстоятельств, ..",
-			  "pt": "Atualização de manutenção (dependências, ..",
-			  "nl": "Onderhoudsupdate (afhankelijkheden, ...)",
-			  "fr": "Mise à jour de maintenance (dépendances, ...)",
-			  "it": "Aggiornamento di manutenzione (dipendenze, ..",
-			  "es": "Actualización de mantenimiento (dependencias, ...)",
-			  "pl": "Aktualizacja utrzymania (zależności,...)",
-			  "uk": "Оновлення технічного обслуговування (в залежності, ...)",
-			  "zh-cn": "更新维护(独立性, . ) )"
-			},
-			"1.6.14": {
-				"en": "Bugfix (values were way off)",
-				"de": "Bugfix (Falsche Werte)",
-				"ru": "Bugfix (значения были удалены)",
-				"pt": "Bugfix (valores estavam muito fora)",
-				"nl": "Bugfix (waarden waren ver weg)",
-				"fr": "Bugfix (les valeurs étaient loin)",
-				"it": "Bugfix (i valori erano lontani)",
-				"es": "Bugfix (los valores estaban lejos)",
-				"pl": "Bugfix (wartości były daleko poza)",
-				"uk": "Помилки (вартості були вимкнені)",
-				"zh-cn": "错误修正( 值远差 )"
-			},
-			"1.6.13": {
-				"en": "Removed Support for node 16, Added more translations, Code cleanup",
-				"de": "Removed Support for node 16, Weitere Übersetzungen hinzugefügt, Code cleanup",
-				"ru": "Удаленная поддержка узла 16, добавлено больше переводов, очистка кода",
-				"pt": "Suporte removido para nó 16, Adicionado mais traduções, Limpeza de código",
-				"nl": "Verwijderde Ondersteuning voor node 16, Toegevoegd meer vertalingen, Code opruiming",
-				"fr": "Supprimé Support pour noeud 16, Ajout d'autres traductions, Nettoyage de code",
-				"it": "Removed Supporto per nodo 16, Aggiunto più traduzioni, Codice pulizia",
-				"es": "Soporte eliminado para nodo 16, Añadido más traducciones, limpieza de código",
-				"pl": "Usunięty Wsparcie dla węzła 16, Dodano więcej tłumaczeń, Czyszczenie kodu",
-				"uk": "Видалити підтримку вузла 16, Додано більше перекладів, очищення коду",
-				"zh-cn": "删除对节点16的支持, 添加更多翻译, 代码清理"
-			},
-			"1.6.12": {
-				"en": "Updated license",
-				"de": "Lizenz aktualisiert",
-				"ru": "Обновленная лицензия",
-				"pt": "Licença atualizada",
-				"nl": "Bijgewerkte licentie",
-				"fr": "Licence actualisée",
-				"it": "Licenza aggiornata",
-				"es": "Licencia actualizada",
-				"pl": "Aktualizacja licencji",
-				"uk": "Оновлена ліцензія",
-				"zh-cn": "更新许可证"
-			}
-        },
-        "docs": {
-            "en": "docs/en/README.md",
-            "de": "docs/de/README.md"
-        },
-        "titleLang": {
-            "en": "Senec",
-            "de": "Senec",
-            "ru": "Senec",
-            "pt": "Senec",
-            "nl": "Senec",
-            "fr": "Senec",
-            "it": "Senec",
-            "es": "Senec",
-            "pl": "Senec",
-			"uk": "Senec",
-            "zh-cn": "塞内克"
-        },
-        "desc": {
-            "en": "This adapter reads available values from a Senec Home V2.1 (and later) system using lala.cgi",
-			"de": "Dieser Adapter liest verfügbare Werte von einem Senec Home V2.1 (und später) System mit lala.cgi",
-			"ru": "Этот адаптер считывает доступные значения от системы Senec Home V2.1 (и позже) с помощью lala.cgi",
-			"pt": "Este adaptador lê valores disponíveis de um sistema Senec Home V2.1 (e posterior) usando lala.cgi",
-			"nl": "Deze adapter leest beschikbare waarden van een Senec Home V21 (en later) systeem met lala",
-			"fr": "Cet adaptateur lit les valeurs disponibles d'un système Senec Home V2.1 (et plus tard) utilisant lala.cgi",
-			"it": "Questo adattatore legge i valori disponibili da un sistema Senec Home V2.1 (e successivamente) utilizzando lala.cgi",
-			"es": "Este adaptador lee los valores disponibles de un sistema Senec Home V2.1 (y más tarde) usando lala.cgi",
-			"pl": "Ta adapter przeczytała dostępne wartości z systemu Senec Home V2.1 (a później) używając lala.cgi",
-			"uk": "Цей адаптер зчитуває доступні значення від Senec Home V2.1 (і пізніше) системи за допомогою lala.cgi",
-			"zh-cn": "这种适应者从Senec Home V2.1(和以后)利用Fla.cgi阅读了可使用的数值。"
-        },
-        "authors": [
-            "NoBl <github@bluemle.org>"
-        ],
-        "keywords": [
-            "senec",
-            "solar"
-        ],
-		"licenseInformation": {
-			"license": "MIT",
-			"type": "free"
-		},
-        "platform": "Javascript/Node.js",
-		"tier": 2,
-        "icon": "senec.png",
-        "enabled": false,
-        "extIcon": "https://raw.githubusercontent.com/nobl/ioBroker.senec/master/admin/senec.png",
-        "readme": "https://github.com/nobl/ioBroker.senec/blob/master/README.md",
-        "loglevel": "info",
-        "mode": "daemon",
-        "type": "energy",
-		"compact": true,
-		"connectionType": "local",
-	    "dataSource": "poll",
-		"adminUI": {
-			"config": "json"
-		},
-        "dependencies": [
-			{
-                "js-controller": ">=6.0.11"
-            }
-        ],
-	        "globalDependencies": [
-	            {
-	                "admin": ">=7.6.17"
-	            }
-	        ]
+  "common": {
+    "name": "senec",
+    "version": "2.1.0",
+    "news": {
+      "2.1.0": {
+        "en": "Complete rewrite of the Senec API functionality. Thanks to @timfxtones for pointing me in the right direction\nNo longer using the web-interface at mein-senec.de - it didn't work properly on the long run ...\nStill missing some datapoints so far. They will be implemented in the future.",
+        "de": "Kompletter Rewrite der Senec API-Funktionalität. Danke an @timfxtones, fuer den Schubs in die richtige Richtung\nVersuchen nun nicht mehr, das web interface unter mein-senec.de zu nutzen - es hat leider nicht zuverlässig und langfristig funktioniert...\nEinige Datenpunkte fehlen noch. Sie kommen noch.",
+        "ru": "Полное переписывание функций Senec API. Спасибо @timfxtones за то, что указали мне правильное направление\nБольше не пользуйтесь веб-интерфейсом в Mein-senec. Это не работает должным образом в долгосрочной перспективе...\nДо сих пор не хватает некоторых данных. Они будут реализованы в будущем.",
+        "pt": "Reescrever completamente a funcionalidade da API Senec. Graças a @timfxtones por me apontar na direção certa\nNão usar mais a interface web no mein-senec. de - não funcionou corretamente a longo prazo ...\nAinda falta alguns pontos de dados até agora. Serão implementadas no futuro.",
+        "nl": "Volledige herschrijven van de Senec API functionaliteit. Dankzij @timfxtones voor het wijzen van mij in de juiste richting\nGeen gebruik meer van het web-interface bij mein-senec. de - het werkte niet goed op de lange termijn ...\nIk mis nog wat datapunten. Zij zullen in de toekomst worden uitgevoerd.",
+        "fr": "Réécriture complète de l'API Senec. Merci à @timfxtones de m'avoir pointé dans la bonne direction\nNe plus utiliser l'interface web à mein-senec. De - il n'a pas fonctionné correctement sur le long terme ...\nIl manque encore des points de données. Ils seront mis en œuvre à l'avenir.",
+        "it": "Riscrittura completa della funzionalità di Senec API. Grazie a @timfxtones per puntarmi nella giusta direzione\nNon usare più l'interfaccia web a mein-senec. de - non ha funzionato correttamente a lungo termine...\nManca ancora qualche datapoint. Saranno implementati in futuro.",
+        "es": "Reescribir completamente la funcionalidad de Senec API. Gracias a @timfxtones por señalarme en la dirección correcta\nYa no use la interfaz web en mein-senec. No funcionó correctamente a largo plazo...\nTodavía faltan algunos puntos de datos hasta ahora. Se aplicarán en el futuro.",
+        "pl": "Kompletna zmiana funkcjonalności API Senec. Podziękowania dla @ timfxtones za skierowanie mnie we właściwym kierunku\nKoniec z używaniem interfejsu web- w mein- senec. - Na dłuższą metę nie działało prawidłowo...\nWciąż brakuje kilku punktów danych. Będą one realizowane w przyszłości.",
+        "uk": "Повний перезапис функцій API Senec. Завдяки @timfxtones для позначення мене в правому напрямку\nБільше не використовуючи веб-інтерфейс на mein-senec. де - це не працює належним чином на довгий пробіг ...\nНаскільки не вистачає даних. Вони будуть реалізовані в майбутньому.",
+        "zh-cn": "Senec API功能的完整重写. 感谢@timfxtones 将我指向正确的方向\n不再使用在mein-senec上的网络界面. 从长远来看,它没有正常工作...\n目前仍然缺少一些数据点。 今后将予以执行."
+      },
+      "2.0.0": {
+        "en": "Update to use API via mein-senec.de (Thanks to maett81)",
+        "de": "Aktualisierung der API über mein-senec.de (Danke an maett81)",
+        "ru": "Использование API через mein-senec.de (перенаправлено с «Maett81»)",
+        "pt": "Atualizar para usar API via mein-senec.de (Graças a Maett81)",
+        "nl": "Update om API te gebruiken via mein-senec.de (Dankzij maett81)",
+        "fr": "Mise à jour pour utiliser l'API via mein-senec.de (Merci à maett81)",
+        "it": "Aggiornamento all'utilizzo API tramite mein-senec.de (Grazie a maett81)",
+        "es": "Actualización para utilizar API a través de mein-senec.de (Gracias a maett81)",
+        "pl": "Aktualizacja do użycia API poprzez mein- senec.de (Dzięki maett81)",
+        "uk": "Update to use API через mein-senec.de (Шанки до maett81)",
+        "zh-cn": "通过 mein-senec.de 使用 API 的更新 (谢谢Maett81)"
+      },
+      "1.6.17": {
+        "en": "License update",
+        "de": "Lizenz-Update",
+        "ru": "Обновление лицензии",
+        "pt": "Atualização da licença",
+        "nl": "Licentie-update",
+        "fr": "Mise à jour de licence",
+        "it": "Aggiornamento della licenza",
+        "es": "Actualización de la licencia",
+        "pl": "Aktualizacja licencji",
+        "uk": "Оновлення ліцензії",
+        "zh-cn": "许可证更新"
+      },
+      "1.6.16": {
+        "en": "Migrated Dashboard to ApiV2. This invalidates existing datapoints under /Dashboard/ and introduces \"Dashboard/currently\" and \"Dashboard/today\" due to changes in the API.",
+        "de": "Dashboard auf ApiV2 migriert. Dadurch werden bestehende Datenpunkte unter /Dashboard/ ungültig. Neu sind aufgrund von Änderungen in der API: \\\"Dashboard/current\\\" und \\\"Dashboard/today\\\".",
+        "ru": "Migrated Dashboard to ApiV2. Это аннулирует существующие точки данных под /Dashboard/ и вводит \\\"Dashboard/currently\\\" и \\\"Dashboard/today\\\" из-за изменений в API.",
+        "pt": "Painel Migrado para ApiV2. Isso invalida os datapoints existentes em /Dashboard/ e introduz \\\"Dashboard/currently\\\" e \\\"Dashboard/hoje\\\" devido a alterações na API.",
+        "nl": "Gemigreerd Dashboard naar ApiV2. Dit maakt bestaande datapunten ongeldig onder /Dashboard/ en introduceert \\\"Dashboard/momenteel\\\" en \\\"Dashboard/today\\\" vanwege wijzigingen in de API.",
+        "fr": "Tableau de bord modifié vers ApiV2. Cela invalide les points de données existants sous /Dashboard/ et introduit \\\"Dashboard/currently\\\" et \\\"Dashboard/today\\\" en raison des changements dans l'API.",
+        "it": "Migrato Dashboard ad ApiV2. Questo invalida i datapoint esistenti in /Dashboard/ e introduce \\\"Dashboard/currently\\\" e \\\"Dashboard/today\\\" a causa delle modifiche nell'API.",
+        "es": "Migrated Dashboard to ApiV2. Esto invalida los puntos de datos existentes bajo /Dashboard/ e introduce \\\"Dashboard/currently\\\" y \\\"Dashboard/today\\\" debido a cambios en la API.",
+        "pl": "Migrated Dashboard do ApiV2. To unieważnia istniejące punkty danych pod / Deska rozdzielcza / i wprowadza\\ \"Deska rozdzielcza / obecnie\\\" i\\ \"Deska rozdzielcza / dzisiaj\\\" ze względu na zmiany w API.",
+        "uk": "Migrated Dashboard до ApiV2. Це недійсні існуючі точки даних під / панель / і вводить \\ \"Дашборд/поточно\\\" і \\\"Dashboard/today\\\" через зміни в API.",
+        "zh-cn": "将 Dashboard 移动到 ApiV2. 这使得/Dashboard/下的现有数据点无效,并由于API的改变,引入了\\\"Dashboard/today\\\"和\\\"Dashboard/today\\\"."
+      },
+      "1.6.15": {
+        "en": "Maintenance update (dependencies, ...)",
+        "de": "Wartungsupdate (Abhängigkeiten, ..",
+        "ru": "Обновление (в зависимости от обстоятельств, ..",
+        "pt": "Atualização de manutenção (dependências, ..",
+        "nl": "Onderhoudsupdate (afhankelijkheden, ...)",
+        "fr": "Mise à jour de maintenance (dépendances, ...)",
+        "it": "Aggiornamento di manutenzione (dipendenze, ..",
+        "es": "Actualización de mantenimiento (dependencias, ...)",
+        "pl": "Aktualizacja utrzymania (zależności,...)",
+        "uk": "Оновлення технічного обслуговування (в залежності, ...)",
+        "zh-cn": "更新维护(独立性, . ) )"
+      },
+      "1.6.14": {
+        "en": "Bugfix (values were way off)",
+        "de": "Bugfix (Falsche Werte)",
+        "ru": "Bugfix (значения были удалены)",
+        "pt": "Bugfix (valores estavam muito fora)",
+        "nl": "Bugfix (waarden waren ver weg)",
+        "fr": "Bugfix (les valeurs étaient loin)",
+        "it": "Bugfix (i valori erano lontani)",
+        "es": "Bugfix (los valores estaban lejos)",
+        "pl": "Bugfix (wartości były daleko poza)",
+        "uk": "Помилки (вартості були вимкнені)",
+        "zh-cn": "错误修正( 值远差 )"
+      },
+      "1.6.13": {
+        "en": "Removed Support for node 16, Added more translations, Code cleanup",
+        "de": "Removed Support for node 16, Weitere Übersetzungen hinzugefügt, Code cleanup",
+        "ru": "Удаленная поддержка узла 16, добавлено больше переводов, очистка кода",
+        "pt": "Suporte removido para nó 16, Adicionado mais traduções, Limpeza de código",
+        "nl": "Verwijderde Ondersteuning voor node 16, Toegevoegd meer vertalingen, Code opruiming",
+        "fr": "Supprimé Support pour noeud 16, Ajout d'autres traductions, Nettoyage de code",
+        "it": "Removed Supporto per nodo 16, Aggiunto più traduzioni, Codice pulizia",
+        "es": "Soporte eliminado para nodo 16, Añadido más traducciones, limpieza de código",
+        "pl": "Usunięty Wsparcie dla węzła 16, Dodano więcej tłumaczeń, Czyszczenie kodu",
+        "uk": "Видалити підтримку вузла 16, Додано більше перекладів, очищення коду",
+        "zh-cn": "删除对节点16的支持, 添加更多翻译, 代码清理"
+      }
     },
-    "native": {
-		"lala_use": true,
-		"control_active": false,
-        "senecip": "0.0.0.0",
-        "interval": 10,
-		"intervalLow": 60,
-		"pollingTimeout": 5000,
-		"retries": 10,
-		"retrymultiplier": 2,
-		"useHttps": true,
-		"disclaimer": false,
-		"highPrio_BMS": "",
-		"highPrio_BMS_active": false,
-		"highPrio_ENERGY": "",
-		"highPrio_ENERGY_active": false,
-		"highPrio_PV1": "",
-		"highPrio_PV1_active": false,
-		"highPrio_PWR_UNIT": "",
-		"highPrio_PWR_UNIT_active": false,
-		"highPrio_PM1OBJ1": "",
-		"highPrio_PM1OBJ1_active": false,
-		"highPrio_PM1OBJ2": "",
-		"highPrio_PM1OBJ2_active": false,
-		"highPrio_WALLBOX": "",
-		"highPrio_WALLBOX_active": false,
-		"highPrio_BAT1": "",
-		"highPrio_BAT1_active": false,
-		"highPrio_BAT1OBJ1": "",
-		"highPrio_BAT1OBJ1_active": false,
-		"highPrio_TEMPMEASURE": "",
-		"highPrio_TEMPMEASURE_active": false,
-		"api_use": false,
-		"api_interval": 5,
-		"api_alltimeRebuild": false,
-		"api_mail": "",
-		"api_pwd": ""
+    "docs": {
+      "en": "docs/en/README.md",
+      "de": "docs/de/README.md"
     },
-	"encryptedNative": [
-        "api_mail",
-        "api_pwd"
+    "titleLang": {
+      "en": "Senec",
+      "de": "Senec",
+      "ru": "Senec",
+      "pt": "Senec",
+      "nl": "Senec",
+      "fr": "Senec",
+      "it": "Senec",
+      "es": "Senec",
+      "pl": "Senec",
+      "uk": "Senec",
+      "zh-cn": "塞内克"
+    },
+    "desc": {
+      "en": "This adapter reads available values from a Senec Home V2.1 (and later) system using lala.cgi",
+      "de": "Dieser Adapter liest verfügbare Werte von einem Senec Home V2.1 (und später) System mit lala.cgi",
+      "ru": "Этот адаптер считывает доступные значения от системы Senec Home V2.1 (и позже) с помощью lala.cgi",
+      "pt": "Este adaptador lê valores disponíveis de um sistema Senec Home V2.1 (e posterior) usando lala.cgi",
+      "nl": "Deze adapter leest beschikbare waarden van een Senec Home V21 (en later) systeem met lala",
+      "fr": "Cet adaptateur lit les valeurs disponibles d'un système Senec Home V2.1 (et plus tard) utilisant lala.cgi",
+      "it": "Questo adattatore legge i valori disponibili da un sistema Senec Home V2.1 (e successivamente) utilizzando lala.cgi",
+      "es": "Este adaptador lee los valores disponibles de un sistema Senec Home V2.1 (y más tarde) usando lala.cgi",
+      "pl": "Ta adapter przeczytała dostępne wartości z systemu Senec Home V2.1 (a później) używając lala.cgi",
+      "uk": "Цей адаптер зчитуває доступні значення від Senec Home V2.1 (і пізніше) системи за допомогою lala.cgi",
+      "zh-cn": "这种适应者从Senec Home V2.1(和以后)利用Fla.cgi阅读了可使用的数值。"
+    },
+    "authors": [
+      "NoBl <github@bluemle.org>"
     ],
-	"protectedNative": [
-		"api_mail",
-		"api_pwd"
-	],
-    "objects": [],
-    "instanceObjects": [
-		{
-            "_id": "info",
-            "type": "channel",
-            "common": {
-                "name": "Information"
-            },
-            "native": {}
-        },
-		{
-            "_id": "info.connection",
-            "type": "state",
-            "common": {
-                "role": "indicator.connected",
-                "name": "Device or service connected",
-                "type": "boolean",
-                "read": true,
-                "write": false,
-                "def": false
-            },
-            "native": {}
-        },
-		{
-			"_id": "control",
-			"type": "channel",
-			"common": {
-				"name": "Control Buttons"
-			},
-			"native": {}
-		},
-		{
-			"_id": "control.ForceLoadBattery",
-			"type": "state",
-			"common": {
-				"role": "switch",
-				"name": "Force Load Battery",
-				"type": "boolean",
-				"read": true,
-				"write": true,
-				"def": false
-			},
-			"native": {}
-		}
+    "keywords": [
+      "senec",
+      "solar"
+    ],
+    "licenseInformation": {
+      "license": "MIT",
+      "type": "free"
+    },
+    "platform": "Javascript/Node.js",
+    "tier": 2,
+    "icon": "senec.png",
+    "enabled": false,
+    "extIcon": "https://raw.githubusercontent.com/nobl/ioBroker.senec/master/admin/senec.png",
+    "readme": "https://github.com/nobl/ioBroker.senec/blob/master/README.md",
+    "loglevel": "info",
+    "mode": "daemon",
+    "type": "energy",
+    "compact": true,
+    "connectionType": "local",
+    "dataSource": "poll",
+    "adminUI": {
+      "config": "json"
+    },
+    "dependencies": [
+      {
+        "js-controller": ">=6.0.11"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=7.6.17"
+      }
     ]
+  },
+  "native": {
+    "lala_use": true,
+    "control_active": false,
+    "senecip": "0.0.0.0",
+    "interval": 10,
+    "intervalLow": 60,
+    "pollingTimeout": 5000,
+    "retries": 10,
+    "retrymultiplier": 2,
+    "useHttps": true,
+    "disclaimer": false,
+    "highPrio_BMS": "",
+    "highPrio_BMS_active": false,
+    "highPrio_ENERGY": "",
+    "highPrio_ENERGY_active": false,
+    "highPrio_PV1": "",
+    "highPrio_PV1_active": false,
+    "highPrio_PWR_UNIT": "",
+    "highPrio_PWR_UNIT_active": false,
+    "highPrio_PM1OBJ1": "",
+    "highPrio_PM1OBJ1_active": false,
+    "highPrio_PM1OBJ2": "",
+    "highPrio_PM1OBJ2_active": false,
+    "highPrio_WALLBOX": "",
+    "highPrio_WALLBOX_active": false,
+    "highPrio_BAT1": "",
+    "highPrio_BAT1_active": false,
+    "highPrio_BAT1OBJ1": "",
+    "highPrio_BAT1OBJ1_active": false,
+    "highPrio_TEMPMEASURE": "",
+    "highPrio_TEMPMEASURE_active": false,
+    "api_use": false,
+    "api_interval": 5,
+    "api_alltimeRebuild": false,
+    "api_mail": "",
+    "api_pwd": ""
+  },
+  "encryptedNative": [
+    "api_mail",
+    "api_pwd"
+  ],
+  "protectedNative": [
+    "api_mail",
+    "api_pwd"
+  ],
+  "objects": [],
+  "instanceObjects": [
+    {
+      "_id": "info",
+      "type": "channel",
+      "common": {
+        "name": "Information"
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.connection",
+      "type": "state",
+      "common": {
+        "role": "indicator.connected",
+        "name": "Device or service connected",
+        "type": "boolean",
+        "read": true,
+        "write": false,
+        "def": false
+      },
+      "native": {}
+    },
+    {
+      "_id": "control",
+      "type": "channel",
+      "common": {
+        "name": "Control Buttons"
+      },
+      "native": {}
+    },
+    {
+      "_id": "control.ForceLoadBattery",
+      "type": "state",
+      "common": {
+        "role": "switch",
+        "name": "Force Load Battery",
+        "type": "boolean",
+        "read": true,
+        "write": true,
+        "def": false
+      },
+      "native": {}
+    }
+  ]
 }

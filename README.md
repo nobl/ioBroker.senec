@@ -303,8 +303,7 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS** - the API returns - finally finally hopefully finally
+### 2.1.0 (2026-02-04) - the API returns - finally finally hopefully finally
 
 - Complete rewrite of the Senec API functionality. Thanks to @timfxtones for pointing me in the right direction
 - No longer using the web-interface at mein-senec.de - it didn't work properly on the long run ...
@@ -346,7 +345,6 @@ This channel contains values polled from SENEC App-API.
 * Added switch in config to enable active control of appliance (you will need activate this, if you want to control the appliance via the adapter)
 * Improved handling of forced loading (please report if we need more appliance-states covered by this)
 * Minor improvements and bugfixes
-
 
 ### [Former Updates](CHANGELOG_old.md)
 
