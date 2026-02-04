@@ -305,6 +305,9 @@ This channel contains values polled from SENEC App-API.
 -->
 
 ### **WORK IN PROGRESS**
+– reading all previous years (up to inception of SENEC) added again (to make this happen: activate recalculation of full history via settings)
+- added today / yesterday again
+- optimizations for measurements handling
 - less log noise
 
 ### 2.1.2 (2026-02-04)

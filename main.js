@@ -47,6 +47,7 @@ const batteryOff =
 let apiConnected = false;
 let lalaConnected = false;
 let connectVia = "http://";
+let rebuildRunning = false;
 
 const allKnownObjects = new Set([
 	"BAT1",
@@ -131,7 +132,7 @@ class Senec extends utils.Adapter {
 				this.log.info("Usage of SENEC App API configured.");
 				apiConnected = await this.senecLogin();
 				if (apiConnected != null) {
-					await this.pollSenecApi();
+					await this.pollSenecApi(false, 0);
 				}
 			} else {
 				this.log.warn(
@@ -561,23 +562,10 @@ class Senec extends utils.Adapter {
 		}
 
 		try {
-			// get Systems
-			const sysRes = await axiosApi.get(`${HOST_SYSTEMS}/v1/systems`, {
-				headers: { Authorization: `Bearer ${token}` },
-			});
-			if (!sysRes.data || !sysRes.data[0]) {
-				throw new Error("Keine Anlagen gefunden.");
+			if (apiKnownSystems.size === 0) {
+				// reading only at first poll - if systems change adapter needs a restart
+				await this.pollSystems(token);
 			}
-
-			// collect all systems
-			for (const data of sysRes.data) {
-				apiKnownSystems.add(data.id);
-			}
-			const systemData = sysRes.data[0];
-
-			const anlagenId = systemData.id;
-			this.evalPoll(systemData, `${API_PFX}Anlagen.${anlagenId}.`);
-			this.log.debug(`Sysres${JSON.stringify(systemData)}`);
 
 			for (const anlagenId of apiKnownSystems) {
 				this.log.info(`🔄 Polling data for system ${anlagenId}...`);
@@ -588,16 +576,46 @@ class Senec extends utils.Adapter {
 				this.log.debug(`DashRes${JSON.stringify(dashRes.data)}`);
 				this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.` + `Dashboard.`);
 
+				if (this.config.api_alltimeRebuild) {
+					// rebuild all-time history if requested
+					// will also pull everying again
+					await this.doRebuild(anlagenId, token);
+				}
+
 				// get Measurements for current year
-				await this.doMeasurementsCurrentYear(anlagenId, token);
-				await this.doMeasurementsCurrentMonth(anlagenId, token);
-				await this.doMeasurementsPreviousMonth(anlagenId, token);
+				const now = new Date();
+				// today/yesterday must not be UTC or they will be off - month / year must be UTC or we will have issues at month / year boundaries
+				// that way daily numbers are ok - but month/year are off a bit compared to mein-senec.de
+				const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+				const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+				const currentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+				const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+				await this.doMeasurementsDay(anlagenId, token, today, "today");
+				await this.doMeasurementsDay(anlagenId, token, yesterday, "yesterday");
+				await this.doMeasurementsMonth(anlagenId, token, currentMonth, "current_month");
+				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month");
+				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear()); // Current year
+				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear() - 1); // check if we need last year too
+
+				// rebuild all-time history if requested
+				if (this.config.api_alltimeRebuild) {
+					rebuildRunning = true;
+					for (let year = new Date().getFullYear(); year >= 2009; year--) {
+						// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
+						await this.doMeasurementsYear(anlagenId, token, year);
+					}
+					//await this.rebuildAllTimeHistory(apiKnownSystems[i]);
+					this.extendForeignObject(`system.adapter.${this.namespace}`, {
+						native: { api_alltimeRebuild: false },
+					});
+					rebuildRunning = false;
+				}
 			}
 			retry = 0; // reset retry counter on success
 
 			// schedule next poll
 			if (!unloaded) {
-				this.timerAPI = setTimeout(() => this.pollSenecApi(false), interval);
+				this.timerAPI = setTimeout(() => this.pollSenecApi(false, retry), interval);
 			}
 		} catch (e) {
 			if (e.response && e.response.status === 401) {
@@ -635,14 +653,91 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * @param {string | number | boolean} anlagenId	Anlagen ID to read measurements for
+	 * Poll Systems from SENEC App API
+	 *
 	 * @param {any} token AccessToken
 	 */
-	async doMeasurementsCurrentYear(anlagenId, token) {
+	async pollSystems(token) {
+		this.log.debug("Reading available systems from API ...");
+		// get Systems
+		const sysRes = await axiosApi.get(`${HOST_SYSTEMS}/v1/systems`, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		if (!sysRes.data || !sysRes.data[0]) {
+			throw new Error("Keine Anlagen gefunden.");
+		}
+
+		// collect all systems
+		for (const data of sysRes.data) {
+			apiKnownSystems.add(data.id);
+			const anlagenId = data.id;
+			this.log.debug(`System found: ${JSON.stringify(data)}`);
+			this.evalPoll(data, `${API_PFX}Anlagen.${anlagenId}.`);
+		}
+	}
+
+	/**
+	 * Rebuild all-time measurements
+	 *
+	 * @param {string | number | boolean} anlagenId Anlagen ID to read measurements for
+	 * @param {any} token AccessToken
+	 */
+	async doRebuild(anlagenId, token) {
+		rebuildRunning = true;
+		for (let year = new Date().getFullYear(); year >= 2009; year--) {
+			// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
+			await this.doMeasurementsYear(anlagenId, token, year);
+		}
+		//await this.rebuildAllTimeHistory(anlagenId);
+		this.extendForeignObject(`system.adapter.${this.namespace}`, {
+			native: { api_alltimeRebuild: false },
+		});
+		rebuildRunning = false;
+	}
+
+	/**
+	 * Poll measurements by year
+	 *
+	 * @param {string | number | boolean} anlagenId Anlagen ID to read measurements for
+	 * @param {any} token AccessToken
+	 * @param {number} year Year to read measurements for
+	 */
+	async doMeasurementsYear(anlagenId, token, year) {
+		this.log.debug(`Reading measurements for year: ${year}`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Yearly.`;
-		const now = new Date();
-		const startDate = new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 0, 0, 0));
-		const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) - 1);
+		const lastUpdate = await this.getStateAsync(`${pfx + year}.last updated`);
+		let lastDate = null;
+		if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
+			lastDate = new Date(String(lastUpdate.val));
+		}
+		if (year != new Date().getUTCFullYear()) {
+			// check if a previous was already updated this year
+			// this ensures that we read last year data at most once per year and current year data at most once per day (in case of daily reset of measurements in SENEC App API)
+			if (
+				!rebuildRunning &&
+				lastDate != null &&
+				!isNaN(lastDate.getTime()) &&
+				lastDate.getUTCFullYear() === new Date().getUTCFullYear()
+			) {
+				this.log.debug(`Measurements for year ${year} already updated this year. Skipping.`);
+				return;
+			}
+		} else {
+			// current year - check if already updated today
+			if (
+				!rebuildRunning &&
+				lastDate != null &&
+				!isNaN(lastDate.getTime()) &&
+				lastDate.getUTCFullYear() === new Date().getUTCFullYear() &&
+				lastDate.getUTCMonth() === new Date().getUTCMonth() &&
+				lastDate.getUTCDate() === new Date().getUTCDate()
+			) {
+				this.log.debug(`Measurements for current year already updated today. Skipping.`);
+				return;
+			}
+		}
+		const startDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0));
+		const endDate = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0) - 1);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
@@ -650,18 +745,41 @@ class Senec extends utils.Adapter {
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
+		if (!measurements.data.timeSeries || measurements.data.timeSeries.length === 0) {
+			this.log.debug(`No measurements found for year ${year}. Skipping.`);
+			return;
+		}
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, "year");
 	}
 
 	/**
-	 * @param {string | number | boolean} anlagenId	Anlagen ID to read measurements for
+	 * Poll measurements by month
+	 *
+	 * @param {string | number | boolean} anlagenId Anlagen ID to read measurements for
 	 * @param {any} token AccessToken
+	 * @param {Date} date Date to read measurements for
+	 * @param {string} period period to sum for
 	 */
-	async doMeasurementsCurrentMonth(anlagenId, token) {
+	async doMeasurementsMonth(anlagenId, token, date, period) {
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Monthly.`;
-		const now = new Date();
-		const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
-		const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) - 1);
+		if (period === "previous_month") {
+			// check if already updated this month
+			const lastUpdate = await this.getStateAsync(`${pfx + period}.last updated`);
+			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
+				const lastDate = new Date(String(lastUpdate.val));
+				if (
+					!rebuildRunning &&
+					!isNaN(lastDate.getTime()) &&
+					lastDate.getUTCFullYear() === new Date().getUTCFullYear() &&
+					lastDate.getUTCMonth() === new Date().getUTCMonth()
+				) {
+					this.log.debug(`Measurements for previous month already updated this month. Skipping.`);
+					return;
+				}
+			}
+		}
+		const startDate = date;
+		const endDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) - 1);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
@@ -669,27 +787,46 @@ class Senec extends utils.Adapter {
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
-		await this.doSumMeasurements(measurements.data, anlagenId, pfx, "current_month");
+		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
 	}
 
 	/**
-	 * @param {string | number | boolean} anlagenId	Anlagen ID to read measurements for
+	 * Poll measurements by day
+	 *
+	 * @param {string | number | boolean} anlagenId Anlagen ID to read measurements for
 	 * @param {any} token AccessToken
+	 * @param {Date} date Date to read measurements for
+	 * @param {string} period period to sum for
 	 */
-	async doMeasurementsPreviousMonth(anlagenId, token) {
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Monthly.`;
-		const now = new Date();
-		const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1, 0, 0, 0));
-		const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0) - 1);
+	async doMeasurementsDay(anlagenId, token, date, period) {
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Daily.`;
+		if (period === "yesterday") {
+			// check if already updated today
+			const lastUpdate = await this.getStateAsync(`${pfx + period}.last updated`);
+			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
+				const lastDate = new Date(String(lastUpdate.val));
+				if (
+					!rebuildRunning &&
+					!isNaN(lastDate.getTime()) &&
+					lastDate.getFullYear() === new Date().getFullYear() &&
+					lastDate.getMonth() === new Date().getMonth() &&
+					lastDate.getDate() === new Date().getDate()
+				) {
+					this.log.debug(`Measurements for yesterday already updated today. Skipping.`);
+					return;
+				}
+			}
+		}
+		const startDate = date;
+		const endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
-
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
-		await this.doSumMeasurements(measurements.data, anlagenId, pfx, "previous_month");
+		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
 	}
 
 	/**
@@ -710,6 +847,7 @@ class Senec extends utils.Adapter {
 				sums[key] += value;
 			});
 		});
+		sums["last updated"] = new Date().toISOString();
 
 		this.log.debug(`Sums: ${JSON.stringify(sums)}`);
 		let groupBy;
@@ -722,6 +860,12 @@ class Senec extends utils.Adapter {
 				break;
 			case "previous_month":
 				groupBy = "previous_month";
+				break;
+			case "today":
+				groupBy = "today";
+				break;
+			case "yesterday":
+				groupBy = "yesterday";
 				break;
 			default:
 				throw new Error(`Unknown period for doSumMeasurements: ${period}`);
@@ -1066,7 +1210,7 @@ class Senec extends utils.Adapter {
 				if (state_attr[fullKey] === undefined) {
 					this.log.debug(`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`);
 				}
-				this.log.debug(`API Value: ${fullKey} = ${value}`);
+				this.log.silly(`API Value: ${fullKey} = ${value}`);
 				const desc = state_attr[fullKey] !== undefined ? state_attr[fullKey].name : fullKey;
 				const unit = state_attr[fullKey] !== undefined ? state_attr[fullKey].unit : "";
 				this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
