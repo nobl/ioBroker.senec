@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "news": {
+      "2.1.1": {
+        "en": "fixed datatype for WIZARD.SG_READY_CURR_MODE\nless logging (moved some info to debug again)",
+        "de": "fester Datentyp für WIZARD.SG_READY_CURR_MODE\nweniger protokollierung (erweitert einige infos zum debug wieder)",
+        "ru": "фиксированный тип данных WIZARD.SG_READY_CURR_MODE\nменьше лесозаготовок (перенес некоторую информацию для отладки снова)",
+        "pt": "tipo de dados fixo para WIZARD.SG_READY_CURR_MODE\nmenos registro (movi algumas informações para depuração novamente)",
+        "nl": "vast datatype voor WIZARD.SG_READY_CURR_MODE\nminder loggen (moved some info to debug again)",
+        "fr": "type de données fixe pour WIZARD.SG_READY_CURR_MODE\nmoins d'enregistrement (a déplacé quelques informations pour déboguer à nouveau)",
+        "it": "dati fissi per WIZARD.SG_READY_CURR_MODE\nmeno registrazione (spostato alcune informazioni per debug di nuovo)",
+        "es": "tipo de datos fijo para WIZARD.SG_READY_CURR_MODE\nmenos logging (moved some info to debug again)",
+        "pl": "stały typ danych dla WIZARD.SG _ READY _ CURR _ MODE\nmniej logowania (przesunął niektóre informacje do debugowania ponownie)",
+        "uk": "фіксований тип даних для WIZARD.SG_READY_CURR_MODE\nменше зауважень (здійснили додаткову інформацію про відмову)",
+        "zh-cn": "wIZARD.SG_READY_CURR_MODE 的固定数据类型\n减少记录( 移动一些信息以再次调试)"
+      },
       "2.1.0": {
         "en": "Complete rewrite of the Senec API functionality. Thanks to @timfxtones for pointing me in the right direction\nNo longer using the web-interface at mein-senec.de - it didn't work properly on the long run ...\nStill missing some datapoints so far. They will be implemented in the future.",
         "de": "Kompletter Rewrite der Senec API-Funktionalität. Danke an @timfxtones, fuer den Schubs in die richtige Richtung\nVersuchen nun nicht mehr, das web interface unter mein-senec.de zu nutzen - es hat leider nicht zuverlässig und langfristig funktioniert...\nEinige Datenpunkte fehlen noch. Sie kommen noch.",
@@ -80,19 +93,6 @@
         "pl": "Bugfix (wartości były daleko poza)",
         "uk": "Помилки (вартості були вимкнені)",
         "zh-cn": "错误修正( 值远差 )"
-      },
-      "1.6.13": {
-        "en": "Removed Support for node 16, Added more translations, Code cleanup",
-        "de": "Removed Support for node 16, Weitere Übersetzungen hinzugefügt, Code cleanup",
-        "ru": "Удаленная поддержка узла 16, добавлено больше переводов, очистка кода",
-        "pt": "Suporte removido para nó 16, Adicionado mais traduções, Limpeza de código",
-        "nl": "Verwijderde Ondersteuning voor node 16, Toegevoegd meer vertalingen, Code opruiming",
-        "fr": "Supprimé Support pour noeud 16, Ajout d'autres traductions, Nettoyage de code",
-        "it": "Removed Supporto per nodo 16, Aggiunto più traduzioni, Codice pulizia",
-        "es": "Soporte eliminado para nodo 16, Añadido más traducciones, limpieza de código",
-        "pl": "Usunięty Wsparcie dla węzła 16, Dodano więcej tłumaczeń, Czyszczenie kodu",
-        "uk": "Видалити підтримку вузла 16, Додано більше перекладів, очищення коду",
-        "zh-cn": "删除对节点16的支持, 添加更多翻译, 代码清理"
       }
     },
     "docs": {
