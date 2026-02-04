@@ -1,5 +1,15 @@
 "use strict";
+
 //process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'; // not cool, not nice - but well ... just a last option if everything else fails
+
+const crypto = require("crypto");
+const { URL, URLSearchParams } = require("url");
+const axiosRaw = require("axios");
+const axiosApi = axiosRaw.create({
+	timeout: 10000,
+});
+const axios = require("axios");
+axios.defaults.headers.post["Content-Type"] = "application/json";
 
 const https = require("https");
 const agent = new https.Agent({
@@ -8,23 +18,26 @@ const agent = new https.Agent({
 });
 
 const utils = require("@iobroker/adapter-core");
-
-const axios = require("axios").default;
-axios.defaults.headers.post["Content-Type"] = "application/json";
-
-const tough = require("tough-cookie");
-const cheerio = require("cheerio");
-let wrapper;
-(async () => {
-	wrapper = (await import("axios-cookiejar-support")).wrapper;
-})();
-
 const state_attr = require(__dirname + "/lib/state_attr.js");
 const state_trans = require(__dirname + "/lib/state_trans.js");
+const api_trans = require(__dirname + "/lib/api_trans.js");
 const kiloList = ["W", "Wh"];
+const API_PFX = "_api.";
+const ID_TOKEN_STATE = API_PFX + "AuthToken";
 
-const apiLoginUrl = "https://mein-senec.de/endkunde/oauth2/authorization/endkunde-portal";
-const apiKnownSystems = [];
+// API Endpoints
+const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
+const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev";
+
+const CONFIG = {
+	authUrl: "https://sso.senec.com/realms/senec/protocol/openid-connect/auth",
+	tokenUrl: "https://sso.senec.com/realms/senec/protocol/openid-connect/token",
+	clientId: "endcustomer-app-frontend",
+	redirectUri: "senec-app-auth://keycloak.prod",
+	scope: "roles meinsenec openid",
+};
+
+const apiKnownSystems = new Set();
 
 const batteryOn =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
@@ -85,6 +98,7 @@ class Senec extends utils.Adapter {
 	 * @param {Partial<ioBroker.AdapterOptions>} [options={}]
 	 */
 	constructor(options) {
+		// @ts-ignore
 		super({
 			...options,
 			name: "senec",
@@ -109,18 +123,17 @@ class Senec extends utils.Adapter {
 				await this.initPollSettings();
 				await this.checkConnection();
 				if (lalaConnected) {
-					await this.pollSenec(true, 0); // highPrio
-					await this.pollSenec(false, 0); // lowPrio
+					await this.pollSenecLocal(true, 0); // highPrio
+					await this.pollSenecLocal(false, 0); // lowPrio
 				}
 			} else {
 				this.log.warn("Usage of lala.cgi not configured. Only polling SENEC App API if configured.");
 			}
 			if (this.config.api_use) {
 				this.log.info("Usage of SENEC App API configured.");
-				await this.initSenecAppApi();
-				if (apiConnected) {
-					await this.getWebApiSystems();
-					await this.pollSenecWebApi(0); // Web API
+				apiConnected = await this.senecLogin();
+				if (apiConnected != null) {
+					await this.pollSenecApi();
 				}
 			} else {
 				this.log.warn(
@@ -162,6 +175,8 @@ class Senec extends utils.Adapter {
 									await this.doGet(url, batteryOn, this, this.config.pollingTimeout, true),
 									reviverNumParse,
 								),
+								"",
+								"",
 							);
 						} else {
 							this.log.info("Disable force battery charging ...");
@@ -170,6 +185,8 @@ class Senec extends utils.Adapter {
 									await this.doGet(url, batteryOff, this, this.config.pollingTimeout, true),
 									reviverNumParse,
 								),
+								"",
+								"",
 							);
 						}
 					} catch (error) {
@@ -186,14 +203,14 @@ class Senec extends utils.Adapter {
 			const forceLoad = await this.getStateAsync(this.namespace + ".control.ForceLoadBattery");
 			if (state.val == 8 || state.val == 9) {
 				if (state.val == 9) this.log.info("Battery forced loading completed (battery full).");
-				if (!forceLoad.val) {
+				if (forceLoad != null && !forceLoad.val) {
 					this.log.info(
 						"Battery forced loading activated (from outside or just lag). Syncing control-state.",
 					);
 					this.setStateChangedAsync(this.namespace + ".control.ForceLoadBattery", { val: true, ack: true });
 				}
 			} else {
-				if (forceLoad.val) {
+				if (forceLoad != null && forceLoad.val) {
 					this.log.info(
 						"Battery forced loading deactivated (from outside or just lag). Syncing control-state.",
 					);
@@ -443,144 +460,254 @@ class Senec extends utils.Adapter {
 		}
 	}
 
-	/**
-	 * Inits connection to senec app api
-	 */
-	async initSenecAppApi() {
-		if (!this.config.api_use) {
-			this.log.info("Usage of SENEC App API not configured. Not using it");
-			return;
-		}
-		/** new for WEB API */
-		this.log.info("Connecting to SENEC Portal (mein-senec.de) login...");
-
+	async senecLogin() {
+		this.log.info("🔄 Start Senec Login Flow...");
 		try {
-			// create cookie jar and a wrapped axios client that keeps cookies
-			const jar = new tough.CookieJar();
-			const webClient = wrapper(
-				axios.create({
-					jar,
-					withCredentials: true,
-					//httpsAgent: agent,
-					headers: {
-						"User-Agent": "Mozilla/5.0 (iobroker-senec-adapter)",
-					},
-					timeout: this.config.pollingTimeout || 5000,
-					maxRedirects: 5,
-					validateStatus: () => true,
-				}),
+			const codeVerifier = generateCodeVerifier();
+			const codeChallenge = generateCodeChallenge(codeVerifier);
+
+			const pageRes = await axiosApi.get(
+				`${CONFIG.authUrl}?${new URLSearchParams({
+					response_type: "code",
+					client_id: CONFIG.clientId,
+					redirect_uri: CONFIG.redirectUri,
+					scope: CONFIG.scope,
+					code_challenge: codeChallenge,
+					code_challenge_method: "S256",
+				}).toString()}`,
 			);
 
-			// STEP 1: fetch login page
-			this.log.info("STEP 1: fetch login portal page...");
-			const resp1 = await webClient.get(apiLoginUrl);
-			this.log.debug("Portal GET status: " + resp1.status);
-			this.log.silly(
-				"Portal GET response url: " + (resp1.request && resp1.request.res ? resp1.request.res.responseUrl : ""),
-			);
+			const actionUrl = extractFormAction(pageRes.data);
+			if (!actionUrl) throw new Error("Login-Formular URL nicht gefunden.");
 
-			// parse form
-			const $ = cheerio.load(resp1.data);
-			const form = $("form#kc-form-login");
-			if (!form.length) {
-				throw new Error("Login form not found on portal page");
-			}
-			const actionAttr = form.attr("action");
-			const actionUrl = new URL(actionAttr, resp1.request.res.responseUrl).href;
+			const formData = new URLSearchParams();
+			formData.append("username", this.config.api_mail);
+			formData.append("password", this.config.api_pwd);
+			formData.append("credentialId", "");
 
-			// collect hidden inputs
-			const formData = {};
-			form.find("input").each((i, el) => {
-				const name = $(el).attr("name");
-				const value = $(el).attr("value") || "";
-				if (name) formData[name] = value;
-			});
-			formData.username = this.config.api_mail;
-			formData.password = this.config.api_pwd;
-
-			this.log.debug("Posting login to Keycloak action URL: " + actionUrl);
-
-			const resp2 = await webClient.post(actionUrl, new URLSearchParams(formData).toString(), {
+			const loginRes = await axiosApi.post(actionUrl, formData, {
 				headers: {
 					"Content-Type": "application/x-www-form-urlencoded",
-					Referer: resp1.request.res.responseUrl,
+					Cookie: formatCookies(pageRes.headers),
 				},
-				maxRedirects: 5,
-				validateStatus: () => true,
+				maxRedirects: 0,
+				validateStatus: (s) => s >= 200 && s < 400,
 			});
 
-			this.log.debug("Login POST status: " + resp2.status);
-			// check cookies in jar
-			const cookies = await jar.getCookies("https://mein-senec.de");
-			this.log.debug("Cookies after login: " + cookies.map((c) => c.cookieString()).join("; "));
-
-			if (resp2.status >= 400) {
-				throw new Error("Portal login failed: " + resp2.status);
+			const redirectLocation = loginRes.headers["location"];
+			if (!redirectLocation) {
+				if (loginRes.status === 200) throw new Error("Login fehlgeschlagen (Kein Redirect).");
+				throw new Error(`Login unerwarteter Status: ${loginRes.status}`);
 			}
 
-			// store web client for subsequent portal requests
-			this.senecWebClient = webClient;
-			this.senecWebJar = jar;
-			apiConnected = true;
-			this.log.info("Connected to SENEC Portal via web login.");
-		} catch (error) {
-			apiConnected = false;
-			this.log.error("Error connecting to SENEC Portal: " + error);
-			throw new Error("Error connecting to SENEC Portal. (" + error + ")");
+			const authCode = new URL(redirectLocation.replace("senec-app-auth://", "https://")).searchParams.get(
+				"code",
+			);
+			if (!authCode) throw new Error("Authorization code not found in redirect.");
+
+			const tokenRes = await axiosApi.post(
+				CONFIG.tokenUrl,
+				new URLSearchParams({
+					grant_type: "authorization_code",
+					client_id: CONFIG.clientId,
+					code: authCode,
+					code_verifier: codeVerifier,
+					redirect_uri: CONFIG.redirectUri,
+				}),
+				{ headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+			);
+
+			const accessToken = tokenRes.data.access_token;
+			this.log.info("✅ Login erfolgreich.");
+			this.doState(ID_TOKEN_STATE, accessToken, "Access Token", "", false);
+			return accessToken;
+		} catch (e) {
+			this.log.error(`❌ Login Error: ${e.message}`);
+			return null;
 		}
-		/** end new WEB API */
+	}
+
+	async pollSenecApi(isRetry = false, retry) {
+		if (!this.config.api_use || !apiConnected) {
+			this.log.info("Usage of SENEC App API not configured or not connected.");
+			return;
+		}
+		const interval = this.config.api_interval * 60000;
+
+		this.log.info("🔄 Polling SENEC App API...");
+		const tokenState = await this.getStateAsync(this.namespace + "." + ID_TOKEN_STATE);
+		let token = tokenState ? tokenState.val : null;
+
+		if (!token) {
+			if (isRetry) return;
+			token = await this.senecLogin();
+		}
+		if (!token) return;
+
+		try {
+			// get Systems
+			const sysRes = await axiosApi.get(`${HOST_SYSTEMS}/v1/systems`, {
+				headers: { Authorization: `Bearer ${token}` },
+			});
+			if (!sysRes.data || !sysRes.data[0]) throw new Error("Keine Anlagen gefunden.");
+
+			// collect all systems
+			for (const data of sysRes.data) {
+				apiKnownSystems.add(data.id);
+			}
+			const systemData = sysRes.data[0];
+
+			const anlagenId = systemData.id;
+			this.evalPoll(systemData, API_PFX + "Anlagen." + anlagenId + ".");
+			this.log.debug("Sysres" + JSON.stringify(systemData));
+
+			for (const anlagenId of apiKnownSystems) {
+				this.log.info(`🔄 Polling data for system ${anlagenId}...`);
+				// get Dashboard data
+				const dashRes = await axiosApi.get(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+				this.log.debug("DashRes" + JSON.stringify(dashRes.data));
+				this.evalPoll(dashRes.data, API_PFX + "Anlagen." + anlagenId + "." + "Dashboard.");
+
+				// get Measurements for current year
+				await this.doMeasurementsCurrentYear(anlagenId, token);
+				await this.doMeasurementsCurrentMonth(anlagenId, token);
+				await this.doMeasurementsPreviousMonth(anlagenId, token);
+			}
+			retry = 0; // reset retry counter on success
+
+			// schedule next poll
+			if (!unloaded) {
+				this.timerAPI = setTimeout(() => this.pollSenecApi(false), interval);
+			}
+		} catch (e) {
+			if (e.response && e.response.status === 401) {
+				if (isRetry) return;
+				this.log.info("⚠️ Token abgelaufen. Starte Re-Login...");
+				const newToken = await this.senecLogin();
+				if (newToken) setTimeout(() => this.pollSenecApi(true, retry), 2000);
+			} else {
+				this.log.error(`❌ Fehler beim Datenabruf: ${e.message}`);
+				if (retry == this.config.retries && this.config.retries < 999) {
+					this.log.error(
+						"Error reading from Senec AppAPI. Retried " +
+							retry +
+							" times. Giving up now. Check config and restart adapter. (" +
+							e +
+							")",
+					);
+					this.setState("info.connection", false, true);
+				} else {
+					retry += 1;
+					this.log.warn(
+						"Error reading from Senec AppAPI. Retry " +
+							retry +
+							"/" +
+							this.config.retries +
+							" in " +
+							(interval * this.config.retrymultiplier * retry) / 1000 +
+							" seconds! (" +
+							e +
+							")",
+					);
+					this.timerAPI = setTimeout(
+						() => this.pollSenecApi(false, retry),
+						interval * this.config.retrymultiplier * retry,
+					);
+				}
+			}
+		}
 	}
 
 	/**
-	 * Reads system data from senec app api
-	 *
-	 * Replaced: reads portal status overview and creates _api.Portal.Overview
+	 * @param {any} token
+	 * @param {string | number | boolean} anlagenId
 	 */
-	async getWebApiSystems() {
-		const pfx = "_api.Portal.Profile.";
-		if (!this.config.api_use || !apiConnected || !this.senecWebClient) {
-			this.log.info("Usage of SENEC Portal not configured or not connected.");
-			return;
+	async doMeasurementsCurrentYear(anlagenId, token) {
+		const pfx = API_PFX + "Anlagen." + anlagenId + "." + "Measurements.Yearly.";
+		const now = new Date();
+		const startDate = new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 0, 0, 0));
+		const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) - 1);
+		const start = encodeURIComponent(startDate.toISOString());
+		const end = encodeURIComponent(endDate.toISOString());
+		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
+		this.log.debug("🔄 Polling measurements for " + url);
+		const measurements = await axiosApi.get(url, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		await this.doSumMeasurements(measurements.data, anlagenId, pfx, "year");
+	}
+
+	/**
+	 * @param {any} token
+	 * @param {string | number | boolean} anlagenId
+	 */
+	async doMeasurementsCurrentMonth(anlagenId, token) {
+		const pfx = API_PFX + "Anlagen." + anlagenId + "." + "Measurements.Monthly.";
+		const now = new Date();
+		const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
+		const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) - 1);
+		const start = encodeURIComponent(startDate.toISOString());
+		const end = encodeURIComponent(endDate.toISOString());
+		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
+		this.log.debug("🔄 Polling measurements for " + url);
+		const measurements = await axiosApi.get(url, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		await this.doSumMeasurements(measurements.data, anlagenId, pfx, "current_month");
+	}
+
+	/**
+	 * @param {any} token
+	 * @param {string | number | boolean} anlagenId
+	 */
+	async doMeasurementsPreviousMonth(anlagenId, token) {
+		const pfx = API_PFX + "Anlagen." + anlagenId + "." + "Measurements.Monthly.";
+		const now = new Date();
+		const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1, 0, 0, 0));
+		const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0) - 1);
+		const start = encodeURIComponent(startDate.toISOString());
+		const end = encodeURIComponent(endDate.toISOString());
+
+		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
+		this.log.debug("🔄 Polling measurements for " + url);
+		const measurements = await axiosApi.get(url, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		await this.doSumMeasurements(measurements.data, anlagenId, pfx, "previous_month");
+	}
+
+	async doSumMeasurements(data, anlagenId, pfx, period) {
+		this.log.debug("Measurements: " + JSON.stringify(data));
+		const sums = Object.fromEntries(data.measurements.map((key) => [key, 0]));
+		const year = new Date(data.timeSeries[0].date).getUTCFullYear();
+
+
+		// Durch timeSeries iterieren und Werte addieren
+		data.timeSeries.forEach((entry) => {
+			entry.measurements.values.forEach((value, index) => {
+				const key = data.measurements[index];
+				sums[key] += value;
+			});
+		});
+
+		this.log.info("Sums: " + JSON.stringify(sums));
+		let groupBy;
+		switch (period) {
+			case "year":
+				groupBy = year;
+				break;
+			case "current_month":
+				groupBy = "current_month";
+				break;
+			case "previous_month":
+				groupBy = "previous_month";
+				break;
+			default:
+				throw new Error("Unknown period for doSumMeasurements: " + period);
 		}
-		this.log.info("Reading Systems Information from SENEC Portal (status overview)");
-
-		const PROFILE_SETTINGS = "https://mein-senec.de/endkunde/api/settings/getProfileSettings";
-
-		try {
-			const resp = await this.senecWebClient.get(PROFILE_SETTINGS);
-			if (resp.status !== 200) {
-				throw new Error("Profile Settings returned HTTP " + resp.status);
-			}
-			const obj = resp.data;
-
-			// try to populate profile settings
-			apiKnownSystems.length = 0;
-
-			for (const [key, value] of Object.entries(obj)) {
-				if (key == "id") apiKnownSystems.push(value);
-				if (key == "land" || key == "sprache") {
-					for (const [key2, value2] of Object.entries(value)) {
-						this.log.debug("profileSetting: " + pfx + key + "." + key2 + ":" + value);
-						await this.doState(pfx + key + "." + key2, JSON.stringify(value2), "", "", false);
-					}
-				} else {
-					this.log.debug("profileSetting: " + pfx + key + ":" + value);
-					await this.doState(pfx + key, value, "", "", false);
-				}
-			}
-
-			/*
-			** ensure uniqueness, if there are multiple systems
-			const uniq = [...new Set(apiKnownSystems)];
-			apiKnownSystems.length = 0;
-			uniq.forEach((x) => apiKnownSystems.push(x));
-			*/
-
-			this.log.info("Detected systems from portal overview: " + JSON.stringify(apiKnownSystems));
-			//await this.doState(pfx + "IDs", JSON.stringify(apiKnownSystems), "Portal detected system IDs", "", false);
-		} catch (error) {
-			throw new Error("Error reading Systems Information from SENEC Portal. (" + error + ").");
-		}
+		this.evalPoll(sums, pfx + groupBy + ".");
 	}
 
 	/**
@@ -612,10 +739,6 @@ class Senec extends utils.Adapter {
 								" response from SENEC with content: " +
 								JSON.stringify(error.response.data),
 						);
-						if (error.response.status == 403 && apiConnected) {
-							apiConnected = false; // apparently the api is inaccessible
-							this.initSenecAppApi();
-						}
 						reject(error.response.status);
 					} else if (error.request) {
 						// The request was made but no response was received
@@ -635,7 +758,7 @@ class Senec extends utils.Adapter {
 	 * Read values from Senec Home V2.1
 	 * Careful with the amount and interval of HighPrio values polled because this causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
 	 */
-	async pollSenec(isHighPrio, retry) {
+	async pollSenecLocal(isHighPrio, retry) {
 		const url = connectVia + this.config.senecip + "/lala.cgi";
 		let interval = this.config.interval * 1000;
 		if (!isHighPrio) {
@@ -659,11 +782,12 @@ class Senec extends utils.Adapter {
 			}
 			const obj = JSON.parse(body, reviverNumParse);
 			this.log.debug("(Poll) Parsed object: " + JSON.stringify(obj));
-			await this.evalPoll(obj);
+			//await this.evalPollLocal(obj);
+			await this.evalPoll(obj, "", "");
 
 			retry = 0;
 			if (unloaded) return;
-			this.timer = setTimeout(() => this.pollSenec(isHighPrio, retry), interval);
+			this.timer = setTimeout(() => this.pollSenecLocal(isHighPrio, retry), interval);
 		} catch (error) {
 			if (retry == this.config.retries && this.config.retries < 999) {
 				this.log.error(
@@ -696,380 +820,11 @@ class Senec extends utils.Adapter {
 						")",
 				);
 				this.timer = setTimeout(
-					() => this.pollSenec(isHighPrio, retry),
+					() => this.pollSenecLocal(isHighPrio, retry),
 					interval * this.config.retrymultiplier * retry,
 				);
 			}
 		}
-	}
-
-	/**
-	 * Read values from Senec App API (replaced to query the mein-senec portal endpoints)
-	 */
-	async pollSenecWebApi(retry) {
-		if (!this.config.api_use || !apiConnected || !this.senecWebClient) {
-			this.log.info("Usage of SENEC Portal not configured or not connected.");
-			return;
-		}
-
-		const interval = this.config.api_interval * 60000;
-		const base = "https://mein-senec.de/endkunde/api/status";
-		const endpoints = {
-			statusoverview: base + "/getstatusoverview.php?anlageNummer=0",
-			technischeDaten: base + "/technischeDaten?anlageNummer=0",
-			status24: base + "/getstatus24.php?anlageNummer=0",
-			autarky: base + "/getautarky.php?anlageNummer=0",
-			accustate: base + "/getaccustate.php?anlageNummer=0",
-			accusavings: base + "/getaccusavings.php?anlageNummer=0",
-		};
-		// also interesting endpoints:
-
-		// also prepare getstatus types
-		const statusTypes = ["accuexport", "accuimport", "gridexport", "gridimport", "powergenerated", "consumption"];
-
-		this.log.debug("Polling Portal API ...");
-
-		try {
-			// statusoverview
-			let r = await this.senecWebClient.get(endpoints.statusoverview);
-			if (r.status === 200) {
-				await this.decodeStatusOverview(r.data);
-			} else {
-				this.log.warn("statusoverview returned HTTP " + r.status);
-			}
-
-			// technischeDaten
-			r = await this.senecWebClient.get(endpoints.technischeDaten);
-			if (r.status === 200) {
-				await this.decodeTechnischeDaten(r.data);
-			} else {
-				this.log.warn("technischeDaten returned HTTP " + r.status);
-			}
-
-			// status24
-			r = await this.senecWebClient.get(endpoints.status24);
-			if (r.status === 200) {
-				await this.decodeStatus24(r.data);
-			} else {
-				this.log.warn("stats24 returned HTTP " + r.status);
-			}
-
-			// autarky
-			r = await this.senecWebClient.get(endpoints.autarky);
-			if (r.status === 200) {
-				await this.decodeAutarky(r.data);
-			} else {
-				this.log.warn("autarky returned HTTP " + r.status);
-			}
-
-			// accustate
-			r = await this.senecWebClient.get(endpoints.accustate);
-			if (r.status === 200) {
-				await this.decodeAccuState(r.data);
-			} else {
-				this.log.warn("accustate returned HTTP " + r.status);
-			}
-
-			// accusavings
-			r = await this.senecWebClient.get(endpoints.accusavings);
-			if (r.status === 200) {
-				await this.decodeAccuSavings(r.data);
-			} else {
-				this.log.warn("accusavings returned HTTP " + r.status);
-			}
-
-			// getstatus with many types
-			for (let i = 0; i < statusTypes.length; i++) {
-				const t = statusTypes[i];
-				const url = base + "/getstatus.php?type=" + encodeURIComponent(t) + "&period=all&anlageNummer=0";
-				try {
-					const res = await this.senecWebClient.get(url);
-					if (res.status === 200) {
-						await this.decodeStatus(res.data, t);
-					} else {
-						this.log.warn("getstatus(" + t + ") returned HTTP " + res.status);
-					}
-				} catch (err) {
-					this.log.warn("Error fetching getstatus(" + t + "): " + err);
-				}
-			}
-
-			retry = 0;
-			if (unloaded) return;
-			this.timerAPI = setTimeout(() => this.pollSenecWebApi(retry), interval);
-		} catch (error) {
-			if (retry == this.config.retries && this.config.retries < 999) {
-				this.log.error(
-					"Error reading from SENEC Portal. Retried " +
-						retry +
-						" times. Giving up now. Check config and restart adapter. (" +
-						error +
-						")",
-				);
-				this.setState("info.connection", false, true);
-			} else {
-				retry += 1;
-				this.log.warn(
-					"Error reading from SENEC Portal. Retry " +
-						retry +
-						"/" +
-						this.config.retries +
-						" in " +
-						(this.config.api_interval * 60000 * this.config.retrymultiplier * retry) / 1000 +
-						" seconds! (" +
-						error +
-						")",
-				);
-				this.timerAPI = setTimeout(
-					() => this.pollSenecWebApi(retry),
-					this.config.api_interval * 60000 * this.config.retrymultiplier * retry,
-				);
-			}
-		}
-	}
-
-	/**
-	 * Decodes StatusOverview from WebAPI
-	 */
-	async decodeStatusOverview(obj) {
-		const pfx = "_api.Portal.StatusOverview.";
-		// store raw data
-		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Status Overview", "", false);
-		for (const [key, value] of Object.entries(obj)) {
-			if (
-				key == "wartungsplan" ||
-				key === "gridimport" ||
-				key === "gridexport" ||
-				key === "powergenerated" ||
-				key === "consumption" ||
-				key === "accuexport" ||
-				key === "accuimport" ||
-				key === "acculevel"
-			) {
-				for (const [key2, value2] of Object.entries(value)) {
-					if (key2 == "possibleMaintenanceTypes") continue; // skip this one
-					this.log.debug("decodeStatusOverview: " + pfx + key + "." + key2 + ":" + value);
-					await this.doState(
-						pfx + key + "." + key2,
-						ValueTyping(key2, JSON.stringify(value2)),
-						"",
-						"",
-						false,
-					);
-				}
-			} else if (key === "lastupdated") {
-				const date = new Date(value);
-				this.log.debug("decodeStatusOverview: " + pfx + key + ":" + date.toString());
-				await this.doState(pfx + key, date.toString(), "", "", false);
-			} else {
-				if (key === "suppressedNotificationIds") continue; // skip this one - empty array
-				this.log.debug("decodeStatusOverview: " + pfx + key + ":" + value);
-				await this.doState(pfx + key, ValueTyping(key, value), "", "", false);
-			}
-		}
-	}
-
-	/**
-	 * Decodes technischeDaten from WebAPI
-	 */
-	async decodeTechnischeDaten(obj) {
-		const pfx = "_api.Portal.TechnischeDaten.";
-		// store raw data
-		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Status Overview", "", false);
-		for (const [key, value] of Object.entries(obj)) {
-			if (key == "installationsdatum") {
-				const date = new Date(value);
-				this.log.debug("decodeTechnischeDaten: " + pfx + key + ":" + date.toString());
-				await this.doState(pfx + key, date.toString(), "", "", false);
-			} else {
-				this.log.debug("decodeTechnischeDaten: " + pfx + key + ":" + value);
-				await this.doState(pfx + key, value, "", "", false);
-			}
-		}
-	}
-
-	/**
-	 * Decodes Status24 from WebAPI
-	 */
-	async decodeStatus24(obj) {
-		const pfx = "_api.Portal.Status24.";
-		// store raw data
-		await this.doState(pfx + "json", JSON.stringify(obj), "Portal Status24", "", false);
-		for (const [key, value] of Object.entries(obj)) {
-			if (key === "val") {
-				const accuExportArr = value[0];
-				const accuImportArr = value[1];
-				const gridExportArr = value[2];
-				const gridImportArr = value[3];
-				const powergeneratedArr = value[4];
-				const consumptionArr = value[5];
-
-				// AccuExport
-				let i = 0;
-				for (const [ts, val] of accuExportArr) {
-					i++;
-					const dateStr = new Date(ts).toString();
-					await this.doState(pfx + "AccuExport." + i + ".ts", dateStr, "Timestampe", "", false);
-					await this.doState(pfx + "AccuExport." + i + ".value", Number(val.toFixed(3)), "", "", false);
-				}
-				await this.doState(pfx + "AccuExport.json", JSON.stringify(accuExportArr), "", "", false);
-
-				// AccuImport
-				i = 0;
-				for (const [ts, val] of accuImportArr) {
-					i++;
-					const dateStr = new Date(ts).toString();
-					await this.doState(pfx + "AccuImport." + i + ".ts", dateStr, "Timestampe", "", false);
-					await this.doState(pfx + "AccuImport." + i + ".value", Number(val.toFixed(3)), "", "", false);
-				}
-				await this.doState(pfx + "AccuImport.json", JSON.stringify(accuImportArr), "", "", false);
-
-				// GridExport
-				i = 0;
-				for (const [ts, val] of gridExportArr) {
-					i++;
-					const dateStr = new Date(ts).toString();
-					await this.doState(pfx + "GridExport." + i + ".ts", dateStr, "Timestampe", "", false);
-					await this.doState(pfx + "GridExport." + i + ".value", Number(val.toFixed(3)), "", "", false);
-				}
-				await this.doState(pfx + "GridExport.json", JSON.stringify(gridExportArr), "", "", false);
-
-				// GridImport
-				i = 0;
-				for (const [ts, val] of gridImportArr) {
-					i++;
-					const dateStr = new Date(ts).toString();
-					await this.doState(pfx + "GridImport." + i + ".ts", dateStr, "Timestampe", "", false);
-					await this.doState(pfx + "GridImport." + i + ".value", Number(val.toFixed(3)), "", "", false);
-				}
-				await this.doState(pfx + "GridImport.json", JSON.stringify(gridImportArr), "", "", false);
-
-				// PowerGenerated
-				i = 0;
-				for (const [ts, val] of powergeneratedArr) {
-					i++;
-					const dateStr = new Date(ts).toString();
-					await this.doState(pfx + "PowerGenerated." + i + ".ts", dateStr, "Timestampe", "", false);
-					await this.doState(pfx + "PowerGenerated." + i + ".value", Number(val.toFixed(3)), "", "", false);
-				}
-				await this.doState(pfx + "PowerGenerated.json", JSON.stringify(powergeneratedArr), "", "", false);
-
-				// Consumption
-				i = 0;
-				for (const [ts, val] of consumptionArr) {
-					i++;
-					const dateStr = new Date(ts).toString();
-					await this.doState(pfx + "Consumption." + i + ".ts", dateStr, "Timestamp", "", false);
-					await this.doState(pfx + "Consumption." + i + ".value", Number(val.toFixed(3)), "", "", false);
-				}
-				await this.doState(pfx + "Consumption.json", JSON.stringify(consumptionArr), "", "", false);
-			} else {
-				await this.doState(pfx + key, ValueTyping(key, value), "", "", false);
-			}
-		}
-	}
-
-	/**
-	 * Decodes decodeAutarky from WebAPI	*
-	 */
-	async decodeAutarky(obj) {
-		const pfx = "_api.Portal.Autarky.";
-		// store raw data
-		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Autarky", "", false);
-		for (const [key, value] of Object.entries(obj)) {
-			this.log.debug("decodeAutarky: " + pfx + key + ":" + value);
-			await this.doState(pfx + key, ValueTyping(key, value), "", "%", false);
-		}
-	}
-
-	/**
-	 * Decodes AccuState from WebAPI
-	 */
-	async decodeAccuState(obj) {
-		const pfx = "_api.Portal.AccuState.";
-		// store raw json
-		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Accu State", "", false);
-		for (const [key, value] of Object.entries(obj)) {
-			if (key === "val") {
-				const voltageArr = value[0];
-				const currentArr = value[1];
-
-				// Voltage
-				let i = 0;
-				for (const [ts, val] of voltageArr) {
-					i++;
-					const dateStr = new Date(ts).toString();
-					await this.doState(pfx + "Voltage." + i + ".ts", dateStr, "Timestamp", "", false);
-					await this.doState(pfx + "Voltage." + i + ".value", Number(val.toFixed(3)), "Voltage", "V", false);
-				}
-
-				// Current
-				i = 0;
-				for (const [ts, val] of currentArr) {
-					i++;
-					const dateStr = new Date(ts).toString();
-					await this.doState(pfx + "Current." + i + ".ts", dateStr, "Timestampe", "", false);
-					await this.doState(pfx + "Current." + i + ".value", Number(val.toFixed(3)), "Power", "A", false);
-				}
-			} else if (key === "lastupdated") {
-				await this.doState(pfx + key, new Date(value).toString(), "Last updated", "", false);
-			} else {
-				await this.doState(pfx + key, ValueTyping(key, value), "", "", false);
-			}
-		}
-	}
-
-	/**
-	 * Decodes AccuSavings from WebAPI
-	 */
-	async decodeAccuSavings(obj) {
-		const pfx = "_api.Portal.AccuSavings.";
-		// store raw json
-		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Accu Savings", "", false);
-		for (const [key, value] of Object.entries(obj)) {
-			if (key == "lastupdated") {
-				await this.doState(pfx + key, new Date(value).toString(), "Last Update", "", false);
-			} else {
-				await this.doState(pfx + key, ValueTyping(key, value), "", "", false);
-			}
-		}
-	}
-
-	/**
-	 * Decodes Status from WebAPI
-	 */
-	async decodeStatus(obj, typ) {
-		const pfx = "_api.Portal.Status." + typ + ".";
-		// store raw json
-		//await this.doState(pfx + "_json", JSON.stringify(obj), "Portal Status", "", false);
-		for (const [key, value] of Object.entries(obj)) {
-			if (key == "val") {
-				// includes six arrays for the last 24 hours for different metrics (order? : accu import, accu export, grid import, grid export, power generated, consumption)
-				const yearly = await this.decodeYearlyValues(value);
-				for (const [year, aggregation] of Object.entries(yearly)) {
-					await this.doState(pfx + year, Number(aggregation.toFixed(3)), "", "", false);
-				}
-			} else if (key == "lastupdated") {
-				await this.doState(pfx + key, new Date(value).toString(), "Last Updated", "", false);
-			} else {
-				await this.doState(pfx + key, ValueTyping(key, value), "", "", false);
-			}
-		}
-	}
-
-	/**
-	 * Converts SENEC yearly arrays into {year: value} object.
-	 */
-	async decodeYearlyValues(val) {
-		if (!val || !Array.isArray(val)) return {};
-
-		const result = {};
-
-		for (const [ts, value] of val) {
-			const year = new Date(ts).getFullYear(); // get year from timestamp
-			result[year] = Number(value.toFixed(3)); // round to 3 decimal places
-		}
-		return result;
 	}
 
 	/**
@@ -1082,7 +837,7 @@ class Senec extends utils.Adapter {
 		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
 		const valueStore = pfx + "valueStore";
 		const statsObj = await this.getStateAsync(valueStore);
-		const stats = statsObj ? JSON.parse(statsObj.val) : {};
+		const stats = statsObj && statsObj.val ? JSON.parse(statsObj.val) : {};
 		if (!stats[key]) stats[key] = {};
 		if (!stats[key][year]) stats[key][year] = {};
 		stats[key][year] = value;
@@ -1097,7 +852,7 @@ class Senec extends utils.Adapter {
 		const pfx = "_api.Anlagen." + system + ".Statistik.AllTime.";
 		const valueStore = pfx + "valueStore";
 		const statsObj = await this.getStateAsync(valueStore);
-		const stats = statsObj ? JSON.parse(statsObj.val) : {};
+		const stats = statsObj && statsObj.val ? JSON.parse(statsObj.val) : {};
 		const sums = {};
 		for (const [key, value] of Object.entries(stats)) {
 			let einheit = "";
@@ -1221,29 +976,45 @@ class Senec extends utils.Adapter {
 	/**
 	 * evaluates data polled from SENEC system.
 	 * creates / updates the state.
+	 * @param {{ [s: string]: any; } | ArrayLike<any>} obj
+	 * @param {string} pfx
 	 */
-	async evalPoll(obj) {
+	async evalPoll(obj, pfx, keyPrefix = "") {
 		if (unloaded) return;
-		for (const [key1, value1] of Object.entries(obj)) {
-			for (const [key2, value2] of Object.entries(value1)) {
-				if (value2 !== "VARIABLE_NOT_FOUND" && key2 !== "OBJECT_NOT_FOUND") {
-					const key = key1 + "." + key2;
-					if (state_attr[key] === undefined) {
+		if (Array.isArray(obj)) {
+			obj.forEach((value, index) => {
+				const fullKey = `${keyPrefix}.${index}`;
+				if (typeof value === "object" && value !== null) {
+					this.evalPoll(value, fullKey);
+				} else {
+					if (state_attr[fullKey] === undefined) {
 						this.log.debug(
-							"REPORT_TO_DEV: State attribute definition missing for: " + key + ", Val: " + value2,
+							"REPORT_TO_DEV: State attribute definition missing for: " + fullKey + ", Val: " + value,
 						);
 					}
-					const desc = state_attr[key] !== undefined ? state_attr[key].name : key2;
-					const unit = state_attr[key] !== undefined ? state_attr[key].unit : "";
-
-					if (Array.isArray(value2)) {
-						for (let i = 0; i < value2.length; i++) {
-							this.doState(key + "." + i, ValueTyping(key, value2[i]), desc + "[" + i + "]", unit, false);
-						}
-					} else {
-						this.doState(key, ValueTyping(key, value2), desc, unit, false);
-					}
+					this.log.info("API Array Value: " + fullKey + " = " + value);
+					const desc = state_attr[fullKey] !== undefined ? state_attr[fullKey].name : fullKey;
+					const unit = state_attr[fullKey] !== undefined ? state_attr[fullKey].unit : "";
+					this.doState(pfx + fullKey, ValueTyping(value), desc, unit, false);
 				}
+			});
+			return;
+		}
+		for (const key in obj) {
+			const value = obj[key];
+			const fullKey = keyPrefix ? `${keyPrefix}.${key}` : key;
+			if (typeof value === "object" && value !== null) {
+				this.evalPoll(value, pfx, fullKey);
+			} else {
+				if (state_attr[fullKey] === undefined) {
+					this.log.debug(
+						"REPORT_TO_DEV: State attribute definition missing for: " + fullKey + ", Val: " + value,
+					);
+				}
+				this.log.debug("API Value: " + fullKey + " = " + value);
+				const desc = state_attr[fullKey] !== undefined ? state_attr[fullKey].name : fullKey;
+				const unit = state_attr[fullKey] !== undefined ? state_attr[fullKey].unit : "";
+				this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
 			}
 		}
 	}
@@ -1275,24 +1046,11 @@ const ValueTyping = (key, value) => {
 	}
 };
 
-// const ParseApi2KeyParts = (key) => {
-// 	//const match = key.match(/In([A-Za-z]+)$/);
-// 	//var unit = match ? match[1] : "";
-// 	//if (unit == "Percent") unit = "%";
-// 	//return unit;
-// 	const match = key.match(/^(.*)In([A-Za-z]+)$/);
-// 	if (match) {
-// 		return {
-// 			prefix: match[1], // part before "In"
-// 			unit: match[2] === "Percent" ? "%" : match[2], // replace "Percent" with "%"
-// 		};
-// 	}
-// 	return {
-// 		// default response for error
-// 		prefix: "unknownKey",
-// 		unit: "",
-// 	};
-// };
+const toFloat = (val) => {
+	if (val === null || val === undefined) return 0;
+	const num = Number(val);
+	return Number.isNaN(num) ? 0 : parseFloat(num.toFixed(2));
+};
 
 /**
  * Converts float value in hex format to js float32.
@@ -1392,43 +1150,6 @@ const reviverNumParse = (key, value) => {
 	}
 };
 
-/**
- * Returns the current day of the year
- */
-//const getCurDay = () => {
-//	return (Math.round((new Date().setHours(23) - new Date(new Date().getYear()+1900, 0, 1, 0, 0, 0))/1000/60/60/24));
-//}
-
-/**
- * Returns the current month of the year
- */
-//const getCurMonth = () => {
-//	return (new Date().getMonth());
-//}
-
-/**
- * Returns the current year
- */
-//const getCurYear = () => {
-//	return (new Date().getFullYear());
-//}
-
-/**
- * Returns the current week of the year
- * Using Standard ISO8601
- */
-//const getCurWeek = () => {
-//	var tdt = new Date();
-//	var dayn = (tdt.getDay() + 6) % 7;
-//	tdt.setDate(tdt.getDate() - dayn + 3);
-//	var firstThursday = tdt.valueOf();
-//	tdt.setMonth(0, 1);
-//	if (tdt.getDay() !== 4) {
-//		tdt.setMonth(0, 1 + ((4 - tdt.getDay()) + 7) % 7);
-//	}
-//	return 1 + Math.ceil((firstThursday - tdt) / 604800000);
-//};
-
 if (require.main !== module) {
 	// Export the constructor in compact mode
 	/**
@@ -1438,4 +1159,28 @@ if (require.main !== module) {
 } else {
 	// otherwise start the instance directly
 	new Senec();
+}
+
+// --- AUTHENTIFIZIERUNG (LOGIN) -----------------------------------------------
+function generateCodeVerifier() {
+	return base64UrlEncode(crypto.randomBytes(32));
+}
+
+function generateCodeChallenge(verifier) {
+	return base64UrlEncode(crypto.createHash("sha256").update(verifier).digest());
+}
+
+function base64UrlEncode(buffer) {
+	return buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+function formatCookies(headers) {
+	const setCookie = headers["set-cookie"];
+	if (!setCookie) return "";
+	return Array.isArray(setCookie) ? setCookie.map((c) => c.split(";")[0]).join("; ") : setCookie.split(";")[0];
+}
+
+function extractFormAction(html) {
+	const match = html.match(/<form[^>]*action="([^"]+)"[^>]*>/i);
+	return match && match[1] ? match[1].replace(/&amp;/g, "&") : null;
 }
