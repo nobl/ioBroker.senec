@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.1.3",
+    "version": "2.2.0",
     "news": {
+      "2.2.0": {
+        "en": "Polling yearly measurements as year from API - not months (and summing them up)\nAdded back AllTimeHistory with BATTERY_LEVEL_IN_PERCENT averaged and AUTARKY_IN_PERCENT calculated\nRemoved selection to use https or http for lala.cgi. https is enforced now.",
+        "de": "Polling jährlich Messungen als Jahr von API - nicht Monate (und summieren sie nach oben)\nZurück hinzugefügt AllTimeHistory mit BATTERY_LEVEL_IN_PERCENT gemittelt und AUTARKY_IN_PERCENT berechnet\nEntfernte Auswahl zur Verwendung von https oder http für lala.cgi. https wird jetzt durchgesetzt.",
+        "ru": "Опрос годовых измерений как год из API - не месяцы (и суммирование их)\nОбновление AllTimeHistory с помощью BATTERY_LEVEL_IN_PERCENT Усредненный и автономный рассчитанный\nУдаленный выбор для использования https или http для lala.cgi. https применяется сейчас.",
+        "pt": "Medições anuais de sondagem como ano da API - não meses (e resumi-los)\nHistória de todos os tempos adicionada com BATTERY_LEVEL_IN_PERCENT média e AUTARKY_IN_PERCENT calculado\nA seleção removida para usar https ou http para lala.cgi. https é executada agora.",
+        "nl": "Jaarlijkse metingen per jaar van API - geen maanden (en som ze op)\nAlgehele geschiedenis met BATTERY_LEVEL_IN_PERCENT gemiddelde en AUTARKY_IN_PERCENT berekend\nVerwijderde selectie om https of http voor lala.cgi te gebruiken. https wordt nu afgedwongen.",
+        "fr": "Sondages sur les mesures annuelles à partir de l'API - pas mois (et les résumer)\nAjouté en arrière AllTimeHistory avec BATTERY_LEVEL_IN_PERCENT moyenne et AUTARRKY_IN_PERCENT calculée\nLa sélection supprimée pour utiliser https ou http for lala.cgi. https est mise en œuvre maintenant.",
+        "it": "Inquinare le misure annuali come anno da API - non mesi (e sommarle)\nAggiunto il back AllTimeHistory con BATTERY_LEVEL_IN_PERCENT medio e AUTARKY_IN_PERCENT calcolato\nLa selezione eliminata da utilizzare https o http per lala.cgi. https è ora applicata.",
+        "es": "Votar mediciones anuales como año de API - no meses (y resumirlas)\nAñadido atrás Historia de todo el tiempo con BATTERY_LEVEL_IN_PERCENT promedio y AUTARKY_IN_PERCENT calculado\nSelección eliminada para utilizar https o http para lala.cgi. https se aplica ahora.",
+        "pl": "Badanie rocznych pomiarów z API - nie miesięcy (i podsumowanie ich)\nDodano AllTimeHistory z BATTERY _ LEVEL _ IN _ PERCENT Uśrednione i AUTARKY _ IN _ PERCENT obliczone\nUsunięty wybór do wykorzystania https lub http dla lala.cgi. https jest teraz egzekwowany.",
+        "uk": "Вимірювання протягом року з API - не місяців (і підведення їх)\nДодано зворотний AllTimeHistory з BATTERY_LEVEL_IN_PERCENT Середня та АУАРКИ_IN_PERCENT розрахунок\nВилучено вибір, щоб використовувати HTTPS або HTTP для lala.cgi. https://www.facebook.com.",
+        "zh-cn": "按年度按API进行投票,而不是按月(并汇总)\n用 BATTERY_LEVEL_IN_PERCENT 添加回全时历史 平均值和 AUTARKY_IN_PERCENT 计算\n删除用于 lala.cgi 的 https 或 https 选择。 https 现已执行 ."
+      },
       "2.1.3": {
         "en": "– reading all previous years (up to inception of SENEC) added again (to make this happen: activate recalculation of full history via settings)\n- added today / yesterday again\n- optimizations for measurements handling\n- less log noise",
         "de": "– Lesen Sie alle Vorjahre (bis zu Beginn der SENEC) erneut hinzugefügt (um dies zu machen: Aktivieren Sie die Neuberechnung der vollen Geschichte über Einstellungen)\n- heute / gestern wieder hinzugefügt\n- optimierungen für messungen\n- weniger log lärm",
@@ -80,19 +93,6 @@
         "pl": "Aktualizacja licencji",
         "uk": "Оновлення ліцензії",
         "zh-cn": "许可证更新"
-      },
-      "1.6.16": {
-        "en": "Migrated Dashboard to ApiV2. This invalidates existing datapoints under /Dashboard/ and introduces \"Dashboard/currently\" and \"Dashboard/today\" due to changes in the API.",
-        "de": "Dashboard auf ApiV2 migriert. Dadurch werden bestehende Datenpunkte unter /Dashboard/ ungültig. Neu sind aufgrund von Änderungen in der API: \\\"Dashboard/current\\\" und \\\"Dashboard/today\\\".",
-        "ru": "Migrated Dashboard to ApiV2. Это аннулирует существующие точки данных под /Dashboard/ и вводит \\\"Dashboard/currently\\\" и \\\"Dashboard/today\\\" из-за изменений в API.",
-        "pt": "Painel Migrado para ApiV2. Isso invalida os datapoints existentes em /Dashboard/ e introduz \\\"Dashboard/currently\\\" e \\\"Dashboard/hoje\\\" devido a alterações na API.",
-        "nl": "Gemigreerd Dashboard naar ApiV2. Dit maakt bestaande datapunten ongeldig onder /Dashboard/ en introduceert \\\"Dashboard/momenteel\\\" en \\\"Dashboard/today\\\" vanwege wijzigingen in de API.",
-        "fr": "Tableau de bord modifié vers ApiV2. Cela invalide les points de données existants sous /Dashboard/ et introduit \\\"Dashboard/currently\\\" et \\\"Dashboard/today\\\" en raison des changements dans l'API.",
-        "it": "Migrato Dashboard ad ApiV2. Questo invalida i datapoint esistenti in /Dashboard/ e introduce \\\"Dashboard/currently\\\" e \\\"Dashboard/today\\\" a causa delle modifiche nell'API.",
-        "es": "Migrated Dashboard to ApiV2. Esto invalida los puntos de datos existentes bajo /Dashboard/ e introduce \\\"Dashboard/currently\\\" y \\\"Dashboard/today\\\" debido a cambios en la API.",
-        "pl": "Migrated Dashboard do ApiV2. To unieważnia istniejące punkty danych pod / Deska rozdzielcza / i wprowadza\\ \"Deska rozdzielcza / obecnie\\\" i\\ \"Deska rozdzielcza / dzisiaj\\\" ze względu na zmiany w API.",
-        "uk": "Migrated Dashboard до ApiV2. Це недійсні існуючі точки даних під / панель / і вводить \\ \"Дашборд/поточно\\\" і \\\"Dashboard/today\\\" через зміни в API.",
-        "zh-cn": "将 Dashboard 移动到 ApiV2. 这使得/Dashboard/下的现有数据点无效,并由于API的改变,引入了\\\"Dashboard/today\\\"和\\\"Dashboard/today\\\"."
       }
     },
     "docs": {
