@@ -303,8 +303,14 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+- Polling yearly measurements as year from API - not months (and summing them up)
+- Added back AllTimeHistory with BATTERY_LEVEL_IN_PERCENT averaged and AUTARKY_IN_PERCENT calculated
+- Removed selection to use https or http for lala.cgi. https is enforced now.
+
 ### 2.1.3 (2026-02-04)
-– reading all previous years (up to inception of SENEC) added again (to make this happen: activate recalculation of full history via settings)
+- reading all previous years (up to inception of SENEC) added again (to make this happen: activate recalculation of full history via settings)
 - added today / yesterday again
 - optimizations for measurements handling
 - less log noise

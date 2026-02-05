@@ -171,7 +171,6 @@
     "pollingTimeout": 5000,
     "retries": 10,
     "retrymultiplier": 2,
-    "useHttps": true,
     "disclaimer": false,
     "highPrio_BMS": "",
     "highPrio_BMS_active": false,

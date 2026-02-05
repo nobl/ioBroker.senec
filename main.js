@@ -2,13 +2,11 @@
 
 const crypto = require("crypto");
 const { URL, URLSearchParams } = require("url");
-const axiosRaw = require("axios");
-const axiosApi = axiosRaw.create({
+const axios = require("axios");
+const axiosApi = axios.create({
 	timeout: 10000,
 });
-const axios = require("axios");
 axios.defaults.headers.post["Content-Type"] = "application/json";
-
 const https = require("https");
 const agent = new https.Agent({
 	requestCert: true,
@@ -18,10 +16,9 @@ const agent = new https.Agent({
 const utils = require("@iobroker/adapter-core");
 const state_attr = require(`${__dirname}/lib/state_attr.js`);
 const state_trans = require(`${__dirname}/lib/state_trans.js`);
-//const api_trans = require(__dirname + "/lib/api_trans.js");
-const kiloList = ["W", "Wh"];
 const API_PFX = "_api.";
 const ID_TOKEN_STATE = `${API_PFX}AuthToken`;
+const LAST_UPDATED = "last updated";
 
 // API Endpoints
 const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
@@ -46,7 +43,7 @@ const batteryOff =
 
 let apiConnected = false;
 let lalaConnected = false;
-let connectVia = "http://";
+let connectVia = "https://";
 let rebuildRunning = false;
 
 const allKnownObjects = new Set([
@@ -431,11 +428,6 @@ class Senec extends utils.Adapter {
 			);
 			this.config.retrymultiplier = 2;
 		}
-		this.log.debug(`(checkConf) Configured https-usage: ${this.config.useHttps}`);
-		if (this.config.useHttps) {
-			connectVia = "https://";
-			this.log.debug(`(checkConf) Switching to https ... ${this.config.useHttps}`);
-		}
 		this.log.debug(`(checkConf) Configured api polling interval: ${this.config.api_interval}`);
 		if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
 			this.log.warn(
@@ -462,7 +454,7 @@ class Senec extends utils.Adapter {
 			throw new Error(
 				`Error connecting to Senec (IP: ${connectVia}${this.config.senecip}). Exiting! (${
 					error
-				}). Try to toggle https-mode in settings and check FQDN of SENEC appliance.`,
+				}). Check FQDN of SENEC appliance.`,
 			);
 		}
 	}
@@ -658,7 +650,7 @@ class Senec extends utils.Adapter {
 	 * @param {any} token AccessToken
 	 */
 	async pollSystems(token) {
-		this.log.debug("Reading available systems from API ...");
+		this.log.debug("🔄 Reading available systems from API ...");
 		// get Systems
 		const sysRes = await axiosApi.get(`${HOST_SYSTEMS}/v1/systems`, {
 			headers: { Authorization: `Bearer ${token}` },
@@ -679,7 +671,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Rebuild all-time measurements
 	 *
-	 * @param {string | number | boolean} anlagenId Anlagen ID to read measurements for
+	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {any} token AccessToken
 	 */
 	async doRebuild(anlagenId, token) {
@@ -698,14 +690,14 @@ class Senec extends utils.Adapter {
 	/**
 	 * Poll measurements by year
 	 *
-	 * @param {string | number | boolean} anlagenId Anlagen ID to read measurements for
+	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {any} token AccessToken
 	 * @param {number} year Year to read measurements for
 	 */
 	async doMeasurementsYear(anlagenId, token, year) {
-		this.log.debug(`Reading measurements for year: ${year}`);
+		this.log.debug(`🔄 Reading measurements for year: ${year}`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Yearly.`;
-		const lastUpdate = await this.getStateAsync(`${pfx + year}.last updated`);
+		const lastUpdate = await this.getStateAsync(`${pfx + year}.${LAST_UPDATED}`);
 		let lastDate = null;
 		if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 			lastDate = new Date(String(lastUpdate.val));
@@ -740,7 +732,7 @@ class Senec extends utils.Adapter {
 		const endDate = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0) - 1);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
-		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
+		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=YEAR&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
@@ -750,21 +742,23 @@ class Senec extends utils.Adapter {
 			return;
 		}
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, "year");
+		await this.updateAllTimeHistory(anlagenId);
 	}
 
 	/**
 	 * Poll measurements by month
 	 *
-	 * @param {string | number | boolean} anlagenId Anlagen ID to read measurements for
+	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {any} token AccessToken
 	 * @param {Date} date Date to read measurements for
 	 * @param {string} period period to sum for
 	 */
 	async doMeasurementsMonth(anlagenId, token, date, period) {
+		this.log.debug(`🔄 Reading measurements for month.`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Monthly.`;
 		if (period === "previous_month") {
 			// check if already updated this month
-			const lastUpdate = await this.getStateAsync(`${pfx + period}.last updated`);
+			const lastUpdate = await this.getStateAsync(`${pfx + period}.${LAST_UPDATED}`);
 			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 				const lastDate = new Date(String(lastUpdate.val));
 				if (
@@ -793,16 +787,17 @@ class Senec extends utils.Adapter {
 	/**
 	 * Poll measurements by day
 	 *
-	 * @param {string | number | boolean} anlagenId Anlagen ID to read measurements for
+	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {any} token AccessToken
 	 * @param {Date} date Date to read measurements for
 	 * @param {string} period period to sum for
 	 */
 	async doMeasurementsDay(anlagenId, token, date, period) {
+		this.log.debug(`🔄 Reading measurements for day.`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Daily.`;
 		if (period === "yesterday") {
 			// check if already updated today
-			const lastUpdate = await this.getStateAsync(`${pfx + period}.last updated`);
+			const lastUpdate = await this.getStateAsync(`${pfx + period}.${LAST_UPDATED}`);
 			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 				const lastDate = new Date(String(lastUpdate.val));
 				if (
@@ -831,7 +826,7 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * @param {any} data measurement data
-	 * @param {string | number | boolean} anlagenId Anlagen ID
+	 * @param {string | number} anlagenId Anlagen ID
 	 * @param {string} pfx prefix for state
 	 * @param {string} period period to sum for
 	 */
@@ -847,13 +842,14 @@ class Senec extends utils.Adapter {
 				sums[key] += value;
 			});
 		});
-		sums["last updated"] = new Date().toISOString();
+		sums[LAST_UPDATED] = new Date().toISOString();
 
 		this.log.debug(`Sums: ${JSON.stringify(sums)}`);
 		let groupBy;
 		switch (period) {
 			case "year":
 				groupBy = year;
+				await this.insertIntoAllTimeValueStore(sums, anlagenId, year);
 				break;
 			case "current_month":
 				groupBy = "current_month";
@@ -986,24 +982,12 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * Insert value into AllTimeHistory
+	 * Load AllTimeValueStore for given anlagenId and prefix
 	 *
-	 * @param system Anlagen ID
-	 * @param key Key to insert
-	 * @param year Year to insert
-	 * @param value Value to insert
-	 * @param einheit Einheit of the value
+	 * @param {string} valueStore ValueStore
+	 * @returns {Promise<{ [s: string]: any; }>} AllTimeValueStore as object
 	 */
-	async insertAllTimeHistory(system, key, year, value, einheit) {
-		this.log.debug(`Insert AllTimeHistory: ${system}/${key}/${year}/${value}/${einheit}`);
-		if (key === "__proto__" || key === "constructor" || key === "prototype") {
-			return;
-		} // Security fix
-		if (isNaN(year) || isNaN(value)) {
-			return;
-		} // Security fix
-		const pfx = `_api.Anlagen.${system}.Statistik.AllTime.`;
-		const valueStore = `${pfx}valueStore`;
+	async readAllTimeValueStore(valueStore) {
 		const statsObj = await this.getStateAsync(valueStore);
 		const stats =
 			statsObj && statsObj.val
@@ -1013,62 +997,81 @@ class Senec extends utils.Adapter {
 						? statsObj.val
 						: {}
 				: {};
-		if (!stats[key]) {
-			stats[key] = {};
+		return stats;
+	}
+
+	/**
+	 * Insert values into AllTimeValueStore
+	 *
+	 * @param {{ [s: string]: number; } | ArrayLike<any>} sums sums to insert
+	 * @param {string | number} anlagenId Anlagen ID
+	 * @param {number} year Year to insert for
+	 */
+	async insertIntoAllTimeValueStore(sums, anlagenId, year) {
+		const valueStore = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.AllTime.valueStore`;
+		const stats = await this.readAllTimeValueStore(valueStore);
+		for (const [key, value] of Object.entries(sums)) {
+			if (key === LAST_UPDATED) {
+				continue;
+			}
+			if (!stats[key]) {
+				stats[key] = {};
+			}
+			if (!stats[key][year]) {
+				stats[key][year] = {};
+			}
+			stats[key][year] = value;
+			await this.doState(valueStore, JSON.stringify(stats), "", "", false);
 		}
-		if (!stats[key][year]) {
-			stats[key][year] = {};
-		}
-		stats[key][year] = value;
-		stats[key]["einheit"] = einheit;
-		await this.doState(valueStore, JSON.stringify(stats), "", "", false);
 	}
 
 	/**
 	 * Updated AllTimeHistory based on what we have in our AllTimeValueStore
 	 *
-	 * @param system Anlagen ID
+	 * @param {string | number} anlagenId Anlagen ID
 	 */
-	async updateAllTimeHistory(system) {
-		const pfx = `_api.Anlagen.${system}.Statistik.AllTime.`;
+	async updateAllTimeHistory(anlagenId) {
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.AllTime.`;
 		const valueStore = `${pfx}valueStore`;
-		const statsObj = await this.getStateAsync(valueStore);
-		const stats =
-			statsObj && statsObj.val
-				? typeof statsObj.val === "string"
-					? JSON.parse(statsObj.val)
-					: typeof statsObj.val === "object" && statsObj.val !== null
-						? statsObj.val
-						: {}
-				: {};
-		const sums = {};
-		for (const [key, value] of Object.entries(stats)) {
-			let einheit = "";
-			let sum = 0.0;
-			for (const [key2, value2] of Object.entries(value)) {
-				if (key2 == "einheit") {
-					einheit = value2;
+		const input = await this.readAllTimeValueStore(valueStore);
+
+		// Spezialfälle definieren + benötigte Keys
+		const specialHandlers = {
+			AUTARKY_IN_PERCENT: {
+				keys: ["POWER_GENERATION", "GRID_EXPORT", "BATTERY_IMPORT", "BATTERY_EXPORT", "POWER_CONSUMPTION"],
+				fn: (values, sums) =>
+					((sums.POWER_GENERATION - sums.GRID_EXPORT - sums.BATTERY_IMPORT + sums.BATTERY_EXPORT) /
+						sums.POWER_CONSUMPTION) *
+					100,
+			},
+			BATTERY_LEVEL_IN_PERCENT: {
+				keys: [],
+				fn: (values) => values.reduce((a, b) => a + b, 0) / values.length,
+			},
+		};
+
+		// Summen der benötigten Keys nur einmal berechnen
+		const sumKeys = Object.fromEntries(
+			specialHandlers.AUTARKY_IN_PERCENT.keys.map((k) => [k, Object.values(input[k]).reduce((a, b) => a + b, 0)]),
+		);
+
+		// Ergebnis berechnen
+		const result = Object.fromEntries(
+			Object.entries(input).map(([key, years]) => {
+				const values = Object.values(years);
+				let value;
+				if (specialHandlers[key]) {
+					value = specialHandlers[key].fn(values, sumKeys);
 				} else {
-					sum += value2;
+					value = values.reduce((a, b) => a + b, 0);
 				}
-			}
-			sums[key] = sum;
-			if (kiloList.includes(einheit)) {
-				await this.doState(pfx + key, Number((sum / 1000).toFixed(0)), "", `k${einheit}`, false);
-			} else {
-				await this.doState(pfx + key, Number(sum.toFixed(0)), "", einheit, false);
-			}
-		}
-		if (sums.totalUsage != 0) {
-			const autarky = Number(
-				(
-					((sums.generation - sums.gridFeedIn - sums.storageLoad + sums.storageConsumption) /
-						sums.totalUsage) *
-					100
-				).toFixed(0),
-			);
-			await this.doState(`${pfx}Autarkie`, autarky, "", "%", false);
-		}
+				// Auf 2 Nachkommastellen runden
+				value = Math.round(value * 100) / 100;
+				return [key, value];
+			}),
+		);
+		this.log.debug(`Calculated AllTimeHistory: ${JSON.stringify(result)}`);
+		this.evalPoll(result, pfx);
 	}
 
 	/**
