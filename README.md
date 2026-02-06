@@ -303,8 +303,7 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 2.2.1 (2026-02-06)
 - Fixed: History rebuild will only run once now when requested (remember: To force rebuild you need to configure this in settings)
 
 ### 2.2.0 (2026-02-05)

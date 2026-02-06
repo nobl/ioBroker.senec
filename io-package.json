@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.2.0",
+    "version": "2.2.1",
     "news": {
+      "2.2.1": {
+        "en": "Fixed: History rebuild will only run once now when requested (remember: To force rebuild you need to configure this in settings)",
+        "de": "Behoben: History rebuild wird nur einmal laufen, wenn gewünscht (Erinnerung: Um den Wiederaufbau zu zwingen, müssen Sie diese in Einstellungen konfigurieren)",
+        "ru": "Исправлено: Восстановление истории будет проводиться только один раз сейчас по запросу (помните: Чтобы принудительно перестроить, вам нужно настроить это в настройках",
+        "pt": "Corrigido: A reconstrução do histórico só será executada uma vez agora quando solicitado (lembre-se: Para forçar a reconstrução, você precisa configurar isso nas configurações)",
+        "nl": "Fixed: Geschiedenis herbouwen zal nu maar één keer draaien op verzoek (onthoud: Om herbouw te forceren moet je dit instellen in instellingen)",
+        "fr": "Correction : La reconstruction de l'historique ne s'exécutera qu'une fois sur demande (rappelez-vous : Pour forcer la reconstruction vous devez configurer ceci dans les paramètres)",
+        "it": "Risolto: la ricostruzione della storia verrà eseguita solo una volta al momento della richiesta (ricorda: Per forzare la ricostruzione è necessario configurare questo nelle impostazioni)",
+        "es": "Arreglado: La reconstrucción de la historia sólo funcionará una vez cuando se solicite (recuerde: Para forzar la reconstrucción necesita configurar esto en la configuración)",
+        "pl": "Naprawiono: Odbudowa historii będzie działać tylko raz na życzenie (pamiętaj: Aby wymusić odbudowę musisz skonfigurować to w ustawieniach)",
+        "uk": "Виправлено: Історія перебудування буде працювати лише один раз, коли запитаний (замовити: Змусити перебудувати потрібно налаштувати це в налаштуваннях)",
+        "zh-cn": "固定: 历史重建只有在接到请求时才会运行一次( 请记住 : 要强制重建, 您需要在设置中配置 )"
+      },
       "2.2.0": {
         "en": "Polling yearly measurements as year from API - not months (and summing them up)\nAdded back AllTimeHistory with BATTERY_LEVEL_IN_PERCENT averaged and AUTARKY_IN_PERCENT calculated\nRemoved selection to use https or http for lala.cgi. https is enforced now.",
         "de": "Polling jährlich Messungen als Jahr von API - nicht Monate (und summieren sie nach oben)\nZurück hinzugefügt AllTimeHistory mit BATTERY_LEVEL_IN_PERCENT gemittelt und AUTARKY_IN_PERCENT berechnet\nEntfernte Auswahl zur Verwendung von https oder http für lala.cgi. https wird jetzt durchgesetzt.",
@@ -80,19 +93,6 @@
         "pl": "Aktualizacja do użycia API poprzez mein- senec.de (Dzięki maett81)",
         "uk": "Update to use API через mein-senec.de (Шанки до maett81)",
         "zh-cn": "通过 mein-senec.de 使用 API 的更新 (谢谢Maett81)"
-      },
-      "1.6.17": {
-        "en": "License update",
-        "de": "Lizenz-Update",
-        "ru": "Обновление лицензии",
-        "pt": "Atualização da licença",
-        "nl": "Licentie-update",
-        "fr": "Mise à jour de licence",
-        "it": "Aggiornamento della licenza",
-        "es": "Actualización de la licencia",
-        "pl": "Aktualizacja licencji",
-        "uk": "Оновлення ліцензії",
-        "zh-cn": "许可证更新"
       }
     },
     "docs": {
