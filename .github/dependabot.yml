@@ -10,7 +10,7 @@ updates:
       cronjob: "26 1 21 * *"
     open-pull-requests-limit: 15
     assignees:
-      - "NoBl"
+      - "nobl"
     versioning-strategy: "increase"
 
   - package-ecosystem: "github-actions"
@@ -21,4 +21,4 @@ updates:
       cronjob: "26 1 21 * *"
     open-pull-requests-limit: 15
     assignees:
-      - "NoBl"
+      - "nobl"
