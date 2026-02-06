@@ -192,7 +192,8 @@ class Senec extends utils.Adapter {
 					}
 				}
 			}
-			this.setStateAsync(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
+			// this.setStateAsync(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
+			this.setState(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
 		} else if (state && id === `${this.namespace}.ENERGY.STAT_STATE`) {
 			// states that do have state.ack already
 			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
@@ -205,14 +206,20 @@ class Senec extends utils.Adapter {
 					this.log.info(
 						"Battery forced loading activated (from outside or just lag). Syncing control-state.",
 					);
-					this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, { val: true, ack: true });
+					this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, {
+						val: true,
+						ack: true,
+					});
 				}
 			} else {
 				if (forceLoad != null && forceLoad.val) {
 					this.log.info(
 						"Battery forced loading deactivated (from outside or just lag). Syncing control-state.",
 					);
-					this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, { val: false, ack: true });
+					this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, {
+						val: false,
+						ack: true,
+					});
 				}
 			}
 		}
@@ -588,20 +595,6 @@ class Senec extends utils.Adapter {
 				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month");
 				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear()); // Current year
 				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear() - 1); // check if we need last year too
-
-				// rebuild all-time history if requested
-				if (this.config.api_alltimeRebuild) {
-					rebuildRunning = true;
-					for (let year = new Date().getFullYear(); year >= 2009; year--) {
-						// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
-						await this.doMeasurementsYear(anlagenId, token, year);
-					}
-					//await this.rebuildAllTimeHistory(apiKnownSystems[i]);
-					this.extendForeignObject(`system.adapter.${this.namespace}`, {
-						native: { api_alltimeRebuild: false },
-					});
-					rebuildRunning = false;
-				}
 			}
 			retry = 0; // reset retry counter on success
 
@@ -680,11 +673,11 @@ class Senec extends utils.Adapter {
 			// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
 			await this.doMeasurementsYear(anlagenId, token, year);
 		}
-		//await this.rebuildAllTimeHistory(anlagenId);
+		this.log.info(`Rebuild ended. Adapter restarting ...`);
+		rebuildRunning = false;
 		this.extendForeignObject(`system.adapter.${this.namespace}`, {
 			native: { api_alltimeRebuild: false },
 		});
-		rebuildRunning = false;
 	}
 
 	/**

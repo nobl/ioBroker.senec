@@ -303,6 +303,10 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+- Fixed: History rebuild will only run once now when requested (remember: To force rebuild you need to configure this in settings)
+
 ### 2.2.0 (2026-02-05)
 - Polling yearly measurements as year from API - not months (and summing them up)
 - Added back AllTimeHistory with BATTERY_LEVEL_IN_PERCENT averaged and AUTARKY_IN_PERCENT calculated
