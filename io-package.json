@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.2.1",
+    "version": "2.2.2",
     "news": {
+      "2.2.2": {
+        "en": "Migrated to i18n\nUpdate handling of \"new\" states that are just an \"extra\" to an existing state like state and state.1 or state.42\nDependency Updates",
+        "de": "Migration auf i18n\nUpdate-Handling von \"neuen\" Zuständen, die nur ein \"Extra\" zu einem bestehenden Zustand wie Staat und Staat sind. 1 oder Zustand. ANHANG\nDependance-Updates",
+        "ru": "Иммиграция в i18n\nОбновление обработки «новых» состояний, которые являются просто «дополнительными» к существующему состоянию. 1 или государство. 42\nОбновления зависимостей",
+        "pt": "Migrado para i18n\nAtualizar o manuseio de estados \"novos\" que são apenas um \"extra\" para um estado existente como estado e estado. 1 ou estado. 42\nAtualizações de Dependência",
+        "nl": "Migreren naar i18n\nUpdate de behandeling van \"nieuwe\" staten die slechts een \"extra\" zijn naar een bestaande staat zoals staat en staat. 1 of staat. 42\nAfhankelijkheidsupdates",
+        "fr": "Migrés en i18n\nMettre à jour la gestion des états « nouveaux » qui ne sont qu'un « extra » à un état existant comme l'état et l'état. 1 ou état. Annexe\nMises à jour sur la dépendance",
+        "it": "Migrato a i18n\nGestione dell'aggiornamento di \"nuovi\" stati che sono solo un \"extra\" a uno stato esistente come stato e stato. 1 o stato. 42, 42, 42, 42\nAggiornamenti di dipendenza",
+        "es": "Migrado a i18n\nActualizar el manejo de estados \"nuevos\" que son sólo un \"extra\" a un estado existente como estado y estado. 1 o estado. 42\nActualizaciones de dependencia",
+        "pl": "Migrant to i18n\nAktualizacja obsługi \"nowych\" stanów, które są tylko \"dodatkowe\" do istniejącego stanu, jak stan i stan. 1 lub stan. 42\nAktualizacje zależności",
+        "uk": "Міграція до i18n\nОновити обробку \"нових\" станів, які просто \"екстра\" до існуючого стану, як держави, так і держави. 1 або держава. 42 км\nОновлення залежності",
+        "zh-cn": "迁移到 i18n\n更新\"新\"状态的处理方式,这些状态只是像州和州这样的现有状态的\"外\". 1或为州. 第42条\n依赖性更新"
+      },
       "2.2.1": {
         "en": "Fixed: History rebuild will only run once now when requested (remember: To force rebuild you need to configure this in settings)",
         "de": "Behoben: History rebuild wird nur einmal laufen, wenn gewünscht (Erinnerung: Um den Wiederaufbau zu zwingen, müssen Sie diese in Einstellungen konfigurieren)",
@@ -80,19 +93,6 @@
         "pl": "Kompletna zmiana funkcjonalności API Senec. Podziękowania dla @ timfxtones za skierowanie mnie we właściwym kierunku\nKoniec z używaniem interfejsu web- w mein- senec. - Na dłuższą metę nie działało prawidłowo...\nWciąż brakuje kilku punktów danych. Będą one realizowane w przyszłości.",
         "uk": "Повний перезапис функцій API Senec. Завдяки @timfxtones для позначення мене в правому напрямку\nБільше не використовуючи веб-інтерфейс на mein-senec. де - це не працює належним чином на довгий пробіг ...\nНаскільки не вистачає даних. Вони будуть реалізовані в майбутньому.",
         "zh-cn": "Senec API功能的完整重写. 感谢@timfxtones 将我指向正确的方向\n不再使用在mein-senec上的网络界面. 从长远来看,它没有正常工作...\n目前仍然缺少一些数据点。 今后将予以执行."
-      },
-      "2.0.0": {
-        "en": "Update to use API via mein-senec.de (Thanks to maett81)",
-        "de": "Aktualisierung der API über mein-senec.de (Danke an maett81)",
-        "ru": "Использование API через mein-senec.de (перенаправлено с «Maett81»)",
-        "pt": "Atualizar para usar API via mein-senec.de (Graças a Maett81)",
-        "nl": "Update om API te gebruiken via mein-senec.de (Dankzij maett81)",
-        "fr": "Mise à jour pour utiliser l'API via mein-senec.de (Merci à maett81)",
-        "it": "Aggiornamento all'utilizzo API tramite mein-senec.de (Grazie a maett81)",
-        "es": "Actualización para utilizar API a través de mein-senec.de (Gracias a maett81)",
-        "pl": "Aktualizacja do użycia API poprzez mein- senec.de (Dzięki maett81)",
-        "uk": "Update to use API через mein-senec.de (Шанки до maett81)",
-        "zh-cn": "通过 mein-senec.de 使用 API 的更新 (谢谢Maett81)"
       }
     },
     "docs": {
