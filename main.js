@@ -1107,7 +1107,7 @@ class Senec extends utils.Adapter {
 				newCommon.write = write;
 			}
 			if (Object.keys(newCommon).length > 0) {
-				await this.extendObjectAsync(name, { common: newCommon });
+				await this.extendObject(name, { common: newCommon });
 			}
 		} else {
 			knownObjects[name] = {
@@ -1184,15 +1184,7 @@ class Senec extends utils.Adapter {
 				if (typeof value === "object" && value !== null) {
 					this.evalPoll(value, fullKey);
 				} else {
-					if (state_attr[fullKey] === undefined) {
-						this.log.debug(
-							`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`,
-						);
-					}
-					this.log.debug(`API Array Value: ${fullKey} = ${value}`);
-					const desc = state_attr[fullKey] !== undefined ? state_attr[fullKey].name : fullKey;
-					const unit = state_attr[fullKey] !== undefined ? state_attr[fullKey].unit : "";
-					this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
+					this.evalPollHelper(pfx, value, fullKey);
 				}
 			});
 			return;
@@ -1203,15 +1195,29 @@ class Senec extends utils.Adapter {
 			if (typeof value === "object" && value !== null) {
 				this.evalPoll(value, pfx, fullKey);
 			} else {
-				if (state_attr[fullKey] === undefined) {
-					this.log.debug(`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`);
-				}
-				this.log.silly(`API Value: ${fullKey} = ${value}`);
-				const desc = state_attr[fullKey] !== undefined ? state_attr[fullKey].name : fullKey;
-				const unit = state_attr[fullKey] !== undefined ? state_attr[fullKey].unit : "";
-				this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
+				this.evalPollHelper(pfx, value, fullKey);
 			}
 		}
+	}
+
+	async evalPollHelper(pfx, value, fullKey) {
+		if (state_attr[fullKey] === undefined && state_attr[fullKey.replace(/\.\d+$/, "")] === undefined) {
+			this.log.debug(`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`);
+		}
+		this.log.silly(`API Array Value: ${fullKey} = ${value}`);
+		const desc =
+			state_attr[fullKey] !== undefined
+				? state_attr[fullKey].name
+				: state_attr[fullKey.replace(/\.\d+$/, "")]
+					? state_attr[fullKey.replace(/\.\d+$/, "")].name
+					: fullKey;
+		const unit =
+			state_attr[fullKey] !== undefined
+				? state_attr[fullKey].unit
+				: state_attr[fullKey.replace(/\.\d+$/, "")]
+					? state_attr[fullKey.replace(/\.\d+$/, "")].unit
+					: fullKey;
+		this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
 	}
 }
 

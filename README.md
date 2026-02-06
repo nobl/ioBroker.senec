@@ -303,6 +303,10 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- Migrated to i18n
+- Update handling of "new" states that are just an "extra" to an existing state like state and state.1 or state.42
+
 ### 2.2.1 (2026-02-06)
 - Fixed: History rebuild will only run once now when requested (remember: To force rebuild you need to configure this in settings)
 
