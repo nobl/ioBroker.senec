@@ -8,6 +8,7 @@ const axiosApi = axios.create({
 });
 axios.defaults.headers.post["Content-Type"] = "application/json";
 const https = require("https");
+// rejectUnauthorized needs to be false due to the local machine's certificate cannot be checked properly
 const agent = new https.Agent({
 	requestCert: true,
 	rejectUnauthorized: false,
