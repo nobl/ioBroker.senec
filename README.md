@@ -303,6 +303,10 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+- Dependency update
+
 ### 2.2.2 (2026-02-06)
 - Migrated to i18n
 - Update handling of "new" states that are just an "extra" to an existing state like state and state.1 or state.42
