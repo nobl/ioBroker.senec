@@ -598,8 +598,10 @@ class Senec extends utils.Adapter {
 				await this.doMeasurementsMonth(anlagenId, token, currentMonth, "current_month.daily");
 				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month");
 				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month.daily");
-				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear()); // Current year
-				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear() - 1); // check if we need last year too
+				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear(), false); // Current year
+				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear(), true); // Current year
+				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear() - 1, false); // check if we need last year too
+				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear() - 1, true); // check if we need last year too
 			}
 			retry = 0; // reset retry counter on success
 
@@ -677,7 +679,8 @@ class Senec extends utils.Adapter {
 		rebuildRunning = true;
 		for (let year = new Date().getFullYear(); year >= 2009; year--) {
 			// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
-			await this.doMeasurementsYear(anlagenId, token, year);
+			await this.doMeasurementsYear(anlagenId, token, year, false);
+			await this.doMeasurementsYear(anlagenId, token, year, true);
 		}
 		this.log.info(`Rebuild ended. Adapter restarting ...`);
 		rebuildRunning = false;
@@ -692,11 +695,12 @@ class Senec extends utils.Adapter {
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {any} token AccessToken
 	 * @param {number} year Year to read measurements for
+	 * @param {boolean} months Read daily measurements
 	 */
-	async doMeasurementsYear(anlagenId, token, year) {
-		this.log.debug(`🔄 Reading measurements for year: ${year}`);
+	async doMeasurementsYear(anlagenId, token, year, months) {
+		this.log.debug(`🔄 Reading measurements for year: ${year}${months ? ".monthly" : ""}`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Yearly.`;
-		const lastUpdate = await this.getStateAsync(`${pfx + year}.${LAST_UPDATED}`);
+		const lastUpdate = await this.getStateAsync(`${pfx + year}.${months ? "monthly." : ""}${LAST_UPDATED}`);
 		let lastDate = null;
 		if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 			lastDate = new Date(String(lastUpdate.val));
@@ -710,7 +714,9 @@ class Senec extends utils.Adapter {
 				!isNaN(lastDate.getTime()) &&
 				lastDate.getUTCFullYear() === new Date().getUTCFullYear()
 			) {
-				this.log.debug(`Measurements for ${year} already updated this year. Skipping.`);
+				this.log.debug(
+					`Measurements for ${year}${months ? ".monthly" : ""} already updated this year. Skipping.`,
+				);
 				return;
 			}
 		} else {
@@ -723,7 +729,7 @@ class Senec extends utils.Adapter {
 				lastDate.getUTCMonth() === new Date().getUTCMonth() &&
 				lastDate.getUTCDate() === new Date().getUTCDate()
 			) {
-				this.log.debug(`Measurements for ${year} already updated today. Skipping.`);
+				this.log.debug(`Measurements for ${year}${months ? ".monthly" : ""} already updated today. Skipping.`);
 				return;
 			}
 		}
@@ -731,16 +737,20 @@ class Senec extends utils.Adapter {
 		const endDate = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0) - 1);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
-		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=YEAR&from=${start}&to=${end}`;
+		let resolution = "YEAR";
+		if (months) {
+			resolution = "MONTH";
+		}
+		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 		if (!measurements.data.timeSeries || measurements.data.timeSeries.length === 0) {
-			this.log.debug(`No measurements found for year ${year}. Skipping.`);
+			this.log.debug(`No measurements found for ${year}. Skipping.`);
 			return;
 		}
-		await this.doSumMeasurements(measurements.data, anlagenId, pfx, "year");
+		await this.doSumMeasurements(measurements.data, anlagenId, pfx, `year${months ? ".monthly" : ""}`);
 		await this.updateAllTimeHistory(anlagenId);
 	}
 
@@ -856,6 +866,11 @@ class Senec extends utils.Adapter {
 						sums[key] = Array(32).fill(0);
 					}
 					sums[key][new Date(entry.date).getDate()] += value;
+				} else if (period === "year.monthly") {
+					if (!sums[key]) {
+						sums[key] = Array(13).fill(0);
+					}
+					sums[key][new Date(entry.date).getUTCMonth() + 1] += value;
 				} else {
 					sums[key] += value;
 				}
@@ -869,6 +884,9 @@ class Senec extends utils.Adapter {
 			case "year":
 				groupBy = year;
 				await this.insertIntoAllTimeValueStore(sums, anlagenId, year);
+				break;
+			case "year.monthly":
+				groupBy = `${year}.monthly`;
 				break;
 			default:
 				groupBy = period;
@@ -1230,7 +1248,7 @@ class Senec extends utils.Adapter {
 				? state_attr[fullKey].unit
 				: state_attr[fullKey.replace(/\.\d+$/, "")]
 					? state_attr[fullKey.replace(/\.\d+$/, "")].unit
-					: fullKey;
+					: "";
 		this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
 	}
 }

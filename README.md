@@ -307,6 +307,8 @@ This channel contains values polled from SENEC App-API.
 ### **WORK IN PROGRESS**
 - Measurements for today and yesterday are also available by the hour
 - Measurements for month and previous month are also available by day
+- Measurements for year are also available by month
+- Unit calculation fixed if we don't know the unit yet per state_attr.js
 - Added definitions for cascadeDevicesCount and mode
 - Dependency update
 
