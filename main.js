@@ -591,7 +591,9 @@ class Senec extends utils.Adapter {
 				const currentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 				const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
 				await this.doMeasurementsDay(anlagenId, token, today, "today");
+				await this.doMeasurementsDayHourly(anlagenId, token, today, "today.hourly");
 				await this.doMeasurementsDay(anlagenId, token, yesterday, "yesterday");
+				await this.doMeasurementsDayHourly(anlagenId, token, yesterday, "yesterday.hourly");
 				await this.doMeasurementsMonth(anlagenId, token, currentMonth, "current_month");
 				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month");
 				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear()); // Current year
@@ -820,6 +822,46 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Poll measurements by day
+	 *
+	 * @param {string | number} anlagenId Anlagen ID to read measurements for
+	 * @param {any} token AccessToken
+	 * @param {Date} date Date to read measurements for
+	 * @param {string} period period to sum for
+	 */
+	async doMeasurementsDayHourly(anlagenId, token, date, period) {
+		this.log.debug(`🔄 Reading measurements for day (hourly).`);
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Daily.`;
+		if (period === "yesterday.hourly") {
+			// check if already updated today
+			const lastUpdate = await this.getStateAsync(`${pfx + period}.${LAST_UPDATED}`);
+			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
+				const lastDate = new Date(String(lastUpdate.val));
+				if (
+					!rebuildRunning &&
+					!isNaN(lastDate.getTime()) &&
+					lastDate.getFullYear() === new Date().getFullYear() &&
+					lastDate.getMonth() === new Date().getMonth() &&
+					lastDate.getDate() === new Date().getDate()
+				) {
+					this.log.debug(`Measurements for ${period} already updated today. Skipping.`);
+					return;
+				}
+			}
+		}
+		const startDate = date;
+		const endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+		const start = encodeURIComponent(startDate.toISOString());
+		const end = encodeURIComponent(endDate.toISOString());
+		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=HOUR&from=${start}&to=${end}`;
+		this.log.debug(`🔄 Polling measurements for ${url}`);
+		const measurements = await axiosApi.get(url, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
+	}
+
+	/**
 	 * @param {any} data measurement data
 	 * @param {string | number} anlagenId Anlagen ID
 	 * @param {string} pfx prefix for state
@@ -834,7 +876,14 @@ class Senec extends utils.Adapter {
 		data.timeSeries.forEach((entry) => {
 			entry.measurements.values.forEach((value, index) => {
 				const key = data.measurements[index];
-				sums[key] += value;
+				if (period === "today.hourly" || period === "yesterday.hourly") {
+					if (!sums[key]) {
+						sums[key] = Array(24).fill(0);
+					}
+					sums[key][new Date(entry.date).getHours()] += value;
+				} else {
+					sums[key] += value;
+				}
 			});
 		});
 		sums[LAST_UPDATED] = new Date().toISOString();
@@ -846,20 +895,8 @@ class Senec extends utils.Adapter {
 				groupBy = year;
 				await this.insertIntoAllTimeValueStore(sums, anlagenId, year);
 				break;
-			case "current_month":
-				groupBy = "current_month";
-				break;
-			case "previous_month":
-				groupBy = "previous_month";
-				break;
-			case "today":
-				groupBy = "today";
-				break;
-			case "yesterday":
-				groupBy = "yesterday";
-				break;
 			default:
-				throw new Error(`Unknown period for doSumMeasurements: ${period}`);
+				groupBy = period;
 		}
 		this.evalPoll(sums, `${pfx + groupBy}.`);
 	}
