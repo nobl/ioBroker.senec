@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.2.2",
+    "version": "2.3.0",
     "news": {
+      "2.3.0": {
+        "en": "Measurements for today and yesterday are also available by the hour\nMeasurements for month and previous month are also available by day\nMeasurements for year are also available by month\nUnit calculation fixed if we don't know the unit yet per state_attr.js\nAdded definitions for cascadeDevicesCount and mode\nDependency update",
+        "de": "Messungen für heute und gestern sind auch in der Stunde verfügbar\nMessungen für Monat und Vormonat sind auch tagsüber verfügbar\nMessungen für das Jahr sind auch monatlich verfügbar\nEinheitsberechnung behoben, wenn wir die Einheit noch nicht pro state_attr.js kennen\nHinzugefügt Definitionen für KaskadeDevicesCount und Modus\nÄnderung der Abhängigkeit",
+        "ru": "Измерения на сегодня и вчера также доступны по часам\nИзмерения за месяц и предыдущий месяц также доступны по дням\nИзмерения за год также доступны по месяцам\nРасчет единицы фиксируется, если мы еще не знаем единицу для состояния_attr.js\nДобавлены определения для каскадаРасчет и режим\nОбновление зависимостей",
+        "pt": "As medições de hoje e de ontem também estão disponíveis por hora\nMedidas para mês e mês anterior também estão disponíveis por dia\nAs medições para o ano também estão disponíveis por mês\nCálculo unitário corrigido se ainda não soubermos a unidade por state_attr.js\nDefinições adicionadas para dispositivos em cascataCount and mode\nActualização da dependência",
+        "nl": "Metingen voor vandaag en gisteren zijn ook beschikbaar per uur\nMetingen voor maand en vorige maand zijn ook beschikbaar per dag\nMetingen voor jaar zijn ook beschikbaar per maand\nEenheidsberekening vastgesteld als we de eenheid nog niet kennen per state_attr.js\nToegevoegde definities voor cascadeDevicesTelling en modus\nAfhankelijkheidsupdate",
+        "fr": "Les mesures pour aujourd'hui et hier sont également disponibles à l'heure\nLes mesures pour le mois et le mois précédent sont également disponibles par jour\nLes mesures pour l'année sont également disponibles par mois\nCalcul unitaire corrigé si nous ne connaissons pas encore l'unité par état_attr.js\nAjout de définitions pour cascadeDevicesCount et mode\nMise à jour de la dépendance",
+        "it": "Le misure di oggi e di ieri sono disponibili anche entro l'ora\nLe misure per il mese e il mese precedente sono disponibili anche di giorno\nLe misure per l'anno sono disponibili anche per mese\nCalcolo dell'unità fissato se non conosciamo l'unità ancora per state_attr.js\nDefinizioni aggiuntive per cascadeDevicesCount e modalità\nAggiornamento della dipendenza",
+        "es": "Las medidas para hoy y ayer también están disponibles por hora\nLas mediciones para mes y mes anterior también están disponibles por día\nLas mediciones del año también están disponibles por mes\nCálculo de unidad fijo si no conocemos la unidad todavía por state_attr.js\nDefiniciones agregadas para cascadaDispositivosCounto y modo\nActualización de la dependencia",
+        "pl": "Pomiary na dziś i wczoraj są również dostępne w ciągu godziny\nPomiary za miesiąc i miesiąc poprzedni są również dostępne w ciągu dnia\nPomiary na rok są również dostępne w miesiącu\nObliczanie jednostki ustalone, jeśli nie znamy jeszcze jednostki na stan _ attr.js\nDodano definicje dla cascadeDevicesCount and mode\nAktualizacja zależności",
+        "uk": "Вимірювання на сьогодні і сьогодні також доступні за годину\nВимірювання протягом місяця та попереднього місяця також доступні за днем\nВимірювання за рік також доступні за місяць\nОбчислення агрегату зафіксовано, якщо ми не знаємо блок, але за стан_attr.js\nДодано визначення для каскаднихDevicesCount та режим\nОновлення залежності",
+        "zh-cn": "今天和昨天的测量也按小时提供\n每月和上月的计量也按日提供\n还按月提供年度计量数据\n如果我们还不知道每个状态的单位, 单位计算会固定\n级联DevicesCount和模式的添加定义\n依赖性更新"
+      },
       "2.2.2": {
         "en": "Migrated to i18n\nUpdate handling of \"new\" states that are just an \"extra\" to an existing state like state and state.1 or state.42\nDependency Updates",
         "de": "Migration auf i18n\nUpdate-Handling von \"neuen\" Zuständen, die nur ein \"Extra\" zu einem bestehenden Zustand wie Staat und Staat sind. 1 oder Zustand. ANHANG\nDependance-Updates",
@@ -80,19 +93,6 @@
         "pl": "stały typ danych dla WIZARD.SG _ READY _ CURR _ MODE\nmniej logowania (przesunął niektóre informacje do debugowania ponownie)",
         "uk": "фіксований тип даних для WIZARD.SG_READY_CURR_MODE\nменше зауважень (здійснили додаткову інформацію про відмову)",
         "zh-cn": "wIZARD.SG_READY_CURR_MODE 的固定数据类型\n减少记录( 移动一些信息以再次调试)"
-      },
-      "2.1.0": {
-        "en": "Complete rewrite of the Senec API functionality. Thanks to @timfxtones for pointing me in the right direction\nNo longer using the web-interface at mein-senec.de - it didn't work properly on the long run ...\nStill missing some datapoints so far. They will be implemented in the future.",
-        "de": "Kompletter Rewrite der Senec API-Funktionalität. Danke an @timfxtones, fuer den Schubs in die richtige Richtung\nVersuchen nun nicht mehr, das web interface unter mein-senec.de zu nutzen - es hat leider nicht zuverlässig und langfristig funktioniert...\nEinige Datenpunkte fehlen noch. Sie kommen noch.",
-        "ru": "Полное переписывание функций Senec API. Спасибо @timfxtones за то, что указали мне правильное направление\nБольше не пользуйтесь веб-интерфейсом в Mein-senec. Это не работает должным образом в долгосрочной перспективе...\nДо сих пор не хватает некоторых данных. Они будут реализованы в будущем.",
-        "pt": "Reescrever completamente a funcionalidade da API Senec. Graças a @timfxtones por me apontar na direção certa\nNão usar mais a interface web no mein-senec. de - não funcionou corretamente a longo prazo ...\nAinda falta alguns pontos de dados até agora. Serão implementadas no futuro.",
-        "nl": "Volledige herschrijven van de Senec API functionaliteit. Dankzij @timfxtones voor het wijzen van mij in de juiste richting\nGeen gebruik meer van het web-interface bij mein-senec. de - het werkte niet goed op de lange termijn ...\nIk mis nog wat datapunten. Zij zullen in de toekomst worden uitgevoerd.",
-        "fr": "Réécriture complète de l'API Senec. Merci à @timfxtones de m'avoir pointé dans la bonne direction\nNe plus utiliser l'interface web à mein-senec. De - il n'a pas fonctionné correctement sur le long terme ...\nIl manque encore des points de données. Ils seront mis en œuvre à l'avenir.",
-        "it": "Riscrittura completa della funzionalità di Senec API. Grazie a @timfxtones per puntarmi nella giusta direzione\nNon usare più l'interfaccia web a mein-senec. de - non ha funzionato correttamente a lungo termine...\nManca ancora qualche datapoint. Saranno implementati in futuro.",
-        "es": "Reescribir completamente la funcionalidad de Senec API. Gracias a @timfxtones por señalarme en la dirección correcta\nYa no use la interfaz web en mein-senec. No funcionó correctamente a largo plazo...\nTodavía faltan algunos puntos de datos hasta ahora. Se aplicarán en el futuro.",
-        "pl": "Kompletna zmiana funkcjonalności API Senec. Podziękowania dla @ timfxtones za skierowanie mnie we właściwym kierunku\nKoniec z używaniem interfejsu web- w mein- senec. - Na dłuższą metę nie działało prawidłowo...\nWciąż brakuje kilku punktów danych. Będą one realizowane w przyszłości.",
-        "uk": "Повний перезапис функцій API Senec. Завдяки @timfxtones для позначення мене в правому напрямку\nБільше не використовуючи веб-інтерфейс на mein-senec. де - це не працює належним чином на довгий пробіг ...\nНаскільки не вистачає даних. Вони будуть реалізовані в майбутньому.",
-        "zh-cn": "Senec API功能的完整重写. 感谢@timfxtones 将我指向正确的方向\n不再使用在mein-senec上的网络界面. 从长远来看,它没有正常工作...\n目前仍然缺少一些数据点。 今后将予以执行."
       }
     },
     "docs": {

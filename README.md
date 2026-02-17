@@ -303,8 +303,7 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 2.3.0 (2026-02-17)
 - Measurements for today and yesterday are also available by the hour
 - Measurements for month and previous month are also available by day
 - Measurements for year are also available by month
