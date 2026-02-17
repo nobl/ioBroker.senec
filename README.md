@@ -306,6 +306,7 @@ This channel contains values polled from SENEC App-API.
 
 ### **WORK IN PROGRESS**
 - Measurements for today and yesterday are also available by the hour
+- Measurements for month and previous month are also available by day
 - Dependency update
 
 ### 2.2.2 (2026-02-06)

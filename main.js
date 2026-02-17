@@ -595,7 +595,9 @@ class Senec extends utils.Adapter {
 				await this.doMeasurementsDay(anlagenId, token, yesterday, "yesterday");
 				await this.doMeasurementsDay(anlagenId, token, yesterday, "yesterday.hourly");
 				await this.doMeasurementsMonth(anlagenId, token, currentMonth, "current_month");
+				await this.doMeasurementsMonth(anlagenId, token, currentMonth, "current_month.daily");
 				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month");
+				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month.daily");
 				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear()); // Current year
 				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear() - 1); // check if we need last year too
 			}
@@ -708,7 +710,7 @@ class Senec extends utils.Adapter {
 				!isNaN(lastDate.getTime()) &&
 				lastDate.getUTCFullYear() === new Date().getUTCFullYear()
 			) {
-				this.log.debug(`Measurements for year ${year} already updated this year. Skipping.`);
+				this.log.debug(`Measurements for ${year} already updated this year. Skipping.`);
 				return;
 			}
 		} else {
@@ -721,7 +723,7 @@ class Senec extends utils.Adapter {
 				lastDate.getUTCMonth() === new Date().getUTCMonth() &&
 				lastDate.getUTCDate() === new Date().getUTCDate()
 			) {
-				this.log.debug(`Measurements for current year already updated today. Skipping.`);
+				this.log.debug(`Measurements for ${year} already updated today. Skipping.`);
 				return;
 			}
 		}
@@ -751,9 +753,9 @@ class Senec extends utils.Adapter {
 	 * @param {string} period period to sum for
 	 */
 	async doMeasurementsMonth(anlagenId, token, date, period) {
-		this.log.debug(`🔄 Reading measurements for month.`);
+		this.log.debug(`🔄 Reading measurements for ${period}.`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Monthly.`;
-		if (period === "previous_month") {
+		if (period === "previous_month" || period === "previous_month.daily") {
 			// check if already updated this month
 			const lastUpdate = await this.getStateAsync(`${pfx + period}.${LAST_UPDATED}`);
 			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
@@ -764,7 +766,7 @@ class Senec extends utils.Adapter {
 					lastDate.getUTCFullYear() === new Date().getUTCFullYear() &&
 					lastDate.getUTCMonth() === new Date().getUTCMonth()
 				) {
-					this.log.debug(`Measurements for previous month already updated this month. Skipping.`);
+					this.log.debug(`Measurements for ${period} already updated this month. Skipping.`);
 					return;
 				}
 			}
@@ -773,7 +775,11 @@ class Senec extends utils.Adapter {
 		const endDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) - 1);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
-		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
+		let resolution = "MONTH";
+		if (period === "current_month.daily" || period === "previous_month.daily") {
+			resolution = "DAY";
+		}
+		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
@@ -790,7 +796,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} period period to sum for
 	 */
 	async doMeasurementsDay(anlagenId, token, date, period) {
-		this.log.debug(`🔄 Reading measurements for ${period}.`);
+		this.log.debug(`🔄 Reading measurements for ${period}`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Daily.`;
 		if (period === "yesterday" || period === "yesterday.hourly") {
 			// check if already updated today
@@ -845,6 +851,11 @@ class Senec extends utils.Adapter {
 						sums[key] = Array(24).fill(0);
 					}
 					sums[key][new Date(entry.date).getHours()] += value;
+				} else if (period === "current_month.daily" || period === "previous_month.daily") {
+					if (!sums[key]) {
+						sums[key] = Array(32).fill(0);
+					}
+					sums[key][new Date(entry.date).getDate()] += value;
 				} else {
 					sums[key] += value;
 				}
