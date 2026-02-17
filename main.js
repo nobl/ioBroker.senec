@@ -116,7 +116,7 @@ class Senec extends utils.Adapter {
 		try {
 			await this.checkConfig();
 			if (this.config.lala_use) {
-				this.log.info("Usage of lala.cgi configured.");
+				this.log.info("Usage of lala.cgi (local) configured.");
 				await this.initPollSettings();
 				await this.checkConnection();
 				if (lalaConnected) {
@@ -124,7 +124,7 @@ class Senec extends utils.Adapter {
 					await this.pollSenecLocal(false, 0); // lowPrio
 				}
 			} else {
-				this.log.warn("Usage of lala.cgi not configured. Only polling SENEC App API if configured.");
+				this.log.warn("Usage of lala.cgi (local) not configured. Only polling SENEC App API if configured.");
 			}
 			if (this.config.api_use) {
 				this.log.info("Usage of SENEC App API configured.");
@@ -143,7 +143,7 @@ class Senec extends utils.Adapter {
 				this.log.error("Neither local connection nor API connection configured. Please check config!");
 			}
 			if (this.config.control_active) {
-				this.log.info("Active appliance control activated!");
+				this.log.info("Active appliance control (local) activated!");
 				await this.subscribeStatesAsync("control.*"); // subscribe on all state changes in control.
 				await this.subscribeStatesAsync("ENERGY.STAT_STATE");
 			}
@@ -387,7 +387,7 @@ class Senec extends utils.Adapter {
 			.trim()
 			.split(",")
 			.forEach((item) => objectsSet.add(item));
-		this.log.info(`(addUserDps) Datapoints config changed for ${value}: ${dpToAdd.toUpperCase().trim()}`);
+		this.log.debug(`(addUserDps) Datapoints config changed for ${value}: ${dpToAdd.toUpperCase().trim()}`);
 	}
 
 	/**
@@ -454,9 +454,9 @@ class Senec extends utils.Adapter {
 		const url = `${connectVia + this.config.senecip}/lala.cgi`;
 		const form = '{"ENERGY":{"STAT_STATE":""}}';
 		try {
-			this.log.info(`connecting to Senec: ${url}`);
+			this.log.info(`connecting to Senec (local): ${url}`);
 			await this.doGet(url, form, this, this.config.pollingTimeout, true);
-			this.log.info(`connected to Senec: ${url}`);
+			this.log.info(`connected to Senec (local): ${url}`);
 			lalaConnected = true;
 		} catch (error) {
 			throw new Error(
@@ -468,7 +468,7 @@ class Senec extends utils.Adapter {
 	}
 
 	async senecLogin() {
-		this.log.info("🔄 Start Senec Login Flow...");
+		this.log.info("🔄 Start Senec API Login Flow...");
 		try {
 			const codeVerifier = generateCodeVerifier();
 			const codeChallenge = generateCodeChallenge(codeVerifier);
@@ -531,7 +531,7 @@ class Senec extends utils.Adapter {
 			);
 
 			const accessToken = tokenRes.data.access_token;
-			this.log.info("✅ Login erfolgreich.");
+			this.log.info("✅ API Login erfolgreich.");
 			this.doState(ID_TOKEN_STATE, accessToken, "Access Token", "", false);
 			return accessToken;
 		} catch (e) {
@@ -568,7 +568,7 @@ class Senec extends utils.Adapter {
 			}
 
 			for (const anlagenId of apiKnownSystems) {
-				this.log.info(`🔄 Polling data for system ${anlagenId}...`);
+				this.log.info(`🔄 Polling API data for system ${anlagenId}...`);
 				// get Dashboard data
 				const dashRes = await axiosApi.get(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`, {
 					headers: { Authorization: `Bearer ${token}` },
@@ -953,7 +953,7 @@ class Senec extends utils.Adapter {
 		const url = `${connectVia + this.config.senecip}/lala.cgi`;
 		let interval = this.config.interval * 1000;
 		if (!isHighPrio) {
-			this.log.info("LowPrio polling ...");
+			this.log.info("LowPrio polling (local) ...");
 			interval = this.config.intervalLow * 1000 * 60;
 		}
 
@@ -967,9 +967,9 @@ class Senec extends utils.Adapter {
 			);
 			if (body.includes('\\"')) {
 				// in rare cases senec reports back extra escape sequences on some machines ...
-				this.log.info(`(Poll) Double escapes detected!  Body inc: ${body}`);
+				this.log.debug(`(Poll) Double escapes detected!  Body inc: ${body}`);
 				body = body.replace(/\\"/g, '"');
-				this.log.info(`(Poll) Double escapes autofixed! Body out: ${body}`);
+				this.log.debug(`(Poll) Double escapes autofixed! Body out: ${body}`);
 			}
 			const obj = JSON.parse(body, reviverNumParse);
 			this.log.debug(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
