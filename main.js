@@ -591,9 +591,9 @@ class Senec extends utils.Adapter {
 				const currentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 				const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
 				await this.doMeasurementsDay(anlagenId, token, today, "today");
-				await this.doMeasurementsDayHourly(anlagenId, token, today, "today.hourly");
+				await this.doMeasurementsDay(anlagenId, token, today, "today.hourly");
 				await this.doMeasurementsDay(anlagenId, token, yesterday, "yesterday");
-				await this.doMeasurementsDayHourly(anlagenId, token, yesterday, "yesterday.hourly");
+				await this.doMeasurementsDay(anlagenId, token, yesterday, "yesterday.hourly");
 				await this.doMeasurementsMonth(anlagenId, token, currentMonth, "current_month");
 				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month");
 				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear()); // Current year
@@ -790,49 +790,9 @@ class Senec extends utils.Adapter {
 	 * @param {string} period period to sum for
 	 */
 	async doMeasurementsDay(anlagenId, token, date, period) {
-		this.log.debug(`🔄 Reading measurements for day.`);
+		this.log.debug(`🔄 Reading measurements for ${period}.`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Daily.`;
-		if (period === "yesterday") {
-			// check if already updated today
-			const lastUpdate = await this.getStateAsync(`${pfx + period}.${LAST_UPDATED}`);
-			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
-				const lastDate = new Date(String(lastUpdate.val));
-				if (
-					!rebuildRunning &&
-					!isNaN(lastDate.getTime()) &&
-					lastDate.getFullYear() === new Date().getFullYear() &&
-					lastDate.getMonth() === new Date().getMonth() &&
-					lastDate.getDate() === new Date().getDate()
-				) {
-					this.log.debug(`Measurements for yesterday already updated today. Skipping.`);
-					return;
-				}
-			}
-		}
-		const startDate = date;
-		const endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
-		const start = encodeURIComponent(startDate.toISOString());
-		const end = encodeURIComponent(endDate.toISOString());
-		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=MONTH&from=${start}&to=${end}`;
-		this.log.debug(`🔄 Polling measurements for ${url}`);
-		const measurements = await axiosApi.get(url, {
-			headers: { Authorization: `Bearer ${token}` },
-		});
-		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
-	}
-
-	/**
-	 * Poll measurements by day
-	 *
-	 * @param {string | number} anlagenId Anlagen ID to read measurements for
-	 * @param {any} token AccessToken
-	 * @param {Date} date Date to read measurements for
-	 * @param {string} period period to sum for
-	 */
-	async doMeasurementsDayHourly(anlagenId, token, date, period) {
-		this.log.debug(`🔄 Reading measurements for day (hourly).`);
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Daily.`;
-		if (period === "yesterday.hourly") {
+		if (period === "yesterday" || period === "yesterday.hourly") {
 			// check if already updated today
 			const lastUpdate = await this.getStateAsync(`${pfx + period}.${LAST_UPDATED}`);
 			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
@@ -853,7 +813,11 @@ class Senec extends utils.Adapter {
 		const endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
-		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=HOUR&from=${start}&to=${end}`;
+		let resolution = "DAY";
+		if (period === "today.hourly" || period === "yesterday.hourly") {
+			resolution = "HOUR";
+		}
+		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 		const measurements = await axiosApi.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
