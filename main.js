@@ -608,13 +608,14 @@ class Senec extends utils.Adapter {
 				if (isRetry) {
 					return;
 				}
-				this.log.info("⚠️ Token abgelaufen. Starte Re-Login...");
+				// this.log.info("⚠️ Token outdated. Re-Login...");
+				this.log.info("ℹ️ Token outdated. Re-Login...");
 				const newToken = await this.senecLogin();
 				if (newToken) {
 					setTimeout(() => this.pollSenecApi(true, retry), 2000);
 				}
 			} else {
-				this.log.error(`❌ Fehler beim Datenabruf: ${e.message}`);
+				this.log.error(`❌ Error while pulling: ${e.message}`);
 				if (retry == this.config.retries && this.config.retries < 999) {
 					this.log.error(
 						`Error reading from Senec AppAPI. Retried ${
@@ -650,7 +651,7 @@ class Senec extends utils.Adapter {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 		if (!sysRes.data || !sysRes.data[0]) {
-			throw new Error("Keine Anlagen gefunden.");
+			throw new Error("No Appliances found.");
 		}
 
 		// collect all systems
