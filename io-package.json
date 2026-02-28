@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "news": {
+      "2.4.0": {
+        "en": "Senec changed login procedure (again). Adapter now also works with 2-stage login where senec asks for username/email first and password second.\nDependency updates",
+        "de": "Senec hat das Anmeldeverfahren (wieder) geändert. Adapter funktioniert jetzt auch mit 2-stufiger Anmeldung, wo senec nach Benutzername/E-Mail zuerst und Passwort sekundär fragt.\nÄnderung der Abhängigkeit",
+        "ru": "Senec снова изменила процедуру входа в систему Адаптер теперь также работает с 2-ступенчатым входом, где senec запрашивает имя пользователя / электронную почту и пароль второй.\nОбновления зависимостей",
+        "pt": "Senec mudou o procedimento de login (de novo). Adaptador agora também funciona com login de 2 estágios onde senec pede nome de usuário/email primeiro e senha em segundo lugar.\nAtualizações de dependência",
+        "nl": "Senec veranderde inlogprocedure (weer). Adapter werkt nu ook met 2-traps login waar senec eerst om gebruikersnaam/email en tweede wachtwoord vraagt.\nAfhankelijkheidsupdates",
+        "fr": "Senec a changé la procédure de connexion (encore une fois). Adapter fonctionne également avec une connexion en 2 étapes où senec demande d'abord nom d'utilisateur/email et mot de passe.\nMises à jour sur la dépendance",
+        "it": "Senec ha cambiato procedura di login (di nuovo). L'adattatore ora funziona anche con login a 2 stadi dove senec chiede nome utente/email prima e seconda password.\nAggiornamenti di dipendenza",
+        "es": "Senec cambió el procedimiento de inicio de sesión (de nuevo). Adaptador ahora también trabaja con 2 etapas de inicio de sesión donde senec pide nombre de usuario/email primero y contraseña segundo.\nActualizaciones de dependencia",
+        "pl": "Senec zmienił procedurę logowania (ponownie). Adapter teraz pracuje również z logowaniem 2- etap gdzie Senec prosi o nazwę użytkownika / e-mail pierwszy i hasło drugi.\nAktualizacje zależności",
+        "uk": "Сенец змінив процедуру логіну (погано). Перехідник тепер також працює з 2-й логіном, де senec запитує на ім'я користувача / електронну пошту та пароль другого.\nОновлення залежності",
+        "zh-cn": "Senec 更改了登录程序( 又) 。 适配器现在也使用2级登录,现场先询问用户名/电子邮件,然后询问密码.\n依赖性更新"
+      },
       "2.3.0": {
         "en": "Measurements for today and yesterday are also available by the hour\nMeasurements for month and previous month are also available by day\nMeasurements for year are also available by month\nUnit calculation fixed if we don't know the unit yet per state_attr.js\nAdded definitions for cascadeDevicesCount and mode\nDependency update",
         "de": "Messungen für heute und gestern sind auch in der Stunde verfügbar\nMessungen für Monat und Vormonat sind auch tagsüber verfügbar\nMessungen für das Jahr sind auch monatlich verfügbar\nEinheitsberechnung behoben, wenn wir die Einheit noch nicht pro state_attr.js kennen\nHinzugefügt Definitionen für KaskadeDevicesCount und Modus\nÄnderung der Abhängigkeit",
@@ -80,19 +93,6 @@
         "pl": "więcej wiadomości dziennika tłumiącego\nsprzątanie",
         "uk": "більше спильних повідомлень журналу\nприбирання будинків",
         "zh-cn": "更多静音日志消息\n家务"
-      },
-      "2.1.1": {
-        "en": "fixed datatype for WIZARD.SG_READY_CURR_MODE\nless logging (moved some info to debug again)",
-        "de": "fester Datentyp für WIZARD.SG_READY_CURR_MODE\nweniger protokollierung (erweitert einige infos zum debug wieder)",
-        "ru": "фиксированный тип данных WIZARD.SG_READY_CURR_MODE\nменьше лесозаготовок (перенес некоторую информацию для отладки снова)",
-        "pt": "tipo de dados fixo para WIZARD.SG_READY_CURR_MODE\nmenos registro (movi algumas informações para depuração novamente)",
-        "nl": "vast datatype voor WIZARD.SG_READY_CURR_MODE\nminder loggen (moved some info to debug again)",
-        "fr": "type de données fixe pour WIZARD.SG_READY_CURR_MODE\nmoins d'enregistrement (a déplacé quelques informations pour déboguer à nouveau)",
-        "it": "dati fissi per WIZARD.SG_READY_CURR_MODE\nmeno registrazione (spostato alcune informazioni per debug di nuovo)",
-        "es": "tipo de datos fijo para WIZARD.SG_READY_CURR_MODE\nmenos logging (moved some info to debug again)",
-        "pl": "stały typ danych dla WIZARD.SG _ READY _ CURR _ MODE\nmniej logowania (przesunął niektóre informacje do debugowania ponownie)",
-        "uk": "фіксований тип даних для WIZARD.SG_READY_CURR_MODE\nменше зауважень (здійснили додаткову інформацію про відмову)",
-        "zh-cn": "wIZARD.SG_READY_CURR_MODE 的固定数据类型\n减少记录( 移动一些信息以再次调试)"
       }
     },
     "docs": {

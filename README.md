@@ -303,8 +303,7 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 2.4.0 (2026-02-28)
 - Senec changed login procedure (again). Adapter now also works with 2-stage login where senec asks for username/email first and password second.
 - Dependency updates
 
