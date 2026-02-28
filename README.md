@@ -303,6 +303,11 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+- Senec changed login (again). We can now also work with senec asking for username/email first and password second.
+- Dependency updates
+
 ### 2.3.0 (2026-02-17)
 - Measurements for today and yesterday are also available by the hour
 - Measurements for month and previous month are also available by day

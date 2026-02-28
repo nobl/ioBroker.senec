@@ -3,10 +3,12 @@
 const crypto = require("crypto");
 const { URL, URLSearchParams } = require("url");
 const axios = require("axios");
-const axiosApi = axios.create({
-	timeout: 10000,
-});
-axios.defaults.headers.post["Content-Type"] = "application/json";
+const tough = require("tough-cookie");
+const CookieJar = tough.CookieJar;
+const { wrapper } = require("axios-cookiejar-support");
+const jar = new CookieJar();
+const api_client = wrapper(axios.create({ withCredentials: true, timeout: 10000 }));
+api_client.defaults.headers.post["Content-Type"] = "application/json";
 const https = require("https");
 // rejectUnauthorized needs to be false due to the local machine's certificate cannot be checked properly
 const agent = new https.Agent({
@@ -24,13 +26,16 @@ const LAST_UPDATED = "last updated";
 // API Endpoints
 const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
 const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev";
+const SSO_BASE_URL = "https://sso.senec.com/realms/senec/protocol/openid-connect";
+const SSO_AUTH_URL = `${SSO_BASE_URL}/auth`;
+const SSO_TOKEN_URL = `${SSO_BASE_URL}/token`;
 
 const CONFIG = {
-	authUrl: "https://sso.senec.com/realms/senec/protocol/openid-connect/auth",
-	tokenUrl: "https://sso.senec.com/realms/senec/protocol/openid-connect/token",
+	authUrl: SSO_AUTH_URL,
+	tokenUrl: SSO_TOKEN_URL,
 	clientId: "endcustomer-app-frontend",
 	redirectUri: "senec-app-auth://keycloak.prod",
-	scope: "roles meinsenec openid",
+	scope: "roles profile meinsenec",
 };
 
 const apiKnownSystems = new Set();
@@ -473,7 +478,7 @@ class Senec extends utils.Adapter {
 			const codeVerifier = generateCodeVerifier();
 			const codeChallenge = generateCodeChallenge(codeVerifier);
 
-			const pageRes = await axiosApi.get(
+			let pageRes = await api_client.get(
 				`${CONFIG.authUrl}?${new URLSearchParams({
 					response_type: "code",
 					client_id: CONFIG.clientId,
@@ -482,26 +487,63 @@ class Senec extends utils.Adapter {
 					code_challenge: codeChallenge,
 					code_challenge_method: "S256",
 				}).toString()}`,
+				{ jar }, // attach cookie jar
 			);
 
-			const actionUrl = extractFormAction(pageRes.data);
+			let actionUrl = extractFormAction(pageRes.data);
 			if (!actionUrl) {
 				throw new Error("Login-Formular URL nicht gefunden.");
 			}
 
-			const formData = new URLSearchParams();
-			formData.append("username", this.config.api_mail);
-			formData.append("password", this.config.api_pwd);
-			formData.append("credentialId", "");
+			let loginRes;
+			if (hasUsernameAndPassword(pageRes.data)) {
+				// worked until 20260228
+				const formData = new URLSearchParams();
+				formData.append("username", this.config.api_mail);
+				formData.append("password", this.config.api_pwd);
+				formData.append("credentialId", "");
 
-			const loginRes = await axiosApi.post(actionUrl, formData, {
-				headers: {
-					"Content-Type": "application/x-www-form-urlencoded",
-					Cookie: formatCookies(pageRes.headers),
-				},
-				maxRedirects: 0,
-				validateStatus: (s) => s >= 200 && s < 400,
-			});
+				loginRes = await api_client.post(actionUrl, formData, {
+					headers: {
+						"Content-Type": "application/x-www-form-urlencoded",
+					},
+					maxRedirects: 0,
+					validateStatus: (s) => s >= 200 && s < 400,
+					jar,
+				});
+			} else {
+				if (!hasUsername(pageRes.data)) {
+					throw new Error("Expected: Login-Form with username. Got something else.");
+				}
+				let formData = new URLSearchParams();
+				formData.append("credentialId", "");
+				formData.append("username", this.config.api_mail);
+				loginRes = await api_client.post(actionUrl, formData, {
+					headers: {
+						"Content-Type": "application/x-www-form-urlencoded",
+					},
+					maxRedirects: 0,
+					validateStatus: (s) => s >= 200 && s < 400,
+					jar,
+				});
+
+				if (!hasPassword(loginRes.data)) {
+					throw new Error("Expected: Login-Form with password. Got something else.");
+				}
+				actionUrl = extractFormAction(loginRes.data);
+				formData = new URLSearchParams();
+				//formData.append("credentialId", "");
+				formData.append("username", this.config.api_mail);
+				formData.append("password", this.config.api_pwd);
+				loginRes = await api_client.post(actionUrl, formData, {
+					headers: {
+						"Content-Type": "application/x-www-form-urlencoded",
+					},
+					maxRedirects: 0,
+					validateStatus: (s) => s >= 200 && s < 400,
+					jar,
+				});
+			}
 
 			const redirectLocation = loginRes.headers["location"];
 			if (!redirectLocation) {
@@ -518,7 +560,7 @@ class Senec extends utils.Adapter {
 				throw new Error("Authorization code not found in redirect.");
 			}
 
-			const tokenRes = await axiosApi.post(
+			const tokenRes = await api_client.post(
 				CONFIG.tokenUrl,
 				new URLSearchParams({
 					grant_type: "authorization_code",
@@ -570,7 +612,7 @@ class Senec extends utils.Adapter {
 			for (const anlagenId of apiKnownSystems) {
 				this.log.info(`🔄 Polling API data for system ${anlagenId}...`);
 				// get Dashboard data
-				const dashRes = await axiosApi.get(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`, {
+				const dashRes = await api_client.get(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`, {
 					headers: { Authorization: `Bearer ${token}` },
 				});
 				this.log.debug(`DashRes${JSON.stringify(dashRes.data)}`);
@@ -653,7 +695,7 @@ class Senec extends utils.Adapter {
 	async pollSystems(token) {
 		this.log.debug("🔄 Reading available systems from API ...");
 		// get Systems
-		const sysRes = await axiosApi.get(`${HOST_SYSTEMS}/v1/systems`, {
+		const sysRes = await api_client.get(`${HOST_SYSTEMS}/v1/systems`, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 		if (!sysRes.data || !sysRes.data[0]) {
@@ -743,7 +785,7 @@ class Senec extends utils.Adapter {
 		}
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
-		const measurements = await axiosApi.get(url, {
+		const measurements = await api_client.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 		if (!measurements.data.timeSeries || measurements.data.timeSeries.length === 0) {
@@ -791,7 +833,7 @@ class Senec extends utils.Adapter {
 		}
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
-		const measurements = await axiosApi.get(url, {
+		const measurements = await api_client.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
@@ -835,7 +877,7 @@ class Senec extends utils.Adapter {
 		}
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
-		const measurements = await axiosApi.get(url, {
+		const measurements = await api_client.get(url, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
@@ -1415,15 +1457,21 @@ function base64UrlEncode(buffer) {
 	return buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-function formatCookies(headers) {
-	const setCookie = headers["set-cookie"];
-	if (!setCookie) {
-		return "";
-	}
-	return Array.isArray(setCookie) ? setCookie.map((c) => c.split(";")[0]).join("; ") : setCookie.split(";")[0];
-}
-
 function extractFormAction(html) {
 	const match = html.match(/<form[^>]*action="([^"]+)"[^>]*>/i);
 	return match && match[1] ? match[1].replace(/&amp;/g, "&") : null;
+}
+
+function hasUsername(html) {
+	return html.match(/<input\b(?![^>]*\bvalue\s*=)[^>]*\b(?:name|id)\s*=\s*["']?(?:username|user|email)["']?[^>]*>/i);
+}
+
+function hasPassword(html) {
+	return html.match(
+		/<input\b(?=[^>]*\btype\s*=\s*["']?password["']?)(?=[^>]*\b(?:name|id)\s*=\s*["']?password["']?)[^>]*>/i,
+	);
+}
+
+function hasUsernameAndPassword(html) {
+	return hasUsername(html) && hasPassword(html);
 }
