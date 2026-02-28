@@ -516,7 +516,7 @@ class Senec extends utils.Adapter {
 					throw new Error("Expected: Login-Form with username. Got something else.");
 				}
 				let formData = new URLSearchParams();
-				formData.append("credentialId", "");
+				// formData.append("credentialId", "");
 				formData.append("username", this.config.api_mail);
 				loginRes = await api_client.post(actionUrl, formData, {
 					headers: {
