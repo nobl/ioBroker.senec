@@ -305,7 +305,7 @@ This channel contains values polled from SENEC App-API.
 -->
 
 ### **WORK IN PROGRESS**
-- Senec changed login (again). We can now also work with senec asking for username/email first and password second.
+- Senec changed login procedure (again). Adapter now also works with 2-stage login where senec asks for username/email first and password second.
 - Dependency updates
 
 ### 2.3.0 (2026-02-17)
