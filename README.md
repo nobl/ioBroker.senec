@@ -303,7 +303,7 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.4.1 (2026-03-01)
 - Fixing issues with polling from senec api when token expires
 - Old entries in changelog moved to old.
 

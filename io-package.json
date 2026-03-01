@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.4.0",
+    "version": "2.4.1",
     "news": {
+      "2.4.1": {
+        "en": "Fixing issues with polling from senec api when token expires\nOld entries in changelog moved to old.",
+        "de": "Probleme mit der Abfrage von senec api behoben, wenn Token abläuft\nAlte Einträge in changelog zogen zu alt.",
+        "ru": "Устранение проблем с опросом от senec api, когда токен истекает\nСтарые записи в changelog перешли в старые.",
+        "pt": "Corrigindo problemas com pesquisas do senec api quando o token expira\nOs itens antigos no changelog foram movidos para o antigo.",
+        "nl": "Problemen oplossen met polling van senec api wanneer token verloopt\nOude items in changelog verplaatst naar oud.",
+        "fr": "Correction des problèmes avec le vote de senec api quand le jeton expire\nLes anciennes entrées dans le changelog sont passées à l'ancienne.",
+        "it": "Risolvere i problemi con l'inquinamento da senec api quando il token scade\nLe vecchie voci nel changelog si spostavano in vecchio.",
+        "es": "Arreglar problemas con la votación de senec api cuando vence el token\nLas viejas entradas en cambio se trasladaron a lo viejo.",
+        "pl": "Naprawianie problemów z sondażem z Senec api po wygaśnięciu token\nStare wpisy w Changelog przeniósł się do starego.",
+        "uk": "Виправлення питань з опитуванням від senec api при токени закінчується\nСтарі записи в блокноті переїхали на старі.",
+        "zh-cn": "在符号过期时用现场投票解决问题\n更改日志中的旧条目移到旧 ."
+      },
       "2.4.0": {
         "en": "Senec changed login procedure (again). Adapter now also works with 2-stage login where senec asks for username/email first and password second.\nDependency updates",
         "de": "Senec hat das Anmeldeverfahren (wieder) geändert. Adapter funktioniert jetzt auch mit 2-stufiger Anmeldung, wo senec nach Benutzername/E-Mail zuerst und Passwort sekundär fragt.\nÄnderung der Abhängigkeit",
@@ -80,19 +93,6 @@
         "pl": "- czytanie wszystkich poprzednich lat (aż do powstania SENEC) dodano ponownie (aby tak się stało: aktywować ponowne obliczanie pełnej historii za pomocą ustawień)\n- dodany dzisiaj / wczoraj ponownie\n- optymalizacje do obsługi pomiarów\n- mniej hałasu logowania",
         "uk": "– читати всі попередні роки (до вступу до SENEC) додано ще раз (для цього трапляються: активувати перерахунок повної історії через налаштування)\n- додано сьогодні / вчора знову\n- оптимізація обробки вимірювань\n- менше шуму входу",
         "zh-cn": "- 阅读所有往年(直到SENEC的建立)再次添加(为了实现这一点:通过设置激活全部历史的重新计算)\n- 今天/昨天又增加了一个\n- 优化测量处理\n- 别吵了"
-      },
-      "2.1.2": {
-        "en": "more silencing log messages\nhousekeeping",
-        "de": "mehr silent-log-nachrichten\nhauswirtschaft",
-        "ru": "больше бревенчатых сообщений\nдомашнее хозяйство",
-        "pt": "mais mensagens de log silenciando\nserviço de limpeza",
-        "nl": "meer logberichten tot zwijgen brengen\nhuishouden",
-        "fr": "plus silencieux messages de journal\nménage",
-        "it": "più silenziare messaggi di registro\npulizia",
-        "es": "más mensajes de registro\nlimpieza",
-        "pl": "więcej wiadomości dziennika tłumiącego\nsprzątanie",
-        "uk": "більше спильних повідомлень журналу\nприбирання будинків",
-        "zh-cn": "更多静音日志消息\n家务"
       }
     },
     "docs": {
