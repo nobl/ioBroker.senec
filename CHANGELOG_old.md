@@ -2,6 +2,39 @@
 
 The newest change log is [README.md](README.md)
 
+### 1.6.17
+* License update
+
+### 1.6.16
+* Moved Dashboard to ApiV2. This invalidates existing datapoints under /Dashboard/ and introduces "Dashboard/currently" and "Dashboard/today" due to changes in the API.
+
+### 1.6.15
+* Maintenance update (dependencies, ...)
+
+### 1.6.14
+* Bugfix (values were way off)
+
+### 1.6.13 (NoBl)
+* Removed Support for node 16
+* Added more translations
+* Code cleanup
+
+### 1.6.12 (NoBl)
+* Updated license
+
+### 1.6.11 (NoBl)
+* Moving from Senec App API 3.12.0 to 4.3.3 (thanks to oakdesign@github for providing the new API!)
+* This WILL invalidate all current API datapoints in the Statistik branch. Easiest solution to this: Delete the Statistik branch.
+* Remember to force a rebuild of historic data in adapter settings!
+
+### 1.6.10 (NoBl)
+* Bugfix for AllTimeHistory (should work again)
+
+### 1.6.9 (NoBl)
+* Added switch in config to enable active control of appliance (you will need activate this, if you want to control the appliance via the adapter)
+* Improved handling of forced loading (please report if we need more appliance-states covered by this)
+* Minor improvements and bugfixes
+
 ### 1.6.8 (NoBl)
 * Added switch control.ForceLoadBattery to start/stop charging battery. Use this to start/stop forced charging (like with dynamic power prices, ...).
 
