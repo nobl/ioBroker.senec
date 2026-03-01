@@ -6,7 +6,7 @@ const axios = require("axios");
 const tough = require("tough-cookie");
 const CookieJar = tough.CookieJar;
 const { wrapper } = require("axios-cookiejar-support");
-const jar = new CookieJar();
+let jar = new CookieJar();
 const api_client = wrapper(axios.create({ withCredentials: true, timeout: 10000 }));
 api_client.defaults.headers.post["Content-Type"] = "application/json";
 const https = require("https");
@@ -245,6 +245,7 @@ class Senec extends utils.Adapter {
 			if (this.timerAPI) {
 				clearTimeout(this.timerAPI);
 			}
+			this.doState(ID_TOKEN_STATE, null, "Access Token", "", false);
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
 			callback();
@@ -474,6 +475,7 @@ class Senec extends utils.Adapter {
 
 	async senecLogin() {
 		this.log.info("🔄 Start Senec API Login Flow...");
+		jar = new CookieJar();
 		try {
 			const codeVerifier = generateCodeVerifier();
 			const codeChallenge = generateCodeChallenge(codeVerifier);
@@ -574,7 +576,7 @@ class Senec extends utils.Adapter {
 
 			const accessToken = tokenRes.data.access_token;
 			this.log.info("✅ API Login erfolgreich.");
-			this.doState(ID_TOKEN_STATE, accessToken, "Access Token", "", false);
+			await this.doState(ID_TOKEN_STATE, accessToken, "Access Token", "", false);
 			return accessToken;
 		} catch (e) {
 			this.log.error(`❌ Login Error: ${e.message}`);
@@ -658,6 +660,7 @@ class Senec extends utils.Adapter {
 				}
 				// this.log.info("⚠️ Token outdated. Re-Login...");
 				this.log.info("ℹ️ Token outdated. Re-Login...");
+				jar = new CookieJar();
 				const newToken = await this.senecLogin();
 				if (newToken) {
 					setTimeout(() => this.pollSenecApi(true, retry), 2000);

@@ -21,6 +21,9 @@
         // "noUnusedLocals": true,
         // "noUnusedParameters": true,
         "useUnknownInCatchVariables": false,
+        "paths": {
+            "axios": ["./node_modules/axios/index.d.ts"]
+        }
     },
     "include": [
         "**/*.js",
