@@ -702,9 +702,10 @@ class Senec extends utils.Adapter {
 
 				this.tokenFailureCount++;
 
-				const baseDelay = 5000;
+				const baseDelay = 5000; // 5 seconds base
+				const maxDelay = 120000; // 1 minute cap
 				let retryDelay = computeBackoffDelay(baseDelay, this.tokenFailureCount);
-				retryDelay = Math.min(retryDelay, 60000);
+				retryDelay = Math.min(retryDelay, maxDelay);
 
 				if (this.timerTokenRefresh) {
 					clearTimeout(this.timerTokenRefresh);
