@@ -305,7 +305,10 @@ This channel contains values polled from SENEC App-API.
 -->
 
 ### **WORK IN PROGRESS**
+- API uses its own backoff settings when polling. You can only configure delay between polls. Instead we are using strategy used by: AWS SDK, Google Cloud SDK, Stripe API client, Kubernetes controllers or Distributed message brokers to prevent: retry storms, thundering herd, burst collapse after outage recovery, adapter lockups or permanent dead loops. This leads to: IF (SENEC API down for 2 hours, or Token refresh fails 20 times, or 429 rate limiting kicks in, or Internet drops temporarily) ? (Never dies, never overlaps, never floods API, always recovers)
+- API polling no longer honors retries-setting. It will just keep backing off exponentially if errors persist -> we keep trying until you stop the adapter.
 - 401 won't throw warning anymore
+- ReAuth shouldn't stop polling anymore
 
 ### 2.4.2 (2026-03-03)
 - AuthToken in _api is no longer used. You can safely delete it.

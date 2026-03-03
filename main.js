@@ -622,7 +622,7 @@ class Senec extends utils.Adapter {
 		return this.refreshPromise;
 	}
 
-	async pollSenecApi(retry = 0) {
+	async pollSenecApi() {
 		if (!this.config.api_use || !apiConnected) {
 			this.log.info("Usage of SENEC App API not configured or not connected.");
 			return;
@@ -632,22 +632,26 @@ class Senec extends utils.Adapter {
 			this.log.warn("API poll still running — skipping overlapping execution.");
 			return;
 		}
+
 		this.apiPollRunning = true;
-		const interval = this.config.api_interval * 60000;
+
+		const baseInterval = this.config.api_interval * 60000;
+		let nextDelay = baseInterval;
 
 		try {
 			this.log.info("🔄 Polling SENEC App API...");
+
 			// Ensure token exists
 			if (!this.currentToken) {
 				await this.refreshTokenSingleFlight();
 			}
 
-			// Read systems once from API and keep them in memory - we will need them for every poll and they don't change that often - this also ensures that we have the correct system IDs in case they change or we have multiple systems
+			// Read systems once from API and keep them in memory - we will need them for every poll and they don't change that often
 			if (apiKnownSystems.size === 0) {
 				this.log.debug("🔄 Reading available systems from API ...");
 				const sysRes = await this.apiGet(`${HOST_SYSTEMS}/v1/systems`);
-				if (!sysRes.data || !sysRes.data[0]) {
-					throw new Error("No Appliances found.");
+				if (!sysRes?.data?.length) {
+					throw new Error("No systems returned from API.");
 				}
 				for (const sys of sysRes.data) {
 					this.log.debug(`System found: ${JSON.stringify(sys)}`);
@@ -663,6 +667,7 @@ class Senec extends utils.Adapter {
 			const utcYear = now.getUTCFullYear();
 			const utcMonth = now.getUTCMonth();
 			const utcDate = now.getUTCDate();
+
 			const today = new Date(utcYear, utcMonth, utcDate, 0, 0, 0, 0);
 			const yesterday = new Date(utcYear, utcMonth, utcDate - 1, 0, 0, 0, 0);
 			const currentMonth = new Date(Date.UTC(utcYear, utcMonth, 1));
@@ -673,62 +678,72 @@ class Senec extends utils.Adapter {
 			const shouldRunHeavy = nowTs - this.lastHeavyUpdate > heavyInterval;
 
 			for (const anlagenId of apiKnownSystems) {
-				this.log.info(`🔄 Polling system ${anlagenId}...`);
+				try {
+					this.log.info(`🔄 Polling system ${anlagenId}...`);
 
-				// Dashboard (frequent)
-				const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
-				this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
-				this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
+					// Dashboard (frequent)
+					const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
+					this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
+					this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
 
-				// Frequent measurements
-				await Promise.all([
-					this.doMeasurementsDay(anlagenId, today, "today"),
-					this.doMeasurementsDay(anlagenId, today, "today.horly"),
-					this.doMeasurementsDay(anlagenId, yesterday, "yesterday"),
-					this.doMeasurementsDay(anlagenId, yesterday, "yesterday.hourly"),
-				]);
-
-				// Heavy measurements (once daily)
-				if (shouldRunHeavy) {
+					// Frequent measurements
 					await Promise.all([
-						this.doMeasurementsMonth(anlagenId, currentMonth, "current_month"),
-						this.doMeasurementsMonth(anlagenId, currentMonth, "current_month.daily"),
-						this.doMeasurementsMonth(anlagenId, lastMonth, "previous_month"),
-						this.doMeasurementsMonth(anlagenId, lastMonth, "previous_month.daily"),
-						this.doMeasurementsYear(anlagenId, utcYear, false), // Current year
-						this.doMeasurementsYear(anlagenId, utcYear, true), // Current year
-						this.doMeasurementsYear(anlagenId, utcYear - 1, false), // check if we need last year too
-						this.doMeasurementsYear(anlagenId, utcYear - 1, true), // check if we need last year too
+						this.doMeasurementsDay(anlagenId, today, "today"),
+						this.doMeasurementsDay(anlagenId, today, "today.horly"),
+						this.doMeasurementsDay(anlagenId, yesterday, "yesterday"),
+						this.doMeasurementsDay(anlagenId, yesterday, "yesterday.hourly"),
 					]);
-					this.lastHeavyUpdate = nowTs;
-					await this.updateAllTimeHistory(anlagenId);
+
+					// Heavy measurements (once daily)
+					if (shouldRunHeavy) {
+						await Promise.all([
+							this.doMeasurementsMonth(anlagenId, currentMonth, "current_month"),
+							this.doMeasurementsMonth(anlagenId, currentMonth, "current_month.daily"),
+							this.doMeasurementsMonth(anlagenId, lastMonth, "previous_month"),
+							this.doMeasurementsMonth(anlagenId, lastMonth, "previous_month.daily"),
+							this.doMeasurementsYear(anlagenId, utcYear, false), // Current year
+							this.doMeasurementsYear(anlagenId, utcYear, true), // Current year
+							this.doMeasurementsYear(anlagenId, utcYear - 1, false), // check if we need last year too
+							this.doMeasurementsYear(anlagenId, utcYear - 1, true), // check if we need last year too
+						]);
+						this.lastHeavyUpdate = nowTs;
+						await this.updateAllTimeHistory(anlagenId);
+					}
+
+					if (this.config.api_alltimeRebuild) {
+						// rebuild all-time history if requested - will also pull everying again
+						await this.doRebuild(anlagenId);
+					}
+				} catch (systemError) {
+					// Important: isolate system failure
+					this.log.error(`❌ Error while polling system ${anlagenId}: ${systemError.message}`);
 				}
-
-				if (this.config.api_alltimeRebuild) {
-					// rebuild all-time history if requested - will also pull everying again
-					await this.doRebuild(anlagenId);
-				}
 			}
 
-			// schedule next poll
-			if (!unloaded) {
-				this.timerAPI = setTimeout(() => this.pollSenecApi(0), interval);
-			}
-		} catch (e) {
-			this.log.error(`❌ API error: ${e.message}`);
+			// Success → reset backoff
+			this.setState("info.connection", true, true);
+			this.apiFailureCount = 0;
+		} catch (err) {
+			this.apiFailureCount = (this.apiFailureCount || 0) + 1;
+			this.log.error(`❌ API poll error: ${err.message}`);
+			this.log.warn(`⚠️ Failure count: ${this.apiFailureCount}`);
 
-			if (retry >= this.config.retries) {
-				this.log.error(`API: Retried ${retry} times. Giving up. Restart adapter.`);
-				this.setState("info.connection", false, true);
-				return;
-			}
+			// Exponential full jitter backoff
+			nextDelay = computeBackoffDelay(baseInterval, this.apiFailureCount);
 
-			retry++;
-			const delay = interval * this.config.retrymultiplier * retry;
-			this.log.warn(`API retry ${retry}/${this.config.retries} in ${delay / 1000}s`);
-			this.timerAPI = setTimeout(() => this.pollSenecApi(retry), delay);
+			// Safety cap (max 8x base interval)
+			const maxDelay = baseInterval * 8;
+			nextDelay = Math.min(nextDelay, maxDelay);
+			this.log.warn(`⏱ Backoff delay: ${(nextDelay / 1000).toFixed(0)}s`);
 		} finally {
 			this.apiPollRunning = false;
+			if (!unloaded) {
+				if (this.timerAPI) {
+					clearTimeout(this.timerAPI);
+				}
+				this.timerAPI = setTimeout(() => this.pollSenecApi(), nextDelay);
+				this.log.debug(`⏱ Next API poll scheduled in ${(nextDelay / 1000).toFixed(0)}s`);
+			}
 		}
 	}
 
@@ -737,33 +752,35 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {any} url url to call
 	 * @param config config for API call - will be extended by auth header - can be used to pass additional headers or other axios config parameters
-	 * @param attempt number of attempts for retrying in case of 401 - to avoid infinite loops in case something is really broken and token refresh doesn't work
 	 */
-	async apiGet(url, config = {}, attempt = 0) {
+	async apiGet(url, config = {}) {
 		return this.apiQueue.add(async () => {
-			try {
-				return await api_client.get(url, {
-					...config,
-					headers: {
-						Authorization: `Bearer ${this.currentToken}`,
-						...(config.headers || {}),
-					},
-				});
-			} catch (e) {
-				if (e.response?.status === 401) {
-					if (attempt >= 2) {
-						throw new Error("401 after token refresh retry");
+			const maxAttempts = 3;
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				try {
+					return await api_client.get(url, {
+						...config,
+						headers: {
+							Authorization: `Bearer ${this.currentToken}`,
+							...(config.headers || {}),
+						},
+					});
+				} catch (e) {
+					const status = e.response?.status;
+					// 🔐 Token expired
+					if (status === 401 && attempt < maxAttempts - 1) {
+						this.log.debug("🔐 401 received. Refreshing token...");
+						await this.refreshTokenSingleFlight();
+						continue;
 					}
-					this.log.debug("🔐 401 received. Refreshing token...");
-					await this.refreshTokenSingleFlight();
-					return this.apiGet(url, config, attempt + 1);
-				}
 
-				if (e.response?.status === 429) {
-					this.log.warn("⚠️ Rate limited (429)");
+					// 🚦 Rate limited
+					if (status === 429) {
+						this.log.warn("🚦 API returned 429 (rate limited)");
+					}
+
 					throw e;
 				}
-				throw e;
 			}
 		});
 	}
@@ -975,7 +992,7 @@ class Senec extends utils.Adapter {
 		});
 		sums[LAST_UPDATED] = new Date().toISOString();
 
-		this.log.debug(`Sums: ${JSON.stringify(sums)}`);
+		this.log.silly(`Sums: ${JSON.stringify(sums)}`);
 		let groupBy;
 		switch (period) {
 			case "year":
@@ -1013,7 +1030,7 @@ class Senec extends utils.Adapter {
 			})
 				.then(async (response) => {
 					const content = response.data;
-					caller.log.debug(`(Poll) received data (${response.status}): ${JSON.stringify(content)}`);
+					caller.log.silly(`(Poll) received data (${response.status}): ${JSON.stringify(content)}`);
 					resolve(JSON.stringify(content));
 				})
 				.catch((error) => {
@@ -1069,7 +1086,7 @@ class Senec extends utils.Adapter {
 				this.log.debug(`(Poll) Double escapes autofixed! Body out: ${body}`);
 			}
 			const obj = JSON.parse(body, reviverNumParse);
-			this.log.debug(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
+			this.log.silly(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
 			//await this.evalPollLocal(obj);
 			await this.evalPoll(obj, "", "");
 
@@ -1529,4 +1546,19 @@ function hasPassword(html) {
 
 function hasUsernameAndPassword(html) {
 	return hasUsername(html) && hasPassword(html);
+}
+
+/**
+ * Compute a backoff delay with exponential backoff and full jitter.
+ *
+ * @param {number} baseInterval - Base interval in milliseconds.
+ * @param {number} attempt - Attempt count (0-based).
+ * @param {number} [maxMultiplier] - Maximum multiplier used to cap the exponent.
+ */
+function computeBackoffDelay(baseInterval, attempt, maxMultiplier = 8) {
+	const cappedAttempt = Math.min(attempt, Math.log2(maxMultiplier));
+	const expDelay = baseInterval * Math.pow(2, cappedAttempt);
+
+	// Full jitter
+	return Math.floor(Math.random() * expDelay);
 }
