@@ -476,83 +476,70 @@ class Senec extends utils.Adapter {
 	async senecLogin() {
 		this.log.info("🔄 Start Senec API Login Flow...");
 		jar = new CookieJar();
+
 		try {
 			const codeVerifier = generateCodeVerifier();
 			const codeChallenge = generateCodeChallenge(codeVerifier);
 
-			let pageRes = await api_client.get(
-				`${CONFIG.authUrl}?${new URLSearchParams({
-					response_type: "code",
-					client_id: CONFIG.clientId,
-					redirect_uri: CONFIG.redirectUri,
-					scope: CONFIG.scope,
-					code_challenge: codeChallenge,
-					code_challenge_method: "S256",
-				}).toString()}`,
-				{ jar }, // attach cookie jar
-			);
-
+			const authParams = new URLSearchParams({
+				response_type: "code",
+				client_id: CONFIG.clientId,
+				redirect_uri: CONFIG.redirectUri,
+				scope: CONFIG.scope,
+				code_challenge: codeChallenge,
+				code_challenge_method: "S256",
+			});
+			const pageRes = await api_client.get(`${CONFIG.authUrl}?${authParams}`, { jar });
 			let actionUrl = extractFormAction(pageRes.data);
 			if (!actionUrl) {
 				throw new Error("Login-Formular URL nicht gefunden.");
 			}
 
+			const postForm = (url, data) =>
+				api_client.post(url, data, {
+					headers: { "Content-Type": "application/x-www-form-urlencoded" },
+					maxRedirects: 0,
+					validateStatus: (s) => s >= 200 && s < 400,
+					jar,
+				});
+
 			let loginRes;
+
+			// Ensure username field exists
+			if (!hasUsername(pageRes.data)) {
+				throw new Error("Expected: Login-Form with username. Got something else.");
+			}
+
+			// Step 1 (username only or full form)
+			let formData = new URLSearchParams({
+				username: this.config.api_mail,
+			});
 			if (hasUsernameAndPassword(pageRes.data)) {
-				// worked until 20260228
-				const formData = new URLSearchParams();
-				formData.append("username", this.config.api_mail);
 				formData.append("password", this.config.api_pwd);
-				formData.append("credentialId", "");
+			}
+			loginRes = await postForm(actionUrl, formData);
 
-				loginRes = await api_client.post(actionUrl, formData, {
-					headers: {
-						"Content-Type": "application/x-www-form-urlencoded",
-					},
-					maxRedirects: 0,
-					validateStatus: (s) => s >= 200 && s < 400,
-					jar,
-				});
-			} else {
-				if (!hasUsername(pageRes.data)) {
-					throw new Error("Expected: Login-Form with username. Got something else.");
-				}
-				let formData = new URLSearchParams();
-				// formData.append("credentialId", "");
-				formData.append("username", this.config.api_mail);
-				loginRes = await api_client.post(actionUrl, formData, {
-					headers: {
-						"Content-Type": "application/x-www-form-urlencoded",
-					},
-					maxRedirects: 0,
-					validateStatus: (s) => s >= 200 && s < 400,
-					jar,
-				});
-
+			// Step 2 (password step if required)
+			if (!hasUsernameAndPassword(pageRes.data)) {
 				if (!hasPassword(loginRes.data)) {
 					throw new Error("Expected: Login-Form with password. Got something else.");
 				}
+
 				actionUrl = extractFormAction(loginRes.data);
-				formData = new URLSearchParams();
-				//formData.append("credentialId", "");
-				formData.append("username", this.config.api_mail);
-				formData.append("password", this.config.api_pwd);
-				loginRes = await api_client.post(actionUrl, formData, {
-					headers: {
-						"Content-Type": "application/x-www-form-urlencoded",
-					},
-					maxRedirects: 0,
-					validateStatus: (s) => s >= 200 && s < 400,
-					jar,
+				formData = new URLSearchParams({
+					username: this.config.api_mail,
+					password: this.config.api_pwd,
 				});
+				loginRes = await postForm(actionUrl, formData);
 			}
 
-			const redirectLocation = loginRes.headers["location"];
+			const redirectLocation = loginRes.headers.location;
 			if (!redirectLocation) {
-				if (loginRes.status === 200) {
-					throw new Error("Login fehlgeschlagen (Kein Redirect).");
-				}
-				throw new Error(`Login unerwarteter Status: ${loginRes.status}`);
+				throw new Error(
+					loginRes.status === 200
+						? "Login fehlgeschlagen (Kein Redirect)."
+						: `Login unerwarteter Status: ${loginRes.status}`,
+				);
 			}
 
 			const authCode = new URL(redirectLocation.replace("senec-app-auth://", "https://")).searchParams.get(
@@ -575,8 +562,9 @@ class Senec extends utils.Adapter {
 			);
 
 			const accessToken = tokenRes.data.access_token;
-			this.log.info("✅ API Login erfolgreich.");
+
 			await this.doState(ID_TOKEN_STATE, accessToken, "Access Token", "", false);
+			this.log.info("✅ API Login erfolgreich.");
 			return accessToken;
 		} catch (e) {
 			this.log.error(`❌ Login Error: ${e.message}`);
