@@ -122,6 +122,7 @@ class Senec extends utils.Adapter {
 		this.tokenFailureCount = 0;
 		this.refreshPromise = null;
 
+		this.timerAPI = null;
 		this.apiPollRunning = false;
 		this.lastHeavyUpdate = 0;
 
@@ -726,7 +727,12 @@ class Senec extends utils.Adapter {
 	}
 
 	async pollSenecApi() {
-		if (!this.config.api_use || !apiConnected) {
+		if (this.timerAPI) {
+			clearTimeout(this.timerAPI);
+			this.timerAPI = null;
+		}
+
+		if (!this.config.api_use || !apiConnected || unloaded) {
 			this.log.info("Usage of SENEC App API not configured or not connected.");
 			return;
 		}
@@ -780,6 +786,9 @@ class Senec extends utils.Adapter {
 			const heavyInterval = 24 * 60 * 60 * 1000;
 			const shouldRunHeavy = nowTs - this.lastHeavyUpdate > heavyInterval;
 
+			let successCount = 0;
+			let failureCount = 0;
+
 			for (const anlagenId of apiKnownSystems) {
 				try {
 					this.log.info(`🔄 Polling system ${anlagenId}...`);
@@ -788,6 +797,8 @@ class Senec extends utils.Adapter {
 					const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
 					this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
 					this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
+					// If dashboard worked, count as success
+					successCount++;
 
 					// Frequent measurements
 					await Promise.all([
@@ -819,30 +830,47 @@ class Senec extends utils.Adapter {
 					}
 				} catch (systemError) {
 					// Important: isolate system failure
-					this.log.error(`❌ Error while polling system ${anlagenId}: ${systemError.message}`);
+					failureCount++;
+					this.log.error(`❌ System ${anlagenId} failed: ${systemError.message}`);
 				}
 			}
 
-			// Success → reset backoff
-			this.setState("info.connection", true, true);
+			// ---- Evaluate Global Result ----
+			if (successCount === 0) {
+				// TOTAL FAILURE
+				throw new Error("All systems failed during polling.");
+			}
+
+			// Partial or full success
+			if (failureCount > 0) {
+				this.log.warn(`⚠ Partial API failure: ${failureCount} system(s) failed, ${successCount} succeeded.`);
+			}
+
+			// Reset global failure counter
 			this.apiFailureCount = 0;
+
+			// Connection is healthy
+			this.setState("info.connection", true, true);
+
+			nextDelay = baseInterval;
 		} catch (err) {
+			// ---- TOTAL FAILURE HANDLING ----
 			this.apiFailureCount = (this.apiFailureCount || 0) + 1;
-			this.log.error(`❌ API poll error: ${err.message}`);
-			this.log.warn(`⚠️ Failure count: ${this.apiFailureCount}`);
+			this.log.error(`🚨 API Poll failed: ${err.message} - ⚠️ Failure count: ${this.apiFailureCount}`);
+			this.setState("info.connection", false, true);
 
 			// Exponential full jitter backoff
 			nextDelay = computeBackoffDelay(baseInterval, this.apiFailureCount);
-
 			// Safety cap (max 8x base interval)
 			const maxDelay = baseInterval * 8;
 			nextDelay = Math.min(nextDelay, maxDelay);
-			this.log.warn(`⏱ Backoff delay: ${(nextDelay / 1000).toFixed(0)}s`);
+			this.log.warn(`⏱ Backoff delay: Retry ${this.apiFailureCount} in ${(nextDelay / 1000).toFixed(0)}s`);
 		} finally {
 			this.apiPollRunning = false;
 			if (!unloaded) {
 				if (this.timerAPI) {
 					clearTimeout(this.timerAPI);
+					this.timerAPI = null;
 				}
 				this.timerAPI = setTimeout(() => this.pollSenecApi(), nextDelay);
 				this.log.debug(`⏱ Next API poll scheduled in ${(nextDelay / 1000).toFixed(0)}s`);
