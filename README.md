@@ -303,6 +303,16 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- Decoupled frequencies to lower API load. Every poll: Dashboard and today values; Once per day: Yesterday, Monthly, Yearly values (we reduce load by about 65% compared to polling everything every time)
+- AccessToken logic centralized
+- True Single Flight Token refresh (avoiding duplicate logins, duplicate login storms)
+- Avoiding overlapping Polls
+- exponential backoff on auth failure
+- retry backoff
+- proper lifecycle safety
+- Automatic 401 retry
+
 ### 2.4.1 (2026-03-01)
 - Fixing issues with polling from senec api when token expires
 - Old entries in changelog moved to old.

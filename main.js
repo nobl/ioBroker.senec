@@ -23,6 +23,9 @@ const API_PFX = "_api.";
 const ID_TOKEN_STATE = `${API_PFX}AuthToken`;
 const LAST_UPDATED = "last updated";
 
+const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`);
+const api_parallel_limit = 4;
+
 // API Endpoints
 const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
 const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev";
@@ -105,6 +108,20 @@ class Senec extends utils.Adapter {
 			...options,
 			name: "senec",
 		});
+
+		this.apiQueue = new AdaptiveRequestQueue({
+			concurrency: api_parallel_limit,
+			minConcurrency: 1,
+			maxConcurrency: 6,
+		});
+
+		this.refreshPromise = null;
+		this.currentToken = null;
+		this.authRetryCount = 0;
+
+		this.apiPollRunning = false;
+		this.lastHeavyUpdate = 0;
+
 		this.on("ready", this.onReady.bind(this));
 		this.on("stateChange", this.onStateChange.bind(this));
 		this.on("unload", this.onUnload.bind(this));
@@ -118,6 +135,7 @@ class Senec extends utils.Adapter {
 
 		// Reset the connection indicator during startup
 		this.setState("info.connection", false, true);
+
 		try {
 			await this.checkConfig();
 			if (this.config.lala_use) {
@@ -135,7 +153,7 @@ class Senec extends utils.Adapter {
 				this.log.info("Usage of SENEC App API configured.");
 				apiConnected = await this.senecLogin();
 				if (apiConnected != null) {
-					await this.pollSenecApi(false, 0);
+					await this.pollSenecApi(0);
 				}
 			} else {
 				this.log.warn(
@@ -561,159 +579,209 @@ class Senec extends utils.Adapter {
 				{ headers: { "Content-Type": "application/x-www-form-urlencoded" } },
 			);
 
-			const accessToken = tokenRes.data.access_token;
-
-			await this.doState(ID_TOKEN_STATE, accessToken, "Access Token", "", false);
+			this.currentToken = tokenRes.data.access_token;
+			await this.doState(ID_TOKEN_STATE, this.currentToken, "Access Token", "", false);
 			this.log.info("✅ API Login erfolgreich.");
-			return accessToken;
+			return this.currentToken;
 		} catch (e) {
 			this.log.error(`❌ Login Error: ${e.message}`);
 			return null;
 		}
 	}
 
-	async pollSenecApi(isRetry = false, retry) {
+	async refreshTokenSingleFlight() {
+		if (this.refreshPromise) {
+			this.log.debug("🔐 Waiting for ongoing token refresh...");
+			return this.refreshPromise;
+		}
+
+		this.refreshPromise = (async () => {
+			try {
+				this.log.info("🔐 Refreshing token...");
+
+				const newToken = await this.senecLogin();
+				if (!newToken) {
+					throw new Error("Token refresh failed");
+				}
+
+				this.currentToken = newToken;
+				this.authRetryCount = 0;
+
+				return newToken;
+			} catch (err) {
+				this.authRetryCount++;
+
+				const delay = Math.min(60000, 2000 * Math.pow(2, this.authRetryCount));
+
+				this.log.error(`🔐 Token refresh failed. Backing off ${delay / 1000}s`);
+
+				await new Promise((res) => setTimeout(res, delay));
+				throw err;
+			} finally {
+				this.refreshPromise = null;
+			}
+		})();
+
+		return this.refreshPromise;
+	}
+
+	async pollSenecApi(retry = 0) {
 		if (!this.config.api_use || !apiConnected) {
 			this.log.info("Usage of SENEC App API not configured or not connected.");
 			return;
 		}
-		const interval = this.config.api_interval * 60000;
 
-		this.log.info("🔄 Polling SENEC App API...");
-		const tokenState = await this.getStateAsync(`${this.namespace}.${ID_TOKEN_STATE}`);
-		let token = tokenState ? tokenState.val : null;
-
-		if (!token) {
-			if (isRetry) {
-				return;
-			}
-			token = await this.senecLogin();
-		}
-		if (!token) {
+		if (this.apiPollRunning) {
+			this.log.warn("API poll still running — skipping overlapping execution.");
 			return;
 		}
+		this.apiPollRunning = true;
+		const interval = this.config.api_interval * 60000;
 
 		try {
-			if (apiKnownSystems.size === 0) {
-				// reading only at first poll - if systems change adapter needs a restart
-				await this.pollSystems(token);
+			this.log.info("🔄 Polling SENEC App API...");
+			// Ensure token exists
+			if (!this.currentToken) {
+				await this.refreshTokenSingleFlight();
 			}
+
+			// Read systems once from API and keep them in memory - we will need them for every poll and they don't change that often - this also ensures that we have the correct system IDs in case they change or we have multiple systems
+			if (apiKnownSystems.size === 0) {
+				this.log.debug("🔄 Reading available systems from API ...");
+				const sysRes = await this.apiGet(`${HOST_SYSTEMS}/v1/systems`);
+				if (!sysRes.data || !sysRes.data[0]) {
+					throw new Error("No Appliances found.");
+				}
+				for (const sys of sysRes.data) {
+					this.log.debug(`System found: ${JSON.stringify(sys)}`);
+					apiKnownSystems.add(sys.id);
+					this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
+				}
+			}
+
+			// Precompute dates once
+			// today/yesterday must not be UTC or they will be off - month / year must be UTC or we will have issues at month / year boundaries
+			// that way daily numbers are ok - but month/year are off a bit compared to mein-senec.de
+			const now = new Date();
+			const utcYear = now.getUTCFullYear();
+			const utcMonth = now.getUTCMonth();
+			const utcDate = now.getUTCDate();
+			const today = new Date(utcYear, utcMonth, utcDate, 0, 0, 0, 0);
+			const yesterday = new Date(utcYear, utcMonth, utcDate - 1, 0, 0, 0, 0);
+			const currentMonth = new Date(Date.UTC(utcYear, utcMonth, 1));
+			const lastMonth = new Date(Date.UTC(utcYear, utcMonth - 1, 1));
+
+			const nowTs = Date.now();
+			const heavyInterval = 24 * 60 * 60 * 1000;
+			const shouldRunHeavy = nowTs - this.lastHeavyUpdate > heavyInterval;
 
 			for (const anlagenId of apiKnownSystems) {
-				this.log.info(`🔄 Polling API data for system ${anlagenId}...`);
-				// get Dashboard data
-				const dashRes = await api_client.get(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`, {
-					headers: { Authorization: `Bearer ${token}` },
-				});
-				this.log.debug(`DashRes${JSON.stringify(dashRes.data)}`);
-				this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.` + `Dashboard.`);
+				this.log.info(`🔄 Polling system ${anlagenId}...`);
 
-				if (this.config.api_alltimeRebuild) {
-					// rebuild all-time history if requested
-					// will also pull everying again
-					await this.doRebuild(anlagenId, token);
+				// Dashboard (frequent)
+				const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
+				this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
+				this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
+
+				// Frequent measurements
+				await Promise.all([
+					this.doMeasurementsDay(anlagenId, today, "today"),
+					this.doMeasurementsDay(anlagenId, today, "today.horly"),
+					this.doMeasurementsDay(anlagenId, yesterday, "yesterday"),
+					this.doMeasurementsDay(anlagenId, yesterday, "yesterday.hourly"),
+				]);
+
+				// Heavy measurements (once daily)
+				if (shouldRunHeavy) {
+					await Promise.all([
+						this.doMeasurementsMonth(anlagenId, currentMonth, "current_month"),
+						this.doMeasurementsMonth(anlagenId, currentMonth, "current_month.daily"),
+						this.doMeasurementsMonth(anlagenId, lastMonth, "previous_month"),
+						this.doMeasurementsMonth(anlagenId, lastMonth, "previous_month.daily"),
+						this.doMeasurementsYear(anlagenId, utcYear, false), // Current year
+						this.doMeasurementsYear(anlagenId, utcYear, true), // Current year
+						this.doMeasurementsYear(anlagenId, utcYear - 1, false), // check if we need last year too
+						this.doMeasurementsYear(anlagenId, utcYear - 1, true), // check if we need last year too
+					]);
+					this.lastHeavyUpdate = nowTs;
+					await this.updateAllTimeHistory(anlagenId);
 				}
 
-				// get Measurements for current year
-				const now = new Date();
-				// today/yesterday must not be UTC or they will be off - month / year must be UTC or we will have issues at month / year boundaries
-				// that way daily numbers are ok - but month/year are off a bit compared to mein-senec.de
-				const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-				const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
-				const currentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-				const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-				await this.doMeasurementsDay(anlagenId, token, today, "today");
-				await this.doMeasurementsDay(anlagenId, token, today, "today.hourly");
-				await this.doMeasurementsDay(anlagenId, token, yesterday, "yesterday");
-				await this.doMeasurementsDay(anlagenId, token, yesterday, "yesterday.hourly");
-				await this.doMeasurementsMonth(anlagenId, token, currentMonth, "current_month");
-				await this.doMeasurementsMonth(anlagenId, token, currentMonth, "current_month.daily");
-				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month");
-				await this.doMeasurementsMonth(anlagenId, token, lastMonth, "previous_month.daily");
-				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear(), false); // Current year
-				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear(), true); // Current year
-				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear() - 1, false); // check if we need last year too
-				await this.doMeasurementsYear(anlagenId, token, now.getUTCFullYear() - 1, true); // check if we need last year too
+				if (this.config.api_alltimeRebuild) {
+					// rebuild all-time history if requested - will also pull everying again
+					await this.doRebuild(anlagenId);
+				}
 			}
-			retry = 0; // reset retry counter on success
 
 			// schedule next poll
 			if (!unloaded) {
-				this.timerAPI = setTimeout(() => this.pollSenecApi(false, retry), interval);
+				this.timerAPI = setTimeout(() => this.pollSenecApi(0), interval);
 			}
 		} catch (e) {
-			if (e.response && e.response.status === 401) {
-				if (isRetry) {
-					return;
-				}
-				// this.log.info("⚠️ Token outdated. Re-Login...");
-				this.log.info("ℹ️ Token outdated. Re-Login...");
-				jar = new CookieJar();
-				const newToken = await this.senecLogin();
-				if (newToken) {
-					setTimeout(() => this.pollSenecApi(true, retry), 2000);
-				}
-			} else {
-				this.log.error(`❌ Error while pulling: ${e.message}`);
-				if (retry == this.config.retries && this.config.retries < 999) {
-					this.log.error(
-						`Error reading from Senec AppAPI. Retried ${
-							retry
-						} times. Giving up now. Check config and restart adapter. (${e})`,
-					);
-					this.setState("info.connection", false, true);
-				} else {
-					retry += 1;
-					this.log.warn(
-						`Error reading from Senec AppAPI. Retry ${retry}/${this.config.retries} in ${
-							(interval * this.config.retrymultiplier * retry) / 1000
-						} seconds! (${e})`,
-					);
-					this.timerAPI = setTimeout(
-						() => this.pollSenecApi(false, retry),
-						interval * this.config.retrymultiplier * retry,
-					);
-				}
+			this.log.error(`❌ API error: ${e.message}`);
+
+			if (retry >= this.config.retries) {
+				this.log.error(`API: Retried ${retry} times. Giving up. Restart adapter.`);
+				this.setState("info.connection", false, true);
+				return;
 			}
+
+			retry++;
+			const delay = interval * this.config.retrymultiplier * retry;
+			this.log.warn(`API retry ${retry}/${this.config.retries} in ${delay / 1000}s`);
+			this.timerAPI = setTimeout(() => this.pollSenecApi(retry), delay);
+		} finally {
+			this.apiPollRunning = false;
 		}
 	}
 
 	/**
-	 * Poll Systems from SENEC App API
+	 * API Get with automatic token refresh on 401 and retry mechanism using AdaptiveRequestQueue to avoid multiple parallel token refreshes and to limit parallel API calls in general.
 	 *
-	 * @param {any} token AccessToken
+	 * @param {any} url url to call
+	 * @param config config for API call - will be extended by auth header - can be used to pass additional headers or other axios config parameters
+	 * @param attempt number of attempts for retrying in case of 401 - to avoid infinite loops in case something is really broken and token refresh doesn't work
 	 */
-	async pollSystems(token) {
-		this.log.debug("🔄 Reading available systems from API ...");
-		// get Systems
-		const sysRes = await api_client.get(`${HOST_SYSTEMS}/v1/systems`, {
-			headers: { Authorization: `Bearer ${token}` },
-		});
-		if (!sysRes.data || !sysRes.data[0]) {
-			throw new Error("No Appliances found.");
-		}
+	async apiGet(url, config = {}, attempt = 0) {
+		return this.apiQueue.add(async () => {
+			try {
+				return await api_client.get(url, {
+					...config,
+					headers: {
+						Authorization: `Bearer ${this.currentToken}`,
+						...(config.headers || {}),
+					},
+				});
+			} catch (e) {
+				if (e.response?.status === 401) {
+					if (attempt >= 2) {
+						throw new Error("401 after token refresh retry");
+					}
+					this.log.warn("🔐 401 received. Refreshing token...");
+					await this.refreshTokenSingleFlight();
+					return this.apiGet(url, config, attempt + 1);
+				}
 
-		// collect all systems
-		for (const data of sysRes.data) {
-			apiKnownSystems.add(data.id);
-			const anlagenId = data.id;
-			this.log.debug(`System found: ${JSON.stringify(data)}`);
-			this.evalPoll(data, `${API_PFX}Anlagen.${anlagenId}.`);
-		}
+				if (e.response?.status === 429) {
+					this.log.warn("⚠️ Rate limited (429)");
+					throw e;
+				}
+				throw e;
+			}
+		});
 	}
 
 	/**
 	 * Rebuild all-time measurements
 	 *
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
-	 * @param {any} token AccessToken
 	 */
-	async doRebuild(anlagenId, token) {
+	async doRebuild(anlagenId) {
 		rebuildRunning = true;
 		for (let year = new Date().getFullYear(); year >= 2009; year--) {
 			// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
-			await this.doMeasurementsYear(anlagenId, token, year, false);
-			await this.doMeasurementsYear(anlagenId, token, year, true);
+			await this.doMeasurementsYear(anlagenId, year, false);
+			await this.doMeasurementsYear(anlagenId, year, true);
 		}
 		this.log.info(`Rebuild ended. Adapter restarting ...`);
 		rebuildRunning = false;
@@ -726,14 +794,14 @@ class Senec extends utils.Adapter {
 	 * Poll measurements by year
 	 *
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
-	 * @param {any} token AccessToken
 	 * @param {number} year Year to read measurements for
 	 * @param {boolean} months Read daily measurements
 	 */
-	async doMeasurementsYear(anlagenId, token, year, months) {
+	async doMeasurementsYear(anlagenId, year, months) {
 		this.log.debug(`🔄 Reading measurements for year: ${year}${months ? ".monthly" : ""}`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Yearly.`;
 		const lastUpdate = await this.getStateAsync(`${pfx + year}.${months ? "monthly." : ""}${LAST_UPDATED}`);
+		const now = new Date();
 		let lastDate = null;
 		if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 			lastDate = new Date(String(lastUpdate.val));
@@ -745,7 +813,7 @@ class Senec extends utils.Adapter {
 				!rebuildRunning &&
 				lastDate != null &&
 				!isNaN(lastDate.getTime()) &&
-				lastDate.getUTCFullYear() === new Date().getUTCFullYear()
+				lastDate.getUTCFullYear() === now.getUTCFullYear()
 			) {
 				this.log.debug(
 					`Measurements for ${year}${months ? ".monthly" : ""} already updated this year. Skipping.`,
@@ -758,9 +826,9 @@ class Senec extends utils.Adapter {
 				!rebuildRunning &&
 				lastDate != null &&
 				!isNaN(lastDate.getTime()) &&
-				lastDate.getUTCFullYear() === new Date().getUTCFullYear() &&
-				lastDate.getUTCMonth() === new Date().getUTCMonth() &&
-				lastDate.getUTCDate() === new Date().getUTCDate()
+				lastDate.getUTCFullYear() === now.getUTCFullYear() &&
+				lastDate.getUTCMonth() === now.getUTCMonth() &&
+				lastDate.getUTCDate() === now.getUTCDate()
 			) {
 				this.log.debug(`Measurements for ${year}${months ? ".monthly" : ""} already updated today. Skipping.`);
 				return;
@@ -776,26 +844,22 @@ class Senec extends utils.Adapter {
 		}
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
-		const measurements = await api_client.get(url, {
-			headers: { Authorization: `Bearer ${token}` },
-		});
+		const measurements = await this.apiGet(url);
 		if (!measurements.data.timeSeries || measurements.data.timeSeries.length === 0) {
 			this.log.debug(`No measurements found for ${year}. Skipping.`);
 			return;
 		}
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, `year${months ? ".monthly" : ""}`);
-		await this.updateAllTimeHistory(anlagenId);
 	}
 
 	/**
 	 * Poll measurements by month
 	 *
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
-	 * @param {any} token AccessToken
 	 * @param {Date} date Date to read measurements for
 	 * @param {string} period period to sum for
 	 */
-	async doMeasurementsMonth(anlagenId, token, date, period) {
+	async doMeasurementsMonth(anlagenId, date, period) {
 		this.log.debug(`🔄 Reading measurements for ${period}.`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Monthly.`;
 		if (period === "previous_month" || period === "previous_month.daily") {
@@ -824,9 +888,11 @@ class Senec extends utils.Adapter {
 		}
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
-		const measurements = await api_client.get(url, {
-			headers: { Authorization: `Bearer ${token}` },
-		});
+		const measurements = await this.apiGet(url);
+		if (!measurements?.data?.timeSeries) {
+			this.log.warn(`Malformed measurement response for ${url}`);
+			return;
+		}
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
 	}
 
@@ -834,11 +900,10 @@ class Senec extends utils.Adapter {
 	 * Poll measurements by day
 	 *
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
-	 * @param {any} token AccessToken
 	 * @param {Date} date Date to read measurements for
 	 * @param {string} period period to sum for
 	 */
-	async doMeasurementsDay(anlagenId, token, date, period) {
+	async doMeasurementsDay(anlagenId, date, period) {
 		this.log.debug(`🔄 Reading measurements for ${period}`);
 		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Daily.`;
 		if (period === "yesterday" || period === "yesterday.hourly") {
@@ -868,9 +933,11 @@ class Senec extends utils.Adapter {
 		}
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
-		const measurements = await api_client.get(url, {
-			headers: { Authorization: `Bearer ${token}` },
-		});
+		const measurements = await this.apiGet(url);
+		if (!measurements?.data?.timeSeries) {
+			this.log.warn(`Malformed measurement response for ${url}`);
+			return;
+		}
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
 	}
 
@@ -881,7 +948,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} period period to sum for
 	 */
 	async doSumMeasurements(data, anlagenId, pfx, period) {
-		this.log.debug(`Measurements: ${JSON.stringify(data)}`);
+		this.log.debug(`Measurements sample: ${JSON.stringify(data).slice(0, 500)}`);
 		const sums = Object.fromEntries(data.measurements.map((key) => [key, 0]));
 		const year = new Date(data.timeSeries[0].date).getUTCFullYear();
 
@@ -890,17 +957,17 @@ class Senec extends utils.Adapter {
 			entry.measurements.values.forEach((value, index) => {
 				const key = data.measurements[index];
 				if (period === "today.hourly" || period === "yesterday.hourly") {
-					if (!sums[key]) {
+					if (sums[key] === undefined || !sums[key]) {
 						sums[key] = Array(24).fill(0);
 					}
 					sums[key][new Date(entry.date).getHours()] += value;
 				} else if (period === "current_month.daily" || period === "previous_month.daily") {
-					if (!sums[key]) {
+					if (sums[key] === undefined || !sums[key]) {
 						sums[key] = Array(32).fill(0);
 					}
 					sums[key][new Date(entry.date).getDate()] += value;
 				} else if (period === "year.monthly") {
-					if (!sums[key]) {
+					if (sums[key] === undefined || !sums[key]) {
 						sums[key] = Array(13).fill(0);
 					}
 					sums[key][new Date(entry.date).getUTCMonth() + 1] += value;
