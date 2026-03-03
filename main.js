@@ -114,9 +114,13 @@ class Senec extends utils.Adapter {
 			maxConcurrency: 6,
 		});
 
-		this.refreshPromise = null;
 		this.currentToken = null;
-		this.authRetryCount = 0;
+		this.refreshToken = null;
+		this.tokenExpiresAt = 0;
+
+		this.timerTokenRefresh = null;
+		this.tokenFailureCount = 0;
+		this.refreshPromise = null;
 
 		this.apiPollRunning = false;
 		this.lastHeavyUpdate = 0;
@@ -137,6 +141,7 @@ class Senec extends utils.Adapter {
 
 		try {
 			await this.checkConfig();
+
 			if (this.config.lala_use) {
 				this.log.info("Usage of lala.cgi (local) configured.");
 				await this.initPollSettings();
@@ -148,22 +153,25 @@ class Senec extends utils.Adapter {
 			} else {
 				this.log.warn("Usage of lala.cgi (local) not configured. Only polling SENEC App API if configured.");
 			}
+
 			if (this.config.api_use) {
 				this.log.info("Usage of SENEC App API configured.");
-				apiConnected = await this.senecLogin();
+				apiConnected = await this.startTokenManager();
 				if (apiConnected != null) {
-					await this.pollSenecApi(0);
+					await this.pollSenecApi();
 				}
 			} else {
 				this.log.warn(
 					"Usage of SENEC App API not configured. Only polling appliance via local network if configured.",
 				);
 			}
+
 			if (lalaConnected || apiConnected) {
 				this.setState("info.connection", true, true);
 			} else {
 				this.log.error("Neither local connection nor API connection configured. Please check config!");
 			}
+
 			if (this.config.control_active) {
 				this.log.info("Active appliance control (local) activated!");
 				await this.subscribeStatesAsync("control.*"); // subscribe on all state changes in control.
@@ -261,6 +269,9 @@ class Senec extends utils.Adapter {
 			}
 			if (this.timerAPI) {
 				clearTimeout(this.timerAPI);
+			}
+			if (this.timerTokenRefresh) {
+				clearTimeout(this.timerTokenRefresh);
 			}
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
@@ -489,6 +500,26 @@ class Senec extends utils.Adapter {
 		}
 	}
 
+	async startTokenManager() {
+		try {
+			// No refresh token at all → full login
+			if (!this.refreshToken) {
+				this.log.info("🔐 No refresh token present. Performing full login...");
+				const token = await this.senecLogin();
+				return !!token;
+			}
+
+			// We have a refresh token → try refresh
+			this.log.info("🔐 Trying initial token refresh...");
+			await this.refreshTokenSingleFlight();
+			return true;
+		} catch (error) {
+			this.log.warn(`⚠️ Initial refresh failed. Falling back to full login... ${error.message}`);
+			const token = await this.senecLogin();
+			return !!token;
+		}
+	}
+
 	async senecLogin() {
 		this.log.info("🔄 Start Senec API Login Flow...");
 		jar = new CookieJar();
@@ -508,7 +539,7 @@ class Senec extends utils.Adapter {
 			const pageRes = await api_client.get(`${CONFIG.authUrl}?${authParams}`, { jar });
 			let actionUrl = extractFormAction(pageRes.data);
 			if (!actionUrl) {
-				throw new Error("Login-Formular URL nicht gefunden.");
+				throw new Error("Login-Form URL not found.");
 			}
 
 			const postForm = (url, data) =>
@@ -553,8 +584,8 @@ class Senec extends utils.Adapter {
 			if (!redirectLocation) {
 				throw new Error(
 					loginRes.status === 200
-						? "Login fehlgeschlagen (Kein Redirect)."
-						: `Login unerwarteter Status: ${loginRes.status}`,
+						? "Login failed: no redirect."
+						: `Login unexpected State: ${loginRes.status}`,
 				);
 			}
 
@@ -578,7 +609,12 @@ class Senec extends utils.Adapter {
 			);
 
 			this.currentToken = tokenRes.data.access_token;
-			this.log.info("✅ API Login erfolgreich.");
+			this.refreshToken = tokenRes.data.refresh_token;
+			const expiresIn = tokenRes.data.expires_in || 600; // fallback 10 min
+			this.tokenExpiresAt = Date.now() + expiresIn * 1000;
+
+			this.log.info("✅ API Login successful.");
+			this.scheduleTokenRefresh();
 			return this.currentToken;
 		} catch (e) {
 			this.log.error(`❌ Login Error: ${e.message}`);
@@ -586,33 +622,100 @@ class Senec extends utils.Adapter {
 		}
 	}
 
+	scheduleTokenRefresh() {
+		if (!this.tokenExpiresAt || unloaded) {
+			return;
+		}
+
+		const safetyMargin = 60 * 1000; // refresh 60s before expiry
+		const now = Date.now();
+
+		let delay = this.tokenExpiresAt - now - safetyMargin;
+		if (delay < 5000) {
+			delay = 5000; // minimum 5s
+		}
+
+		if (this.timerTokenRefresh) {
+			clearTimeout(this.timerTokenRefresh);
+		}
+
+		if (!unloaded) {
+			this.log.debug(`🔐 Scheduling token refresh in ${(delay / 1000).toFixed(0)}s`);
+			this.timerTokenRefresh = setTimeout(() => {
+				this.refreshTokenSingleFlight().catch((err) => {
+					this.log.error(`Token background refresh failed: ${err.message}`);
+				});
+			}, delay);
+		}
+	}
+
 	async refreshTokenSingleFlight() {
+		if (!this.refreshToken) {
+			this.log.debug("No refresh token available — skipping refresh.");
+			return this.senecLogin();
+		}
+
 		if (this.refreshPromise) {
-			this.log.debug("🔐 Waiting for ongoing token refresh...");
 			return this.refreshPromise;
 		}
 
 		this.refreshPromise = (async () => {
 			try {
-				this.log.info("🔐 Refreshing token...");
+				this.log.debug("🔐 Refreshing API token...");
 
-				const newToken = await this.senecLogin();
-				if (!newToken) {
-					throw new Error("Token refresh failed");
+				const response = await api_client.post(
+					CONFIG.tokenUrl,
+					new URLSearchParams({
+						grant_type: "refresh_token",
+						client_id: CONFIG.clientId,
+						refresh_token: this.refreshToken,
+					}),
+					{ headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+				);
+
+				const data = response.data;
+
+				this.currentToken = data.access_token;
+				this.refreshToken = data.refresh_token || this.refreshToken;
+
+				const expiresIn = data.expires_in || 600; // fallback 10min
+				this.tokenExpiresAt = Date.now() + expiresIn * 1000;
+
+				this.tokenFailureCount = 0;
+
+				this.log.info(`✅ Token refreshed. Expires in ${expiresIn}s`);
+
+				this.scheduleTokenRefresh();
+			} catch (err) {
+				const status = err.response?.status;
+				const errorCode = err.response?.data?.error;
+
+				this.log.error(`❌ Token refresh failed: ${err.message}`);
+
+				// If refresh token invalid → fallback to full login
+				if (errorCode === "invalid_grant" || status === 400) {
+					this.log.warn("⚠️ Refresh token invalid. Performing full login.");
+					await this.senecLogin();
+					return;
 				}
 
-				this.currentToken = newToken;
-				this.authRetryCount = 0;
+				this.tokenFailureCount++;
 
-				return newToken;
-			} catch (err) {
-				this.authRetryCount++;
+				const baseDelay = 5000;
+				let retryDelay = computeBackoffDelay(baseDelay, this.tokenFailureCount);
+				retryDelay = Math.min(retryDelay, 60000);
 
-				const delay = Math.min(60000, 2000 * Math.pow(2, this.authRetryCount));
+				if (this.timerTokenRefresh) {
+					clearTimeout(this.timerTokenRefresh);
+				}
 
-				this.log.error(`🔐 Token refresh failed. Backing off ${delay / 1000}s`);
+				if (!unloaded) {
+					this.log.warn(`🔁 Retrying token refresh in ${(retryDelay / 1000).toFixed(0)}s`);
+					this.timerTokenRefresh = setTimeout(() => {
+						this.refreshTokenSingleFlight().catch(() => {});
+					}, retryDelay);
+				}
 
-				await new Promise((res) => setTimeout(res, delay));
 				throw err;
 			} finally {
 				this.refreshPromise = null;
@@ -755,6 +858,12 @@ class Senec extends utils.Adapter {
 	 */
 	async apiGet(url, config = {}) {
 		return this.apiQueue.add(async () => {
+			// Proactive expiry check
+			if (Date.now() >= this.tokenExpiresAt - 30000) {
+				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
+				await this.refreshTokenSingleFlight();
+			}
+
 			const maxAttempts = 3;
 			for (let attempt = 0; attempt < maxAttempts; attempt++) {
 				try {
@@ -1091,10 +1200,12 @@ class Senec extends utils.Adapter {
 			await this.evalPoll(obj, "", "");
 
 			retry = 0;
-			if (unloaded) {
-				return;
+			if (!unloaded) {
+				this.timer = setTimeout(() => this.pollSenecLocal(isHighPrio, retry), interval);
+				this.log.debug(
+					`⏱ Next local poll (highPrio=${isHighPrio}) scheduled in ${(interval / 1000).toFixed(0)}s`,
+				);
 			}
-			this.timer = setTimeout(() => this.pollSenecLocal(isHighPrio, retry), interval);
 		} catch (error) {
 			if (retry == this.config.retries && this.config.retries < 999) {
 				this.log.error(
@@ -1112,10 +1223,13 @@ class Senec extends utils.Adapter {
 						error
 					})`,
 				);
-				this.timer = setTimeout(
-					() => this.pollSenecLocal(isHighPrio, retry),
-					interval * this.config.retrymultiplier * retry,
-				);
+				if (!unloaded) {
+					const delay = interval * this.config.retrymultiplier * retry;
+					this.timer = setTimeout(() => this.pollSenecLocal(isHighPrio, retry), delay);
+					this.log.debug(
+						`⏱ Next local poll (highPrio=${isHighPrio}) scheduled in ${(delay / 1000).toFixed(0)}s`,
+					);
+				}
 			}
 		}
 	}
