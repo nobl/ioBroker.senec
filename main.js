@@ -754,7 +754,7 @@ class Senec extends utils.Adapter {
 					if (attempt >= 2) {
 						throw new Error("401 after token refresh retry");
 					}
-					this.log.warn("🔐 401 received. Refreshing token...");
+					this.log.debug("🔐 401 received. Refreshing token...");
 					await this.refreshTokenSingleFlight();
 					return this.apiGet(url, config, attempt + 1);
 				}
