@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.4.4",
+    "version": "2.4.5",
     "news": {
+      "2.4.5": {
+        "en": "fixed typo that made today/hourly today/horly. You can safely delete the horly branch Measurements/Daily/horly\nUpdated delay for token refresh (it can be up to 2 min now).",
+        "de": "fester Typus, der heute / stundenlang gemacht wird. Sie können die horly branch Messungen/Daily/horly sicher löschen\nAktualisierte Verzögerung für Token-Erfrischung (es kann jetzt bis zu 2 min sein).",
+        "ru": "фиксированная опечатка, сделанная сегодня / почасово сегодня / вслух. Вы можете безопасно удалить измерения / Ежедневные / Хорли\nОбновленная задержка обновления токена (можно до 2 минут).",
+        "pt": "erro de digitação fixo que fez hoje/hourly hoje/horly. Você pode excluir com segurança as medidas horly branch / diário / baixo\nAtraso atualizado para atualização do token (pode ser até 2 min agora).",
+        "nl": "vaste typefout die vandaag/dag per uur is gemaakt. U kunt veilig verwijderen van de horly tak Metingen/Daily/horly\nBijgewerkte vertraging voor token vernieuwen (het kan tot 2 min nu).",
+        "fr": "typo fixe qui a été fait aujourd'hui/heureusement aujourd'hui/horly. Vous pouvez supprimer en toute sécurité la branche horly Mesures/Daily/Horly\nDélai mis à jour pour le rafraîchissement du jeton (il peut être jusqu'à 2 min maintenant).",
+        "it": "typo fisso che ha fatto oggi / ora odierna / breve. È possibile eliminare in modo sicuro il ramo orrendo Misure/Daily/horly\nRitardo aggiornato per rinfrescare token (può essere fino a 2 minuti ora).",
+        "es": "typo fijo que hizo hoy/hora hoy/horly. Usted puede eliminar de forma segura la rama horrible Medidas/Daily/horly\nRetraso actualizado para el refresco de token (puede ser hasta 2 min ahora).",
+        "pl": "naprawiono literówkę, która była dziś / co godzinę dzisiaj / horly. Można bezpiecznie usunąć koński oddział Pomiary / Daily / Horly\nAktualizacja opóźnienia dla token odświeżania (może być do 2 min teraz).",
+        "uk": "фіксований тип, який зробив сьогодні/часно. Ви можете сміливо видалити заміри орлі/Daily/horly\nОновлена затримка для освіження токени (він тепер може бути до 2 хв).",
+        "zh-cn": "今天/今天/小时的固定类型。 您可以安全删除 Horly 分支测量/ Daily/ horly\n更新更新的令牌刷新延迟( 现在最多可达2分钟) ."
+      },
       "2.4.4": {
         "en": "Exponential backoff, if all systems cannot get polled. If at least 1 system can be polled we resume normal action. Now - if all systems fail polling (like 1 if you only have 1) this would be example backoff times for a 5min base interval: 1 Failure -> 0-10 min, 2 Failure -> 0-20 min, 3 Failures -> 0-40 min, 4+ Failures -> 0-40 min. Once polling works again we will resume normal operations.",
         "de": "Exponential Backoff, wenn alle Systeme nicht abgefragt werden können. Wenn mindestens 1 System abgefragt werden kann, nehmen wir normale Maßnahmen wieder auf. Nun - wenn alle Systeme versagen Umfrage (wie 1 wenn Sie nur 1) wäre dies Beispiel Backoff-Zeiten für ein 5min Basisintervall: 1 Ausfall -> 0-10 min, 2 Fehler -> 0-20 min, 3 Fehler -> 0-40 min, 4+ Mängel -> 0-40 min. Sobald die Umfrage wieder funktioniert, werden wir normale Operationen wieder aufnehmen.",
@@ -80,19 +93,6 @@
         "pl": "Pomiary na dziś i wczoraj są również dostępne w ciągu godziny\nPomiary za miesiąc i miesiąc poprzedni są również dostępne w ciągu dnia\nPomiary na rok są również dostępne w miesiącu\nObliczanie jednostki ustalone, jeśli nie znamy jeszcze jednostki na stan _ attr.js\nDodano definicje dla cascadeDevicesCount and mode\nAktualizacja zależności",
         "uk": "Вимірювання на сьогодні і сьогодні також доступні за годину\nВимірювання протягом місяця та попереднього місяця також доступні за днем\nВимірювання за рік також доступні за місяць\nОбчислення агрегату зафіксовано, якщо ми не знаємо блок, але за стан_attr.js\nДодано визначення для каскаднихDevicesCount та режим\nОновлення залежності",
         "zh-cn": "今天和昨天的测量也按小时提供\n每月和上月的计量也按日提供\n还按月提供年度计量数据\n如果我们还不知道每个状态的单位, 单位计算会固定\n级联DevicesCount和模式的添加定义\n依赖性更新"
-      },
-      "2.2.2": {
-        "en": "Migrated to i18n\nUpdate handling of \"new\" states that are just an \"extra\" to an existing state like state and state.1 or state.42\nDependency Updates",
-        "de": "Migration auf i18n\nUpdate-Handling von \"neuen\" Zuständen, die nur ein \"Extra\" zu einem bestehenden Zustand wie Staat und Staat sind. 1 oder Zustand. ANHANG\nDependance-Updates",
-        "ru": "Иммиграция в i18n\nОбновление обработки «новых» состояний, которые являются просто «дополнительными» к существующему состоянию. 1 или государство. 42\nОбновления зависимостей",
-        "pt": "Migrado para i18n\nAtualizar o manuseio de estados \"novos\" que são apenas um \"extra\" para um estado existente como estado e estado. 1 ou estado. 42\nAtualizações de Dependência",
-        "nl": "Migreren naar i18n\nUpdate de behandeling van \"nieuwe\" staten die slechts een \"extra\" zijn naar een bestaande staat zoals staat en staat. 1 of staat. 42\nAfhankelijkheidsupdates",
-        "fr": "Migrés en i18n\nMettre à jour la gestion des états « nouveaux » qui ne sont qu'un « extra » à un état existant comme l'état et l'état. 1 ou état. Annexe\nMises à jour sur la dépendance",
-        "it": "Migrato a i18n\nGestione dell'aggiornamento di \"nuovi\" stati che sono solo un \"extra\" a uno stato esistente come stato e stato. 1 o stato. 42, 42, 42, 42\nAggiornamenti di dipendenza",
-        "es": "Migrado a i18n\nActualizar el manejo de estados \"nuevos\" que son sólo un \"extra\" a un estado existente como estado y estado. 1 o estado. 42\nActualizaciones de dependencia",
-        "pl": "Migrant to i18n\nAktualizacja obsługi \"nowych\" stanów, które są tylko \"dodatkowe\" do istniejącego stanu, jak stan i stan. 1 lub stan. 42\nAktualizacje zależności",
-        "uk": "Міграція до i18n\nОновити обробку \"нових\" станів, які просто \"екстра\" до існуючого стану, як держави, так і держави. 1 або держава. 42 км\nОновлення залежності",
-        "zh-cn": "迁移到 i18n\n更新\"新\"状态的处理方式,这些状态只是像州和州这样的现有状态的\"外\". 1或为州. 第42条\n依赖性更新"
       }
     },
     "docs": {
