@@ -304,6 +304,7 @@ This channel contains values polled from SENEC App-API.
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- fixed typo that made today/hourly today/horly. You can safely delete the horly branch Measurements/Daily/horly
 - Updated delay for token refresh (it can be up to 2 min now).
 
 ### 2.4.4 (2026-03-03)

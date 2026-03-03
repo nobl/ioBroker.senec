@@ -804,7 +804,7 @@ class Senec extends utils.Adapter {
 					// Frequent measurements
 					await Promise.all([
 						this.doMeasurementsDay(anlagenId, today, "today"),
-						this.doMeasurementsDay(anlagenId, today, "today.horly"),
+						this.doMeasurementsDay(anlagenId, today, "today.hourly"),
 						this.doMeasurementsDay(anlagenId, yesterday, "yesterday"),
 						this.doMeasurementsDay(anlagenId, yesterday, "yesterday.hourly"),
 					]);
