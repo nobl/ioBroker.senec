@@ -304,6 +304,7 @@ This channel contains values polled from SENEC App-API.
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- AuthToken in _api is no longer used. You can safely delete it.
 - Decoupled frequencies to lower API load. Every poll: Dashboard and today values; Once per day: Yesterday, Monthly, Yearly values (we reduce load by about 65% compared to polling everything every time)
 - AccessToken logic centralized
 - True Single Flight Token refresh (avoiding duplicate logins, duplicate login storms)

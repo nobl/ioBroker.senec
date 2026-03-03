@@ -20,7 +20,6 @@ const utils = require("@iobroker/adapter-core");
 const state_attr = require(`${__dirname}/lib/state_attr.js`);
 const state_trans = require(`${__dirname}/lib/state_trans.js`);
 const API_PFX = "_api.";
-const ID_TOKEN_STATE = `${API_PFX}AuthToken`;
 const LAST_UPDATED = "last updated";
 
 const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`);
@@ -263,7 +262,6 @@ class Senec extends utils.Adapter {
 			if (this.timerAPI) {
 				clearTimeout(this.timerAPI);
 			}
-			this.doState(ID_TOKEN_STATE, null, "Access Token", "", false);
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
 			callback();
@@ -580,7 +578,6 @@ class Senec extends utils.Adapter {
 			);
 
 			this.currentToken = tokenRes.data.access_token;
-			await this.doState(ID_TOKEN_STATE, this.currentToken, "Access Token", "", false);
 			this.log.info("✅ API Login erfolgreich.");
 			return this.currentToken;
 		} catch (e) {
