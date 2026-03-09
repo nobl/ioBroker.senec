@@ -21,6 +21,7 @@ const state_attr = require(`${__dirname}/lib/state_attr.js`);
 const state_trans = require(`${__dirname}/lib/state_trans.js`);
 const API_PFX = "_api.";
 const LAST_UPDATED = "last updated";
+const TOKEN_STATE = `${API_PFX}refreshToken`;
 
 const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`);
 const api_parallel_limit = 4;
@@ -511,12 +512,15 @@ class Senec extends utils.Adapter {
 
 	async startTokenManager() {
 		try {
+			const tokenState = await this.getStateAsync(`${TOKEN_STATE}`);
+			this.refreshToken = tokenState?.val ? this.decrypt(String(tokenState.val)) : null;
 			// No refresh token at all → full login
 			if (!this.refreshToken) {
 				this.log.info("🔐 No refresh token present. Performing full login...");
 				const token = await this.senecLogin();
 				return !!token;
 			}
+			this.log.info("🔐 Using existing refresh token.");
 
 			// We have a refresh token → try refresh
 			this.log.info("🔐 Trying initial token refresh...");
@@ -619,6 +623,15 @@ class Senec extends utils.Adapter {
 
 			this.currentToken = tokenRes.data.access_token;
 			this.refreshToken = tokenRes.data.refresh_token;
+			await this.doState(
+				//`${this.namespace}${TOKEN_STATE}`,
+				`${TOKEN_STATE}`,
+				this.encrypt(this.refreshToken),
+				"Encrypted Refresh Token (never log or expose!)",
+				"",
+				false,
+				false,
+			);
 			this.authBlocked = false;
 			this.tokenFailureCount = 0;
 			const expiresIn = tokenRes.data.expires_in || 600; // fallback 10 min
@@ -715,6 +728,15 @@ class Senec extends utils.Adapter {
 
 				this.currentToken = data.access_token;
 				this.refreshToken = data.refresh_token || this.refreshToken;
+				await this.doState(
+					//`${this.namespace}${TOKEN_STATE}`,
+					`${TOKEN_STATE}`,
+					this.encrypt(this.refreshToken),
+					"Encrypted Refresh Token (never log or expose!)",
+					"",
+					false,
+					false,
+				);
 
 				this.tokenFailureCount = 0;
 				this.authBlocked = false;
@@ -737,12 +759,6 @@ class Senec extends utils.Adapter {
 				}
 
 				this.tokenFailureCount++;
-
-				// const baseDelay = 5000; // 5 seconds base
-				// const maxDelay = 120000; // 1 minute cap
-				// let retryDelay = computeBackoffDelay(baseDelay, this.tokenFailureCount);
-				// retryDelay = Math.min(retryDelay, maxDelay);
-
 				const attempt = this.tokenFailureCount; // 1,2,3,...
 				let retryDelay = computeBackoffDelay(
 					this.tokenBackoff.baseDelayMs,
@@ -1428,8 +1444,9 @@ class Senec extends utils.Adapter {
 	 * @param description Description of the state
 	 * @param unit Unit of the state
 	 * @param write Writable state
+	 * @param read Readable state
 	 */
-	async doState(name, value, description, unit, write) {
+	async doState(name, value, description, unit, write, read = true) {
 		if (!isNaN(name.substring(0, 1))) {
 			// keys cannot start with digits! Possibly SENEC delivering erraneous data
 			this.log.debug(`(doState) Invalid datapoint: ${name}: ${value}`);
@@ -1459,6 +1476,10 @@ class Senec extends utils.Adapter {
 				this.log.debug(`(doState) Updating object: ${name} (write): ${obj.common.write} -> ${write}`);
 				newCommon.write = write;
 			}
+			if (obj.common.read !== read) {
+				this.log.debug(`(doState) Updating object: ${name} (read): ${obj.common.read} -> ${read}`);
+				newCommon.read = read;
+			}
 			if (Object.keys(newCommon).length > 0) {
 				await this.extendObject(name, { common: newCommon });
 			}
@@ -1470,7 +1491,7 @@ class Senec extends utils.Adapter {
 					type: valueType,
 					role: "value",
 					unit: unit,
-					read: true,
+					read: read,
 					write: write,
 				},
 				native: {},
