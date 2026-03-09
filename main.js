@@ -911,6 +911,11 @@ class Senec extends utils.Adapter {
 				await this.refreshTokenSingleFlight();
 			}
 
+			if (!this.currentToken) {
+				this.log.debug("🔐 no current Token. Refreshing before request...");
+				await this.refreshTokenSingleFlight();
+			}
+
 			const maxAttempts = 3;
 			for (let attempt = 0; attempt < maxAttempts; attempt++) {
 				try {
