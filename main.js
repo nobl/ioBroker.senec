@@ -123,6 +123,12 @@ class Senec extends utils.Adapter {
 		this.refreshPromise = null;
 		this.authBlocked = false;
 
+		this.tokenBackoff = {
+			baseDelayMs: 10000, // 10s start
+			maxDelayMs: 30 * 60 * 1000, // 30 min max delay – important for longer outages of senec / keycloak (maybe even increase to 1 hour)
+			maxMultiplier: 64, // 2^6 = 64 → if attempt ≥ 6 capping ~10 min → 640 s (~10 min) delay is more than enough for senec outages and prevents excessive load on senec / keycloak in case of issues
+		};
+
 		this.timerAPI = null;
 		this.apiPollRunning = false;
 		this.lastHeavyUpdate = 0;
@@ -633,19 +639,30 @@ class Senec extends utils.Adapter {
 		}
 
 		const now = Date.now();
-		const safetyMargin = Math.min(this.baseTime, (this.tokenExpiresAt - now) / 10);
-
-		let delay = this.tokenExpiresAt - now - safetyMargin;
-		if (delay < 5000) {
-			delay = 5000; // minimum 5s
+		let remaining = this.tokenExpiresAt - now;
+		if (remaining <= 0) {
+			// no negatives - if token already expired for some reason, schedule refresh in 10s
+			remaining = 10000;
 		}
+		// security-delay: Refresh min. 90–150s before expiry to prevent edge cases of token expiry during API calls and to reduce load on senec / keycloak in case of time sync issues or longer response times of senec / keycloak
+		const safetyMargin = Math.max(90000, remaining * 0.2); // 1.5 min oder 20%
+		let delay = remaining - safetyMargin;
+
+		if (this.tokenFailureCount > 0) {
+			// if we had failures, we refresh more conservatively with a min. of 1 min to prevent excessive load on senec / keycloak in case of issues and to increase chances of successful refresh in case of temporary issues
+			delay = Math.max(delay, 60000); // min. 1 min
+		}
+		delay = Math.max(delay, 10000); // never less than 10s - important to prevent too aggressive refreshes in case of clock sync issues or senec / keycloak response delays
 
 		if (this.timerTokenRefresh) {
 			clearTimeout(this.timerTokenRefresh);
 		}
 
 		if (!unloaded) {
-			this.log.debug(`🔐 Scheduling token refresh in ${(delay / 1000).toFixed(0)}s`);
+			this.log.debug(
+				`🔐 Next token refresh in ${(delay / 1000).toFixed(0)}s ` +
+					`(remaining ${Math.round(remaining / 1000 / 60)} min, failures=${this.tokenFailureCount})`,
+			);
 			this.timerTokenRefresh = setTimeout(() => {
 				this.refreshTokenSingleFlight().catch((err) => {
 					this.log.warn(`⚠ Token refresh failed: ${err.message}`);
@@ -698,43 +715,52 @@ class Senec extends utils.Adapter {
 
 				this.currentToken = data.access_token;
 				this.refreshToken = data.refresh_token || this.refreshToken;
-				this.authBlocked = false;
-
-				const expiresIn = data.expires_in || 600; // fallback 10min
-				this.tokenExpiresAt = Date.now() + expiresIn * 1000;
 
 				this.tokenFailureCount = 0;
-
+				this.authBlocked = false;
+				const expiresIn = data.expires_in || 600; // fallback 10min
+				this.tokenExpiresAt = Date.now() + expiresIn * 1000;
 				this.log.info(`✅ Token refreshed. Expires in ${expiresIn}s`);
-
 				this.scheduleTokenRefresh();
 			} catch (err) {
 				this.authBlocked = true;
 				const status = err.response?.status;
 				const errorCode = err.response?.data?.error;
 
-				this.log.warn(`⚠️ Token refresh failed: ${err.message}`);
+				this.log.warn(`⚠️ Token refresh failed: ${err.message} (HTTP ${status || "unknown"})`);
 
 				// If refresh token invalid → fallback to full login
 				if (errorCode === "invalid_grant" || status === 400) {
-					this.log.warn("⚠️ Refresh token invalid. Performing full login.");
+					this.log.warn("⚠️ Refresh token invalid → full login required.");
 					await this.senecLogin();
 					return;
 				}
 
 				this.tokenFailureCount++;
 
-				const baseDelay = 5000; // 5 seconds base
-				const maxDelay = 120000; // 1 minute cap
-				let retryDelay = computeBackoffDelay(baseDelay, this.tokenFailureCount);
-				retryDelay = Math.min(retryDelay, maxDelay);
+				// const baseDelay = 5000; // 5 seconds base
+				// const maxDelay = 120000; // 1 minute cap
+				// let retryDelay = computeBackoffDelay(baseDelay, this.tokenFailureCount);
+				// retryDelay = Math.min(retryDelay, maxDelay);
+
+				const attempt = this.tokenFailureCount; // 1,2,3,...
+				let retryDelay = computeBackoffDelay(
+					this.tokenBackoff.baseDelayMs,
+					attempt - 1, // attempt beginnt bei 0 für ersten Fehler
+					this.tokenBackoff.maxMultiplier,
+				);
+				retryDelay = Math.max(retryDelay, 10000); // never < 10 s
+				retryDelay = Math.min(retryDelay, this.tokenBackoff.maxDelayMs); // never > maxDelayMs
 
 				if (this.timerTokenRefresh) {
 					clearTimeout(this.timerTokenRefresh);
 				}
 
 				if (!unloaded) {
-					this.log.warn(`🔁 Retrying token refresh in ${(retryDelay / 1000).toFixed(0)}s`);
+					this.log.warn(
+						`🔁 Token refresh retry #${attempt} scheduled in ${(retryDelay / 1000).toFixed(0)}s ` +
+							`(failures = ${this.tokenFailureCount})`,
+					);
 					this.timerTokenRefresh = setTimeout(() => {
 						this.refreshTokenSingleFlight().catch(() => {});
 					}, retryDelay);
