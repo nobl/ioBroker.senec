@@ -654,6 +654,11 @@ class Senec extends utils.Adapter {
 	}
 
 	async refreshTokenSingleFlight() {
+		// cancel scheduled refresh while manual refresh runs
+		if (this.timerTokenRefresh) {
+			clearTimeout(this.timerTokenRefresh);
+			this.timerTokenRefresh = null;
+		}
 		if (this.timerTokenRefresh && this.tokenFailureCount > 0) {
 			this.log.debug("🔐 Refresh retry already scheduled — skipping immediate refresh.");
 			return;
