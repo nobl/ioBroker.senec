@@ -126,6 +126,7 @@ class Senec extends utils.Adapter {
 		this.timerAPI = null;
 		this.apiPollRunning = false;
 		this.lastHeavyUpdate = 0;
+		this.baseTime = 60000;
 
 		this.on("ready", this.onReady.bind(this));
 		this.on("stateChange", this.onStateChange.bind(this));
@@ -632,7 +633,7 @@ class Senec extends utils.Adapter {
 		}
 
 		const now = Date.now();
-		const safetyMargin = Math.min(60000, (this.tokenExpiresAt - now) / 10);
+		const safetyMargin = Math.min(this.baseTime, (this.tokenExpiresAt - now) / 10);
 
 		let delay = this.tokenExpiresAt - now - safetyMargin;
 		if (delay < 5000) {
@@ -654,6 +655,14 @@ class Senec extends utils.Adapter {
 	}
 
 	async refreshTokenSingleFlight() {
+		// Prevent multiple refreshes from different poll workers
+		if (this.refreshing) {
+			this.log.debug("🔐 Refresh already in progress, waiting for it to complete...");
+			await this.refreshPromise;
+			return;
+		}
+		this.refreshing = true;
+
 		// cancel scheduled refresh while manual refresh runs
 		if (this.timerTokenRefresh) {
 			clearTimeout(this.timerTokenRefresh);
@@ -734,6 +743,7 @@ class Senec extends utils.Adapter {
 				throw err;
 			} finally {
 				this.refreshPromise = null;
+				this.refreshing = false; // Release lock
 			}
 		})();
 
@@ -762,7 +772,7 @@ class Senec extends utils.Adapter {
 
 		this.apiPollRunning = true;
 
-		const baseInterval = this.config.api_interval * 60000;
+		const baseInterval = this.config.api_interval * this.baseTime;
 		let nextDelay = baseInterval;
 
 		try {
@@ -905,7 +915,7 @@ class Senec extends utils.Adapter {
 	async apiGet(url, config = {}) {
 		return this.apiQueue.add(async () => {
 			// Proactive expiry check - if token is close to expiry, refresh before making the call to avoid edge cases with token expiry during the call
-			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - 60000) {
+			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
 				// 60s before expiry to avoid keycloak-server timedrift issues (usually 5-10 sec)
 				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
 				await this.refreshTokenSingleFlight();
@@ -937,7 +947,12 @@ class Senec extends utils.Adapter {
 
 					// 🚦 Rate limited
 					if (status === 429) {
-						this.log.warn("🚦 API returned 429 (rate limited)");
+						this.log.warn("🚦 API returned 429 (rate limited) - increasing next poll delay.");
+						const delay = this.config.api_interval * this.baseTime * 2; // doppelte Basiszeit
+						if (!unloaded && this.timerAPI) {
+							clearTimeout(this.timerAPI);
+							this.timerAPI = setTimeout(() => this.pollSenecApi(), delay);
+						}
 					}
 
 					throw e;
