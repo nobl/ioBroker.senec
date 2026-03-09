@@ -308,6 +308,7 @@ This channel contains values polled from SENEC App-API.
 - Optimizations in case of authentication issues
 - Persisted RefreshToken across adapter restarts (less logins)
 - Reworded errors/warning messages
+- Dependency updates
 
 ### 2.4.5 (2026-03-03)
 - fixed typo that made today/hourly today/horly. You can safely delete the horly branch Measurements/Daily/horly
