@@ -304,6 +304,8 @@ This channel contains values polled from SENEC App-API.
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- Optimizations in Token Refesh Szenarios
+- Optimizations in case of authentication issues
 - Reworded errors/warning messages
 
 ### 2.4.5 (2026-03-03)

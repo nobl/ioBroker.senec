@@ -121,6 +121,7 @@ class Senec extends utils.Adapter {
 		this.timerTokenRefresh = null;
 		this.tokenFailureCount = 0;
 		this.refreshPromise = null;
+		this.authBlocked = false;
 
 		this.timerAPI = null;
 		this.apiPollRunning = false;
@@ -513,7 +514,7 @@ class Senec extends utils.Adapter {
 			// We have a refresh token → try refresh
 			this.log.info("🔐 Trying initial token refresh...");
 			await this.refreshTokenSingleFlight();
-			return true;
+			return !!this.currentToken;
 		} catch (error) {
 			this.log.warn(`⚠️ Initial refresh failed. Falling back to full login... ${error.message}`);
 			const token = await this.senecLogin();
@@ -611,6 +612,8 @@ class Senec extends utils.Adapter {
 
 			this.currentToken = tokenRes.data.access_token;
 			this.refreshToken = tokenRes.data.refresh_token;
+			this.authBlocked = false;
+			this.tokenFailureCount = 0;
 			const expiresIn = tokenRes.data.expires_in || 600; // fallback 10 min
 			this.tokenExpiresAt = Date.now() + expiresIn * 1000;
 
@@ -651,11 +654,14 @@ class Senec extends utils.Adapter {
 	}
 
 	async refreshTokenSingleFlight() {
+		if (this.timerTokenRefresh && this.tokenFailureCount > 0) {
+			this.log.debug("🔐 Refresh retry already scheduled — skipping immediate refresh.");
+			return;
+		}
 		if (!this.refreshToken) {
-			this.log.debug("No refresh token available — skipping refresh.");
+			this.log.debug("🔐 No refresh token available — skipping refresh.");
 			return this.senecLogin();
 		}
-
 		if (this.refreshPromise) {
 			return this.refreshPromise;
 		}
@@ -678,6 +684,7 @@ class Senec extends utils.Adapter {
 
 				this.currentToken = data.access_token;
 				this.refreshToken = data.refresh_token || this.refreshToken;
+				this.authBlocked = false;
 
 				const expiresIn = data.expires_in || 600; // fallback 10min
 				this.tokenExpiresAt = Date.now() + expiresIn * 1000;
@@ -688,6 +695,7 @@ class Senec extends utils.Adapter {
 
 				this.scheduleTokenRefresh();
 			} catch (err) {
+				this.authBlocked = true;
 				const status = err.response?.status;
 				const errorCode = err.response?.data?.error;
 
@@ -728,6 +736,10 @@ class Senec extends utils.Adapter {
 	}
 
 	async pollSenecApi() {
+		if (this.authBlocked) {
+			this.log.debug("⏸ Poll skipped - authentication currently recovering.");
+			return;
+		}
 		if (this.timerAPI) {
 			clearTimeout(this.timerAPI);
 			this.timerAPI = null;
@@ -887,8 +899,9 @@ class Senec extends utils.Adapter {
 	 */
 	async apiGet(url, config = {}) {
 		return this.apiQueue.add(async () => {
-			// Proactive expiry check
-			if (Date.now() >= this.tokenExpiresAt - 30000) {
+			// Proactive expiry check - if token is close to expiry, refresh before making the call to avoid edge cases with token expiry during the call
+			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - 60000) {
+				// 60s before expiry to avoid keycloak-server timedrift issues (usually 5-10 sec)
 				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
 				await this.refreshTokenSingleFlight();
 			}
