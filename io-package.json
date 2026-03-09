@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.4.5",
+    "version": "2.4.6",
     "news": {
+      "2.4.6": {
+        "en": "Optimizations in Token Refesh Szenarios\nOptimizations in case of authentication issues\nPersisted RefreshToken across adapter restarts (less logins)\nReworded errors/warning messages\nDependency updates",
+        "de": "Optimierungen in Token Refesh Szenarios\nOptimierungen bei Authentifizierungsproblemen\nPersisted RefreshToken über Adapter neu gestartet (weniger Logins)\nReworded Fehler/Warnmeldungen\nÄnderung der Abhängigkeit",
+        "ru": "Оптимизация в Token Refesh Szenarios\nОптимизация в случае проблем с аутентификацией\nPersisted RefreshToken через перезапуск адаптера (меньше логинов)\nПерефразированные ошибки/предупреждающие сообщения\nОбновления зависимостей",
+        "pt": "Otimizações em Token Refesh Szenarios\nOtimizações em caso de problemas de autenticação\nActualização PersistidaToken através do adaptador reinicia (menos logins)\nErros/mensagens de aviso reformuladas\nAtualizações de dependência",
+        "nl": "Optimalisaties in Szenarios\nOptimalisaties bij authenticatieproblemen\nPersisted RefreshToken over adapter herstarten (minder logins)\nHerformuleerde fouten/waarschuwingsberichten\nAfhankelijkheidsupdates",
+        "fr": "Optimisations en jeton Refesh Szenarios\nOptimisations en cas de problèmes d'authentification\nPersisted RefreshToken sur les redémarrages de l'adaptateur (moins de connexions)\nErreurs ou messages d'avertissement reformulés\nMises à jour sur la dépendance",
+        "it": "Ottimizzazione in Token Refesh Szenarios\nOttimizzazione in caso di problemi di autenticazione\nPersisted RefreshToken attraverso l'adattatore riavvia (meno login)\nErrori riformulati / messaggi di avviso\nAggiornamenti di dipendenza",
+        "es": "Optimizaciones en Token Refesh Szenarios\nOptimizaciones en caso de problemas de autenticación\nPersisted RefreshToken cruza el adaptador descansa (sin logins)\nErrores o mensajes de alerta\nActualizaciones de dependencia",
+        "pl": "Optymalizacja w Token Refesh Szenarios\nOptymalizacja w przypadku kwestii uwierzytelniania\nPersisted RefreshToken na adapterze restartuje (mniej login)\nPrzeformułowane błędy / komunikaty ostrzegawcze\nAktualizacje zależności",
+        "uk": "Оптимізація в Token Refesh Szenarios\nОптимізація у разі автентифікації\nПеревірений RefreshToken через перезавантаження адаптерів (без логінів)\nПомилки/пожежні повідомлення\nОновлення залежності",
+        "zh-cn": "Token Refesh Szenarios的优化\n认证问题的优化\n跨越适配器重启( 减少登录) 的 Persisted rescrewToken\n重写错误/ 警告消息\n依赖性更新"
+      },
       "2.4.5": {
         "en": "fixed typo that made today/hourly today/horly. You can safely delete the horly branch Measurements/Daily/horly\nUpdated delay for token refresh (it can be up to 2 min now).",
         "de": "fester Typus, der heute / stundenlang gemacht wird. Sie können die horly branch Messungen/Daily/horly sicher löschen\nAktualisierte Verzögerung für Token-Erfrischung (es kann jetzt bis zu 2 min sein).",
@@ -80,19 +93,6 @@
         "pl": "Senec zmienił procedurę logowania (ponownie). Adapter teraz pracuje również z logowaniem 2- etap gdzie Senec prosi o nazwę użytkownika / e-mail pierwszy i hasło drugi.\nAktualizacje zależności",
         "uk": "Сенец змінив процедуру логіну (погано). Перехідник тепер також працює з 2-й логіном, де senec запитує на ім'я користувача / електронну пошту та пароль другого.\nОновлення залежності",
         "zh-cn": "Senec 更改了登录程序( 又) 。 适配器现在也使用2级登录,现场先询问用户名/电子邮件,然后询问密码.\n依赖性更新"
-      },
-      "2.3.0": {
-        "en": "Measurements for today and yesterday are also available by the hour\nMeasurements for month and previous month are also available by day\nMeasurements for year are also available by month\nUnit calculation fixed if we don't know the unit yet per state_attr.js\nAdded definitions for cascadeDevicesCount and mode\nDependency update",
-        "de": "Messungen für heute und gestern sind auch in der Stunde verfügbar\nMessungen für Monat und Vormonat sind auch tagsüber verfügbar\nMessungen für das Jahr sind auch monatlich verfügbar\nEinheitsberechnung behoben, wenn wir die Einheit noch nicht pro state_attr.js kennen\nHinzugefügt Definitionen für KaskadeDevicesCount und Modus\nÄnderung der Abhängigkeit",
-        "ru": "Измерения на сегодня и вчера также доступны по часам\nИзмерения за месяц и предыдущий месяц также доступны по дням\nИзмерения за год также доступны по месяцам\nРасчет единицы фиксируется, если мы еще не знаем единицу для состояния_attr.js\nДобавлены определения для каскадаРасчет и режим\nОбновление зависимостей",
-        "pt": "As medições de hoje e de ontem também estão disponíveis por hora\nMedidas para mês e mês anterior também estão disponíveis por dia\nAs medições para o ano também estão disponíveis por mês\nCálculo unitário corrigido se ainda não soubermos a unidade por state_attr.js\nDefinições adicionadas para dispositivos em cascataCount and mode\nActualização da dependência",
-        "nl": "Metingen voor vandaag en gisteren zijn ook beschikbaar per uur\nMetingen voor maand en vorige maand zijn ook beschikbaar per dag\nMetingen voor jaar zijn ook beschikbaar per maand\nEenheidsberekening vastgesteld als we de eenheid nog niet kennen per state_attr.js\nToegevoegde definities voor cascadeDevicesTelling en modus\nAfhankelijkheidsupdate",
-        "fr": "Les mesures pour aujourd'hui et hier sont également disponibles à l'heure\nLes mesures pour le mois et le mois précédent sont également disponibles par jour\nLes mesures pour l'année sont également disponibles par mois\nCalcul unitaire corrigé si nous ne connaissons pas encore l'unité par état_attr.js\nAjout de définitions pour cascadeDevicesCount et mode\nMise à jour de la dépendance",
-        "it": "Le misure di oggi e di ieri sono disponibili anche entro l'ora\nLe misure per il mese e il mese precedente sono disponibili anche di giorno\nLe misure per l'anno sono disponibili anche per mese\nCalcolo dell'unità fissato se non conosciamo l'unità ancora per state_attr.js\nDefinizioni aggiuntive per cascadeDevicesCount e modalità\nAggiornamento della dipendenza",
-        "es": "Las medidas para hoy y ayer también están disponibles por hora\nLas mediciones para mes y mes anterior también están disponibles por día\nLas mediciones del año también están disponibles por mes\nCálculo de unidad fijo si no conocemos la unidad todavía por state_attr.js\nDefiniciones agregadas para cascadaDispositivosCounto y modo\nActualización de la dependencia",
-        "pl": "Pomiary na dziś i wczoraj są również dostępne w ciągu godziny\nPomiary za miesiąc i miesiąc poprzedni są również dostępne w ciągu dnia\nPomiary na rok są również dostępne w miesiącu\nObliczanie jednostki ustalone, jeśli nie znamy jeszcze jednostki na stan _ attr.js\nDodano definicje dla cascadeDevicesCount and mode\nAktualizacja zależności",
-        "uk": "Вимірювання на сьогодні і сьогодні також доступні за годину\nВимірювання протягом місяця та попереднього місяця також доступні за днем\nВимірювання за рік також доступні за місяць\nОбчислення агрегату зафіксовано, якщо ми не знаємо блок, але за стан_attr.js\nДодано визначення для каскаднихDevicesCount та режим\nОновлення залежності",
-        "zh-cn": "今天和昨天的测量也按小时提供\n每月和上月的计量也按日提供\n还按月提供年度计量数据\n如果我们还不知道每个状态的单位, 单位计算会固定\n级联DevicesCount和模式的添加定义\n依赖性更新"
       }
     },
     "docs": {
