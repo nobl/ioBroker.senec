@@ -685,6 +685,10 @@ class Senec extends utils.Adapter {
 	}
 
 	async refreshTokenSingleFlight() {
+		if (unloaded) {
+			return;
+		}
+
 		// Prevent multiple refreshes from different poll workers
 		if (this.refreshing) {
 			this.log.debug("🔐 Refresh already in progress, waiting for it to complete...");
@@ -793,6 +797,10 @@ class Senec extends utils.Adapter {
 	}
 
 	async pollSenecApi() {
+		if (unloaded) {
+			return;
+		}
+
 		if (this.authBlocked) {
 			this.log.debug("⏸ Poll skipped - authentication currently recovering.");
 			return;
@@ -955,6 +963,9 @@ class Senec extends utils.Adapter {
 	 * @param config config for API call - will be extended by auth header - can be used to pass additional headers or other axios config parameters
 	 */
 	async apiGet(url, config = {}) {
+		if (unloaded) {
+			return;
+		}
 		return this.apiQueue.add(async () => {
 			// Proactive expiry check - if token is close to expiry, refresh before making the call to avoid edge cases with token expiry during the call
 			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
