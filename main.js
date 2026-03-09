@@ -644,7 +644,7 @@ class Senec extends utils.Adapter {
 			this.log.debug(`🔐 Scheduling token refresh in ${(delay / 1000).toFixed(0)}s`);
 			this.timerTokenRefresh = setTimeout(() => {
 				this.refreshTokenSingleFlight().catch((err) => {
-					this.log.error(`Token background refresh failed: ${err.message}`);
+					this.log.warn(`⚠ Token refresh failed: ${err.message}`);
 				});
 			}, delay);
 		}
@@ -691,7 +691,7 @@ class Senec extends utils.Adapter {
 				const status = err.response?.status;
 				const errorCode = err.response?.data?.error;
 
-				this.log.error(`❌ Token refresh failed: ${err.message}`);
+				this.log.warn(`⚠️ Token refresh failed: ${err.message}`);
 
 				// If refresh token invalid → fallback to full login
 				if (errorCode === "invalid_grant" || status === 400) {
