@@ -631,8 +631,8 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		const safetyMargin = 60 * 1000; // refresh 60s before expiry
 		const now = Date.now();
+		const safetyMargin = Math.min(60000, (this.tokenExpiresAt - now) / 10);
 
 		let delay = this.tokenExpiresAt - now - safetyMargin;
 		if (delay < 5000) {
