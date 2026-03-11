@@ -167,8 +167,12 @@ class Senec extends utils.Adapter {
 			if (this.config.api_use) {
 				this.log.info("Usage of SENEC App API configured.");
 				apiConnected = await this.startTokenManager();
-				if (apiConnected != null) {
+				if (apiConnected) {
 					await this.pollSenecApi();
+				} else {
+					this.log.warn(
+						"Usage of SENEC App API configured but initial connection failed. Check credentials and connection to SENEC App API. API Polling turned of automatically until restart.",
+					);
 				}
 			} else {
 				this.log.warn(
@@ -678,7 +682,7 @@ class Senec extends utils.Adapter {
 			);
 			this.timerTokenRefresh = setTimeout(() => {
 				this.refreshTokenSingleFlight().catch((err) => {
-					this.log.warn(`⚠ Token refresh failed: ${err.message}`);
+					this.log.debug(`⚠ Token refresh failed: ${err.message}`);
 				});
 			}, delay);
 		}
@@ -869,7 +873,7 @@ class Senec extends utils.Adapter {
 
 			for (const anlagenId of apiKnownSystems) {
 				try {
-					this.log.info(`🔄 Polling system ${anlagenId}...`);
+					this.log.debug(`🔄 Polling system ${anlagenId}...`);
 
 					// Dashboard (frequent)
 					const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);

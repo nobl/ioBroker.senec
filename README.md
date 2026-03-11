@@ -303,6 +303,10 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- Clearly indicating that initial API login busted and adapter will turn off API polling until restart
+- Certain warnings moved to debug (as they are pretty much for debug purposes only)
+
 ### 2.4.6 (2026-03-09)
 - Optimizations in Token Refesh Szenarios
 - Optimizations in case of authentication issues
