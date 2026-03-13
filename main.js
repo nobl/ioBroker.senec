@@ -154,6 +154,20 @@ class Senec extends utils.Adapter {
 
 		api_client = wrapper(axios.create({ withCredentials: true, timeout: 10000 }));
 		api_client.defaults.headers.post["Content-Type"] = "application/json";
+		api_client.interceptors.response.use(
+			// upon 429 Too Many Requests axis will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in pollSenecApi,
+			// which includes increasing the delay between polls in case of repeated 429 responses.
+			// This is important to prevent overwhelming the SENEC API in case of temporary issues or if we are polling too aggressively.
+			(response) => response,
+			async (error) => {
+				if (error.response && error.response.status === 429) {
+					this.log.debug("Experiencing 429. Retrying within axios logic once.");
+					await new Promise((r) => setTimeout(r, 2000));
+					return api_client.request(error.config);
+				}
+				throw error;
+			},
+		);
 
 		// Reset the connection indicator during startup
 		this.setState("info.connection", false, true);
