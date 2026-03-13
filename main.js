@@ -96,7 +96,15 @@ let highPrioForm = "";
 
 let unloaded = false;
 
-const knownObjects = {};
+const knownObjects = new Map();
+
+// process.on("unhandledRejection", (reason, _promise) => {
+// 	console.error("Unhandled Promise Rejection:", reason);
+// });
+
+// process.on("uncaughtException", (error) => {
+// 	console.error("Uncaught Exception:", error);
+// });
 
 class Senec extends utils.Adapter {
 	/**
@@ -310,6 +318,7 @@ class Senec extends utils.Adapter {
 			if (this.timerTokenRefresh) {
 				clearTimeout(this.timerTokenRefresh);
 			}
+			knownObjects.clear(); // empty objects cache
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
 			callback();
@@ -1495,7 +1504,14 @@ class Senec extends utils.Adapter {
 		const valueType = value !== null && value !== undefined ? typeof value : "mixed";
 
 		// Check object for changes:
-		const obj = knownObjects[name] ? knownObjects[name] : await this.getObjectAsync(name);
+		let obj = knownObjects.get(name);
+		if (!obj) {
+			obj = await this.getObjectAsync(name);
+
+			if (obj) {
+				knownObjects.set(name, obj);
+			}
+		}
 		if (obj) {
 			const newCommon = {};
 			if (obj.common.name !== description) {
@@ -1503,7 +1519,7 @@ class Senec extends utils.Adapter {
 				newCommon.name = description;
 			}
 			if (obj.common.type !== valueType) {
-				this.log.debug(`(doState) Updating object: ${name} (type): ${obj.common.type} -> ${typeof value}`);
+				this.log.debug(`(doState) Updating object: ${name} (type): ${obj.common.type} -> ${valueType}`);
 				newCommon.type = valueType;
 			}
 			if (obj.common.unit !== unit) {
@@ -1520,9 +1536,11 @@ class Senec extends utils.Adapter {
 			}
 			if (Object.keys(newCommon).length > 0) {
 				await this.extendObject(name, { common: newCommon });
+				obj.common = { ...obj.common, ...newCommon };
+				knownObjects.set(name, obj);
 			}
 		} else {
-			knownObjects[name] = {
+			obj = {
 				type: "state",
 				common: {
 					name: description,
@@ -1534,7 +1552,9 @@ class Senec extends utils.Adapter {
 				},
 				native: {},
 			};
-			await this.setObjectNotExistsAsync(name, knownObjects[name]);
+
+			await this.setObjectNotExistsAsync(name, obj);
+			knownObjects.set(name, obj);
 		}
 		await this.setStateChangedAsync(name, {
 			val: value,
