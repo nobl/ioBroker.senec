@@ -1770,7 +1770,11 @@ if (require.main !== module) {
 
 // --- AUTHENTIFIZIERUNG (LOGIN) -----------------------------------------------
 function generateCodeVerifier() {
-	return base64UrlEncode(crypto.randomBytes(32));
+	return base64UrlEncode(
+		globalThis.crypto?.getRandomValues
+			? Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(32)))
+			: crypto.randomBytes(32),
+	);
 }
 
 function generateCodeChallenge(verifier) {
