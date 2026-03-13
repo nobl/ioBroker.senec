@@ -10,9 +10,10 @@ let jar = new CookieJar();
 let api_client;
 const https = require("https");
 // rejectUnauthorized needs to be false due to the local machine's certificate cannot be checked properly
-const agent = new https.Agent({
+const agent_local = new https.Agent({
 	requestCert: true,
 	rejectUnauthorized: false,
+	keepAlive: true,
 });
 
 const utils = require("@iobroker/adapter-core");
@@ -221,7 +222,7 @@ class Senec extends utils.Adapter {
 							this.log.info("Enable force battery charging ...");
 							this.evalPoll(
 								JSON.parse(
-									await this.doGet(url, batteryOn, this, this.config.pollingTimeout, true),
+									await this.doGetLocal(url, batteryOn, this, this.config.pollingTimeout, true),
 									reviverNumParse,
 								),
 								"",
@@ -231,7 +232,7 @@ class Senec extends utils.Adapter {
 							this.log.info("Disable force battery charging ...");
 							this.evalPoll(
 								JSON.parse(
-									await this.doGet(url, batteryOff, this, this.config.pollingTimeout, true),
+									await this.doGetLocal(url, batteryOff, this, this.config.pollingTimeout, true),
 									reviverNumParse,
 								),
 								"",
@@ -510,7 +511,7 @@ class Senec extends utils.Adapter {
 		const form = '{"ENERGY":{"STAT_STATE":""}}';
 		try {
 			this.log.info(`connecting to Senec (local): ${url}`);
-			await this.doGet(url, form, this, this.config.pollingTimeout, true);
+			await this.doGetLocal(url, form, this, this.config.pollingTimeout, true);
 			this.log.info(`connected to Senec (local): ${url}`);
 			lalaConnected = true;
 		} catch (error) {
@@ -1259,12 +1260,12 @@ class Senec extends utils.Adapter {
 	 * @param {boolean} isPost true for POST, false for GET
 	 * @returns {Promise<string>} Promise with result
 	 */
-	doGet(pUrl, pForm, caller, pollingTimeout, isPost) {
+	doGetLocal(pUrl, pForm, caller, pollingTimeout, isPost) {
 		this.log.debug(`Calling: ${pUrl}`);
 		return new Promise(function (resolve, reject) {
 			axios({
 				method: isPost ? "post" : "get",
-				httpsAgent: agent,
+				httpsAgent: agent_local,
 				url: pUrl,
 				data: pForm,
 				timeout: pollingTimeout,
@@ -1313,7 +1314,7 @@ class Senec extends utils.Adapter {
 		}
 
 		try {
-			let body = await this.doGet(
+			let body = await this.doGetLocal(
 				url,
 				isHighPrio ? highPrioForm : lowPrioForm,
 				this,
