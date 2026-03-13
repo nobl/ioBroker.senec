@@ -5,10 +5,9 @@ const { URL, URLSearchParams } = require("url");
 const axios = require("axios");
 const tough = require("tough-cookie");
 const CookieJar = tough.CookieJar;
-const { wrapper } = require("axios-cookiejar-support");
+let wrapper;
 let jar = new CookieJar();
-const api_client = wrapper(axios.create({ withCredentials: true, timeout: 10000 }));
-api_client.defaults.headers.post["Content-Type"] = "application/json";
+let api_client;
 const https = require("https");
 // rejectUnauthorized needs to be false due to the local machine's certificate cannot be checked properly
 const agent = new https.Agent({
@@ -145,6 +144,15 @@ class Senec extends utils.Adapter {
 	 */
 	async onReady() {
 		// Initialize your adapter here
+
+		// load axios-cookiejar-support dynamically (ESM compatible)
+		if (!wrapper) {
+			const mod = await import("axios-cookiejar-support");
+			wrapper = mod.wrapper;
+		}
+
+		api_client = wrapper(axios.create({ withCredentials: true, timeout: 10000 }));
+		api_client.defaults.headers.post["Content-Type"] = "application/json";
 
 		// Reset the connection indicator during startup
 		this.setState("info.connection", false, true);

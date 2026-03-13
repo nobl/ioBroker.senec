@@ -306,6 +306,7 @@ This channel contains values polled from SENEC App-API.
 ### **WORK IN PROGRESS**
 - Clearly indicating that initial API login busted and adapter will turn off API polling until restart
 - Certain warnings moved to debug (as they are pretty much for debug purposes only)
+- Made usage of axios-cookiejar-support ESM compatible (dynamic import)
 
 ### 2.4.6 (2026-03-09)
 - Optimizations in Token Refesh Szenarios
