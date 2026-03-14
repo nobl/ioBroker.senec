@@ -146,7 +146,7 @@
     "mode": "daemon",
     "type": "energy",
     "compact": true,
-    "connectionType": "local",
+    "connectionType": "cloud",
     "dataSource": "poll",
     "adminUI": {
       "config": "json"
