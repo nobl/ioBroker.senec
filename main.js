@@ -8,6 +8,7 @@ const CookieJar = tough.CookieJar;
 let wrapper;
 let jar = new CookieJar();
 let api_client;
+let local_client;
 const https = require("https");
 // rejectUnauthorized needs to be false due to the local machine's certificate cannot be checked properly
 const agent_local = new https.Agent({
@@ -164,8 +165,20 @@ class Senec extends utils.Adapter {
 			wrapper = mod.wrapper;
 		}
 
+		local_client = wrapper(
+			axios.create({
+				httpsAgent: agent_local,
+				timeout: 10000,
+				signal: this.abortController?.signal,
+			}),
+		);
+
 		api_client = wrapper(
-			axios.create({ withCredentials: true, timeout: 10000, signal: this.abortController.signal }),
+			axios.create({
+				withCredentials: true,
+				timeout: 10000,
+				signal: this.abortController?.signal,
+			}),
 		);
 		api_client.defaults.headers.post["Content-Type"] = "application/json";
 		api_client.interceptors.response.use(
@@ -176,8 +189,11 @@ class Senec extends utils.Adapter {
 			async (error) => {
 				if (error.response && error.response.status === 429 && !unloaded) {
 					this.log.debug("Experiencing 429. Retrying within axios logic once.");
-					await new Promise((r) => setTimeout(r, 2000));
-					return api_client.request(error.config);
+					if (!error.config._retry429) {
+						error.config._retry429 = true;
+						await new Promise((r) => setTimeout(r, 2000));
+						return api_client.request(error.config);
+					}
 				}
 				throw error;
 			},
@@ -327,9 +343,6 @@ class Senec extends utils.Adapter {
 			}
 
 			// might be redundant due to the loop above but to be sure, we also clear these specific timers that are used for polling and token refresh
-			if (this.timer) {
-				clearTimeout(this.timer);
-			}
 			if (this.timerAPI) {
 				clearTimeout(this.timerAPI);
 			}
@@ -732,6 +745,7 @@ class Senec extends utils.Adapter {
 					`(remaining ${Math.round(remaining / 1000 / 60)} min, failures=${this.tokenFailureCount})`,
 			);
 			this.timerTokenRefresh = setTimeout(() => {
+				this.timers = this.timers.filter((t) => t !== this.timerTokenRefresh);
 				this.refreshTokenSingleFlight().catch((err) => {
 					this.log.debug(`⚠ Token refresh failed: ${err.message}`);
 				});
@@ -838,6 +852,7 @@ class Senec extends utils.Adapter {
 							`(failures = ${this.tokenFailureCount})`,
 					);
 					this.timerTokenRefresh = setTimeout(() => {
+						this.timers = this.timers.filter((t) => t !== this.timerTokenRefresh);
 						this.refreshTokenSingleFlight().catch(() => {});
 					}, retryDelay);
 					this.timers.push(this.timerTokenRefresh);
@@ -1007,7 +1022,10 @@ class Senec extends utils.Adapter {
 					clearTimeout(this.timerAPI);
 					this.timerAPI = null;
 				}
-				this.timerAPI = setTimeout(() => this.pollSenecApi(), nextDelay);
+				this.timerAPI = setTimeout(() => {
+					this.timers = this.timers.filter((t) => t !== this.timerAPI);
+					this.pollSenecApi();
+				}, nextDelay);
 				this.timers.push(this.timerAPI);
 				this.log.debug(`⏱ Next API poll scheduled in ${(nextDelay / 1000).toFixed(0)}s`);
 			}
@@ -1062,7 +1080,10 @@ class Senec extends utils.Adapter {
 						const delay = this.config.api_interval * this.baseTime * 2; // doppelte Basiszeit
 						if (!unloaded && this.timerAPI) {
 							clearTimeout(this.timerAPI);
-							this.timerAPI = setTimeout(() => this.pollSenecApi(), delay);
+							this.timerAPI = setTimeout(() => {
+								this.timers = this.timers.filter((t) => t !== this.timerAPI);
+								this.pollSenecApi();
+							}, delay);
 							this.timers.push(this.timerAPI);
 						}
 					}
@@ -1310,13 +1331,11 @@ class Senec extends utils.Adapter {
 		this.log.debug(`Calling: ${pUrl}`);
 
 		try {
-			const response = await axios({
+			const response = await local_client({
 				method: isPost ? "post" : "get",
-				httpsAgent: agent_local,
 				url: pUrl,
 				data: pForm,
 				timeout: pollingTimeout,
-				signal: this.abortController.signal,
 			});
 
 			const content = response.data;
@@ -1381,8 +1400,12 @@ class Senec extends utils.Adapter {
 
 			retry = 0;
 			if (!unloaded) {
-				this.timer = setTimeout(() => this.pollSenecLocal(isHighPrio, retry), interval);
-				this.timers.push(this.timer);
+				const timer = setTimeout(() => {
+					this.timers = this.timers.filter((t) => t !== timer);
+					this.pollSenecLocal(isHighPrio, retry).catch((e) => this.log.error(e));
+				}, interval);
+				this.timers.push(timer);
+				timer.unref?.();
 				this.log.debug(
 					`⏱ Next local poll (highPrio=${isHighPrio}) scheduled in ${(interval / 1000).toFixed(0)}s`,
 				);
@@ -1406,8 +1429,12 @@ class Senec extends utils.Adapter {
 				);
 				if (!unloaded) {
 					const delay = interval * this.config.retrymultiplier * retry;
-					this.timer = setTimeout(() => this.pollSenecLocal(isHighPrio, retry), delay);
-					this.timers.push(this.timer);
+					const timer = setTimeout(() => {
+						this.timers = this.timers.filter((t) => t !== timer);
+						this.pollSenecLocal(isHighPrio, retry).catch((e) => this.log.error(e));
+					}, delay);
+					this.timers.push(timer);
+					timer.unref?.();
 					this.log.debug(
 						`⏱ Next local poll (highPrio=${isHighPrio}) scheduled in ${(delay / 1000).toFixed(0)}s`,
 					);
