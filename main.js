@@ -181,6 +181,7 @@ class Senec extends utils.Adapter {
 			}),
 		);
 		api_client.defaults.headers.post["Content-Type"] = "application/json";
+		const { setTimeout } = require("timers/promises");
 		api_client.interceptors.response.use(
 			// upon 429 Too Many Requests axis will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in pollSenecApi,
 			// which includes increasing the delay between polls in case of repeated 429 responses.
@@ -191,7 +192,7 @@ class Senec extends utils.Adapter {
 					this.log.debug("Experiencing 429. Retrying within axios logic once.");
 					if (!error.config._retry429) {
 						error.config._retry429 = true;
-						await new Promise((r) => setTimeout(r, 2000));
+						await setTimeout(2000); // wait 2s before retrying - this is a simple fixed delay to give the server some time to recover, since we don't have information about how long the client should wait until retrying (like Retry-After header)
 						return api_client.request(error.config);
 					}
 				}
