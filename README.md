@@ -279,9 +279,12 @@ This channel contains values polled from SENEC App-API.
 
 ### Donate
 Maintenance of this adapter can be quite time consuming. If you wish to thank the author, please use these links:
-- [WERO](https://share.weropay.eu/p/1/c/QzzqgSQcI3)
-- [![Paypal](https://img.shields.io)](https://www.paypal.me/gerbots)
-- [![GitHub Sponsor](https://img.shields.io)](https://github.com/sponsors/nobl)
+[![WERO](https://img.shields.io/badge/just%20the%20message-8A2BE2)](https://share.weropay.eu/p/1/c/QzzqgSQcI3)
+[![PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://www.paypal.me/gerbots)
+[![GitHub Sponsor](https://img.shields.io/badge/Sponsor-GitHub-181717?logo=github&logoColor=white)](https://github.com/sponsors/nobl)
+
+[![NPM version](http://img.shields.io/npm/v/iobroker.senec.svg)](https://www.npmjs.com/package/iobroker.senec)
+https://img.shields.io/badge/just%20the%20message-8A2BE2
 
 ## Changelog
 
