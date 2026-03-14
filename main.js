@@ -143,6 +143,8 @@ class Senec extends utils.Adapter {
 		this.lastHeavyUpdate = 0;
 		this.baseTime = 60000;
 
+		this.timers = [];
+
 		this.on("ready", this.onReady.bind(this));
 		this.on("stateChange", this.onStateChange.bind(this));
 		this.on("unload", this.onUnload.bind(this));
@@ -309,6 +311,13 @@ class Senec extends utils.Adapter {
 	onUnload(callback) {
 		try {
 			unloaded = true;
+			for (const t of this.timers) {
+				// clear all timers that we have scheduled in this.timers to prevent them from running after unload and to prevent memory leaks
+				clearTimeout(t);
+			}
+			this.timers = [];
+
+			// might be redundant due to the loop above but to be sure, we also clear these specific timers that are used for polling and token refresh
 			if (this.timer) {
 				clearTimeout(this.timer);
 			}
@@ -318,6 +327,7 @@ class Senec extends utils.Adapter {
 			if (this.timerTokenRefresh) {
 				clearTimeout(this.timerTokenRefresh);
 			}
+
 			knownObjects.clear(); // empty objects cache
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
@@ -717,6 +727,7 @@ class Senec extends utils.Adapter {
 					this.log.debug(`⚠ Token refresh failed: ${err.message}`);
 				});
 			}, delay);
+			this.timers.push(this.timerTokenRefresh);
 		}
 	}
 
@@ -820,6 +831,7 @@ class Senec extends utils.Adapter {
 					this.timerTokenRefresh = setTimeout(() => {
 						this.refreshTokenSingleFlight().catch(() => {});
 					}, retryDelay);
+					this.timers.push(this.timerTokenRefresh);
 				}
 
 				throw err;
@@ -987,6 +999,7 @@ class Senec extends utils.Adapter {
 					this.timerAPI = null;
 				}
 				this.timerAPI = setTimeout(() => this.pollSenecApi(), nextDelay);
+				this.timers.push(this.timerAPI);
 				this.log.debug(`⏱ Next API poll scheduled in ${(nextDelay / 1000).toFixed(0)}s`);
 			}
 		}
@@ -1041,6 +1054,7 @@ class Senec extends utils.Adapter {
 						if (!unloaded && this.timerAPI) {
 							clearTimeout(this.timerAPI);
 							this.timerAPI = setTimeout(() => this.pollSenecApi(), delay);
+							this.timers.push(this.timerAPI);
 						}
 					}
 
@@ -1358,6 +1372,7 @@ class Senec extends utils.Adapter {
 			retry = 0;
 			if (!unloaded) {
 				this.timer = setTimeout(() => this.pollSenecLocal(isHighPrio, retry), interval);
+				this.timers.push(this.timer);
 				this.log.debug(
 					`⏱ Next local poll (highPrio=${isHighPrio}) scheduled in ${(interval / 1000).toFixed(0)}s`,
 				);
@@ -1382,6 +1397,7 @@ class Senec extends utils.Adapter {
 				if (!unloaded) {
 					const delay = interval * this.config.retrymultiplier * retry;
 					this.timer = setTimeout(() => this.pollSenecLocal(isHighPrio, retry), delay);
+					this.timers.push(this.timer);
 					this.log.debug(
 						`⏱ Next local poll (highPrio=${isHighPrio}) scheduled in ${(delay / 1000).toFixed(0)}s`,
 					);
