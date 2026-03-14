@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.4.7",
+    "version": "2.4.8",
     "news": {
+      "2.4.8": {
+        "en": "Connection type now is \"cloud\" (ioBroker internal setting) - although we still support local interaction (if possible per individual appliance)\nDependency updates",
+        "de": "Verbindungstyp ist jetzt \"Cloud\" (ioBroker interne Einstellung) - obwohl wir weiterhin lokale Interaktionen unterstützen (wenn möglich pro Einzelgerät)\nÄnderung der Abhängigkeit",
+        "ru": "Тип подключения теперь «облачный» (внутренняя настройка ioBroker), хотя мы по-прежнему поддерживаем локальное взаимодействие (если это возможно для каждого отдельного устройства)\nОбновления зависимостей",
+        "pt": "O tipo de conexão agora é \"nuvem\" (configuração interna do ioBroker) - embora ainda suportemos a interação local (se possível por aparelho individual)\nAtualizações de dependência",
+        "nl": "Verbindingstype is nu \"cloud\" (ioBroker interne instelling) - hoewel we nog steeds lokale interactie ondersteunen (indien mogelijk per individueel apparaat)\nAfhankelijkheidsupdates",
+        "fr": "Le type de connexion est maintenant \"cloud\" (si possible par appareil individuel) - bien que nous supportions toujours l'interaction locale\nMises à jour sur la dépendance",
+        "it": "Il tipo di connessione ora è \"cloud\" (impostazione interna di iBroker) - anche se sosteniamo ancora l'interazione locale (se possibile per singolo elettrodomestici)\nAggiornamenti di dipendenza",
+        "es": "El tipo de conexión ahora es \"cloud\" (configuración interna de yoBroker) - aunque todavía apoyamos la interacción local (si es posible por dispositivo individual)\nActualizaciones de dependencia",
+        "pl": "Typ połączenia teraz jest \"chmura\" (joBroker wewnętrzne ustawienie) - chociaż nadal wspieramy lokalną interakcję (jeśli to możliwe na indywidualne urządzenie)\nAktualizacje zależności",
+        "uk": "Тип підключення тепер \"клоуд\" (іоБрокер внутрішнього налаштування) - хоча ми все ще підтримуємо локальну взаємодію (якщо це можливо для індивідуального застосування)\nОновлення залежності",
+        "zh-cn": "连接类型现在是“ 云” (ioBroker 内部设置) - 尽管我们仍然支持本地交互( 如果每个单个应用程序可能的话)\n依赖性更新"
+      },
       "2.4.7": {
         "en": "Clearly indicating that initial API login busted and adapter will turn off API polling until restart\nCertain warnings moved to debug (as they are pretty much for debug purposes only)\nMade usage of axios-cookiejar-support ESM compatible (dynamic import). Solves issues with node 22.\nRND made node22+ safe.\nCode optimizations",
         "de": "Deutlich angeben, dass anfängliche API-Anmelde-Busse und Adapter die API-Umfrage bis zum Neustart ausschalten\nBestimmte Warnungen bewegt zu Debug (wie sie sind ziemlich viel für Debug Zwecke nur)\nHergestellte Verwendung von axios-cookiejar-support ESM kompatibel (dynamischer Import). Solves Probleme mit Knoten 22.\nRND machte node22+ sicher.\nCodeoptimierungen",
@@ -80,19 +93,6 @@
         "pl": "AuthToken in _ api nie jest już używany. Możesz ją bezpiecznie usunąć.\nOdłączona częstotliwość do niższego obciążenia API. Każda ankieta: Deska rozdzielcza i dzisiejsze wartości; Raz dziennie: Wczoraj, Miesięcznie, Roczne wartości (redukujemy obciążenie o około 65% w porównaniu do sondaży za każdym razem)\nAkcesorToken logika centralizowane\nTrue Single Flight Token odświeżanie (unikanie duplikatów logowania, duplikat burz logowania)\nUnikanie nakładania się Sondaże\nwykładniczy backup w przypadku awarii auth\ncofnij\nwłaściwe bezpieczeństwo cyklu życia\nAutomatyczne powtórzenie 401",
         "uk": "AuthToken _api не використовується. Ви можете безпечно видалити його.\nРозгортання частот до нижнього навантаження API. Кожне опитування: Dashboard і сьогодні значення; Коли-небудь за день: Вчора, місяць, річні значення (знизити навантаження на близько 65% порівняно з опитуванням кожного разу)\nAccessToken логічний централізований\nTrue One Flight Token оновлений (здійснення дублікатів, дублікатів штор)\nУникнути перекриття Поли\nексоненціальний зворотний зв'язок з поломкою\nптиця зворотного зв'язку\nзабезпечення безпеки життєвого циклу\nАвтоматична 401 птиця",
         "zh-cn": "Api 中的 AuthToken 不再使用 。 你可以安全删除它.\n脱钩频率降低API负载. 每一次民意测验:达奇板和今天的价值; 每日一次:昨天、每月、年值(与每次投票相比,我们减少约65%)\nAccessToken 逻辑集中\nTrue Single Flight Token 刷新( 避免重复登录、 重复登录风暴)\n避免重叠 选票\n认证失败时的指数备份\n重试备份\n适当的生命周期安全\n自动重试 401"
-      },
-      "2.4.1": {
-        "en": "Fixing issues with polling from senec api when token expires\nOld entries in changelog moved to old.",
-        "de": "Probleme mit der Abfrage von senec api behoben, wenn Token abläuft\nAlte Einträge in changelog zogen zu alt.",
-        "ru": "Устранение проблем с опросом от senec api, когда токен истекает\nСтарые записи в changelog перешли в старые.",
-        "pt": "Corrigindo problemas com pesquisas do senec api quando o token expira\nOs itens antigos no changelog foram movidos para o antigo.",
-        "nl": "Problemen oplossen met polling van senec api wanneer token verloopt\nOude items in changelog verplaatst naar oud.",
-        "fr": "Correction des problèmes avec le vote de senec api quand le jeton expire\nLes anciennes entrées dans le changelog sont passées à l'ancienne.",
-        "it": "Risolvere i problemi con l'inquinamento da senec api quando il token scade\nLe vecchie voci nel changelog si spostavano in vecchio.",
-        "es": "Arreglar problemas con la votación de senec api cuando vence el token\nLas viejas entradas en cambio se trasladaron a lo viejo.",
-        "pl": "Naprawianie problemów z sondażem z Senec api po wygaśnięciu token\nStare wpisy w Changelog przeniósł się do starego.",
-        "uk": "Виправлення питань з опитуванням від senec api при токени закінчується\nСтарі записи в блокноті переїхали на старі.",
-        "zh-cn": "在符号过期时用现场投票解决问题\n更改日志中的旧条目移到旧 ."
       }
     },
     "docs": {

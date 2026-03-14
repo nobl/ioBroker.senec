@@ -303,7 +303,7 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.4.8 (2026-03-14)
  - Connection type now is "cloud" (ioBroker internal setting) - although we still support local interaction (if possible per individual appliance)
  - Dependency updates
 
