@@ -8,18 +8,15 @@ Senec stellt derzeit über die Webschnittstelle auch keine zuverlässige Möglic
 Ob andere Systeme (z.B. V3) ebenfalls damit funktionieren, ist davon abhängig, ob diese ebenfalls auf lala.cgi basieren und die gleichen JSON Informationen zur Verfügung stellen.
 Auch bei Einbindung in die Senec.Clound ist nicht gewährleistet, dass die Daten weiterhin über die Webschnittstelle abgerufen werden können (hierzu bitte Erfahrungsberichte).
 
+Der Adapter unterstützt lokales Polling via lala.cgi als auch via Web API.
+
 Systeme, die funktionieren dürften, da sie die gleiche Schnittstelle nutzen sind nachfolgend gelistet. Allerdings können die Datenpunkte unterschiedlich sein (fehlen, zusätzlich, geändert).
-* Senec Home 4.0 / Blei
-* Senec Home 6.0 Pb
-* Senec Home 8.0 / Blei
-* Senec Home 10.0 Pb
-* Senec Home 5.0/7.5/10.0 / Lithium
-* Senec Home 15.0 / Lithium
-* Senec Home V2 5.0/7.5/10.0
-* Senec Home V2 10.0 / Blei
-* Senec Home V2.1 1ph / Lithium
-* Senec.Home V3 Hybrid
-* Senec.Home V3 Hybrid duo
+* Senec Home 4.0,  6.0, 8.0, 10.0 / Blei
+* Senec Home 5.0, 7.5, 10.0, 15.0 / Lithium
+* Senec Home V2 5.0, 7.5, 10.0
+* Senec Home V2.1
+* Senec.Home V3
+* Senec.Home V4
 * Senec Business 30.0 / Blei
 * Senec Business V2 30.0 / Blei
 * Senec Business 25.0 / Lithium
@@ -105,172 +102,11 @@ Falls zu einem State keine Dokumentation vorhanden ist, jemand aber weiß, was d
     |boolean|R|
 
    *Nur lesbarer boolscher Wert, welcher true ist, wenn die Verbindung zwischen ioBroker und Senec.Home hergestellt ist.*
-   
-#### Channel: _calc
-Dieser Kanal enthielt berechnete Werte. Nicht mehr versorgt, da STATISTIC nicht mehr verfügbar.
 
+#### Channel: _api
+Werte, die von der Web API abgerufen werden
    
 #### Channel: BMS
-
-* BL[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt: ? für jeden Battery Pack.*
-   
-* CHARGED_ENERGY[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wieviel Energie je Battery Pack geladen wurde. Einheit: ?*
-   
-* CHARGE_CURRENT_LIMIT[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie hoch die Ladeleistung je Battery Pack in Ampere ist.*
-   
-* CURRENT[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wieviel Ampere jeder Battery Pack aktuell hat.*
-   
-* CYCLES[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wieviele Ladezyklen jeder Battery Pack hat.*
-   
-* DISCHARGED_ENERGY[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wieviel Energie aus einem Battery Pack ausgespeist wurde. Einheit: ?*
-   
-* DISCHARGE_CURRENT_LIMIT[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, welche Entladeleistung jeder Battery Pack aktuell hat.*
-   
-* FW[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, welche Firmwareversion ein Battery Pack aktuell hat.*
-   
-* HW_EXTENSION[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, welche Hardware Erweiterung der jeweilige Battery Pack hat.*
-   
-* HW_MAINBOARD[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, welche Hardwareversion das Mainboard des jeweiligen Battery Pack hat.*
-   
-* MAX_CELL_VOTAGE[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie hoch die maximale Voltzahl des einzelnen Battery Pack ist.*
-   
-* MIN_CELL_VOTAGE[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie hoch die minimale Voltzahl des einzelnen Battery Pack ist.*
-   
-* SN[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie die Seriennummer des einzelnen Battery Pack lautet.*
-   
-* SOC[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie der Ladezustand des einzelnen Battery Pack ist.*
-   
-* SOH[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie der Gesundheitszustand des einzelnen Battery Pack ist.*
-   
-* STATUS[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie der Status des einzelnen Battery Pack ist.*
-   
-* TEMP_MAX[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie hoch die maximale Temperatur des einzelnen Battery Pack ist.*
-   
-* TEMP_MIN[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie hoch die minimale Temperatur des einzelnen Battery Pack ist.*
-   
-* VOLTAGE[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, wie hoch die Volt des einzelnen Battery Pack sind.*
-   
-* BMS_READY_FLAG
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Nur lesbarer boolscher Wert, welcher true ist, falls das BMS bereit ist.*
    
 * MODULES_CONFIGURED
 
@@ -287,54 +123,6 @@ Dieser Kanal enthielt berechnete Werte. Nicht mehr versorgt, da STATISTIC nicht 
     |number|R|
 
    *Nur lesbare Zahl, die angibt, wieviele Module im System angeschlossen sind (inkl. nicht konfigurierter).*
-   
-* START_UPDATE
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Nur lesbarer boolscher Wert, welcher true ist, falls ein Update zu starten ist.*
-   
-* WIZARD_ABORT
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Nur lesbarer boolscher Wert, welcher true ist, der Einrichtungsprozess unterbrochen wurde.*
-   
-* WIZARD_CONFIRM
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Nur lesbarer boolscher Wert, welcher true ist, der Einrichtungsprozess bestätigt wurde.*
-   
-* WIZARD_DCCONNECT
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Nur lesbarer boolscher Wert, welcher true ist, der Einrichtungsprozess ?.*
-   
-* WIZARD_START
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Nur lesbarer boolscher Wert, welcher true ist, der Einrichtungsprozess gestartet wurde.*
-   
-* WIZARD_STATE
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Nur lesbare Zahl, die angibt, welchen Status der Einrichtungsprozess hat.*
 
 #### Channel: ENERGY
 
@@ -369,14 +157,6 @@ Dieser Kanal enthielt berechnete Werte. Nicht mehr versorgt, da STATISTIC nicht 
     |number|R|
 
    *Nur lesbare Zahl, die angibt, wieviel Watt gerade in die Batterie eingespeist werden oder aus ihr entnommen (negativer Wert) werden.*
-   
-* GUI_BOOSTING_INFO
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Nur lesbarer boolscher Wert, dessen Sinn bisher nicht eindeutig klar ist.*
    
 * GUI_CHARGING_INFO
 
@@ -418,14 +198,6 @@ Dieser Kanal enthielt berechnete Werte. Nicht mehr versorgt, da STATISTIC nicht 
 
    *Nur lesbare Zahl, die die Betriebsstunden des Systems angibt.*
    
-* STAT_MAINT_REQUIRED
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Nur lesbarer boolscher Wert, der angibt, ob das System gewartet werden muss.*
-   
 * STAT_STATE
 
     |Data type|Permission|                                                                       
@@ -442,10 +214,7 @@ Dieser Kanal enthielt berechnete Werte. Nicht mehr versorgt, da STATISTIC nicht 
 
    *Nur lesbare Zeichenkette, die den Zustand des Systems in Klartext angibt. Leider liegen uns nur die original Senec-Texte in Deutsch vor.*
    
-#### Channel: STATISTIC
-Existiert nicht mehr
- 
-   
+
 #### Channel: SYS_UPDATE
 
 * NPU_IMAGE_VERSION
@@ -514,3 +283,9 @@ Existiert nicht mehr
     |string|R|
 
    *Nur lesbarer Text, die die Seriennummern der evtl. vorhandenen Wallboxen 0-3 angibt.*
+
+### Nicht mehr vorhanden, bzw. entfernt
+* STATISTIC
+* Display
+* _calc (mit Wegfall von STATISTIC nicht mehr relevant)
+* BAT1OBJ[2-4] 

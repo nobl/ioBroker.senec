@@ -22,18 +22,15 @@ Senec currently also no longer provides a reliable way to influence peak shaving
 Whether other systems (e.g. V3) also work with it depends on whether they are also based on lala.cgi and provide the same JSON information.
 Even with integration into the Senec.Clound it is not guaranteed that the data can still be retrieved via the web interface (for this please report your experiences).
 
+Adapter supports local polling via lala.cgi and polling via Web API.
+
 Systems that might work:
-* Senec Home 4.0 / Blei
-* Senec Home 6.0 Pb
-* Senec Home 8.0 / Blei
-* Senec Home 10.0 Pb
-* Senec Home 5.0/7.5/10.0 / Lithium
-* Senec Home 15.0 / Lithium
-* Senec Home V2 5.0/7.5/10.0
-* Senec Home V2 10.0 / Blei
-* Senec Home V2.1 1ph / Lithium
-* Senec.Home V3 Hybrid
-* Senec.Home V3 Hybrid duo
+* Senec Home 4.0,  6.0, 8.0, 10.0 / Blei
+* Senec Home 5.0, 7.5, 10.0, 15.0 / Lithium
+* Senec Home V2 5.0, 7.5, 10.0
+* Senec Home V2.1
+* Senec.Home V3
+* Senec.Home V4
 * Senec Business 30.0 / Blei
 * Senec Business V2 30.0 / Blei
 * Senec Business 25.0 / Lithium
@@ -147,14 +144,6 @@ This channel contains values polled from SENEC App-API.
 
    *Read-only number, which represents how much power is coming from / going into the battery in Watts. Negative values are discharging.*
    
-* GUI_BOOSTING_INFO
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only boolean, which we don't know the exact meaning of yet.*
-   
 * GUI_CHARGING_INFO
 
     |Data type|Permission|                                                                       
@@ -194,14 +183,6 @@ This channel contains values polled from SENEC App-API.
     |number|R|
 
    *Read-only number, detailing the system's uptime in hours.*
-   
-* STAT_MAINT_REQUIRED
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only boolean, which represents if your senec system requires maintenance.*
    
 * STAT_STATE
 
@@ -296,6 +277,11 @@ This channel contains values polled from SENEC App-API.
 * _calc (not relevant anymore since we lost STATISTIC)
 * BAT1OBJ[2-4] 
 
+### Donate
+Maintenance of this adapter can be quite time consuming. If you wish to thank the author, please use these links:
+- [WERO](https://share.weropay.eu/p/1/c/QzzqgSQcI3)
+- [![Paypal](https://img.shields.io)](https://www.paypal.me/gerbots)
+- [![GitHub Sponsor](https://img.shields.io)](https://github.com/sponsors/nobl)
 
 ## Changelog
 
@@ -303,6 +289,8 @@ This channel contains values polled from SENEC App-API.
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
 ### 2.4.8 (2026-03-14)
  - Connection type now is "cloud" (ioBroker internal setting) - although we still support local interaction (if possible per individual appliance)
  - Dependency updates
@@ -390,7 +378,6 @@ This channel contains values polled from SENEC App-API.
 - less logging (moved some info to debug again)
 
 ### 2.1.0 (2026-02-04) - the API returns - finally finally hopefully finally
-
 - Complete rewrite of the Senec API functionality. Thanks to @timfxtones for pointing me in the right direction
 - No longer using the web-interface at mein-senec.de - it didn't work properly on the long run ...
 - Still missing some datapoints so far. They will be implemented in the future.

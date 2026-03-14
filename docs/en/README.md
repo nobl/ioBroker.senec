@@ -8,18 +8,15 @@ Senec currently also no longer provides a reliable way to influence peak shaving
 Whether other systems (e.g. V3) also work with it depends on whether they are also based on lala.cgi and provide the same JSON information.
 Even with integration into the Senec.Clound it is not guaranteed that the data can still be retrieved via the web interface (for this please report your experiences).
 
+Adapter supports local polling via lala.cgi and polling via Web API.
+
 Systems that might work:
-* Senec Home 4.0 / Blei
-* Senec Home 6.0 Pb
-* Senec Home 8.0 / Blei
-* Senec Home 10.0 Pb
-* Senec Home 5.0/7.5/10.0 / Lithium
-* Senec Home 15.0 / Lithium
-* Senec Home V2 5.0/7.5/10.0
-* Senec Home V2 10.0 / Blei
-* Senec Home V2.1 1ph / Lithium
-* Senec.Home V3 Hybrid
-* Senec.Home V3 Hybrid duo
+* Senec Home 4.0,  6.0, 8.0, 10.0 / Blei
+* Senec Home 5.0, 7.5, 10.0, 15.0 / Lithium
+* Senec Home V2 5.0, 7.5, 10.0
+* Senec Home V2.1
+* Senec.Home V3
+* Senec.Home V4
 * Senec Business 30.0 / Blei
 * Senec Business V2 30.0 / Blei
 * Senec Business 25.0 / Lithium
@@ -85,171 +82,11 @@ If a state is not documented (or only partially documented) and you know what it
 
    *Read-only boolean which is true if the adapter is connected to the senec system.*
    
-#### Channel: _calc
-This channel contained calculated values. Doesn't exist any longer due to STATISTIC not available anymore.
+#### Channel: _api
+This channel contains values polled from SENEC App-API. 
 
    
 #### Channel: BMS
-
-* BL[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents ? for each battery pack.*
-   
-* CHARGED_ENERGY[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents the amount of charged energy per battery pack in unit ?*
-   
-* CHARGE_CURRENT_LIMIT[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents the current charge limit in Ampere per battery pack.*
-   
-* CURRENT[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's current in Ampere.*
-   
-* CYCLES[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's current charching cycles.*
-   
-* DISCHARGED_ENERGY[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents the amount of energy discharged per battery in unit ?.*
-   
-* DISCHARGE_CURRENT_LIMIT[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's current discharge limit in Ampere.*
-   
-* FW[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's firmware version.*
-   
-* HW_EXTENSION[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's ?.*
-   
-* HW_MAINBOARD[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's mainboard version.*
-   
-* MAX_CELL_VOTAGE[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's maximum cell voltage in Volts.*
-   
-* MIN_CELL_VOTAGE[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's minimum cell voltage in Volts.*
-   
-* SN[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's serial number.*
-   
-* SOC[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's state of charge.*
-   
-* SOH[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's state of health.*
-   
-* STATUS[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's status.*
-   
-* TEMP_MAX[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's maximum temperature.*
-   
-* TEMP_MIN[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's minimum temperature.*
-   
-* VOLTAGE[0-3]
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only number, which represents each battery pack's voltage in Volts.*
-   
-* BMS_READY_FLAG
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only boolean, which represents if the BMS is ready.*
    
 * MODULES_CONFIGURED
 
@@ -267,57 +104,9 @@ This channel contained calculated values. Doesn't exist any longer due to STATIS
 
    *Read-only number, which represents the number of modules currently known the system (incl. non-configured).*
    
-* START_UPDATE
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only boolean, which represents if an update is to be started.*
-   
-* WIZARD_ABORT
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only boolean, which represents if the setup wizard was aborted.*
-   
-* WIZARD_CONFIRM
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only boolean, which represents if the setup wizard was confirmed.*
-   
-* WIZARD_DCCONNECT
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only boolean, which represents ?.*
-   
-* WIZARD_START
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |number|R|
-
-   *Read-only boolean, which represents if the setup wizard is to be started.*
-   
-* WIZARD_STATE
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only number, which represents the setup wizard's state.*
-   
 
 #### Channel: ENERGY
-
+   
 * GUI_BAT_DATA_CURRENT
 
     |Data type|Permission|                                                                       
@@ -349,14 +138,6 @@ This channel contained calculated values. Doesn't exist any longer due to STATIS
     |number|R|
 
    *Read-only number, which represents how much power is coming from / going into the battery in Watts. Negative values are discharging.*
-   
-* GUI_BOOSTING_INFO
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only boolean, which we don't know the exact meaning of yet.*
    
 * GUI_CHARGING_INFO
 
@@ -398,14 +179,6 @@ This channel contained calculated values. Doesn't exist any longer due to STATIS
 
    *Read-only number, detailing the system's uptime in hours.*
    
-* STAT_MAINT_REQUIRED
-
-    |Data type|Permission|                                                                       
-    |:---:|:---:|
-    |boolean|R|
-
-   *Read-only boolean, which represents if your senec system requires maintenance.*
-   
 * STAT_STATE
 
     |Data type|Permission|                                                                       
@@ -421,10 +194,7 @@ This channel contained calculated values. Doesn't exist any longer due to STATIS
     |string|R|
 
    *Read-only string, which represents the system's state in human readable format (sorry - we only have the german states from senec).*
-   
-#### Channel: STATISTIC
-Doesn't exist anymore.
-   
+     
    
 #### Channel: SYS_UPDATE
 
@@ -491,6 +261,7 @@ Doesn't exist anymore.
 
     |Data type|Permission|                                                                       
     |:---:|:---:|
-    |string|R|
+    |number|R|
 
-   *Read-only text, which designates the serial number of wallbox [0..3].*
+   *Read-only number, which designates the number of wallbox [0..3]. This is only available on systems with configured wallboxes.*
+   
