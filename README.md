@@ -277,7 +277,7 @@ This channel contains values polled from SENEC App-API.
 * _calc (not relevant anymore since we lost STATISTIC)
 * BAT1OBJ[2-4] 
 
-### Donate
+## Donate
 Maintenance of this adapter can be quite time consuming. If you wish to thank the author, please use these links:
 [![WERO](https://img.shields.io/badge/WERO-8A2BE2)](https://share.weropay.eu/p/1/c/QzzqgSQcI3)
 [![PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://www.paypal.me/gerbots)
