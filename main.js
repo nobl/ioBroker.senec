@@ -143,6 +143,8 @@ class Senec extends utils.Adapter {
 		this.lastHeavyUpdate = 0;
 		this.baseTime = 60000;
 
+		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
+
 		this.timers = [];
 
 		this.on("ready", this.onReady.bind(this));
@@ -162,7 +164,9 @@ class Senec extends utils.Adapter {
 			wrapper = mod.wrapper;
 		}
 
-		api_client = wrapper(axios.create({ withCredentials: true, timeout: 10000 }));
+		api_client = wrapper(
+			axios.create({ withCredentials: true, timeout: 10000, signal: this.abortController.signal }),
+		);
 		api_client.defaults.headers.post["Content-Type"] = "application/json";
 		api_client.interceptors.response.use(
 			// upon 429 Too Many Requests axis will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in pollSenecApi,
@@ -170,7 +174,7 @@ class Senec extends utils.Adapter {
 			// This is important to prevent overwhelming the SENEC API in case of temporary issues or if we are polling too aggressively.
 			(response) => response,
 			async (error) => {
-				if (error.response && error.response.status === 429) {
+				if (error.response && error.response.status === 429 && !unloaded) {
 					this.log.debug("Experiencing 429. Retrying within axios logic once.");
 					await new Promise((r) => setTimeout(r, 2000));
 					return api_client.request(error.config);
@@ -316,6 +320,11 @@ class Senec extends utils.Adapter {
 				clearTimeout(t);
 			}
 			this.timers = [];
+
+			if (this.abortController) {
+				// abort any ongoing API calls to prevent them from running after unload and to prevent memory leaks
+				this.abortController.abort();
+			}
 
 			// might be redundant due to the loop above but to be sure, we also clear these specific timers that are used for polling and token refresh
 			if (this.timer) {
@@ -1297,42 +1306,43 @@ class Senec extends utils.Adapter {
 	 * @param {boolean} isPost true for POST, false for GET
 	 * @returns {Promise<string>} Promise with result
 	 */
-	doGetLocal(pUrl, pForm, caller, pollingTimeout, isPost) {
+	async doGetLocal(pUrl, pForm, caller, pollingTimeout, isPost) {
 		this.log.debug(`Calling: ${pUrl}`);
-		return new Promise(function (resolve, reject) {
-			axios({
+
+		try {
+			const response = await axios({
 				method: isPost ? "post" : "get",
 				httpsAgent: agent_local,
 				url: pUrl,
 				data: pForm,
 				timeout: pollingTimeout,
-			})
-				.then(async (response) => {
-					const content = response.data;
-					caller.log.silly(`(Poll) received data (${response.status}): ${JSON.stringify(content)}`);
-					resolve(JSON.stringify(content));
-				})
-				.catch((error) => {
-					if (error.response) {
-						// The request was made and the server responded with a status code
-						caller.log.warn(
-							`(Poll) received error ${
-								error.response.status
-							} response from SENEC with content: ${JSON.stringify(error.response.data)}`,
-						);
-						reject(error.response.status);
-					} else if (error.request) {
-						// The request was made but no response was received
-						// `error.request` is an instance of XMLHttpRequest in the browser and an instance of http.ClientRequest in node.js<div></div>
-						caller.log.info(error.message);
-						reject(error.message);
-					} else {
-						// Something happened in setting up the request that triggered an Error
-						caller.log.info(error.message);
-						reject(error.status);
-					}
-				});
-		});
+				signal: this.abortController.signal,
+			});
+
+			const content = response.data;
+			caller.log.silly(`(Poll) received data (${response.status}): ${JSON.stringify(content)}`);
+
+			return JSON.stringify(content);
+		} catch (error) {
+			if (error.code === "ERR_CANCELED" || error.name === "CanceledError") {
+				caller.log.debug("Request aborted (adapter shutdown)");
+				return ""; // sauberer Rückgabewert bei Abbruch, damit wir nicht in der Fehlerbehandlung landen und ggf. neue Polls planen - bei Abbruch wollen wir ja eigentlich nur still stoppen
+			}
+			if (error.response) {
+				caller.log.warn(
+					`(Poll) received error ${
+						error.response.status
+					} response from SENEC with content: ${JSON.stringify(error.response.data)}`,
+				);
+				throw error.response.status;
+			} else if (error.request) {
+				caller.log.info(error.message);
+				throw error.message;
+			} else {
+				caller.log.info(error.message);
+				throw error.status;
+			}
+		}
 	}
 
 	/**
