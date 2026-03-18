@@ -1,7 +1,8 @@
 {
+    "Active_Appliance_Control": "主动电器控制",
     "Email": "电子邮件地址",
     "Email-Help": "用于登录 mein-senec.de 的电子邮件地址",
-    "General settings": "常规设置",
+    "General_Settings": "常规设置",
     "HighPrioBAT1": "HighPrio 轮询 BAT1-数据点",
     "HighPrioBAT1OBJ1": "HighPrio 轮询 BAT1OBJ1-数据点",
     "HighPrioBMS": "HighPrio 轮询 BMS 数据点",
@@ -45,6 +46,8 @@
     "USE_SENEC_API_HELP": "检查适配器是否应使用 SENEC API。",
     "activeControl": "激活主动设备控制",
     "activeControlHelp": "需要 lala.cgi 连接！激活后，可以通过“控制”数据点控制 SENEC 设备。您接受因激活此选项而产生的任何潜在风险，可能包括失去保修。",
+    "controlReboot": "允许通过控制数据点重新启动设备",
+    "controlRebootHelp": "激活后，可以通过“control.RebootAppliance”数据点重新启动 SENEC 设备。这通常无法通过网络界面获得。",
     "usaLala": "通过 lala.cgi 连接？",
     "useLalaHelp": "通过本地网络连接到 SENEC 设备。这需要访问本地监控。"
 }

@@ -1,7 +1,8 @@
 {
+    "Active_Appliance_Control": "Aktive Gerätesteuerung",
     "Email": "E-Mail-Adresse",
     "Email-Help": "E-Mail-Adresse, mit der Sie sich bei mein-senec.de anmelden",
-    "General settings": "Allgemeine Einstellungen",
+    "General_Settings": "Allgemeine Einstellungen",
     "HighPrioBAT1": "HighPrio Polling BAT1-Datenpunkte",
     "HighPrioBAT1OBJ1": "HighPrio Polling BAT1OBJ1-Datenpunkte",
     "HighPrioBMS": "HighPrio Polling von BMS-Datenpunkten",
@@ -45,6 +46,8 @@
     "USE_SENEC_API_HELP": "Legen Sie fest, ob der Adapter die SENEC-API nutzen soll.",
     "activeControl": "Aktive Gerätesteuerung aktivieren",
     "activeControlHelp": "lala.cgi Verbindung erforderlich! Mit Aktivierung ist es möglich, das SENEC Gerät über die 'control' Datenpunkte zu steuern. Sie akzeptieren potenzielle Risiken, die durch die Aktivierung dieser Option entstehen, einschließlich eines möglichen Garantieverlusts.",
+    "controlReboot": "Ermöglichen Sie den Neustart der Appliance über den Kontrolldatenpunkt",
+    "controlRebootHelp": "Bei Aktivierung ist es möglich, die SENEC-Appliance über den Datenpunkt „control.RebootAppliance“ neu zu starten. Dies ist normalerweise nicht über die Weboberfläche verfügbar.",
     "usaLala": "Über lala.cgi verbinden?",
     "useLalaHelp": "Verbindung zum SENEC Gerät wird über lokales Netzwerk hergestellt. Dies erfordert den Zugang zur lokalen Überwachung."
 }

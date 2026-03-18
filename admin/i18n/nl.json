@@ -1,7 +1,8 @@
 {
+    "Active_Appliance_Control": "Actieve apparaatcontrole",
     "Email": "E-mailadres",
     "Email-Help": "E-mailadres gebruikt om in te loggen op mein-senec.de",
-    "General settings": "Algemene instellingen",
+    "General_Settings": "Algemene instellingen",
     "HighPrioBAT1": "HighPrio Polling BAT1-datapunten",
     "HighPrioBAT1OBJ1": "HighPrio Polling BAT1OBJ1-gegevenspunten",
     "HighPrioBMS": "HighPrio Polling BMS-datapunten",
@@ -45,6 +46,8 @@
     "USE_SENEC_API_HELP": "Controleer of de adapter gebruik moet maken van de SENEC API.",
     "activeControl": "Actieve toestelbesturing activeren",
     "activeControlHelp": "lala.cgi-verbinding vereist! Indien geactiveerd is het mogelijk om het SENEC-apparaat te besturen via 'controle'-datapunten. U aanvaardt alle potentiële risico's die u loopt door het activeren van deze optie, mogelijk inclusief verlies van garantie.",
+    "controlReboot": "Laat het apparaat opnieuw opstarten via het controledatapunt",
+    "controlRebootHelp": "Indien geactiveerd is het mogelijk om het SENEC-apparaat opnieuw op te starten via het 'control.RebootAppliance'-datapunt. Normaal gesproken is dit niet beschikbaar via de webinterface.",
     "usaLala": "Verbinden via lala.cgi?",
     "useLalaHelp": "Maak verbinding met het SENEC-apparaat via een lokaal netwerk. Hiervoor is toegang tot lokale monitoring vereist."
 }

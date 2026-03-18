@@ -1,5 +1,8 @@
 {
-    "General settings": "General settings",
+    "General_Settings": "General settings",
+    "Active_Appliance_Control": "Active appliance control",
+    "controlReboot": "Allow appliance reboot via control datapoint",
+    "controlRebootHelp": "When activated it is possible to reboot the SENEC appliance via 'control.RebootAppliance' datapoint. This is normally not available via web interface.",
     "usaLala": "Connect via lala.cgi?",
     "useLalaHelp": "Connect to SENEC appliance via local network. This requires access to local monitoring.",
     "activeControl": "Activate active appliance control",

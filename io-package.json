@@ -165,6 +165,7 @@
   "native": {
     "lala_use": true,
     "control_active": false,
+    "control_reboot": false,
     "senecip": "0.0.0.0",
     "interval": 10,
     "intervalLow": 60,
@@ -243,6 +244,19 @@
       "common": {
         "role": "switch",
         "name": "Force Load Battery",
+        "type": "boolean",
+        "read": true,
+        "write": true,
+        "def": false
+      },
+      "native": {}
+    },
+    {
+      "_id": "control.RebootAppliance",
+      "type": "state",
+      "common": {
+        "role": "switch",
+        "name": "Reboot Appliance",
         "type": "boolean",
         "read": true,
         "write": true,

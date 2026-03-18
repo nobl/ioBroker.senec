@@ -1,7 +1,8 @@
 {
+    "Active_Appliance_Control": "Controle ativo do aparelho",
     "Email": "Endereço de email",
     "Email-Help": "Endereço de e-mail usado para fazer login em mein-senec.de",
-    "General settings": "Configurações gerais",
+    "General_Settings": "Configurações gerais",
     "HighPrioBAT1": "Pesquisa HighPrio de pontos de dados BAT1",
     "HighPrioBAT1OBJ1": "Pesquisa HighPrio BAT1OBJ1-Pontos de dados",
     "HighPrioBMS": "Pesquisa HighPrio de pontos de dados BMS",
@@ -45,6 +46,8 @@
     "USE_SENEC_API_HELP": "Verifique se o adaptador deverá utilizar a API SENEC.",
     "activeControl": "Ativar o controle ativo do aparelho",
     "activeControlHelp": "Conexão lala.cgi necessária! Quando ativado é possível controlar o aparelho SENEC através de pontos de dados de 'controle'. Você aceita quaisquer riscos potenciais incorridos ao ativar esta opção, possivelmente incluindo perda de garantia.",
+    "controlReboot": "Permitir reinicialização do dispositivo por meio do ponto de dados de controle",
+    "controlRebootHelp": "Quando ativado, é possível reinicializar o dispositivo SENEC através do ponto de dados 'control.RebootAppliance'. Normalmente, isso não está disponível via interface web.",
     "usaLala": "Conectar via lala.cgi?",
     "useLalaHelp": "Conecte-se ao aparelho SENEC via rede local. Isto requer acesso ao monitoramento local."
 }

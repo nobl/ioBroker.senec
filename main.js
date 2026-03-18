@@ -48,6 +48,7 @@ const batteryOn =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 const batteryOff =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
+const rebootAppliance = '{"SYS_UPDATE":{"USER_REBOOT_DEVICE":"u8_01"}}';
 //const blockDischargeOn  = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 //const blockDischargeOff = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 
@@ -183,7 +184,7 @@ class Senec extends utils.Adapter {
 		api_client.defaults.headers.post["Content-Type"] = "application/json";
 		const { setTimeout } = require("timers/promises");
 		api_client.interceptors.response.use(
-			// upon 429 Too Many Requests axis will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in pollSenecApi,
+			// upon 429 Too Many Requests axios will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in pollSenecApi,
 			// which includes increasing the delay between polls in case of repeated 429 responses.
 			// This is important to prevent overwhelming the SENEC API in case of temporary issues or if we are polling too aggressively.
 			(response) => response,
@@ -244,6 +245,7 @@ class Senec extends utils.Adapter {
 				this.log.info("Active appliance control (local) activated!");
 				await this.subscribeStatesAsync("control.*"); // subscribe on all state changes in control.
 				await this.subscribeStatesAsync("ENERGY.STAT_STATE");
+				await this.subscribeStatesAsync("SYS_UPDATE.USER_REBOOT_DEVICE");
 			}
 		} catch (error) {
 			this.log.error(error);
@@ -260,38 +262,80 @@ class Senec extends utils.Adapter {
 			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
 			if (this.config.control_active) {
 				// All state-changes for .control.* need active config value
-				if (id === `${this.namespace}.control.ForceLoadBattery` && lalaConnected) {
-					const url = `${connectVia + this.config.senecip}/lala.cgi`;
-					try {
-						if (state.val) {
-							this.log.info("Enable force battery charging ...");
-							this.evalPoll(
-								JSON.parse(
-									await this.doGetLocal(url, batteryOn, this, this.config.pollingTimeout, true),
-									reviverNumParse,
-								),
-								"",
-								"",
-							);
-						} else {
-							this.log.info("Disable force battery charging ...");
-							this.evalPoll(
-								JSON.parse(
-									await this.doGetLocal(url, batteryOff, this, this.config.pollingTimeout, true),
-									reviverNumParse,
-								),
-								"",
-								"",
-							);
+
+				// ForceLoadBattery control
+				if (id === `${this.namespace}.control.ForceLoadBattery`) {
+					if (lalaConnected) {
+						const url = `${connectVia + this.config.senecip}/lala.cgi`;
+						try {
+							if (state.val) {
+								this.log.info("Enable force battery charging ...");
+								this.evalPoll(
+									JSON.parse(
+										await this.doGetLocal(url, batteryOn, this, this.config.pollingTimeout, true),
+										reviverNumParse,
+									),
+									"",
+									"",
+								);
+							} else {
+								this.log.info("Disable force battery charging ...");
+								this.evalPoll(
+									JSON.parse(
+										await this.doGetLocal(url, batteryOff, this, this.config.pollingTimeout, true),
+										reviverNumParse,
+									),
+									"",
+									"",
+								);
+							}
+						} catch (error) {
+							this.log.error(error);
+							this.log.error(`Failed to control: setting force battery charging mode to ${state.val}`);
+							return;
 						}
-					} catch (error) {
-						this.log.error(error);
-						this.log.error(`Failed to control: setting force battery charging mode to ${state.val}`);
-						return;
+					} else {
+						this.log.warn(
+							`State change for ${id} not handled (control active: ${this.config.control_active}, lalaConnected: ${lalaConnected})`,
+						);
+					}
+				}
+
+				// reboot control
+				if (id === `${this.namespace}.control.RebootAppliance`) {
+					if (lalaConnected && this.config.control_reboot) {
+						const url = `${connectVia + this.config.senecip}/lala.cgi`;
+						try {
+							if (state.val) {
+								this.log.info("Rebooting appliance ...");
+								this.evalPoll(
+									JSON.parse(
+										await this.doGetLocal(
+											url,
+											rebootAppliance,
+											this,
+											this.config.pollingTimeout,
+											true,
+										),
+										reviverNumParse,
+									),
+									"",
+									"",
+								);
+							}
+						} catch (error) {
+							this.log.error(error);
+							this.log.error(`Failed to control: setting reboot to ${state.val}`);
+							return;
+						}
+					} else {
+						this.log.warn(
+							`State change for ${id} not handled (control active: ${this.config.control_active}, lalaConnected: ${lalaConnected}, reboot allowed: ${this.config.control_reboot})`,
+						);
 					}
 				}
 			}
-			// this.setStateAsync(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
+
 			this.setState(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
 		} else if (state && id === `${this.namespace}.ENERGY.STAT_STATE`) {
 			// states that do have state.ack already
@@ -320,6 +364,17 @@ class Senec extends utils.Adapter {
 						ack: true,
 					});
 				}
+			}
+		} else if (state && id === `${this.namespace}.SYS_UPDATE.USER_REBOOT_DEVICE`) {
+			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
+			if (state.val) {
+				this.log.info("Rebooting appliance in progress ...");
+			} else {
+				this.log.info("Reboot completed. Syncing control-state.");
+				this.setStateChangedAsync(`${this.namespace}.control.RebootAppliance`, {
+					val: false,
+					ack: true,
+				});
 			}
 		}
 	}
@@ -457,6 +512,9 @@ class Senec extends utils.Adapter {
 					if (this.config.disclaimer && this.config.highPrio_TEMPMEASURE_active) {
 						this.addUserDps(value, objectsSet, this.config.highPrio_TEMPMEASURE);
 					}
+					break;
+				case "SYS_UPDATE":
+					["USER_REBOOT_DEVICE"].forEach((item) => objectsSet.add(item));
 					break;
 				default:
 					// nothing to do here
@@ -1421,15 +1479,13 @@ class Senec extends utils.Adapter {
 				this.setState("info.connection", false, true);
 			} else {
 				retry += 1;
+				const delay = interval * this.config.retrymultiplier * retry;
 				this.log.warn(
 					`Error reading from Senec ${isHighPrio ? "high" : "low"}Prio (${this.config.senecip}). Retry ${
 						retry
-					}/${this.config.retries} in ${(interval * this.config.retrymultiplier * retry) / 1000} seconds! (${
-						error
-					})`,
+					}/${this.config.retries} in ${delay / 1000} seconds! (${error})`,
 				);
 				if (!unloaded) {
-					const delay = interval * this.config.retrymultiplier * retry;
 					const timer = setTimeout(() => {
 						this.timers = this.timers.filter((t) => t !== timer);
 						this.pollSenecLocal(isHighPrio, retry).catch((e) => this.log.error(e));
