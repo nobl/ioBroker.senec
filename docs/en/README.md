@@ -31,9 +31,6 @@ SENEC Systems that don't provide a local webinterface might be monitored by usin
 ## Disclaimer
 **All product and company names or logos are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them or any associated subsidiaries! This personal project is maintained in spare time and has no business goal.**
 
-## Installation
-You is facilitated via the ioBroker web interface and the configuration will auto-open once installation is completed.
-
 ## Setup
 In addition to the adapter installation you have to add an instance of the adapter.
 

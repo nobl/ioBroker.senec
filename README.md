@@ -45,33 +45,6 @@ SENEC Systems that don't provide a local webinterface might be monitored by usin
 ## Disclaimer
 **All product and company names or logos are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them or any associated subsidiaries! This personal project is maintained in spare time and has no business goal.**
 
-## Installation
-You can install the adapter via the ioBroker web interface.
-
-1. Open your ioBroker web interface in a browser (eg: 192.168.178.42:8081)
-2. Click on Tab "Adapters"
-3. Type "senec" in the filter
-4. Click on the  "+" symbol of the senec adapter
-
-## Setup
-In addition to the adapter installation you have to add an instance of the adapter.
-
-### ioBroker 
-1. Open your ioBroker interface in a browser (eg: 192.168.178.42:8081) (if configuration dialogue was opened automatically after installation, skip to 4.).
-2. Navigate to Tab "Instances"
-3. Click on the wrench symbol of the senec adapter
-4. Now you can see the main settings of the adapter configuration page.<br>
-![Main Settings](/docs/en/media/mainSettings.png)
-4.1 Type in the IP-address of your SENEC system (FQDN is also possible if you have a working local DNS).<br>
-4.2 You can change the polling interval, too. (Default: 10 seconds for high priority data, 60 minutes for low priority data)<br>
-Warning! If you are polling too often, your SENEC system will not be able to connect to the SENEC servers anymore! So please be aware of this!<br>
-4.3 If your network requires a higher timeout for requests sent to SENEC, please change the Request-Timeout in miliseconds accordingly. (Default: 5000 miliseconds)<br>
-4.4 In case there is an issue communicating with SENEC the adapter will retry several times. You can adjust how often it will try to read from SENEC. (Default: 10)<br>
-4.5 To space retries apart a bit more you can adjust the Polling Retry Factor. (Default: 2)<br>
-Example: Using default settings the 1st retry will happen 20 seconds after the initial try, the 2nd will happen 40 seconds after the 2nd try.<br>
-After each successful connect to SENEC, the number of retries is reset.
-5. Click on Save & Close
-
 ## Usage
 Here you can find a description of the states (list is incomplete) and how to use them. All states of this adapter are read-only states.
 

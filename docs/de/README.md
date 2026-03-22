@@ -37,10 +37,6 @@ Es handelt sich um ein System, dessen Herzstück ein Lithium-Ionen-Akku ist, der
 ## Voraussetzungen vor der Installation
 Voraussetzungen für den Betrieb eines Senec.Home Speichersystems mit ioBroker, ist die erfolgreiche Einrichtung des Systems durch einen Elektriker. Ebenfalls muss sich das System im gleichen Netzwerk wie der ioBroker befinden.
 
-### Installation
-Eine Instanz des Adapters wird über die ioBroker Admin-Oberfläche installiert. 
-Nach Abschluss der Installation einer Adapterinstanz öffnet sich automatisch ein Konfigurationsfenster.
-
 ## Konfiguration
 
 ### Fenster "Allgemeine Einstellungen"
