@@ -267,6 +267,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Added control.RebootAppliance to initiate appliance reboot. Only works if local lala.cgi is available and connected. Function requires extra permission via adapter settings. Please use responsible!
 - Fixed incremential back-off for local polling.
 - Moved local appliance control settings into own tab.
+- Dependency updates
 
 ### 2.4.8 (2026-03-14)
  - Connection type now is "cloud" (ioBroker internal setting) - although we still support local interaction (if possible per individual appliance)
