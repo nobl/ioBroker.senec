@@ -381,7 +381,7 @@ class Senec extends utils.Adapter {
 								this.log.info("Enable force battery charging ...");
 								this.evalPoll(
 									JSON.parse(
-										await this.doGetLocal(url, batteryOn, this, this.config.pollingTimeout, true),
+										await this.doGetLocal(url, batteryOn, this.config.pollingTimeout, true),
 										reviverNumParse,
 									),
 									"",
@@ -391,7 +391,7 @@ class Senec extends utils.Adapter {
 								this.log.info("Disable force battery charging ...");
 								this.evalPoll(
 									JSON.parse(
-										await this.doGetLocal(url, batteryOff, this, this.config.pollingTimeout, true),
+										await this.doGetLocal(url, batteryOff, this.config.pollingTimeout, true),
 										reviverNumParse,
 									),
 									"",
@@ -419,13 +419,7 @@ class Senec extends utils.Adapter {
 								this.log.info("Rebooting appliance ...");
 								this.evalPoll(
 									JSON.parse(
-										await this.doGetLocal(
-											url,
-											rebootAppliance,
-											this,
-											this.config.pollingTimeout,
-											true,
-										),
+										await this.doGetLocal(url, rebootAppliance, this.config.pollingTimeout, true),
 										reviverNumParse,
 									),
 									"",
@@ -829,7 +823,7 @@ class Senec extends utils.Adapter {
 		const form = '{"ENERGY":{"STAT_STATE":""}}';
 		try {
 			this.log.info(`connecting to Senec (local): ${url}`);
-			await this.doGetLocal(url, form, this, this.config.pollingTimeout, true);
+			await this.doGetLocal(url, form, this.config.pollingTimeout, true);
 			this.log.info(`connected to Senec (local): ${url}`);
 			this.lalaConnected = true;
 		} catch (error) {
@@ -1644,12 +1638,11 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string} pUrl URL to call
 	 * @param {string} pForm Form to send
-	 * @param {Senec} caller Calling instance
 	 * @param {number} pollingTimeout Timeout for call
 	 * @param {boolean} isPost true for POST, false for GET
 	 * @returns {Promise<string>} Promise with result
 	 */
-	async doGetLocal(pUrl, pForm, caller, pollingTimeout, isPost) {
+	async doGetLocal(pUrl, pForm, pollingTimeout, isPost) {
 		if (!this.localClient) {
 			throw new Error("Local client not initialized");
 		}
@@ -1665,26 +1658,26 @@ class Senec extends utils.Adapter {
 			});
 
 			const content = response.data;
-			caller.log.silly(`(Poll) received data (${response.status}): ${JSON.stringify(content)}`);
+			this.log.silly(`(Poll) received data (${response.status}): ${JSON.stringify(content)}`);
 
 			return JSON.stringify(content);
 		} catch (error) {
 			if (error.code === "ERR_CANCELED" || error.name === "CanceledError") {
-				caller.log.debug("Request aborted (adapter shutdown)");
+				this.log.debug("Request aborted (adapter shutdown)");
 				return ""; // sauberer Rückgabewert bei Abbruch, damit wir nicht in der Fehlerbehandlung landen und ggf. neue Polls planen - bei Abbruch wollen wir ja eigentlich nur still stoppen
 			}
 			if (error.response) {
-				caller.log.warn(
+				this.log.warn(
 					`(Poll) received error ${
 						error.response.status
 					} response from SENEC with content: ${JSON.stringify(error.response.data)}`,
 				);
 				throw error.response.status;
 			} else if (error.request) {
-				caller.log.info(error.message);
+				this.log.info(error.message);
 				throw error.message;
 			} else {
-				caller.log.info(error.message);
+				this.log.info(error.message);
 				throw error.status;
 			}
 		}
@@ -1709,7 +1702,6 @@ class Senec extends utils.Adapter {
 			let body = await this.doGetLocal(
 				url,
 				isHighPrio ? this.highPrioForm : this.lowPrioForm,
-				this,
 				this.config.pollingTimeout,
 				true,
 			);
