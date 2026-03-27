@@ -7,8 +7,6 @@ const tough = require("tough-cookie");
 const CookieJar = tough.CookieJar;
 let wrapper;
 let jar = new CookieJar();
-let api_client;
-let local_client;
 const https = require("https");
 
 const utils = require("@iobroker/adapter-core");
@@ -35,8 +33,6 @@ const CONFIG = {
 	scope: "roles profile meinsenec",
 };
 
-const apiKnownSystems = new Set();
-
 const batteryOn =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 const batteryOff =
@@ -44,11 +40,6 @@ const batteryOff =
 const rebootAppliance = '{"SYS_UPDATE":{"USER_REBOOT_DEVICE":"u8_01"}}';
 //const blockDischargeOn  = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 //const blockDischargeOff = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
-
-let apiConnected = false;
-let lalaConnected = false;
-let connectVia = "https://";
-let rebuildRunning = false;
 
 const allKnownObjects = new Set([
 	"BAT1",
@@ -85,14 +76,6 @@ const allKnownObjects = new Set([
 	"WIZARD",
 ]);
 
-const highPrioObjects = new Map();
-let lowPrioForm = "";
-let highPrioForm = "";
-
-let unloaded = false;
-
-const knownObjects = new Map();
-
 // process.on("unhandledRejection", (reason, _promise) => {
 // 	console.error("Unhandled Promise Rejection:", reason);
 // });
@@ -112,9 +95,25 @@ class Senec extends utils.Adapter {
 			name: "senec",
 		});
 
+		this.apiConnected = false;
+		this.lalaConnected = false;
+		this.connectVia = "https://";
+		this.rebuildRunning = false;
+		this.unloaded = false;
+
+		this.apiKnownSystems = new Set();
+		this.highPrioObjects = new Map();
+		this.lowPrioForm = "";
+		this.highPrioForm = "";
+		this.knownObjects = new Map();
+
 		this.apiQueue = null;
 		this.apiAgent = null;
+		this.apiClient = null;
+		this.refreshing = false;
+
 		this.localAgent = null;
+		this.localClient = null;
 
 		this.currentToken = null;
 		this.refreshToken = null;
@@ -195,7 +194,7 @@ class Senec extends utils.Adapter {
 			});
 
 			// Then create axios clients with the respective agents
-			local_client = wrapper(
+			this.localClient = wrapper(
 				axios.create({
 					httpsAgent: this.localAgent,
 					timeout: 10000,
@@ -203,7 +202,7 @@ class Senec extends utils.Adapter {
 				}),
 			);
 
-			api_client = wrapper(
+			this.apiClient = wrapper(
 				axios.create({
 					withCredentials: true,
 					timeout: 10000,
@@ -214,8 +213,8 @@ class Senec extends utils.Adapter {
 
 			// Build and apply a consistent User-Agent for all outbound requests
 			const userAgent = this.buildUserAgent();
-			this.applyDefaultHeaders(api_client, userAgent);
-			this.applyDefaultHeaders(local_client, userAgent);
+			this.applyDefaultHeaders(this.apiClient, userAgent);
+			this.applyDefaultHeaders(this.localClient, userAgent);
 			this.log.debug(`Using User-Agent: ${userAgent}`);
 
 			// --------------------------------------------------
@@ -223,7 +222,7 @@ class Senec extends utils.Adapter {
 			// --------------------------------------------------
 			if (this.config.api_reqnresp_log) {
 				// REQUEST INTERCEPTOR
-				api_client.interceptors.request.use((config) => {
+				this.apiClient.interceptors.request.use((config) => {
 					try {
 						const method = (config.method || "GET").toUpperCase();
 						const url = config.url;
@@ -251,7 +250,7 @@ class Senec extends utils.Adapter {
 				});
 
 				// RESPONSE INTERCEPTOR
-				api_client.interceptors.response.use(
+				this.apiClient.interceptors.response.use(
 					(response) => {
 						try {
 							const method = (response.config?.method || "GET").toUpperCase();
@@ -300,10 +299,9 @@ class Senec extends utils.Adapter {
 			 * - Better stability under load
 			 */
 			// const { setTimeout } = require("timers/promises");
-			// api_client.interceptors.response.use(
+			// this.apiClient.interceptors.response.use(
 			// 	// upon 429 Too Many Requests axios will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in pollSenecApi,
 			// 	// which includes increasing the delay between polls in case of repeated 429 responses.
-			// 	// This is important to prevent overwhelming the SENEC API in case of temporary issues or if we are polling too aggressively.
 			// 	(response) => response,
 			// 	async (error) => {
 			// 		if (error.response && error.response.status === 429 && !unloaded) {
@@ -311,7 +309,7 @@ class Senec extends utils.Adapter {
 			// 			if (!error.config._retry429) {
 			// 				error.config._retry429 = true;
 			// 				await setTimeout(2000); // wait 2s before retrying - this is a simple fixed delay to give the server some time to recover, since we don't have information about how long the client should wait until retrying (like Retry-After header)
-			// 				return api_client.request(error.config);
+			// 				return this.apiClient.request(error.config);
 			// 			}
 			// 		}
 			// 		throw error;
@@ -322,7 +320,7 @@ class Senec extends utils.Adapter {
 				this.log.info("Usage of lala.cgi (local) configured.");
 				await this.initPollSettings();
 				await this.checkConnection();
-				if (lalaConnected) {
+				if (this.lalaConnected) {
 					await this.pollSenecLocal(true, 0); // highPrio
 					await this.pollSenecLocal(false, 0); // lowPrio
 				}
@@ -332,8 +330,8 @@ class Senec extends utils.Adapter {
 
 			if (this.config.api_use) {
 				this.log.info("Usage of SENEC App API configured.");
-				apiConnected = await this.startTokenManager();
-				if (apiConnected) {
+				this.apiConnected = await this.startTokenManager();
+				if (this.apiConnected) {
 					await this.pollSenecApi();
 				} else {
 					this.log.warn(
@@ -346,7 +344,7 @@ class Senec extends utils.Adapter {
 				);
 			}
 
-			if (lalaConnected || apiConnected) {
+			if (this.lalaConnected || this.apiConnected) {
 				this.setState("info.connection", true, true);
 			} else {
 				this.log.error("Neither local connection nor API connection configured. Please check config!");
@@ -376,8 +374,8 @@ class Senec extends utils.Adapter {
 
 				// ForceLoadBattery control
 				if (id === `${this.namespace}.control.ForceLoadBattery`) {
-					if (lalaConnected) {
-						const url = `${connectVia + this.config.senecip}/lala.cgi`;
+					if (this.lalaConnected) {
+						const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 						try {
 							if (state.val) {
 								this.log.info("Enable force battery charging ...");
@@ -407,15 +405,15 @@ class Senec extends utils.Adapter {
 						}
 					} else {
 						this.log.warn(
-							`State change for ${id} not handled (control active: ${this.config.control_active}, lalaConnected: ${lalaConnected})`,
+							`State change for ${id} not handled (control active: ${this.config.control_active}, lalaConnected: ${this.lalaConnected})`,
 						);
 					}
 				}
 
 				// reboot control
 				if (id === `${this.namespace}.control.RebootAppliance`) {
-					if (lalaConnected && this.config.control_reboot) {
-						const url = `${connectVia + this.config.senecip}/lala.cgi`;
+					if (this.lalaConnected && this.config.control_reboot) {
+						const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 						try {
 							if (state.val) {
 								this.log.info("Rebooting appliance ...");
@@ -441,7 +439,7 @@ class Senec extends utils.Adapter {
 						}
 					} else {
 						this.log.warn(
-							`State change for ${id} not handled (control active: ${this.config.control_active}, lalaConnected: ${lalaConnected}, reboot allowed: ${this.config.control_reboot})`,
+							`State change for ${id} not handled (control active: ${this.config.control_active}, lalaConnected: ${this.lalaConnected}, reboot allowed: ${this.config.control_reboot})`,
 						);
 					}
 				}
@@ -497,7 +495,7 @@ class Senec extends utils.Adapter {
 	 */
 	onUnload(callback) {
 		try {
-			unloaded = true;
+			this.unloaded = true;
 			for (const t of this.timers) {
 				// clear all timers that we have scheduled in this.timers to prevent them from running after unload and to prevent memory leaks
 				clearTimeout(t);
@@ -525,7 +523,7 @@ class Senec extends utils.Adapter {
 				this.localAgent.destroy();
 			}
 
-			knownObjects.clear(); // empty objects cache
+			this.knownObjects.clear(); // empty objects cache
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
 			callback();
@@ -586,9 +584,9 @@ class Senec extends utils.Adapter {
 	async initPollSettings() {
 		// creating form for low priority pulling (which means pulling everything we know)
 		// we can do this while preparing values for high prio
-		lowPrioForm = "{";
+		this.lowPrioForm = "{";
 		for (const value of allKnownObjects) {
-			lowPrioForm += `"${value}":{},`;
+			this.lowPrioForm += `"${value}":{},`;
 			const objectsSet = new Set();
 			switch (value) {
 				case "BMS":
@@ -688,25 +686,28 @@ class Senec extends utils.Adapter {
 					break;
 			}
 			if (objectsSet.size > 0) {
-				highPrioObjects.set(value, objectsSet);
+				this.highPrioObjects.set(value, objectsSet);
 			}
 		}
 
-		lowPrioForm = `${lowPrioForm.slice(0, -1)}}`;
-		this.log.debug(`(initPollSettings) lowPrio: ${lowPrioForm}`);
+		this.lowPrioForm = `${this.lowPrioForm.slice(0, -1)}}`;
+		this.log.debug(`(initPollSettings) lowPrio: ${this.lowPrioForm}`);
 
 		// creating form for high priority pulling
-		highPrioForm = "{";
-		//highPrioObjects.forEach(function (mapValue, key, map) {
-		highPrioObjects.forEach(function (mapValue, key) {
-			highPrioForm += `"${key}":{`;
-			mapValue.forEach(function (setValue) {
-				highPrioForm += `"${setValue}":"",`;
+		if (this.highPrioObjects.size > 0) {
+			this.highPrioForm = "{";
+			this.highPrioObjects.forEach((mapValue, key) => {
+				this.highPrioForm += `"${key}":{`;
+				mapValue.forEach((setValue) => {
+					this.highPrioForm += `"${setValue}":"",`;
+				});
+				this.highPrioForm = `${this.highPrioForm.slice(0, -1)}},`;
 			});
-			highPrioForm = `${highPrioForm.slice(0, -1)}},`;
-		});
-		highPrioForm = `${highPrioForm.slice(0, -1)}}`;
-		this.log.debug(`(initPollSettings) highPrio: ${highPrioForm}`);
+			this.highPrioForm = `${this.highPrioForm.slice(0, -1)}}`;
+		} else {
+			this.highPrioForm = "{}";
+		}
+		this.log.debug(`(initPollSettings) highPrio: ${this.highPrioForm}`);
 	}
 
 	addUserDps(value, objectsSet, dpToAdd) {
@@ -823,16 +824,16 @@ class Senec extends utils.Adapter {
 	 * checks connection to senec service
 	 */
 	async checkConnection() {
-		const url = `${connectVia + this.config.senecip}/lala.cgi`;
+		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 		const form = '{"ENERGY":{"STAT_STATE":""}}';
 		try {
 			this.log.info(`connecting to Senec (local): ${url}`);
 			await this.doGetLocal(url, form, this, this.config.pollingTimeout, true);
 			this.log.info(`connected to Senec (local): ${url}`);
-			lalaConnected = true;
+			this.lalaConnected = true;
 		} catch (error) {
 			throw new Error(
-				`Error connecting to Senec (IP: ${connectVia}${this.config.senecip}). Exiting! (${
+				`Error connecting to Senec (IP: ${this.connectVia}${this.config.senecip}). Exiting! (${
 					error
 				}). Check FQDN of SENEC appliance.`,
 			);
@@ -878,14 +879,14 @@ class Senec extends utils.Adapter {
 				code_challenge: codeChallenge,
 				code_challenge_method: "S256",
 			});
-			const pageRes = await api_client.get(`${CONFIG.authUrl}?${authParams}`, { jar });
+			const pageRes = await this.apiClient.get(`${CONFIG.authUrl}?${authParams}`, { jar });
 			let actionUrl = extractFormAction(pageRes.data);
 			if (!actionUrl) {
 				throw new Error("Login-Form URL not found.");
 			}
 
 			const postForm = (url, data) =>
-				api_client.post(url, data, {
+				this.apiClient.post(url, data, {
 					headers: { "Content-Type": "application/x-www-form-urlencoded" },
 					maxRedirects: 0,
 					validateStatus: (s) => s >= 200 && s < 400,
@@ -938,7 +939,7 @@ class Senec extends utils.Adapter {
 				throw new Error("Authorization code not found in redirect.");
 			}
 
-			const tokenRes = await api_client.post(
+			const tokenRes = await this.apiClient.post(
 				CONFIG.tokenUrl,
 				new URLSearchParams({
 					grant_type: "authorization_code",
@@ -976,7 +977,7 @@ class Senec extends utils.Adapter {
 	}
 
 	scheduleTokenRefresh() {
-		if (!this.tokenExpiresAt || unloaded) {
+		if (!this.tokenExpiresAt || this.unloaded) {
 			return;
 		}
 
@@ -1000,7 +1001,7 @@ class Senec extends utils.Adapter {
 			clearTimeout(this.timerTokenRefresh);
 		}
 
-		if (!unloaded) {
+		if (!this.unloaded) {
 			this.log.debug(
 				`🔐 Next token refresh in ${(delay / 1000).toFixed(0)}s ` +
 					`(remaining ${Math.round(remaining / 1000 / 60)} min, failures=${this.tokenFailureCount})`,
@@ -1016,7 +1017,7 @@ class Senec extends utils.Adapter {
 	}
 
 	async refreshTokenSingleFlight() {
-		if (unloaded) {
+		if (this.unloaded) {
 			return;
 		}
 
@@ -1049,7 +1050,7 @@ class Senec extends utils.Adapter {
 			try {
 				this.log.debug("🔐 Refreshing API token...");
 
-				const response = await api_client.post(
+				const response = await this.apiClient.post(
 					CONFIG.tokenUrl,
 					new URLSearchParams({
 						grant_type: "refresh_token",
@@ -1111,7 +1112,7 @@ class Senec extends utils.Adapter {
 					clearTimeout(this.timerTokenRefresh);
 				}
 
-				if (!unloaded) {
+				if (!this.unloaded) {
 					this.log.warn(
 						`🔁 Token refresh retry #${attempt} scheduled in ${(retryDelay / 1000).toFixed(0)}s ` +
 							`(failures = ${this.tokenFailureCount})`,
@@ -1134,7 +1135,7 @@ class Senec extends utils.Adapter {
 	}
 
 	async pollSenecApi() {
-		if (unloaded) {
+		if (this.unloaded) {
 			return;
 		}
 
@@ -1147,7 +1148,7 @@ class Senec extends utils.Adapter {
 			this.timerAPI = null;
 		}
 
-		if (!this.config.api_use || !apiConnected || unloaded) {
+		if (!this.config.api_use || !this.apiConnected || this.unloaded) {
 			this.log.info("Usage of SENEC App API not configured or not connected.");
 			return;
 		}
@@ -1175,7 +1176,7 @@ class Senec extends utils.Adapter {
 			}
 
 			// Read systems once from API and keep them in memory - we will need them for every poll and they don't change that often
-			if (apiKnownSystems.size === 0) {
+			if (this.apiKnownSystems.size === 0) {
 				this.log.debug("🔄 Reading available systems from API ...");
 				const sysRes = await this.apiGet(`${HOST_SYSTEMS}/v1/systems`);
 				if (!sysRes?.data?.length) {
@@ -1183,7 +1184,7 @@ class Senec extends utils.Adapter {
 				}
 				for (const sys of sysRes.data) {
 					this.log.debug(`System found: ${JSON.stringify(sys)}`);
-					apiKnownSystems.add(sys.id);
+					this.apiKnownSystems.add(sys.id);
 					this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
 				}
 			}
@@ -1208,7 +1209,7 @@ class Senec extends utils.Adapter {
 			let successCount = 0;
 			let failureCount = 0;
 
-			for (const anlagenId of apiKnownSystems) {
+			for (const anlagenId of this.apiKnownSystems) {
 				try {
 					this.log.debug(`🔄 Polling system ${anlagenId}...`);
 
@@ -1306,7 +1307,7 @@ class Senec extends utils.Adapter {
 				}
 			}
 
-			if (!unloaded) {
+			if (!this.unloaded) {
 				if (this.timerAPI) {
 					clearTimeout(this.timerAPI);
 					this.timerAPI = null;
@@ -1334,8 +1335,15 @@ class Senec extends utils.Adapter {
 	 * @param config config for API call - will be extended by auth header - can be used to pass additional headers or other axios config parameters
 	 */
 	async apiGet(url, config = {}) {
-		if (unloaded) {
+		if (this.unloaded) {
 			return;
+		}
+
+		if (!this.apiClient) {
+			throw new Error("API client not initialized");
+		}
+		if (!this.apiQueue) {
+			throw new Error("API queue not initialized");
 		}
 
 		return this.apiQueue.add(async () => {
@@ -1357,7 +1365,7 @@ class Senec extends utils.Adapter {
 
 			for (let attempt = 0; attempt < maxAttempts; attempt++) {
 				try {
-					return await api_client.get(url, {
+					return await this.apiClient.get(url, {
 						...config,
 						headers: {
 							Authorization: `Bearer ${this.currentToken}`,
@@ -1413,14 +1421,14 @@ class Senec extends utils.Adapter {
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 */
 	async doRebuild(anlagenId) {
-		rebuildRunning = true;
+		this.rebuildRunning = true;
 		for (let year = new Date().getFullYear(); year >= 2009; year--) {
 			// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
 			await this.doMeasurementsYear(anlagenId, year, false);
 			await this.doMeasurementsYear(anlagenId, year, true);
 		}
 		this.log.info(`Rebuild ended. Adapter restarting ...`);
-		rebuildRunning = false;
+		this.rebuildRunning = false;
 		this.extendForeignObject(`system.adapter.${this.namespace}`, {
 			native: { api_alltimeRebuild: false },
 		});
@@ -1446,7 +1454,7 @@ class Senec extends utils.Adapter {
 			// check if a previous was already updated this year
 			// this ensures that we read last year data at most once per year and current year data at most once per day (in case of daily reset of measurements in SENEC App API)
 			if (
-				!rebuildRunning &&
+				!this.rebuildRunning &&
 				lastDate != null &&
 				!isNaN(lastDate.getTime()) &&
 				lastDate.getUTCFullYear() === now.getUTCFullYear()
@@ -1459,7 +1467,7 @@ class Senec extends utils.Adapter {
 		} else {
 			// current year - check if already updated today
 			if (
-				!rebuildRunning &&
+				!this.rebuildRunning &&
 				lastDate != null &&
 				!isNaN(lastDate.getTime()) &&
 				lastDate.getUTCFullYear() === now.getUTCFullYear() &&
@@ -1504,7 +1512,7 @@ class Senec extends utils.Adapter {
 			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 				const lastDate = new Date(String(lastUpdate.val));
 				if (
-					!rebuildRunning &&
+					!this.rebuildRunning &&
 					!isNaN(lastDate.getTime()) &&
 					lastDate.getUTCFullYear() === new Date().getUTCFullYear() &&
 					lastDate.getUTCMonth() === new Date().getUTCMonth()
@@ -1548,7 +1556,7 @@ class Senec extends utils.Adapter {
 			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 				const lastDate = new Date(String(lastUpdate.val));
 				if (
-					!rebuildRunning &&
+					!this.rebuildRunning &&
 					!isNaN(lastDate.getTime()) &&
 					lastDate.getFullYear() === new Date().getFullYear() &&
 					lastDate.getMonth() === new Date().getMonth() &&
@@ -1641,10 +1649,14 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<string>} Promise with result
 	 */
 	async doGetLocal(pUrl, pForm, caller, pollingTimeout, isPost) {
+		if (!this.localClient) {
+			throw new Error("Local client not initialized");
+		}
+
 		this.log.debug(`Calling: ${pUrl}`);
 
 		try {
-			const response = await local_client({
+			const response = await this.localClient({
 				method: isPost ? "post" : "get",
 				url: pUrl,
 				data: pForm,
@@ -1685,7 +1697,7 @@ class Senec extends utils.Adapter {
 	 * @param retry retry count
 	 */
 	async pollSenecLocal(isHighPrio, retry) {
-		const url = `${connectVia + this.config.senecip}/lala.cgi`;
+		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 		let interval = this.config.interval * 1000;
 		if (!isHighPrio) {
 			this.log.info("LowPrio polling (local) ...");
@@ -1695,7 +1707,7 @@ class Senec extends utils.Adapter {
 		try {
 			let body = await this.doGetLocal(
 				url,
-				isHighPrio ? highPrioForm : lowPrioForm,
+				isHighPrio ? this.highPrioForm : this.lowPrioForm,
 				this,
 				this.config.pollingTimeout,
 				true,
@@ -1712,7 +1724,7 @@ class Senec extends utils.Adapter {
 			await this.evalPoll(obj, "", "");
 
 			retry = 0;
-			if (!unloaded) {
+			if (!this.unloaded) {
 				const timer = setTimeout(() => {
 					this.timers = this.timers.filter((t) => t !== timer);
 					this.pollSenecLocal(isHighPrio, retry).catch((e) => this.log.error(e));
@@ -1739,7 +1751,7 @@ class Senec extends utils.Adapter {
 						retry
 					}/${this.config.retries} in ${delay / 1000} seconds! (${error})`,
 				);
-				if (!unloaded) {
+				if (!this.unloaded) {
 					const timer = setTimeout(() => {
 						this.timers = this.timers.filter((t) => t !== timer);
 						this.pollSenecLocal(isHighPrio, retry).catch((e) => this.log.error(e));
@@ -1868,12 +1880,12 @@ class Senec extends utils.Adapter {
 		const valueType = value !== null && value !== undefined ? typeof value : "mixed";
 
 		// Check object for changes:
-		let obj = knownObjects.get(name);
+		let obj = this.knownObjects.get(name);
 		if (!obj) {
 			obj = await this.getObjectAsync(name);
 
 			if (obj) {
-				knownObjects.set(name, obj);
+				this.knownObjects.set(name, obj);
 			}
 		}
 		if (obj) {
@@ -1901,7 +1913,7 @@ class Senec extends utils.Adapter {
 			if (Object.keys(newCommon).length > 0) {
 				await this.extendObject(name, { common: newCommon });
 				obj.common = { ...obj.common, ...newCommon };
-				knownObjects.set(name, obj);
+				this.knownObjects.set(name, obj);
 			}
 		} else {
 			obj = {
@@ -1918,7 +1930,7 @@ class Senec extends utils.Adapter {
 			};
 
 			await this.setObjectNotExistsAsync(name, obj);
-			knownObjects.set(name, obj);
+			this.knownObjects.set(name, obj);
 		}
 		await this.setStateChangedAsync(name, {
 			val: value,
@@ -1971,7 +1983,7 @@ class Senec extends utils.Adapter {
 	 * @param keyPrefix current key prefix for nested objects
 	 */
 	async evalPoll(obj, pfx, keyPrefix = "") {
-		if (unloaded) {
+		if (this.unloaded) {
 			return;
 		}
 		if (Array.isArray(obj)) {
