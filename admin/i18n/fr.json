@@ -50,12 +50,18 @@
     "apiConcurrencyMaxHelp": "Ici, vous pouvez définir le nombre de requêtes API que l'adaptateur peut envoyer en même temps. [min 1, max 6]. Par défaut = 1. Des valeurs plus élevées peuvent accélérer la récupération des données mais également augmenter le risque d'erreurs API. Si vous rencontrez des erreurs API, essayez de réduire cette valeur.",
     "apiConcurrencyStart": "Concurrence des API",
     "apiConcurrencyStartHelp": "Ici, vous pouvez définir le nombre de requêtes API que l'adaptateur doit envoyer en même temps lors du démarrage. [min 1, max 4]. Par défaut = 1. Des valeurs plus élevées peuvent accélérer la récupération des données mais également augmenter le risque d'erreurs API. Si vous rencontrez des erreurs API, essayez de réduire cette valeur.",
-    "apiDebugLog": "Afficher les problèmes d'API dans le journal",
+    "apiDebugLog": "Afficher les problèmes d'API dans le journal « informations »",
     "apiDebugLogHelp": "Débogue les problèmes d'API dans le journal 'info'. Recommandé uniquement à des fins de débogage car il peut produire beaucoup de journaux.",
     "apiDebugStates": "Consigner les problèmes d'API dans les états",
     "apiDebugStatesHelp": "Débogue les problèmes d’API dans les états dédiés. Recommandé uniquement à des fins de débogage car il peut produire beaucoup de journaux.",
+    "apiReqRespLog": "Consigner les requêtes et les réponses de l'API",
+    "apiReqRespLogHelp": "Enregistre les requêtes et les réponses API dans « debug ». Recommandé uniquement à des fins de débogage, car il peut produire de nombreuses sorties de journaux et potentiellement enregistrer des informations sensibles.",
     "controlReboot": "Autoriser le redémarrage de l'appliance via le point de données de contrôle",
     "controlRebootHelp": "Lorsqu'il est activé, il est possible de redémarrer l'appliance SENEC via le point de données « control.RebootAppliance ». Ceci n’est normalement pas disponible via l’interface Web.",
+    "customUserAgent": "Agent utilisateur personnalisé",
+    "customUserAgentHelp": "Utilisé uniquement lorsque le mode User-Agent est défini sur « Personnalisé ».",
     "usaLala": "Vous connecter via lala.cgi ?",
-    "useLalaHelp": "Connectez-vous à l'appareil SENEC via le réseau local. Cela nécessite l’accès à une surveillance locale."
+    "useLalaHelp": "Connectez-vous à l'appareil SENEC via le réseau local. Cela nécessite l’accès à une surveillance locale.",
+    "userAgentMode": "Mode agent utilisateur",
+    "userAgentModeHelp": "Choisissez quel agent utilisateur doit être envoyé pour les requêtes HTTP sortantes.<br>Navigateur = utiliser un agent utilisateur de navigateur commun.<br>Personnalisé = utiliser l'agent utilisateur défini dans le champ de droite.<br>Intégration = L'agent utilisateur révèle l'intégration via ioBroker, y compris la version de l'adaptateur.<br>Revenez au « Navigateur » si vous rencontrez des problèmes avec l'agent utilisateur."
 }

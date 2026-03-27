@@ -50,12 +50,18 @@
     "apiConcurrencyMaxHelp": "您可以在此处定义适配器可以同时发送多少个 API 请求。 [最小 1，最大 6]。默认值 = 1。较高的值可以加快数据检索速度，但也会增加 API 错误的风险。如果您遇到 API 错误，请尝试降低该值。",
     "apiConcurrencyStart": "API并发",
     "apiConcurrencyStartHelp": "您可以在此处定义适配器在启动时应同时发送多少个 API 请求。 [最小 1，最大 4]。默认值 = 1。较高的值可以加快数据检索速度，但也会增加 API 错误的风险。如果您遇到 API 错误，请尝试降低该值。",
-    "apiDebugLog": "在日志中显示 API 问题",
+    "apiDebugLog": "在“信息”日志中显示 API 问题",
     "apiDebugLogHelp": "调试日志“info”中的 API 问题。仅建议用于调试目的，因为它会产生大量日志输出。",
     "apiDebugStates": "记录各州的 API 问题",
     "apiDebugStatesHelp": "在专用状态下调试 API 问题。仅建议用于调试目的，因为它会产生大量日志输出。",
+    "apiReqRespLog": "记录 API 请求和响应",
+    "apiReqRespLogHelp": "在“调试”中记录 API 请求和响应。仅建议用于调试目的，因为它可以生成大量日志输出并可能记录敏感信息。",
     "controlReboot": "允许通过控制数据点重新启动设备",
     "controlRebootHelp": "激活后，可以通过“control.RebootAppliance”数据点重新启动 SENEC 设备。这通常无法通过网络界面获得。",
+    "customUserAgent": "自定义用户代理",
+    "customUserAgentHelp": "仅当用户代理模式设置为“自定义”时使用。",
     "usaLala": "通过 lala.cgi 连接？",
-    "useLalaHelp": "通过本地网络连接到 SENEC 设备。这需要访问本地监控。"
+    "useLalaHelp": "通过本地网络连接到 SENEC 设备。这需要访问本地监控。",
+    "userAgentMode": "用户代理模式",
+    "userAgentModeHelp": "选择应为出站 HTTP 请求发送哪个用户代理。<br>浏览器 = 使用通用浏览器用户代理。<br>自定义 = 使用右侧字段中定义的用户代理。<br>集成 = 用户代理通过 ioBroker 显示集成，包括适配器版本。<br>如果用户代理遇到问题，请恢复到“浏览器”。"
 }

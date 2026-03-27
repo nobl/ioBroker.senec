@@ -10,12 +10,6 @@ let jar = new CookieJar();
 let api_client;
 let local_client;
 const https = require("https");
-// rejectUnauthorized needs to be false due to the local machine's certificate cannot be checked properly
-const agent_local = new https.Agent({
-	requestCert: true,
-	rejectUnauthorized: false,
-	keepAlive: true,
-});
 
 const utils = require("@iobroker/adapter-core");
 const state_attr = require(`${__dirname}/lib/state_attr.js`);
@@ -119,6 +113,8 @@ class Senec extends utils.Adapter {
 		});
 
 		this.apiQueue = null;
+		this.apiAgent = null;
+		this.localAgent = null;
 
 		this.currentToken = null;
 		this.refreshToken = null;
@@ -156,48 +152,11 @@ class Senec extends utils.Adapter {
 	 * Is called when databases are connected and adapter received configuration.
 	 */
 	async onReady() {
-		// Initialize your adapter here
-
 		// load axios-cookiejar-support dynamically (ESM compatible)
 		if (!wrapper) {
 			const mod = await import("axios-cookiejar-support");
 			wrapper = mod.wrapper;
 		}
-
-		local_client = wrapper(
-			axios.create({
-				httpsAgent: agent_local,
-				timeout: 10000,
-				signal: this.abortController?.signal,
-			}),
-		);
-
-		api_client = wrapper(
-			axios.create({
-				withCredentials: true,
-				timeout: 10000,
-				signal: this.abortController?.signal,
-			}),
-		);
-		api_client.defaults.headers.post["Content-Type"] = "application/json";
-		const { setTimeout } = require("timers/promises");
-		api_client.interceptors.response.use(
-			// upon 429 Too Many Requests axios will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in pollSenecApi,
-			// which includes increasing the delay between polls in case of repeated 429 responses.
-			// This is important to prevent overwhelming the SENEC API in case of temporary issues or if we are polling too aggressively.
-			(response) => response,
-			async (error) => {
-				if (error.response && error.response.status === 429 && !unloaded) {
-					this.log.debug("Experiencing 429. Retrying within axios logic once.");
-					if (!error.config._retry429) {
-						error.config._retry429 = true;
-						await setTimeout(2000); // wait 2s before retrying - this is a simple fixed delay to give the server some time to recover, since we don't have information about how long the client should wait until retrying (like Retry-After header)
-						return api_client.request(error.config);
-					}
-				}
-				throw error;
-			},
-		);
 
 		// Reset the connection indicator during startup
 		this.setState("info.connection", false, true);
@@ -208,6 +167,24 @@ class Senec extends utils.Adapter {
 			const apiConcurrencyStart = Math.max(1, Number(this.config.api_concurrency_start) || 1);
 			const apiConcurrencyMax = Math.max(apiConcurrencyStart, Number(this.config.api_concurrency_max) || 1);
 
+			// create agents first
+			this.localAgent = new https.Agent({
+				requestCert: true,
+				// rejectUnauthorized needs to be false due to the local machine's certificate cannot be checked properly
+				rejectUnauthorized: false,
+				keepAlive: true,
+				maxSockets: 10,
+				maxFreeSockets: 5,
+				timeout: 60000,
+			});
+
+			this.apiAgent = new https.Agent({
+				keepAlive: true,
+				maxSockets: apiConcurrencyMax,
+				maxFreeSockets: Math.min(apiConcurrencyMax, 5),
+				timeout: 60000,
+			});
+
 			this.apiQueue = new AdaptiveRequestQueue({
 				concurrency: apiConcurrencyStart,
 				minConcurrency: 1,
@@ -216,6 +193,130 @@ class Senec extends utils.Adapter {
 				successThreshold: 8,
 				cooldownMs: 8000,
 			});
+
+			// Then create axios clients with the respective agents
+			local_client = wrapper(
+				axios.create({
+					httpsAgent: this.localAgent,
+					timeout: 10000,
+					signal: this.abortController?.signal,
+				}),
+			);
+
+			api_client = wrapper(
+				axios.create({
+					withCredentials: true,
+					timeout: 10000,
+					signal: this.abortController?.signal,
+					httpsAgent: this.apiAgent,
+				}),
+			);
+
+			// Build and apply a consistent User-Agent for all outbound requests
+			const userAgent = this.buildUserAgent();
+			this.applyDefaultHeaders(api_client, userAgent);
+			this.applyDefaultHeaders(local_client, userAgent);
+			this.log.debug(`Using User-Agent: ${userAgent}`);
+
+			// --------------------------------------------------
+			// DEBUG: Axios interceptors for logging request and response details when api_debug_log is enabled. This helps to understand the traffic pattern and debug issues with the SENEC App API.
+			// --------------------------------------------------
+			if (this.config.api_reqnresp_log) {
+				// REQUEST INTERCEPTOR
+				api_client.interceptors.request.use((config) => {
+					try {
+						const method = (config.method || "GET").toUpperCase();
+						const url = config.url;
+
+						const headers = config.headers || {};
+						const userAgent = headers["User-Agent"] || headers["user-agent"];
+						const contentType = headers["Content-Type"] || headers["content-type"];
+
+						let dataType = "none";
+						if (config.data instanceof URLSearchParams) {
+							dataType = "URLSearchParams";
+						} else if (typeof config.data === "object") {
+							dataType = "object";
+						} else if (typeof config.data === "string") {
+							dataType = "string";
+						}
+
+						this.log.debug(
+							`[API REQUEST] ${method} ${url} | UA=${userAgent || "n/a"} | CT=${contentType || "n/a"} | data=${dataType}`,
+						);
+					} catch (err) {
+						this.log.debug(`Request logging failed: ${err.message}`);
+					}
+					return config;
+				});
+
+				// RESPONSE INTERCEPTOR
+				api_client.interceptors.response.use(
+					(response) => {
+						try {
+							const method = (response.config?.method || "GET").toUpperCase();
+							const url = response.config?.url;
+							const status = response.status;
+
+							this.log.debug(`[API RESPONSE] ${status} ${method} ${url}`);
+						} catch (err) {
+							this.log.debug(`Response logging failed: ${err.message}`);
+						}
+						return response;
+					},
+					(error) => {
+						try {
+							const method = (error.config?.method || "GET").toUpperCase();
+							const url = error.config?.url;
+							const status = error.response?.status || "no-status";
+
+							this.log.debug(`[API ERROR] ${status} ${method} ${url}`);
+						} catch (err) {
+							this.log.debug(`Error logging failed: ${err.message}`);
+						}
+						return Promise.reject(error);
+					},
+				);
+			}
+
+			/**
+			 * IMPORTANT DESIGN DECISION:
+			 *
+			 * We intentionally DO NOT implement any retry logic (e.g. for HTTP 429) inside axios interceptors.
+			 *
+			 * Reason:
+			 * - All request pacing and backoff is handled centrally by AdaptiveRequestQueue
+			 * - Additional retries here would bypass queue timing (minTimeBetweenStartsMs)
+			 * - This would lead to hidden extra requests and less predictable behavior
+			 *
+			 * Instead:
+			 * - apiGet() handles authentication (401 → token refresh)
+			 * - AdaptiveRequestQueue handles overload (429, timeouts, cooldown, concurrency)
+			 * - pollSenecApi() handles global polling backoff
+			 *
+			 * Result:
+			 * - Fully deterministic request flow
+			 * - Cleaner diagnostics (queue stats reflect real traffic)
+			 * - Better stability under load
+			 */
+			// const { setTimeout } = require("timers/promises");
+			// api_client.interceptors.response.use(
+			// 	// upon 429 Too Many Requests axios will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in pollSenecApi,
+			// 	// which includes increasing the delay between polls in case of repeated 429 responses.
+			// 	// This is important to prevent overwhelming the SENEC API in case of temporary issues or if we are polling too aggressively.
+			// 	(response) => response,
+			// 	async (error) => {
+			// 		if (error.response && error.response.status === 429 && !unloaded) {
+			// 			this.log.debug("Experiencing 429. Retrying within axios logic once.");
+			// 			if (!error.config._retry429) {
+			// 				error.config._retry429 = true;
+			// 				await setTimeout(2000); // wait 2s before retrying - this is a simple fixed delay to give the server some time to recover, since we don't have information about how long the client should wait until retrying (like Retry-After header)
+			// 				return api_client.request(error.config);
+			// 			}
+			// 		}
+			// 		throw error;
+			// 	},
+			// );
 
 			if (this.config.lala_use) {
 				this.log.info("Usage of lala.cgi (local) configured.");
@@ -416,6 +517,14 @@ class Senec extends utils.Adapter {
 				clearTimeout(this.timerTokenRefresh);
 			}
 
+			// destroy axios agents to close all open sockets and prevent them from running after unload and to prevent memory leaks
+			if (this.apiAgent) {
+				this.apiAgent.destroy();
+			}
+			if (this.localAgent) {
+				this.localAgent.destroy();
+			}
+
 			knownObjects.clear(); // empty objects cache
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
@@ -424,6 +533,54 @@ class Senec extends utils.Adapter {
 			this.log.error(e);
 			callback();
 		}
+	}
+
+	/**
+	 * Build the User-Agent string for outbound HTTP requests.
+	 *
+	 * Supported modes:
+	 * - integration
+	 * - browser
+	 * - custom
+	 *
+	 * @returns {string} User-Agent string
+	 */
+	buildUserAgent() {
+		const adapterVersion = this.version || "unknown";
+		const mode = this.config.api_userAgentMode || "integration";
+
+		switch (mode) {
+			case "browser":
+				return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36";
+
+			case "custom":
+				if (this.config.api_customUserAgent && String(this.config.api_customUserAgent).trim()) {
+					return String(this.config.api_customUserAgent).trim();
+				}
+				return `ioBroker.senec/${adapterVersion} (+https://github.com/nobl/ioBroker.senec)`;
+
+			case "integration":
+			default:
+				return `ioBroker.senec/${adapterVersion} (+https://github.com/nobl/ioBroker.senec)`;
+		}
+	}
+
+	/**
+	 * Apply default HTTP headers to an axios client.
+	 *
+	 * @param {any} client axios instance
+	 * @param {string} userAgent user agent string to apply
+	 */
+	applyDefaultHeaders(client, userAgent) {
+		if (!client || !client.defaults || !client.defaults.headers) {
+			return;
+		}
+
+		client.defaults.headers.common["User-Agent"] = userAgent;
+		client.defaults.headers.common["Accept"] = "application/json";
+		client.defaults.headers.post["Content-Type"] = "application/json";
+		client.defaults.headers.put["Content-Type"] = "application/json";
+		client.defaults.headers.patch["Content-Type"] = "application/json";
 	}
 
 	async initPollSettings() {
@@ -646,6 +803,19 @@ class Senec extends utils.Adapter {
 				`(checkConf) Config api concurrency max ${this.config.api_concurrency_max} lower than start ${this.config.api_concurrency_start}. Using start value.`,
 			);
 			this.config.api_concurrency_max = this.config.api_concurrency_start;
+		}
+
+		this.log.debug(`(checkConf) Configured user agent mode: ${this.config.api_userAgentMode}`);
+		if (!["integration", "browser", "custom"].includes(this.config.api_userAgentMode)) {
+			this.log.warn(
+				`(checkConf) Config userAgentMode ${this.config.api_userAgentMode} invalid. Using default: integration`,
+			);
+			this.config.api_userAgentMode = "integration";
+		}
+
+		if (typeof this.config.api_customUserAgent !== "string") {
+			this.log.warn("(checkConf) Config customUserAgent invalid. Using default: empty string");
+			this.config.api_customUserAgent = "";
 		}
 	}
 

@@ -200,8 +200,11 @@
     "api_concurrency_max": 1,
     "api_debug_states": false,
     "api_debug_log": false,
+    "api_reqnresp_log": false,
     "api_mail": "",
-    "api_pwd": ""
+    "api_pwd": "",
+    "api_userAgentMode": "integration",
+    "api_customUserAgent": ""
   },
   "encryptedNative": [
     "api_mail",

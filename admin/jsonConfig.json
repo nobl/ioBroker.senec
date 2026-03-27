@@ -31,6 +31,7 @@
 					"label": "IP",
 					"help": "IPHelp",
 					"default": "0.0.0.0",
+					"hidden": "data.lala_use !== true",
 					"newLine": true
 				},
 				"interval": {
@@ -45,6 +46,7 @@
 					"default": 10,
 					"min": 1,
 					"max": 3600,
+					"hidden": "data.lala_use !== true",
 					"newLine": true
 				},
 				"intervalLow": {
@@ -59,6 +61,7 @@
 					"default": 60,
 					"min": 5,
 					"max": 3600,
+					"hidden": "data.lala_use !== true",
 					"newLine": true
 				},
 				"pollingTimeout": {
@@ -73,6 +76,7 @@
 					"default": 5000,
 					"min": 1000,
 					"max": 100000,
+					"hidden": "data.lala_use !== true",
 					"newLine": true
 				},
 				"retries": {
@@ -87,6 +91,7 @@
 					"default": 10,
 					"min": 0,
 					"max": 999,
+					"hidden": "data.lala_use !== true",
 					"newLine": true
 				},
 				"retrymultiplier": {
@@ -101,6 +106,7 @@
 					"default": 2,
 					"min": 1,
 					"max": 10,
+					"hidden": "data.lala_use !== true",
 					"newLine": true
 				}
 			}
@@ -108,6 +114,7 @@
 		"_activeApplianceControl": {
 			"type": "panel",
 			"label": "Active_Appliance_Control",
+			"hidden": "data.lala_use !== true",
 			"items": {
 				"control_active": {
 					"type": "checkbox",
@@ -131,6 +138,7 @@
 					"label": "controlReboot",
 					"help": "controlRebootHelp",
 					"default": false,
+					"hidden": "data.control_active !== true",
 					"newLine": true
 				}
 			}
@@ -138,6 +146,7 @@
 		"_highpriopolling": {
 			"type": "panel",
 			"label": "HighPrioDataPoints",
+			"hidden": "data.lala_use !== true",
 			"items": {
 				"disclaimer": {
 					"type": "checkbox",
@@ -161,6 +170,7 @@
 					"label": "HighPrioBMS",
 					"help": "HighPrioBMSHelp",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_BMS_active": {
@@ -172,6 +182,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_BMS === ''",
 					"newLine": false
 				},
 				"highPrio_ENERGY": {
@@ -184,6 +195,7 @@
 					"label": "HighPrioENERGY",
 					"help": "HighPrioENERGYHelp",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_ENERGY_active": {
@@ -195,6 +207,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_ENERGY === ''",
 					"newLine": false
 				},
 				"highPrio_PV1": {
@@ -207,6 +220,7 @@
 					"label": "HighPrioPV1",
 					"help": "HighPrioPV1Help",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_PV1_active": {
@@ -218,6 +232,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_PV1 === ''",
 					"newLine": false
 				},
 				"highPrio_PWR_UNIT": {
@@ -230,6 +245,7 @@
 					"label": "HighPrioPWR_UNIT",
 					"help": "HighPrioPWR_UNITHelp",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_PWR_UNIT_active": {
@@ -241,6 +257,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_PWR_UNIT === ''",
 					"newLine": false
 				},
 				"highPrio_PM1OBJ1": {
@@ -253,6 +270,7 @@
 					"label": "HighPrioPM1OBJ1",
 					"help": "HighPrioPMOBJHelp",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_PM1OBJ1_active": {
@@ -264,6 +282,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_PM1OBJ1 === ''",
 					"newLine": false
 				},
 				"highPrio_PM1OBJ2": {
@@ -276,6 +295,7 @@
 					"label": "HighPrioPM1OBJ2",
 					"help": "HighPrioPMOBJHelp",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_PM1OBJ2_active": {
@@ -287,6 +307,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_PM1OBJ2 === ''",
 					"newLine": false
 				},
 				"highPrio_WALLBOX": {
@@ -299,6 +320,7 @@
 					"label": "HighPrioWALLBOX",
 					"help": "HighPrioWALLEmptyHelp",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_WALLBOX_active": {
@@ -310,6 +332,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_WALLBOX === ''",
 					"newLine": false
 				},
 				"highPrio_BAT1": {
@@ -322,6 +345,7 @@
 					"label": "HighPrioBAT1",
 					"help": "HighPrioWALLEmptyHelp",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_BAT1_active": {
@@ -333,6 +357,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_BAT1 === ''",
 					"newLine": false
 				},
 				"highPrio_BAT1OBJ1": {
@@ -345,6 +370,7 @@
 					"label": "HighPrioBAT1OBJ1",
 					"help": "HighPrioWALLEmptyHelp",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_BAT1OBJ1_active": {
@@ -356,6 +382,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_BAT1OBJ1 === ''",
 					"newLine": false
 				},
 				"highPrio_TEMPMEASURE": {
@@ -368,6 +395,7 @@
 					"label": "HighPrioTEMPMEASURE",
 					"help": "HighPrioWALLEmptyHelp",
 					"default": "",
+					"hidden": "data.disclaimer !== true",
 					"newLine": true
 				},
 				"highPrio_TEMPMEASURE_active": {
@@ -379,6 +407,7 @@
 					"xl": 4,
 					"label": "HighPrioDataPointsActive",
 					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_TEMPMEASURE === ''",
 					"newLine": false
 				}
 			}
@@ -409,6 +438,7 @@
 					"label": "Email",
 					"help": "Email-Help",
 					"default": "",
+					"hidden": "data.api_use !== true",
 					"newLine": true
 				},
 				"api_pwd": {
@@ -422,6 +452,7 @@
 					"label": "Password",
 					"help": "Password_Help:",
 					"default": "",
+					"hidden": "data.api_use !== true",
 					"newLine": false
 				},
 				"api_interval": {
@@ -436,6 +467,7 @@
 					"default": 5,
 					"min": 3,
 					"max": 1440,
+					"hidden": "data.api_use !== true",
 					"newLine": true
 				},
 				"api_concurrency_start": {
@@ -450,6 +482,7 @@
 					"default": 1,
 					"min": 1,
 					"max": 3,
+					"hidden": "data.api_use !== true",
 					"newLine": true
 				},
 				"api_concurrency_max": {
@@ -464,6 +497,47 @@
 					"default": 1,
 					"min": 1,
 					"max": 6,
+					"hidden": "data.api_use !== true",
+					"newLine": false
+				},
+				"api_userAgentMode": {
+					"type": "select",
+					"label": "userAgentMode",
+					"help": "userAgentModeHelp",
+					"options": [
+						{
+							"label": "Integration",
+							"value": "integration"
+						},
+						{
+							"label": "Browser",
+							"value": "browser"
+						},
+						{
+							"label": "Custom",
+							"value": "custom"
+						}
+					],
+					"default": "integration",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.api_use !== true",
+					"newLine": true
+				},
+				"api_customUserAgent": {
+					"type": "text",
+					"label": "customUserAgent",
+					"help": "customUserAgentHelp",
+					"default": "",
+					"hidden": "data.api_userAgentMode !== 'custom' || data.api_use !== true",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
 					"newLine": false
 				},
 				"api_alltimeRebuild": {
@@ -476,6 +550,7 @@
 					"label": "ReBuildHistory",
 					"help": "RebuildHistoryHelp",
 					"default": false,
+					"hidden": "data.api_use !== true",
 					"newLine": true
 				},
 				"api_debug_states": {
@@ -488,6 +563,7 @@
 					"label": "apiDebugStates",
 					"help": "apiDebugStatesHelp",
 					"default": false,
+					"hidden": "data.api_use !== true",
 					"newLine": true
 				},
 				"api_debug_log": {
@@ -500,7 +576,21 @@
 					"label": "apiDebugLog",
 					"help": "apiDebugLogHelp",
 					"default": false,
+					"hidden": "data.api_use !== true",
 					"newLine": false
+				},
+				"api_reqnresp_log": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiReqRespLog",
+					"help": "apiReqRespLogHelp",
+					"default": false,
+					"hidden": "data.api_use !== true",
+					"newLine": true
 				}
 			}
 		}

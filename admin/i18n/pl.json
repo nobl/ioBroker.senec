@@ -50,12 +50,18 @@
     "apiConcurrencyMaxHelp": "Tutaj możesz zdefiniować, ile żądań API może jednocześnie wysłać adapter. [min. 1, maks. 6]. Domyślnie = 1. Wyższe wartości mogą przyspieszyć pobieranie danych, ale także zwiększyć ryzyko błędów API. Jeśli wystąpią błędy API, spróbuj obniżyć tę wartość.",
     "apiConcurrencyStart": "Współbieżność API",
     "apiConcurrencyStartHelp": "Tutaj możesz zdefiniować, ile żądań API adapter powinien wysłać jednocześnie podczas uruchamiania. [min. 1, maks. 4]. Domyślnie = 1. Wyższe wartości mogą przyspieszyć pobieranie danych, ale także zwiększyć ryzyko błędów API. Jeśli wystąpią błędy API, spróbuj obniżyć tę wartość.",
-    "apiDebugLog": "Pokaż problemy z API w logu",
+    "apiDebugLog": "Pokaż problemy z interfejsem API w dzienniku „info”.",
     "apiDebugLogHelp": "Debuguje problemy z interfejsem API w dzienniku „info”. Zalecane tylko do celów debugowania, ponieważ może generować dużo danych wyjściowych w dzienniku.",
     "apiDebugStates": "Rejestruj problemy z interfejsem API w stanach",
     "apiDebugStatesHelp": "Debuguje problemy z interfejsem API w dedykowanych stanach. Zalecane tylko do celów debugowania, ponieważ może generować dużo danych wyjściowych w dzienniku.",
+    "apiReqRespLog": "Rejestruj żądania i odpowiedzi API",
+    "apiReqRespLogHelp": "Rejestruje żądania i odpowiedzi API w trybie „debugowania”. Zalecane tylko do celów debugowania, ponieważ może generować wiele wyników dziennika i potencjalnie wrażliwe informacje.",
     "controlReboot": "Zezwalaj na ponowne uruchomienie urządzenia poprzez kontrolny punkt danych",
     "controlRebootHelp": "Po aktywacji możliwe jest ponowne uruchomienie urządzenia SENEC poprzez punkt danych „control.RebootAppliance”. Zwykle nie jest to dostępne za pośrednictwem interfejsu internetowego.",
+    "customUserAgent": "Niestandardowy agent użytkownika",
+    "customUserAgentHelp": "Używane tylko wtedy, gdy tryb User-Agent jest ustawiony na „Niestandardowy”.",
     "usaLala": "Połączyć się przez lala.cgi?",
-    "useLalaHelp": "Połącz się z urządzeniem SENEC poprzez sieć lokalną. Wymaga to dostępu do lokalnego monitoringu."
+    "useLalaHelp": "Połącz się z urządzeniem SENEC poprzez sieć lokalną. Wymaga to dostępu do lokalnego monitoringu.",
+    "userAgentMode": "Tryb agenta użytkownika",
+    "userAgentModeHelp": "Wybierz, który klient użytkownika powinien być wysyłany w przypadku wychodzących żądań HTTP.<br>Przeglądarka = użyj zwykłego agenta użytkownika przeglądarki.<br>Niestandardowy = użyj agenta użytkownika zdefiniowanego w polu po prawej stronie.<br>Integracja = agent użytkownika ujawnia integrację za pośrednictwem ioBroker, łącznie z wersją adaptera.<br>W przypadku problemów z agentem użytkownika wróć do „Przeglądarki”."
 }

@@ -50,12 +50,18 @@
     "apiConcurrencyMaxHelp": "Hier kunt u definiëren hoeveel API-verzoeken de adapter tegelijkertijd kan verzenden. [min. 1, max. 6]. Standaard = 1. Hogere waarden kunnen het ophalen van gegevens versnellen, maar vergroten ook het risico op API-fouten. Als u API-fouten ervaart, probeer dan deze waarde te verlagen.",
     "apiConcurrencyStart": "API-gelijktijdigheid",
     "apiConcurrencyStartHelp": "Hier kunt u definiëren hoeveel API-verzoeken de adapter bij het opstarten tegelijkertijd moet verzenden. [min. 1, max. 4]. Standaard = 1. Hogere waarden kunnen het ophalen van gegevens versnellen, maar vergroten ook het risico op API-fouten. Als u API-fouten ervaart, probeer dan deze waarde te verlagen.",
-    "apiDebugLog": "Toon API-problemen in logboek",
+    "apiDebugLog": "Toon API-problemen in het 'info'-logboek",
     "apiDebugLogHelp": "Debugt API-problemen in het logboek 'info'. Alleen aanbevolen voor foutopsporingsdoeleinden, omdat dit veel loguitvoer kan produceren.",
     "apiDebugStates": "Registreer API-problemen in staten",
     "apiDebugStatesHelp": "Debugt API-problemen in specifieke statussen. Alleen aanbevolen voor foutopsporingsdoeleinden, omdat dit veel loguitvoer kan produceren.",
+    "apiReqRespLog": "Registreer API-verzoeken en -antwoorden",
+    "apiReqRespLogHelp": "Registreert API-verzoeken en -antwoorden in 'debug'. Alleen aanbevolen voor foutopsporingsdoeleinden, omdat het veel loguitvoer en mogelijk gevoelige informatie kan opleveren.",
     "controlReboot": "Laat het apparaat opnieuw opstarten via het controledatapunt",
     "controlRebootHelp": "Indien geactiveerd is het mogelijk om het SENEC-apparaat opnieuw op te starten via het 'control.RebootAppliance'-datapunt. Normaal gesproken is dit niet beschikbaar via de webinterface.",
+    "customUserAgent": "Aangepaste user-agent",
+    "customUserAgentHelp": "Wordt alleen gebruikt als de User-Agent-modus is ingesteld op 'Aangepast'.",
     "usaLala": "Verbinden via lala.cgi?",
-    "useLalaHelp": "Maak verbinding met het SENEC-apparaat via een lokaal netwerk. Hiervoor is toegang tot lokale monitoring vereist."
+    "useLalaHelp": "Maak verbinding met het SENEC-apparaat via een lokaal netwerk. Hiervoor is toegang tot lokale monitoring vereist.",
+    "userAgentMode": "User-Agent-modus",
+    "userAgentModeHelp": "Kies welke User-Agent moet worden verzonden voor uitgaande HTTP-verzoeken.<br>Browser = gebruik een gewone browser User-Agent.<br>Aangepast = gebruik de User-Agent die in het veld aan de rechterkant is gedefinieerd.<br>Integratie = De user-agent onthult de integratie via ioBroker, inclusief de adapterversie.<br>Keer terug naar 'Browser' als u problemen ondervindt met de User-Agent."
 }

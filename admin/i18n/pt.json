@@ -50,12 +50,18 @@
     "apiConcurrencyMaxHelp": "Aqui você pode definir quantas solicitações de API o adaptador pode enviar ao mesmo tempo. [mínimo 1, máximo 6]. Padrão = 1. Valores mais altos podem acelerar a recuperação de dados, mas também aumentar o risco de erros de API. Se você encontrar erros de API, tente diminuir esse valor.",
     "apiConcurrencyStart": "Simultaneidade de API",
     "apiConcurrencyStartHelp": "Aqui você pode definir quantas solicitações de API o adaptador deve enviar ao mesmo tempo ao inicializar. [mínimo 1, máximo 4]. Padrão = 1. Valores mais altos podem acelerar a recuperação de dados, mas também aumentar o risco de erros de API. Se você encontrar erros de API, tente diminuir esse valor.",
-    "apiDebugLog": "Mostrar problemas de API no log",
+    "apiDebugLog": "Mostrar problemas de API no log 'info'",
     "apiDebugLogHelp": "Depura problemas de API no log 'info'. Recomendado apenas para fins de depuração, pois pode produzir muita saída de log.",
     "apiDebugStates": "Registrar problemas de API em estados",
     "apiDebugStatesHelp": "Depura problemas de API em estados dedicados. Recomendado apenas para fins de depuração, pois pode produzir muita saída de log.",
+    "apiReqRespLog": "Registrar solicitações e respostas da API",
+    "apiReqRespLogHelp": "Registra solicitações e respostas da API em 'debug'. Recomendado apenas para fins de depuração, pois pode produzir muita saída de log e potencialmente registrar informações confidenciais.",
     "controlReboot": "Permitir reinicialização do dispositivo por meio do ponto de dados de controle",
     "controlRebootHelp": "Quando ativado, é possível reinicializar o dispositivo SENEC através do ponto de dados 'control.RebootAppliance'. Normalmente, isso não está disponível via interface web.",
+    "customUserAgent": "Agente de usuário personalizado",
+    "customUserAgentHelp": "Usado apenas quando o modo User-Agent está definido como 'Personalizado'.",
     "usaLala": "Conectar via lala.cgi?",
-    "useLalaHelp": "Conecte-se ao aparelho SENEC via rede local. Isto requer acesso ao monitoramento local."
+    "useLalaHelp": "Conecte-se ao aparelho SENEC via rede local. Isto requer acesso ao monitoramento local.",
+    "userAgentMode": "Modo User-Agent",
+    "userAgentModeHelp": "Escolha qual User-Agent deve ser enviado para solicitações HTTP de saída.<br>Navegador = use um User-Agent de navegador comum.<br>Personalizado = use o User-Agent definido no campo à direita.<br>Integração = O agente do usuário revela a integração via ioBroker, incluindo a versão do adaptador.<br>Reverta para 'Navegador' se tiver problemas com o User-Agent."
 }
