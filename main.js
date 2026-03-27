@@ -582,6 +582,7 @@ class Senec extends utils.Adapter {
 	}
 
 	async initPollSettings() {
+		this.highPrioObjects.clear();
 		// creating form for low priority pulling (which means pulling everything we know)
 		// we can do this while preparing values for high prio
 		this.lowPrioForm = "{";
@@ -1986,24 +1987,26 @@ class Senec extends utils.Adapter {
 		if (this.unloaded) {
 			return;
 		}
+
 		if (Array.isArray(obj)) {
-			obj.forEach((value, index) => {
-				const fullKey = `${keyPrefix}.${index}`;
+			for (const [index, value] of obj.entries()) {
+				const fullKey = keyPrefix ? `${keyPrefix}.${index}` : `${index}`;
 				if (typeof value === "object" && value !== null) {
-					this.evalPoll(value, fullKey);
+					await this.evalPoll(value, pfx, fullKey);
 				} else {
-					this.evalPollHelper(pfx, value, fullKey);
+					await this.evalPollHelper(pfx, value, fullKey);
 				}
-			});
+			}
 			return;
 		}
+
 		for (const key in obj) {
 			const value = obj[key];
 			const fullKey = keyPrefix ? `${keyPrefix}.${key}` : key;
 			if (typeof value === "object" && value !== null) {
-				this.evalPoll(value, pfx, fullKey);
+				await this.evalPoll(value, pfx, fullKey);
 			} else {
-				this.evalPollHelper(pfx, value, fullKey);
+				await this.evalPollHelper(pfx, value, fullKey);
 			}
 		}
 	}
@@ -2025,7 +2028,7 @@ class Senec extends utils.Adapter {
 				: state_attr[fullKey.replace(/\.\d+$/, "")]
 					? state_attr[fullKey.replace(/\.\d+$/, "")].unit
 					: "";
-		this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
+		await this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
 	}
 
 	/**
