@@ -6,7 +6,6 @@ const axios = require("axios");
 const tough = require("tough-cookie");
 const CookieJar = tough.CookieJar;
 let wrapper;
-let jar = new CookieJar();
 const https = require("https");
 
 const utils = require("@iobroker/adapter-core");
@@ -111,6 +110,7 @@ class Senec extends utils.Adapter {
 		this.apiAgent = null;
 		this.apiClient = null;
 		this.refreshing = false;
+		this.jar = new CookieJar();
 
 		this.localAgent = null;
 		this.localClient = null;
@@ -860,7 +860,7 @@ class Senec extends utils.Adapter {
 
 	async senecLogin() {
 		this.log.info("🔄 Start Senec API Login Flow...");
-		jar = new CookieJar();
+		this.jar = new CookieJar();
 
 		try {
 			const codeVerifier = generateCodeVerifier();
@@ -874,7 +874,7 @@ class Senec extends utils.Adapter {
 				code_challenge: codeChallenge,
 				code_challenge_method: "S256",
 			});
-			const pageRes = await this.apiClient.get(`${CONFIG.authUrl}?${authParams}`, { jar });
+			const pageRes = await this.apiClient.get(`${CONFIG.authUrl}?${authParams}`, { jar: this.jar });
 			let actionUrl = extractFormAction(pageRes.data);
 			if (!actionUrl) {
 				throw new Error("Login-Form URL not found.");
@@ -885,7 +885,7 @@ class Senec extends utils.Adapter {
 					headers: { "Content-Type": "application/x-www-form-urlencoded" },
 					maxRedirects: 0,
 					validateStatus: (s) => s >= 200 && s < 400,
-					jar,
+					jar: this.jar,
 				});
 
 			let loginRes;
