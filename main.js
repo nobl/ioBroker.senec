@@ -1052,7 +1052,9 @@ class Senec extends utils.Adapter {
 
 			// Partial or full success
 			if (failureCount > 0) {
-				this.log.warn(`⚠ Partial API failure: ${failureCount} system(s) failed, ${successCount} succeeded.`);
+				this.log.warn(
+					`⚠ Partial API failure: ${failureCount} system(s) failed, ${successCount} system(s) or dashboard succeeded.`,
+				);
 			}
 
 			// Reset global failure counter
