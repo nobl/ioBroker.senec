@@ -57,7 +57,7 @@
 					"label": "PollIntervalLow",
 					"help": "PollIntervalLowHelp",
 					"default": 60,
-					"min": 10,
+					"min": 5,
 					"max": 3600,
 					"newLine": true
 				},
@@ -438,6 +438,34 @@
 					"max": 1440,
 					"newLine": true
 				},
+				"api_concurrency_start": {
+					"type": "number",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiConcurrencyStart",
+					"help": "apiConcurrencyStartHelp",
+					"default": 1,
+					"min": 1,
+					"max": 3,
+					"newLine": true
+				},
+				"api_concurrency_max": {
+					"type": "number",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiConcurrencyMax",
+					"help": "apiConcurrencyMaxHelp",
+					"default": 1,
+					"min": 1,
+					"max": 6,
+					"newLine": false
+				},
 				"api_alltimeRebuild": {
 					"type": "checkbox",
 					"xs": 12,
@@ -449,6 +477,30 @@
 					"help": "RebuildHistoryHelp",
 					"default": false,
 					"newLine": true
+				},
+				"api_debug_states": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiDebugStates",
+					"help": "apiDebugStatesHelp",
+					"default": false,
+					"newLine": true
+				},
+				"api_debug_log": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiDebugLog",
+					"help": "apiDebugLogHelp",
+					"default": false,
+					"newLine": false
 				}
 			}
 		}

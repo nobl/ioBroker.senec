@@ -267,6 +267,9 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Added control.RebootAppliance to initiate appliance reboot. Only works if local lala.cgi is available and connected. Function requires extra permission via adapter settings. Please use responsible!
 - Fixed incremential back-off for local polling.
 - Moved local appliance control settings into own tab.
+- Concurrency for API requests can now be controlled via settings. Please be cautious! Senec API is fragile. Go with 1 concurrent request if you experience issues.
+- You can now enable diagnostics for api-request-queue. You can log them to 'info' log or have them in _api.diagnostics.queue.*
+- Reduced local polling interval for lowPrio to 5 minutes.
 - Dependency updates
 
 ### 2.4.8 (2026-03-14)

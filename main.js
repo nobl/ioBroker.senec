@@ -25,7 +25,6 @@ const LAST_UPDATED = "last updated";
 const TOKEN_STATE = `${API_PFX}refreshToken`;
 
 const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`);
-const api_parallel_limit_start = 1;
 
 // API Endpoints
 const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
@@ -119,14 +118,7 @@ class Senec extends utils.Adapter {
 			name: "senec",
 		});
 
-		this.apiQueue = new AdaptiveRequestQueue({
-			concurrency: api_parallel_limit_start,
-			minConcurrency: 1,
-			maxConcurrency: 2,
-			minTimeBetweenStartsMs: 400,
-			successThreshold: 8,
-			cooldownMs: 8000,
-		});
+		this.apiQueue = null;
 
 		this.currentToken = null;
 		this.refreshToken = null;
@@ -151,6 +143,9 @@ class Senec extends utils.Adapter {
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
 		this.timers = [];
+
+		this.lastLoggedRecommendedConcurrency = null;
+		this.lastLoggedQueueSnapshot = null;
 
 		this.on("ready", this.onReady.bind(this));
 		this.on("stateChange", this.onStateChange.bind(this));
@@ -209,6 +204,18 @@ class Senec extends utils.Adapter {
 
 		try {
 			await this.checkConfig();
+
+			const apiConcurrencyStart = Math.max(1, Number(this.config.api_concurrency_start) || 1);
+			const apiConcurrencyMax = Math.max(apiConcurrencyStart, Number(this.config.api_concurrency_max) || 1);
+
+			this.apiQueue = new AdaptiveRequestQueue({
+				concurrency: apiConcurrencyStart,
+				minConcurrency: 1,
+				maxConcurrency: apiConcurrencyMax,
+				minTimeBetweenStartsMs: 400,
+				successThreshold: 8,
+				cooldownMs: 8000,
+			});
 
 			if (this.config.lala_use) {
 				this.log.info("Usage of lala.cgi (local) configured.");
@@ -568,7 +575,7 @@ class Senec extends utils.Adapter {
 	 * Fallback to default values in case they are out of scope
 	 */
 	async checkConfig() {
-		this.log.debug(`(checkConf) Configured polling interval high priority: ${this.config.interval}`);
+		this.log.debug(`(checkConf) Configured polling interval high priority: ${this.config.interval}s`);
 		if (this.config.interval < 1 || this.config.interval > 3600) {
 			this.log.warn(
 				`(checkConf) Config interval high priority ${
@@ -577,12 +584,12 @@ class Senec extends utils.Adapter {
 			);
 			this.config.interval = 10;
 		}
-		this.log.debug(`(checkConf) Configured polling interval low priority: ${this.config.intervalLow}`);
-		if (this.config.intervalLow < 10 || this.config.intervalLow > 3600) {
+		this.log.debug(`(checkConf) Configured polling interval low priority: ${this.config.intervalLow}m`);
+		if (this.config.intervalLow < 5 || this.config.intervalLow > 3600) {
 			this.log.warn(
 				`(checkConf) Config interval low priority ${
 					this.config.intervalLow
-				} not [10..3600] minutes. Using default: 60`,
+				} not [5..3600] minutes. Using default: 60`,
 			);
 			this.config.intervalLow = 60;
 		}
@@ -617,6 +624,28 @@ class Senec extends utils.Adapter {
 				} not [3..1440] seconds. Using default: 5`,
 			);
 			this.config.api_interval = 5;
+		}
+		this.log.debug(`(checkConf) Configured api concurrency start: ${this.config.api_concurrency_start}`);
+		if (this.config.api_concurrency_start < 1 || this.config.api_concurrency_start > 4) {
+			this.log.warn(
+				`(checkConf) Config api concurrency start ${this.config.api_concurrency_start} not [1..4]. Using default: 1`,
+			);
+			this.config.api_concurrency_start = 1;
+		}
+
+		this.log.debug(`(checkConf) Configured api concurrency max: ${this.config.api_concurrency_max}`);
+		if (this.config.api_concurrency_max < 1 || this.config.api_concurrency_max > 6) {
+			this.log.warn(
+				`(checkConf) Config api concurrency max ${this.config.api_concurrency_max} not [1..6]. Using default: 1`,
+			);
+			this.config.api_concurrency_max = 1;
+		}
+
+		if (this.config.api_concurrency_max < this.config.api_concurrency_start) {
+			this.log.warn(
+				`(checkConf) Config api concurrency max ${this.config.api_concurrency_max} lower than start ${this.config.api_concurrency_start}. Using start value.`,
+			);
+			this.config.api_concurrency_max = this.config.api_concurrency_start;
 		}
 	}
 
@@ -1081,6 +1110,24 @@ class Senec extends utils.Adapter {
 			this.log.warn(`⏱ Backoff delay: Retry ${this.apiFailureCount} in ${(nextDelay / 1000).toFixed(0)}s`);
 		} finally {
 			this.apiPollRunning = false;
+
+			if (this.config.api_debug_states) {
+				try {
+					await this.updateApiQueueStats();
+				} catch (statsError) {
+					this.log.debug(`Failed to update queue stats: ${statsError.message}`);
+				}
+			}
+
+			if (this.config.api_debug_log) {
+				try {
+					this.logApiQueueRecommendationIfChanged();
+					this.logApiQueueStatsIfChanged();
+				} catch (logError) {
+					this.log.debug(`Failed to log queue stats: ${logError.message}`);
+				}
+			}
+
 			if (!unloaded) {
 				if (this.timerAPI) {
 					clearTimeout(this.timerAPI);
@@ -1789,6 +1836,203 @@ class Senec extends utils.Adapter {
 					? state_attr[fullKey.replace(/\.\d+$/, "")].unit
 					: "";
 		this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
+	}
+
+	/**
+	 * Update diagnostic states for AdaptiveRequestQueue.
+	 * This makes the currently observed / practical concurrency visible in ioBroker.
+	 */
+	async updateApiQueueStats() {
+		if (!this.apiQueue || typeof this.apiQueue.getStats !== "function") {
+			return;
+		}
+
+		const stats = this.apiQueue.getStats();
+		const pfx = `${API_PFX}diagnostics.queue.`;
+
+		await this.doState(`${pfx}currentConcurrency`, stats.concurrency, "Current queue concurrency", "", false);
+		await this.doState(
+			`${pfx}recommendedConcurrency`,
+			stats.recommendedConcurrency,
+			"Recommended practical concurrency",
+			"",
+			false,
+		);
+		await this.doState(
+			`${pfx}lastStableConcurrency`,
+			stats.lastStableConcurrency,
+			"Last stable concurrency before backoff",
+			"",
+			false,
+		);
+
+		await this.doState(`${pfx}running`, stats.running, "Currently running requests", "", false);
+		await this.doState(`${pfx}queued`, stats.queued, "Queued requests", "", false);
+		await this.doState(`${pfx}successStreak`, stats.successStreak, "Current success streak", "", false);
+
+		await this.doState(`${pfx}cooldownActive`, stats.cooldownActive, "Cooldown currently active", "", false);
+		await this.doState(
+			`${pfx}cooldownRemainingMs`,
+			stats.cooldownRemainingMs,
+			"Remaining cooldown in milliseconds",
+			"ms",
+			false,
+		);
+
+		await this.doState(`${pfx}started`, stats.started, "Started API requests", "", false);
+		await this.doState(`${pfx}succeeded`, stats.succeeded, "Successful API requests", "", false);
+		await this.doState(`${pfx}failed`, stats.failed, "Failed API requests", "", false);
+		await this.doState(`${pfx}rateLimited`, stats.rateLimited, "HTTP 429 responses", "", false);
+		await this.doState(`${pfx}timeouts`, stats.timeouts, "Timed out API requests", "", false);
+		await this.doState(`${pfx}otherErrors`, stats.otherErrors, "Other API errors", "", false);
+
+		await this.doState(
+			`${pfx}avgDurationMs`,
+			stats.avgDurationMs,
+			"Average duration of successful API requests",
+			"ms",
+			false,
+		);
+		await this.doState(
+			`${pfx}lastDurationMs`,
+			stats.lastDurationMs,
+			"Duration of the last successful API request",
+			"ms",
+			false,
+		);
+
+		await this.doState(`${pfx}errorRate`, stats.errorRate, "Overall API error rate", "", false);
+		await this.doState(`${pfx}timeoutRate`, stats.timeoutRate, "Timeout rate", "", false);
+		await this.doState(`${pfx}rateLimitRate`, stats.rateLimitRate, "HTTP 429 rate", "", false);
+
+		await this.doState(`${pfx}cooldownCount`, stats.cooldownCount, "Number of cooldown activations", "", false);
+		await this.doState(
+			`${pfx}concurrencyReducedCount`,
+			stats.concurrencyReducedCount,
+			"Number of concurrency reductions",
+			"",
+			false,
+		);
+		await this.doState(
+			`${pfx}concurrencyIncreasedCount`,
+			stats.concurrencyIncreasedCount,
+			"Number of concurrency increases",
+			"",
+			false,
+		);
+
+		await this.doState(
+			`${pfx}maxObservedQueueLength`,
+			stats.maxObservedQueueLength,
+			"Maximum observed queue length",
+			"",
+			false,
+		);
+		await this.doState(
+			`${pfx}maxObservedRunning`,
+			stats.maxObservedRunning,
+			"Maximum observed parallel running requests",
+			"",
+			false,
+		);
+
+		// timestamps as ISO strings for better readability in objects / history
+		await this.doState(
+			`${pfx}lastErrorAt`,
+			stats.lastErrorAt ? new Date(stats.lastErrorAt).toISOString() : "",
+			"Timestamp of last API error",
+			"",
+			false,
+		);
+		await this.doState(
+			`${pfx}lastSuccessAt`,
+			stats.lastSuccessAt ? new Date(stats.lastSuccessAt).toISOString() : "",
+			"Timestamp of last successful API request",
+			"",
+			false,
+		);
+		await this.doState(
+			`${pfx}last429At`,
+			stats.last429At ? new Date(stats.last429At).toISOString() : "",
+			"Timestamp of last HTTP 429 response",
+			"",
+			false,
+		);
+		await this.doState(
+			`${pfx}lastTimeoutAt`,
+			stats.lastTimeoutAt ? new Date(stats.lastTimeoutAt).toISOString() : "",
+			"Timestamp of last timeout",
+			"",
+			false,
+		);
+	}
+
+	/**
+	 * Log recommended concurrency only when it changes.
+	 * Info logging is only emitted when api_debug_log is enabled.
+	 */
+	logApiQueueRecommendationIfChanged() {
+		if (!this.apiQueue || typeof this.apiQueue.getStats !== "function") {
+			return;
+		}
+
+		if (!this.config.api_debug_log) {
+			return;
+		}
+
+		const stats = this.apiQueue.getStats();
+
+		if (this.lastLoggedRecommendedConcurrency !== stats.recommendedConcurrency) {
+			this.lastLoggedRecommendedConcurrency = stats.recommendedConcurrency;
+
+			this.log.info(
+				`AdaptiveRequestQueue recommends concurrency=${stats.recommendedConcurrency} ` +
+					`(current=${stats.concurrency}, stable=${stats.lastStableConcurrency}, ` +
+					`timeouts=${stats.timeouts}, 429=${stats.rateLimited})`,
+			);
+		}
+	}
+
+	/**
+	 * Log current queue statistics only if key values changed since the last log.
+	 * Info logging is only emitted when api_debug_log is enabled.
+	 */
+	logApiQueueStatsIfChanged() {
+		if (!this.apiQueue || typeof this.apiQueue.getStats !== "function") {
+			return;
+		}
+
+		if (!this.config.api_debug_log) {
+			return;
+		}
+
+		const stats = this.apiQueue.getStats();
+
+		const snapshot = JSON.stringify({
+			concurrency: stats.concurrency,
+			recommendedConcurrency: stats.recommendedConcurrency,
+			lastStableConcurrency: stats.lastStableConcurrency,
+			running: stats.running,
+			queued: stats.queued,
+			timeouts: stats.timeouts,
+			rateLimited: stats.rateLimited,
+			cooldownActive: stats.cooldownActive,
+			cooldownRemainingMs: stats.cooldownRemainingMs,
+			avgDurationMs: stats.avgDurationMs,
+		});
+
+		if (this.lastLoggedQueueSnapshot !== snapshot) {
+			this.lastLoggedQueueSnapshot = snapshot;
+
+			this.log.info(
+				`API queue stats: current=${stats.concurrency}, recommended=${stats.recommendedConcurrency}, ` +
+					`stable=${stats.lastStableConcurrency}, running=${stats.running}, queued=${stats.queued}, ` +
+					`success=${stats.succeeded}, failed=${stats.failed}, timeouts=${stats.timeouts}, 429=${stats.rateLimited}, ` +
+					`avg=${stats.avgDurationMs}ms, cooldown=${
+						stats.cooldownActive ? `${stats.cooldownRemainingMs}ms` : "off"
+					}`,
+			);
+		}
 	}
 }
 

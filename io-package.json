@@ -196,6 +196,10 @@
     "api_use": false,
     "api_interval": 5,
     "api_alltimeRebuild": false,
+    "api_concurrency_start": 1,
+    "api_concurrency_max": 1,
+    "api_debug_states": false,
+    "api_debug_log": false,
     "api_mail": "",
     "api_pwd": ""
   },

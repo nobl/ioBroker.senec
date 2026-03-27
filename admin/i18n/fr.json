@@ -46,8 +46,16 @@
     "USE_SENEC_API_HELP": "Vérifiez si l'adaptateur doit utiliser l'API SENEC.",
     "activeControl": "Activer le contrôle actif de l'appareil",
     "activeControlHelp": "Connexion lala.cgi requise ! Lorsqu'il est activé, il est possible de contrôler l'appareil SENEC via des points de données de « contrôle ». Vous acceptez tous les risques potentiels encourus en activant cette option, y compris éventuellement la perte de garantie.",
+    "apiConcurrencyMax": "Concurrence maximale des API",
+    "apiConcurrencyMaxHelp": "Ici, vous pouvez définir le nombre de requêtes API que l'adaptateur peut envoyer en même temps. [min 1, max 6]. Par défaut = 1. Des valeurs plus élevées peuvent accélérer la récupération des données mais également augmenter le risque d'erreurs API. Si vous rencontrez des erreurs API, essayez de réduire cette valeur.",
+    "apiConcurrencyStart": "Concurrence des API",
+    "apiConcurrencyStartHelp": "Ici, vous pouvez définir le nombre de requêtes API que l'adaptateur doit envoyer en même temps lors du démarrage. [min 1, max 4]. Par défaut = 1. Des valeurs plus élevées peuvent accélérer la récupération des données mais également augmenter le risque d'erreurs API. Si vous rencontrez des erreurs API, essayez de réduire cette valeur.",
+    "apiDebugLog": "Afficher les problèmes d'API dans le journal",
+    "apiDebugLogHelp": "Débogue les problèmes d'API dans le journal 'info'. Recommandé uniquement à des fins de débogage car il peut produire beaucoup de journaux.",
+    "apiDebugStates": "Consigner les problèmes d'API dans les états",
+    "apiDebugStatesHelp": "Débogue les problèmes d’API dans les états dédiés. Recommandé uniquement à des fins de débogage car il peut produire beaucoup de journaux.",
     "controlReboot": "Autoriser le redémarrage de l'appliance via le point de données de contrôle",
-    "controlRebootHelp": "Lorsqu'il est activé, il est possible de redémarrer l'appliance SENEC via le point de données « control.RebootAppliance ». Ceci n'est normalement pas disponible via l'interface Web.",
+    "controlRebootHelp": "Lorsqu'il est activé, il est possible de redémarrer l'appliance SENEC via le point de données « control.RebootAppliance ». Ceci n’est normalement pas disponible via l’interface Web.",
     "usaLala": "Vous connecter via lala.cgi ?",
     "useLalaHelp": "Connectez-vous à l'appareil SENEC via le réseau local. Cela nécessite l’accès à une surveillance locale."
 }
