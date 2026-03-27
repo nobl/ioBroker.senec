@@ -25,7 +25,7 @@ const LAST_UPDATED = "last updated";
 const TOKEN_STATE = `${API_PFX}refreshToken`;
 
 const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`);
-const api_parallel_limit = 4;
+const api_parallel_limit_start = 1;
 
 // API Endpoints
 const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
@@ -120,9 +120,12 @@ class Senec extends utils.Adapter {
 		});
 
 		this.apiQueue = new AdaptiveRequestQueue({
-			concurrency: api_parallel_limit,
+			concurrency: api_parallel_limit_start,
 			minConcurrency: 1,
-			maxConcurrency: 6,
+			maxConcurrency: 2,
+			minTimeBetweenStartsMs: 400,
+			successThreshold: 8,
+			cooldownMs: 8000,
 		});
 
 		this.currentToken = null;
@@ -1094,7 +1097,13 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * API Get with automatic token refresh on 401 and retry mechanism using AdaptiveRequestQueue to avoid multiple parallel token refreshes and to limit parallel API calls in general.
+	 * API Get with automatic token refresh on 401 and retry mechanism using AdaptiveRequestQueue
+	 * to avoid multiple parallel token refreshes and to limit parallel API calls in general.
+	 *
+	 * Important:
+	 * - Rate limiting (429) and timeout-based overload handling are primarily managed inside
+	 *   AdaptiveRequestQueue. This function only logs and propagates signals.
+	 * - Token refresh (401) is handled here.
 	 *
 	 * @param {any} url url to call
 	 * @param config config for API call - will be extended by auth header - can be used to pass additional headers or other axios config parameters
@@ -1103,20 +1112,24 @@ class Senec extends utils.Adapter {
 		if (unloaded) {
 			return;
 		}
+
 		return this.apiQueue.add(async () => {
-			// Proactive expiry check - if token is close to expiry, refresh before making the call to avoid edge cases with token expiry during the call
+			// Proactive expiry check - if token is close to expiry, refresh before making the call
+			// to avoid edge cases with token expiry during the call
 			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
 				// 60s before expiry to avoid keycloak-server timedrift issues (usually 5-10 sec)
 				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
 				await this.refreshTokenSingleFlight();
 			}
 
+			// Ensure we have a valid token at all
 			if (!this.currentToken) {
-				this.log.debug("🔐 no current Token. Refreshing before request...");
+				this.log.debug("🔐 No current token. Refreshing before request...");
 				await this.refreshTokenSingleFlight();
 			}
 
 			const maxAttempts = 3;
+
 			for (let attempt = 0; attempt < maxAttempts; attempt++) {
 				try {
 					return await api_client.get(url, {
@@ -1128,27 +1141,41 @@ class Senec extends utils.Adapter {
 					});
 				} catch (e) {
 					const status = e.response?.status;
-					// 🔐 Token expired
+
+					// Detect timeout / silent overload situations
+					const isTimeout =
+						e.code === "ECONNABORTED" ||
+						e.code === "ETIMEDOUT" ||
+						e.name === "AbortError" ||
+						e.name === "CanceledError" ||
+						/timeout/i.test(e.message || "");
+
+					// 🔐 Token expired → refresh and retry
 					if (status === 401 && attempt < maxAttempts - 1) {
 						this.log.debug("🔐 401 received. Refreshing token...");
 						await this.refreshTokenSingleFlight();
 						continue;
 					}
 
-					// 🚦 Rate limited
+					// 🚦 Explicit rate limit from API
 					if (status === 429) {
-						this.log.warn("🚦 API returned 429 (rate limited) - increasing next poll delay.");
-						const delay = this.config.api_interval * this.baseTime * 2; // doppelte Basiszeit
-						if (!unloaded && this.timerAPI) {
-							clearTimeout(this.timerAPI);
-							this.timerAPI = setTimeout(() => {
-								this.timers = this.timers.filter((t) => t !== this.timerAPI);
-								this.pollSenecApi();
-							}, delay);
-							this.timers.push(this.timerAPI);
-						}
+						this.log.warn("🚦 API returned 429 (rate limited). Backoff handled by AdaptiveRequestQueue.");
 					}
 
+					// ⏱ Timeout or implicit overload
+					// Many APIs (likely SENEC) do not properly return 429 but instead stall or drop requests
+					if (isTimeout) {
+						this.log.warn("⏱ API request timed out - likely server overload or implicit rate limiting.");
+					}
+
+					// ℹ️ Additional debug information for troubleshooting
+					this.log.debug(
+						`API request failed (attempt ${attempt + 1}/${maxAttempts}) ` +
+							`for ${url} - status=${status || "none"} - code=${e.code || "n/a"}`,
+					);
+
+					// Retry only for auth errors (handled above)
+					// For rate limiting / timeouts we let AdaptiveRequestQueue decide pacing
 					throw e;
 				}
 			}
