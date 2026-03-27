@@ -1,4 +1,6 @@
 {
+    "apiShowPolling": "Show API polling in log",
+    "apiShowPollingHelp": "Shows that adapter is polling the API or trying to refresh the accesstoken in log 'info'. Turn off if the spam annoys you.",
     "customUserAgentHelp": "Only used when User-Agent mode is set to 'Custom'.",
     "customUserAgent": "Custom User-Agent",
     "userAgentModeHelp": "Choose which User-Agent should be sent for outbound HTTP requests.<br>Browser = use a common browser User-Agent.<br>Custom = use the User-Agent defined in the field to the right.<br>Integration = The user agent reveals the integration via ioBroker, including the adapter version.<br>Revert to 'Browser' if you experience problems with the User-Agent.",
@@ -12,7 +14,7 @@
     "apiDebugStatesHelp": "Debugs API problems in dedicated states. Only recommended for debugging purposes as it can produce a lot of log output.",
     "apiDebugLogHelp": "Debugs API problems in the log 'info'. Only recommended for debugging purposes as it can produce a lot of log output.",
     "apiReqRespLog": "Log API requests and responses",
-    "apiReqRespLogHelp": "Logs API requests and responses in 'debug'. Only recommended for debugging purposes as it can produce a lot of log output and potentially log sensitive information.",
+    "apiReqRespLogHelp": "Logs API requests and responses in 'debug'. Only recommended for debugging purposes as it can produce a lot of log output and potentially log sensitive information. May expose authentication endpoint usage in logs. Do not leave enabled permanently.",
     "General_Settings": "General settings",
     "Active_Appliance_Control": "Active appliance control",
     "controlReboot": "Allow appliance reboot via control datapoint",

@@ -272,6 +272,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - You can now enable diagnostics for api-request-queue. You can log them to 'info' log or have them in _api.diagnostics.queue.*
 - Reduced local polling interval for lowPrio to 5 minutes.
 - UI now hides unavailable options.
+- Added option to remove API log spam. If you don't need to know every few minutes we are refreshing tokens or polling the API: Deactivate it.
 - Dependency updates
 
 ### 2.4.8 (2026-03-14)

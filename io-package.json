@@ -204,7 +204,8 @@
     "api_mail": "",
     "api_pwd": "",
     "api_userAgentMode": "integration",
-    "api_customUserAgent": ""
+    "api_customUserAgent": "",
+    "api_showPolling": true
   },
   "encryptedNative": [
     "api_mail",

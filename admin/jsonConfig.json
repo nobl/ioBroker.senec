@@ -470,6 +470,19 @@
 					"hidden": "data.api_use !== true",
 					"newLine": true
 				},
+				"api_showPolling": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiShowPolling",
+					"help": "apiShowPollingHelp",
+					"default": true,
+					"hidden": "data.api_use !== true",
+					"newLine": false
+				},
 				"api_concurrency_start": {
 					"type": "number",
 					"xs": 12,

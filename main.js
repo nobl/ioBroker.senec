@@ -1077,7 +1077,11 @@ class Senec extends utils.Adapter {
 				this.authBlocked = false;
 				const expiresIn = data.expires_in || 600; // fallback 10min
 				this.tokenExpiresAt = Date.now() + expiresIn * 1000;
-				this.log.info(`✅ Token refreshed. Expires in ${expiresIn}s`);
+				if (this.config.api_showPolling) {
+					this.log.info(`✅ Token refreshed. Expires in ${expiresIn}s`);
+				} else {
+					this.log.debug(`✅ Token refreshed. Expires in ${expiresIn}s`);
+				}
 				this.scheduleTokenRefresh();
 			} catch (err) {
 				this.authBlocked = true;
@@ -1159,7 +1163,11 @@ class Senec extends utils.Adapter {
 		let nextDelay = baseInterval;
 
 		try {
-			this.log.info("🔄 Polling SENEC App API...");
+			if (this.config.api_showPolling) {
+				this.log.info("🔄 Polling SENEC App API...");
+			} else {
+				this.log.debug("🔄 Polling SENEC App API...");
+			}
 
 			// Ensure token exists
 			if (!this.currentToken) {
