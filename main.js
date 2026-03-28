@@ -110,7 +110,6 @@ class Senec extends utils.Adapter {
 		this.apiAgent = null;
 		this.apiClient = null;
 		this.authClient = null;
-		this.refreshing = false;
 		this.jar = new CookieJar();
 
 		this.localAgent = null;
@@ -445,7 +444,7 @@ class Senec extends utils.Adapter {
 				}
 			}
 
-			this.setState(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
+			await this.setState(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
 		} else if (state && id === `${this.namespace}.ENERGY.STAT_STATE`) {
 			// states that do have state.ack already
 			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
@@ -458,7 +457,7 @@ class Senec extends utils.Adapter {
 					this.log.info(
 						"Battery forced loading activated (from outside or just lag). Syncing control-state.",
 					);
-					this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, {
+					await this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, {
 						val: true,
 						ack: true,
 					});
@@ -468,7 +467,7 @@ class Senec extends utils.Adapter {
 					this.log.info(
 						"Battery forced loading deactivated (from outside or just lag). Syncing control-state.",
 					);
-					this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, {
+					await this.setStateChangedAsync(`${this.namespace}.control.ForceLoadBattery`, {
 						val: false,
 						ack: true,
 					});
@@ -480,7 +479,7 @@ class Senec extends utils.Adapter {
 				this.log.info("Rebooting appliance in progress ...");
 			} else {
 				this.log.info("Reboot completed. Syncing control-state.");
-				this.setStateChangedAsync(`${this.namespace}.control.RebootAppliance`, {
+				await this.setStateChangedAsync(`${this.namespace}.control.RebootAppliance`, {
 					val: false,
 					ack: true,
 				});
@@ -1028,29 +1027,24 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		// Prevent multiple refreshes from different poll workers
-		if (this.refreshing) {
-			this.log.debug("🔐 Refresh already in progress, waiting for it to complete...");
-			await this.refreshPromise;
-			return;
+		if (!this.authClient) {
+			throw new Error("Auth client not initialized");
 		}
-		this.refreshing = true;
+
+		if (this.refreshPromise) {
+			this.log.debug("🔐 Refresh already in progress, waiting for it to complete...");
+			return this.refreshPromise;
+		}
 
 		// cancel scheduled refresh while manual refresh runs
 		if (this.timerTokenRefresh) {
 			clearTimeout(this.timerTokenRefresh);
 			this.timerTokenRefresh = null;
 		}
-		if (this.timerTokenRefresh && this.tokenFailureCount > 0) {
-			this.log.debug("🔐 Refresh retry already scheduled — skipping immediate refresh.");
-			return;
-		}
+
 		if (!this.refreshToken) {
 			this.log.debug("🔐 No refresh token available — skipping refresh.");
 			return this.senecLogin();
-		}
-		if (this.refreshPromise) {
-			return this.refreshPromise;
 		}
 
 		this.refreshPromise = (async () => {
@@ -1071,8 +1065,8 @@ class Senec extends utils.Adapter {
 
 				this.currentToken = data.access_token;
 				this.refreshToken = data.refresh_token || this.refreshToken;
+
 				await this.doState(
-					//`${this.namespace}${TOKEN_STATE}`,
 					`${TOKEN_STATE}`,
 					this.encrypt(this.refreshToken),
 					"Encrypted Refresh Token (never log or expose!)",
@@ -1083,13 +1077,15 @@ class Senec extends utils.Adapter {
 
 				this.tokenFailureCount = 0;
 				this.authBlocked = false;
-				const expiresIn = data.expires_in || 600; // fallback 10min
+				const expiresIn = data.expires_in || 600;
 				this.tokenExpiresAt = Date.now() + expiresIn * 1000;
+
 				if (this.config.api_showPolling) {
 					this.log.info(`✅ Token refreshed. Expires in ${expiresIn}s`);
 				} else {
 					this.log.debug(`✅ Token refreshed. Expires in ${expiresIn}s`);
 				}
+
 				this.scheduleTokenRefresh();
 			} catch (err) {
 				this.authBlocked = true;
@@ -1098,7 +1094,6 @@ class Senec extends utils.Adapter {
 
 				this.log.warn(`⚠️ Token refresh failed: ${err.message} (HTTP ${status || "unknown"})`);
 
-				// If refresh token invalid → fallback to full login
 				if (errorCode === "invalid_grant" || status === 400) {
 					this.log.warn("⚠️ Refresh token invalid → full login required.");
 					await this.senecLogin();
@@ -1106,18 +1101,14 @@ class Senec extends utils.Adapter {
 				}
 
 				this.tokenFailureCount++;
-				const attempt = this.tokenFailureCount; // 1,2,3,...
+				const attempt = this.tokenFailureCount;
 				let retryDelay = computeBackoffDelay(
 					this.tokenBackoff.baseDelayMs,
-					attempt - 1, // attempt beginnt bei 0 für ersten Fehler
+					attempt - 1,
 					this.tokenBackoff.maxMultiplier,
 				);
-				retryDelay = Math.max(retryDelay, 10000); // never < 10 s
-				retryDelay = Math.min(retryDelay, this.tokenBackoff.maxDelayMs); // never > maxDelayMs
-
-				if (this.timerTokenRefresh) {
-					clearTimeout(this.timerTokenRefresh);
-				}
+				retryDelay = Math.max(retryDelay, 10000);
+				retryDelay = Math.min(retryDelay, this.tokenBackoff.maxDelayMs);
 
 				if (!this.unloaded) {
 					this.log.warn(
@@ -1134,7 +1125,6 @@ class Senec extends utils.Adapter {
 				throw err;
 			} finally {
 				this.refreshPromise = null;
-				this.refreshing = false; // Release lock
 			}
 		})();
 
