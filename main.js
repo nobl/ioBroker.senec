@@ -379,7 +379,7 @@ class Senec extends utils.Adapter {
 						try {
 							if (state.val) {
 								this.log.info("Enable force battery charging ...");
-								this.evalPoll(
+								await this.evalPoll(
 									JSON.parse(
 										await this.doGetLocal(url, batteryOn, this.config.pollingTimeout, true),
 										reviverNumParse,
@@ -389,7 +389,7 @@ class Senec extends utils.Adapter {
 								);
 							} else {
 								this.log.info("Disable force battery charging ...");
-								this.evalPoll(
+								await this.evalPoll(
 									JSON.parse(
 										await this.doGetLocal(url, batteryOff, this.config.pollingTimeout, true),
 										reviverNumParse,
@@ -417,7 +417,7 @@ class Senec extends utils.Adapter {
 						try {
 							if (state.val) {
 								this.log.info("Rebooting appliance ...");
-								this.evalPoll(
+								await this.evalPoll(
 									JSON.parse(
 										await this.doGetLocal(url, rebootAppliance, this.config.pollingTimeout, true),
 										reviverNumParse,
@@ -1181,7 +1181,7 @@ class Senec extends utils.Adapter {
 				for (const sys of sysRes.data) {
 					this.log.debug(`System found: ${JSON.stringify(sys)}`);
 					this.apiKnownSystems.add(sys.id);
-					this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
+					await this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
 				}
 			}
 
@@ -1212,7 +1212,7 @@ class Senec extends utils.Adapter {
 					// Dashboard (frequent)
 					const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
 					this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
-					this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
+					await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
 					// If dashboard worked, count as success
 					successCount++;
 
@@ -1634,7 +1634,7 @@ class Senec extends utils.Adapter {
 			default:
 				groupBy = period;
 		}
-		this.evalPoll(sums, `${pfx + groupBy}.`);
+		await this.evalPoll(sums, `${pfx + groupBy}.`);
 	}
 
 	/**
@@ -1717,7 +1717,6 @@ class Senec extends utils.Adapter {
 			}
 			const obj = JSON.parse(body, reviverNumParse);
 			this.log.silly(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
-			//await this.evalPollLocal(obj);
 			await this.evalPoll(obj, "", "");
 
 			retry = 0;
@@ -1858,7 +1857,7 @@ class Senec extends utils.Adapter {
 			}),
 		);
 		this.log.debug(`Calculated AllTimeHistory: ${JSON.stringify(result)}`);
-		this.evalPoll(result, pfx);
+		await this.evalPoll(result, pfx);
 	}
 
 	/**
