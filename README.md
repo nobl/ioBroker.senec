@@ -273,6 +273,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Reduced local polling interval for lowPrio to 5 minutes.
 - UI now hides unavailable options.
 - Added option to remove API log spam. If you don't need to know every few minutes we are refreshing tokens or polling the API: Deactivate it.
+- Partial code rewrite (you can now safely have several instances of adapter - if you ever wanted)
 - Dependency updates
 
 ### 2.4.8 (2026-03-14)
