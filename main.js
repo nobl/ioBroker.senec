@@ -132,6 +132,7 @@ class Senec extends utils.Adapter {
 
 		this.timerAPI = null;
 		this.apiPollRunning = false;
+		this.apiFailureCount = 0;
 		this.lastHeavyUpdate = 0;
 		this.baseTime = 60000;
 
@@ -967,7 +968,7 @@ class Senec extends utils.Adapter {
 			return this.currentToken;
 		} catch (e) {
 			this.log.error(e?.stack || e?.message || String(e));
-			this.log.error(`❌ Login Error: ${e.message}`);
+			this.log.error(`❌ Login Error: ${e?.message || String(e)}`);
 			return null;
 		}
 	}
@@ -1428,7 +1429,7 @@ class Senec extends utils.Adapter {
 		}
 		this.log.info(`Rebuild ended. Adapter restarting ...`);
 		this.rebuildRunning = false;
-		this.extendForeignObject(`system.adapter.${this.namespace}`, {
+		await this.extendForeignObject(`system.adapter.${this.namespace}`, {
 			native: { api_alltimeRebuild: false },
 		});
 	}
@@ -2000,8 +2001,7 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		for (const key in obj) {
-			const value = obj[key];
+		for (const [key, value] of Object.entries(obj)) {
 			const fullKey = keyPrefix ? `${keyPrefix}.${key}` : key;
 			if (typeof value === "object" && value !== null) {
 				await this.evalPoll(value, pfx, fullKey);
