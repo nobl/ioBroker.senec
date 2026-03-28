@@ -357,7 +357,7 @@ class Senec extends utils.Adapter {
 				await this.subscribeStatesAsync("SYS_UPDATE.USER_REBOOT_DEVICE");
 			}
 		} catch (error) {
-			this.log.error(error);
+			this.log.error(error?.stack || error?.message || String(error));
 			this.setState("info.connection", false, true);
 		}
 	}
@@ -399,7 +399,7 @@ class Senec extends utils.Adapter {
 								);
 							}
 						} catch (error) {
-							this.log.error(error);
+							this.log.error(error?.stack || error?.message || String(error));
 							this.log.error(`Failed to control: setting force battery charging mode to ${state.val}`);
 							return;
 						}
@@ -427,7 +427,7 @@ class Senec extends utils.Adapter {
 								);
 							}
 						} catch (error) {
-							this.log.error(error);
+							this.log.error(error?.stack || error?.message || String(error));
 							this.log.error(`Failed to control: setting reboot to ${state.val}`);
 							return;
 						}
@@ -522,7 +522,7 @@ class Senec extends utils.Adapter {
 			this.setState("info.connection", false, true);
 			callback();
 		} catch (e) {
-			this.log.error(e);
+			this.log.error(e?.stack || e?.message || String(e));
 			callback();
 		}
 	}
@@ -966,6 +966,7 @@ class Senec extends utils.Adapter {
 			this.scheduleTokenRefresh();
 			return this.currentToken;
 		} catch (e) {
+			this.log.error(e?.stack || e?.message || String(e));
 			this.log.error(`❌ Login Error: ${e.message}`);
 			return null;
 		}
@@ -1246,7 +1247,9 @@ class Senec extends utils.Adapter {
 				} catch (systemError) {
 					// Important: isolate system failure
 					failureCount++;
-					this.log.error(`❌ System ${anlagenId} failed: ${systemError.message}`);
+					this.log.error(
+						`❌ System ${anlagenId} failed: ${systemError?.stack || systemError?.message || String(systemError)}`,
+					);
 				}
 			}
 
@@ -1273,6 +1276,7 @@ class Senec extends utils.Adapter {
 		} catch (err) {
 			// ---- TOTAL FAILURE HANDLING ----
 			this.apiFailureCount = (this.apiFailureCount || 0) + 1;
+			this.log.error(err?.stack || err?.message || String(err));
 			this.log.error(`🚨 API Poll failed: ${err.message} - ⚠️ Failure count: ${this.apiFailureCount}`);
 			this.setState("info.connection", false, true);
 
@@ -1720,7 +1724,9 @@ class Senec extends utils.Adapter {
 			if (!this.unloaded) {
 				const timer = setTimeout(() => {
 					this.timers = this.timers.filter((t) => t !== timer);
-					this.pollSenecLocal(isHighPrio, retry).catch((e) => this.log.error(e));
+					this.pollSenecLocal(isHighPrio, retry).catch((e) =>
+						this.log.error(e?.stack || e?.message || String(e)),
+					);
 				}, interval);
 				this.timers.push(timer);
 				timer.unref?.();
@@ -1730,6 +1736,7 @@ class Senec extends utils.Adapter {
 			}
 		} catch (error) {
 			if (retry == this.config.retries && this.config.retries < 999) {
+				this.log.error(error?.stack || error?.message || String(error));
 				this.log.error(
 					`Error reading from Senec ${isHighPrio ? "high" : "low"}Prio (${this.config.senecip}). Retried ${
 						retry
@@ -1747,7 +1754,9 @@ class Senec extends utils.Adapter {
 				if (!this.unloaded) {
 					const timer = setTimeout(() => {
 						this.timers = this.timers.filter((t) => t !== timer);
-						this.pollSenecLocal(isHighPrio, retry).catch((e) => this.log.error(e));
+						this.pollSenecLocal(isHighPrio, retry).catch((e) =>
+							this.log.error(e?.stack || e?.message || String(e)),
+						);
 					}, delay);
 					this.timers.push(timer);
 					timer.unref?.();
