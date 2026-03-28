@@ -326,8 +326,12 @@ class Senec extends utils.Adapter {
 				await this.initPollSettings();
 				await this.checkConnection();
 				if (this.lalaConnected) {
-					await this.pollSenecLocal(true, 0); // highPrio
-					await this.pollSenecLocal(false, 0); // lowPrio
+					this.pollSenecLocal(true, 0).catch((e) =>
+						this.logError(e, "❌ Initial local highPrio poll failed"),
+					);
+					this.pollSenecLocal(false, 0).catch((e) =>
+						this.logError(e, "❌ Initial local lowPrio poll failed"),
+					);
 				}
 			} else {
 				this.log.warn("Usage of lala.cgi (local) not configured. Only polling SENEC App API if configured.");
@@ -337,7 +341,7 @@ class Senec extends utils.Adapter {
 				this.log.info("Usage of SENEC App API configured.");
 				this.apiConnected = await this.startTokenManager();
 				if (this.apiConnected) {
-					await this.pollSenecApi();
+					this.pollSenecApi().catch((e) => this.logError(e, "❌ Initial API poll failed"));
 				} else {
 					this.log.warn(
 						"Usage of SENEC App API configured but initial connection failed. Check credentials and connection to SENEC App API. API Polling turned of automatically until restart.",
@@ -350,7 +354,7 @@ class Senec extends utils.Adapter {
 			}
 
 			if (this.lalaConnected || this.apiConnected) {
-				this.setState("info.connection", true, true);
+				await this.setState("info.connection", true, true);
 			} else {
 				this.log.error("Neither local connection nor API connection configured. Please check config!");
 			}
@@ -363,7 +367,7 @@ class Senec extends utils.Adapter {
 			}
 		} catch (error) {
 			this.logError(error, "❌ Adapter startup failed");
-			this.setState("info.connection", false, true);
+			await this.setState("info.connection", false, true);
 		}
 	}
 
@@ -1136,10 +1140,6 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		if (this.authBlocked) {
-			this.log.debug("⏸ Poll skipped - authentication currently recovering.");
-			return;
-		}
 		if (this.timerAPI) {
 			clearTimeout(this.timerAPI);
 			this.timerAPI = null;
@@ -1161,6 +1161,12 @@ class Senec extends utils.Adapter {
 		let nextDelay = baseInterval;
 
 		try {
+			if (this.authBlocked) {
+				this.log.debug("⏸ Poll skipped - authentication currently recovering.");
+				// override delay explicitly
+				nextDelay = this.config.api_interval * this.baseTime;
+				return; // safe now, because finally WILL still run
+			}
 			if (this.config.api_showPolling) {
 				this.log.info("🔄 Polling SENEC App API...");
 			} else {
@@ -1275,7 +1281,7 @@ class Senec extends utils.Adapter {
 		} catch (err) {
 			// ---- TOTAL FAILURE HANDLING ----
 			this.apiFailureCount = (this.apiFailureCount || 0) + 1;
-			this.logError(err, `🚨 API Poll failed: ${err.message} - ⚠️ Failure count: ${this.apiFailureCount}`);
+			this.logError(err, `🚨 API Poll failed - ⚠️ Failure count: ${this.apiFailureCount}`);
 			await this.setState("info.connection", false, true);
 
 			// Exponential full jitter backoff
@@ -1311,7 +1317,7 @@ class Senec extends utils.Adapter {
 				}
 				this.timerAPI = setTimeout(() => {
 					this.timers = this.timers.filter((t) => t !== this.timerAPI);
-					this.pollSenecApi();
+					this.pollSenecApi().catch((e) => this.logError(e, "❌ Scheduled API poll failed"));
 				}, nextDelay);
 				this.timers.push(this.timerAPI);
 				this.log.debug(`⏱ Next API poll scheduled in ${(nextDelay / 1000).toFixed(0)}s`);
@@ -1713,9 +1719,21 @@ class Senec extends utils.Adapter {
 				body = body.replace(/\\"/g, '"');
 				this.log.debug(`(Poll) Double escapes autofixed! Body out: ${body}`);
 			}
+
 			if (!body) {
+				if (!this.unloaded) {
+					const timer = setTimeout(() => {
+						this.timers = this.timers.filter((t) => t !== timer);
+						this.pollSenecLocal(isHighPrio, retry).catch((e) =>
+							this.logError(e, `❌ Local poll failed (highPrio=${isHighPrio})`),
+						);
+					}, interval);
+					this.timers.push(timer);
+					timer.unref?.();
+				}
 				return;
 			}
+
 			const obj = JSON.parse(body, reviverNumParse);
 			this.log.silly(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
 			await this.evalPoll(obj, "", "");
@@ -1826,14 +1844,16 @@ class Senec extends utils.Adapter {
 		const specialHandlers = {
 			AUTARKY_IN_PERCENT: {
 				keys: ["POWER_GENERATION", "GRID_EXPORT", "BATTERY_IMPORT", "BATTERY_EXPORT", "POWER_CONSUMPTION"],
-				fn: (values, sums) =>
-					((sums.POWER_GENERATION - sums.GRID_EXPORT - sums.BATTERY_IMPORT + sums.BATTERY_EXPORT) /
-						sums.POWER_CONSUMPTION) *
-					100,
+				fn: (_values, sums) =>
+					sums.POWER_CONSUMPTION
+						? ((sums.POWER_GENERATION - sums.GRID_EXPORT - sums.BATTERY_IMPORT + sums.BATTERY_EXPORT) /
+								sums.POWER_CONSUMPTION) *
+							100
+						: 0,
 			},
 			BATTERY_LEVEL_IN_PERCENT: {
 				keys: [],
-				fn: (values) => values.reduce((a, b) => a + b, 0) / values.length,
+				fn: (values) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0),
 			},
 		};
 
@@ -1848,7 +1868,7 @@ class Senec extends utils.Adapter {
 		// Ergebnis berechnen
 		const result = Object.fromEntries(
 			Object.entries(input).map(([key, years]) => {
-				const values = Object.values(years);
+				const values = Object.values(years || {});
 				let value;
 				if (specialHandlers[key]) {
 					value = specialHandlers[key].fn(values, sumKeys);
