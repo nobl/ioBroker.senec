@@ -109,6 +109,7 @@ class Senec extends utils.Adapter {
 		this.apiQueue = null;
 		this.apiAgent = null;
 		this.apiClient = null;
+		this.authClient = null;
 		this.refreshing = false;
 		this.jar = new CookieJar();
 
@@ -195,20 +196,23 @@ class Senec extends utils.Adapter {
 			});
 
 			// Then create axios clients with the respective agents
-			this.localClient = wrapper(
-				axios.create({
-					httpsAgent: this.localAgent,
-					timeout: 10000,
-					signal: this.abortController?.signal,
-				}),
-			);
+			this.localClient = axios.create({
+				httpsAgent: this.localAgent,
+				timeout: 10000,
+				signal: this.abortController?.signal,
+			});
 
-			this.apiClient = wrapper(
+			this.apiClient = axios.create({
+				timeout: 10000,
+				signal: this.abortController?.signal,
+				httpsAgent: this.apiAgent,
+			});
+
+			this.authClient = wrapper(
 				axios.create({
 					withCredentials: true,
 					timeout: 10000,
 					signal: this.abortController?.signal,
-					httpsAgent: this.apiAgent,
 				}),
 			);
 
@@ -216,6 +220,7 @@ class Senec extends utils.Adapter {
 			const userAgent = this.buildUserAgent();
 			this.applyDefaultHeaders(this.apiClient, userAgent);
 			this.applyDefaultHeaders(this.localClient, userAgent);
+			this.applyDefaultHeaders(this.authClient, userAgent);
 			this.log.debug(`Using User-Agent: ${userAgent}`);
 
 			// --------------------------------------------------
@@ -861,6 +866,11 @@ class Senec extends utils.Adapter {
 
 	async senecLogin() {
 		this.log.info("🔄 Start Senec API Login Flow...");
+
+		if (!this.authClient) {
+			throw new Error("Auth client not initialized");
+		}
+
 		this.jar = new CookieJar();
 
 		try {
@@ -875,14 +885,14 @@ class Senec extends utils.Adapter {
 				code_challenge: codeChallenge,
 				code_challenge_method: "S256",
 			});
-			const pageRes = await this.apiClient.get(`${CONFIG.authUrl}?${authParams}`, { jar: this.jar });
+			const pageRes = await this.authClient.get(`${CONFIG.authUrl}?${authParams}`, { jar: this.jar });
 			let actionUrl = extractFormAction(pageRes.data);
 			if (!actionUrl) {
 				throw new Error("Login-Form URL not found.");
 			}
 
 			const postForm = (url, data) =>
-				this.apiClient.post(url, data, {
+				this.authClient.post(url, data, {
 					headers: { "Content-Type": "application/x-www-form-urlencoded" },
 					maxRedirects: 0,
 					validateStatus: (s) => s >= 200 && s < 400,
@@ -935,7 +945,7 @@ class Senec extends utils.Adapter {
 				throw new Error("Authorization code not found in redirect.");
 			}
 
-			const tokenRes = await this.apiClient.post(
+			const tokenRes = await this.authClient.post(
 				CONFIG.tokenUrl,
 				new URLSearchParams({
 					grant_type: "authorization_code",
@@ -1047,7 +1057,7 @@ class Senec extends utils.Adapter {
 			try {
 				this.log.debug("🔐 Refreshing API token...");
 
-				const response = await this.apiClient.post(
+				const response = await this.authClient.post(
 					CONFIG.tokenUrl,
 					new URLSearchParams({
 						grant_type: "refresh_token",
