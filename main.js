@@ -1754,7 +1754,9 @@ class Senec extends utils.Adapter {
 				if (!this.unloaded) {
 					const timer = setTimeout(() => {
 						this.timers = this.timers.filter((t) => t !== timer);
-						this.pollSenecLocal(isHighPrio, retry).catch((e) => this.logError(e, "❌ Login Error"));
+						this.pollSenecLocal(isHighPrio, retry).catch((e) =>
+							this.logError(e, `❌ Local poll failed (highPrio=${isHighPrio})`),
+						);
 					}, delay);
 					this.timers.push(timer);
 					timer.unref?.();
