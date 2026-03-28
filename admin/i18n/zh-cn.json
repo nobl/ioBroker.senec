@@ -29,7 +29,7 @@
     "Password_Help:": "用于登录 mein-senec.de 的密码",
     "PollInterval": "轮询间隔（秒） 高优先级数据",
     "PollIntervalAPI": "轮询间隔（分钟）",
-    "PollIntervalAPIHelp": "您可以在此处定义轮询间隔 [最小 3，最大 1440 分钟]。默认值 = 5。SENEC 每 5 分钟更新一次 API 数据。",
+    "PollIntervalAPIHelp": "您可以在此处定义轮询间隔 [最小 3，最大 1440 分钟]。默认 = 6。SENEC 每 5 分钟更新一次 API 数据。建议将间隔设置为 6 分钟，以便获取最新数据，而不会对 API 造成太大负载或出现错误。",
     "PollIntervalHelp": "您可以在此处定义高优先级数据的轮询间隔 [最小 1，最大 3600 秒]。默认 = 10。",
     "PollIntervalLow": "轮询间隔（分钟） 低优先级数据",
     "PollIntervalLowHelp": "您可以在此处定义低优先级数据的轮询间隔 [最短 10 分钟，最长 3600 分钟]。默认 = 60。",

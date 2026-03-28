@@ -29,7 +29,7 @@
     "Password_Help:": "Password utilizzata per accedere a mein-senec.de",
     "PollInterval": "Intervallo di polling (secondi) Dati ad alta priorità",
     "PollIntervalAPI": "Intervallo di polling (minuti)",
-    "PollIntervalAPIHelp": "Qui è possibile definire l'intervallo di polling [min 3, max 1440 minuti]. Impostazione predefinita = 5. SENEC aggiorna i dati API ogni 5 minuti.",
+    "PollIntervalAPIHelp": "Qui è possibile definire l'intervallo di polling [min 3, max 1440 minuti]. Impostazione predefinita = 6. SENEC aggiorna i dati API ogni 5 minuti. Si consiglia di impostare l'intervallo su 6 minuti per ottenere i dati più aggiornati senza sovraccaricare l'API o causare errori.",
     "PollIntervalHelp": "Qui è possibile definire l'intervallo di polling per i dati ad alta priorità [min 1, max 3600 secondi]. Predefinito = 10.",
     "PollIntervalLow": "Intervallo di polling (minuti) Dati a bassa priorità",
     "PollIntervalLowHelp": "Qui è possibile definire l'intervallo di polling per i dati a bassa priorità [min 10, max 3600 minuti]. Predefinito = 60.",

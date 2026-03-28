@@ -29,7 +29,7 @@
     "Password_Help:": "Wachtwoord gebruikt om in te loggen op mein-senec.de",
     "PollInterval": "Polling-interval (seconden) Gegevens met hoge prioriteit",
     "PollIntervalAPI": "Polling-interval (minuten)",
-    "PollIntervalAPIHelp": "Hier kunt u het polling-interval definiëren [min 3, max 1440 minuten]. Standaard = 5. SENEC werkt API-gegevens elke 5 minuten bij.",
+    "PollIntervalAPIHelp": "Hier kunt u het polling-interval definiëren [min 3, max 1440 minuten]. Standaard = 6. SENEC werkt API-gegevens elke 5 minuten bij. Het wordt aanbevolen om het interval in te stellen op 6 minuten om de meest up-to-date gegevens te krijgen zonder de API te zwaar te belasten of fouten te veroorzaken.",
     "PollIntervalHelp": "Hier kunt u het polling-interval voor gegevens met hoge prioriteit definiëren [min 1, max 3600 seconden]. Standaard = 10.",
     "PollIntervalLow": "Polling-interval (minuten) Gegevens met lage prioriteit",
     "PollIntervalLowHelp": "Hier kunt u het polling-interval voor gegevens met lage prioriteit definiëren [min. 10, max. 3600 minuten]. Standaard = 60.",

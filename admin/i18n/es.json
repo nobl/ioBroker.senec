@@ -29,7 +29,7 @@
     "Password_Help:": "Contraseña utilizada para iniciar sesión en mein-senec.de",
     "PollInterval": "Intervalo de sondeo (segundos) Datos de alta prioridad",
     "PollIntervalAPI": "Intervalo de sondeo (minutos)",
-    "PollIntervalAPIHelp": "Aquí puede definir el intervalo de sondeo [mínimo 3, máximo 1440 minutos]. Predeterminado = 5. SENEC actualiza los datos API cada 5 minutos.",
+    "PollIntervalAPIHelp": "Aquí puede definir el intervalo de sondeo [mínimo 3, máximo 1440 minutos]. Predeterminado = 6. SENEC actualiza los datos API cada 5 minutos. Se recomienda establecer el intervalo en 6 minutos para obtener los datos más actualizados sin sobrecargar la API ni generar errores.",
     "PollIntervalHelp": "Aquí puede definir el intervalo de sondeo para datos de alta prioridad [mínimo 1, máximo 3600 segundos]. Predeterminado = 10.",
     "PollIntervalLow": "Intervalo de sondeo (minutos) Datos de baja prioridad",
     "PollIntervalLowHelp": "Aquí puede definir el intervalo de sondeo para datos de baja prioridad [mínimo 10, máximo 3600 minutos]. Predeterminado = 60.",

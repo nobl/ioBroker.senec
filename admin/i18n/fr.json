@@ -29,7 +29,7 @@
     "Password_Help:": "Mot de passe utilisé pour vous connecter à mein-senec.de",
     "PollInterval": "Intervalle d'interrogation (secondes) Données à haute priorité",
     "PollIntervalAPI": "Intervalle d'interrogation (minutes)",
-    "PollIntervalAPIHelp": "Ici, vous pouvez définir l'intervalle d'interrogation [min 3, max 1440 minutes]. Par défaut = 5. SENEC met à jour les données API toutes les 5 minutes.",
+    "PollIntervalAPIHelp": "Ici, vous pouvez définir l'intervalle d'interrogation [min 3, max 1440 minutes]. Par défaut = 6. SENEC met à jour les données API toutes les 5 minutes. Il est recommandé de définir l'intervalle sur 6 minutes pour obtenir les données les plus récentes sans surcharger l'API ni provoquer d'erreurs.",
     "PollIntervalHelp": "Ici, vous pouvez définir l'intervalle d'interrogation pour les données hautement prioritaires [min 1, max 3600 secondes]. Par défaut = 10.",
     "PollIntervalLow": "Intervalle d'interrogation (minutes) Données de faible priorité",
     "PollIntervalLowHelp": "Ici, vous pouvez définir l'intervalle d'interrogation pour les données de faible priorité [min 10, max 3600 minutes]. Par défaut = 60.",

@@ -29,7 +29,7 @@
     "Password_Help:": "Senha usada para fazer login em mein-senec.de",
     "PollInterval": "Intervalo de pesquisa (segundos) Dados de alta prioridade",
     "PollIntervalAPI": "Intervalo de pesquisa (minutos)",
-    "PollIntervalAPIHelp": "Aqui você pode definir o intervalo de pesquisa [min 3, max 1440 minutos]. Padrão = 5. O SENEC atualiza os dados da API a cada 5 minutos.",
+    "PollIntervalAPIHelp": "Aqui você pode definir o intervalo de pesquisa [min 3, max 1440 minutos]. Padrão = 6. O SENEC atualiza os dados da API a cada 5 minutos. Recomenda-se definir o intervalo para 6 minutos para obter os dados mais atualizados sem colocar muita carga na API ou erros.",
     "PollIntervalHelp": "Aqui você pode definir o intervalo de pesquisa para dados de alta prioridade [min 1, max 3600 segundos]. Padrão = 10.",
     "PollIntervalLow": "Intervalo de pesquisa (minutos) Dados de baixa prioridade",
     "PollIntervalLowHelp": "Aqui você pode definir o intervalo de pesquisa para dados de baixa prioridade [min 10, max 3600 minutos]. Padrão = 60.",

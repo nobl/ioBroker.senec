@@ -63,7 +63,7 @@
     "Password": "Password",
     "Password_Help:": "Password used to login to mein-senec.de",
     "PollIntervalAPI": "Polling Interval (minutes)",
-    "PollIntervalAPIHelp": "Here you can define the polling interval [min 3, max 1440 minutes]. Default = 5. SENEC updates API Data every 5 minutes.",
+    "PollIntervalAPIHelp": "Here you can define the polling interval [min 3, max 1440 minutes]. Default = 6. SENEC updates API Data every 5 minutes. Setting the interval to 6 minutes is recommended to get the most up-to-date data without putting too much load on the API or errors.",
     "ReBuildHistory": "Rebuild AllTime history (one-time)",
     "RebuildHistoryHelp": "Check this if you want the adapter to rebuild history values back to date of installation."
 }

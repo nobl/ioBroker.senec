@@ -464,7 +464,7 @@
 					"xl": 4,
 					"label": "PollIntervalAPI",
 					"help": "PollIntervalAPIHelp",
-					"default": 5,
+					"default": 6,
 					"min": 3,
 					"max": 1440,
 					"hidden": "data.api_use !== true",

@@ -29,7 +29,7 @@
     "Password_Help:": "Hasło używane do logowania się na mein-senec.de",
     "PollInterval": "Interwał odpytywania (sekundy) Dane o wysokim priorytecie",
     "PollIntervalAPI": "Interwał odpytywania (minuty)",
-    "PollIntervalAPIHelp": "Tutaj możesz zdefiniować interwał odpytywania [min 3, max 1440 minut]. Wartość domyślna = 5. SENEC aktualizuje dane API co 5 minut.",
+    "PollIntervalAPIHelp": "Tutaj możesz zdefiniować interwał odpytywania [min 3, max 1440 minut]. Wartość domyślna = 6. SENEC aktualizuje dane API co 5 minut. Zaleca się ustawienie interwału na 6 minut, aby uzyskać najbardziej aktualne dane bez nadmiernego obciążenia interfejsu API i błędów.",
     "PollIntervalHelp": "Tutaj możesz zdefiniować interwał odpytywania dla danych o wysokim priorytecie [min 1, max 3600 sekund]. Wartość domyślna = 10.",
     "PollIntervalLow": "Interwał odpytywania (minuty) Dane o niskim priorytecie",
     "PollIntervalLowHelp": "Tutaj możesz zdefiniować interwał odpytywania dla danych o niskim priorytecie [min. 10, maks. 3600 minut]. Wartość domyślna = 60.",
