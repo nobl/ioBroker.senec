@@ -159,7 +159,7 @@ class Senec extends utils.Adapter {
 		}
 
 		// Reset the connection indicator during startup
-		this.setState("info.connection", false, true);
+		await this.setState("info.connection", false, true);
 
 		try {
 			await this.checkConfig();
@@ -362,7 +362,7 @@ class Senec extends utils.Adapter {
 				await this.subscribeStatesAsync("SYS_UPDATE.USER_REBOOT_DEVICE");
 			}
 		} catch (error) {
-			this.logError(error, "❌ Login Error");
+			this.logError(error, "❌ Adapter startup failed");
 			this.setState("info.connection", false, true);
 		}
 	}
@@ -1269,14 +1269,14 @@ class Senec extends utils.Adapter {
 			this.apiFailureCount = 0;
 
 			// Connection is healthy
-			this.setState("info.connection", true, true);
+			await this.setState("info.connection", true, true);
 
 			nextDelay = baseInterval;
 		} catch (err) {
 			// ---- TOTAL FAILURE HANDLING ----
 			this.apiFailureCount = (this.apiFailureCount || 0) + 1;
 			this.logError(err, `🚨 API Poll failed: ${err.message} - ⚠️ Failure count: ${this.apiFailureCount}`);
-			this.setState("info.connection", false, true);
+			await this.setState("info.connection", false, true);
 
 			// Exponential full jitter backoff
 			nextDelay = computeBackoffDelay(baseInterval, this.apiFailureCount);
@@ -1333,7 +1333,7 @@ class Senec extends utils.Adapter {
 	 */
 	async apiGet(url, config = {}) {
 		if (this.unloaded) {
-			throw new Error("Adapter is unloading or unloaded");
+			return;
 		}
 
 		if (!this.apiClient) {
@@ -1674,13 +1674,13 @@ class Senec extends utils.Adapter {
 						error.response.status
 					} response from SENEC with content: ${JSON.stringify(error.response.data)}`,
 				);
-				throw error.response.status;
+				throw new Error(`HTTP ${error.response.status}`);
 			} else if (error.request) {
 				this.log.info(error.message);
-				throw error.message;
+				throw new Error(error.message);
 			} else {
 				this.log.info(error.message);
-				throw error.status;
+				throw new Error(error?.message || "Unknown local request error");
 			}
 		}
 	}
@@ -1713,6 +1713,9 @@ class Senec extends utils.Adapter {
 				body = body.replace(/\\"/g, '"');
 				this.log.debug(`(Poll) Double escapes autofixed! Body out: ${body}`);
 			}
+			if (!body) {
+				return;
+			}
 			const obj = JSON.parse(body, reviverNumParse);
 			this.log.silly(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
 			await this.evalPoll(obj, "", "");
@@ -1721,7 +1724,9 @@ class Senec extends utils.Adapter {
 			if (!this.unloaded) {
 				const timer = setTimeout(() => {
 					this.timers = this.timers.filter((t) => t !== timer);
-					this.pollSenecLocal(isHighPrio, retry).catch((e) => this.logError(e, "❌ Login Error"));
+					this.pollSenecLocal(isHighPrio, retry).catch((e) =>
+						this.logError(e, `❌ Local poll failed (highPrio=${isHighPrio})`),
+					);
 				}, interval);
 				this.timers.push(timer);
 				timer.unref?.();
@@ -1737,7 +1742,7 @@ class Senec extends utils.Adapter {
 						retry
 					} times. Giving up now. Check config and restart adapter. (${error})`,
 				);
-				this.setState("info.connection", false, true);
+				await this.setState("info.connection", false, true);
 			} else {
 				retry += 1;
 				const delay = interval * this.config.retrymultiplier * retry;
@@ -1832,7 +1837,10 @@ class Senec extends utils.Adapter {
 
 		// Summen der benötigten Keys nur einmal berechnen
 		const sumKeys = Object.fromEntries(
-			specialHandlers.AUTARKY_IN_PERCENT.keys.map((k) => [k, Object.values(input[k]).reduce((a, b) => a + b, 0)]),
+			specialHandlers.AUTARKY_IN_PERCENT.keys.map((k) => [
+				k,
+				Object.values(input[k] || {}).reduce((a, b) => a + b, 0),
+			]),
 		);
 
 		// Ergebnis berechnen
@@ -2224,7 +2232,10 @@ class Senec extends utils.Adapter {
 	logError(e, prefix = "") {
 		const msg = e?.message ?? String(e);
 		this.log.error(prefix ? `${prefix}: ${msg}` : msg);
-		this.log.debug(e?.stack);
+
+		if (e?.stack) {
+			this.log.debug(e.stack);
+		}
 	}
 }
 
