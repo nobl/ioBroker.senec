@@ -1,12 +1,12 @@
 "use strict";
 
-const crypto = require("crypto");
-const { URL, URLSearchParams } = require("url");
+const crypto = require("node:crypto");
+const { URL, URLSearchParams } = require("node:url");
 const axios = require("axios");
 const tough = require("tough-cookie");
 const CookieJar = tough.CookieJar;
 let wrapper;
-const https = require("https");
+const https = require("node:https");
 
 const utils = require("@iobroker/adapter-core");
 const state_attr = require(`${__dirname}/lib/state_attr.js`);
