@@ -2109,7 +2109,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Builds a compact summary of measurement result statuses.
 	 *
-	 * @param {Array<{label: string; status: "success" | "no_data" | "skipped_existing"}>} results
+	 * @param {Array<{label: string; status: "success" | "no_data" | "skipped_existing"}>} results - kind of status
 	 * @returns {{success: number; no_data: number; skipped_existing: number; total: number}}
 	 * Aggregated count of result statuses.
 	 */
@@ -2133,7 +2133,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Formats a measurement result summary for log output.
 	 *
-	 * @param {{success: number; no_data: number; skipped_existing: number; total: number}} summary
+	 * @param {{success: number; no_data: number; skipped_existing: number; total: number}} summary - type of measurement result
 	 * @returns {string} Human-readable summary string.
 	 */
 	formatMeasurementSummary(summary) {
@@ -2148,7 +2148,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Classifies aggregated measurement results into a higher-level health state.
 	 *
-	 * @param {{success: number; no_data: number; skipped_existing: number; total: number}} summary
+	 * @param {{success: number; no_data: number; skipped_existing: number; total: number}} summary - type of measurement result
 	 * @returns {"productive" | "up_to_date" | "empty" | "mixed" | "unknown"}
 	 * High-level interpretation of the measurement results.
 	 */
@@ -2179,7 +2179,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Returns a human-readable explanation for a classified measurement summary.
 	 *
-	 * @param {"productive" | "up_to_date" | "empty" | "mixed" | "unknown"} classification
+	 * @param {"productive" | "up_to_date" | "empty" | "mixed" | "unknown"} classification - measurements were classified as
 	 * @returns {string} Description for log output.
 	 */
 	formatMeasurementClassification(classification) {
@@ -2955,7 +2955,7 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * @param {{ response: { status: any; }; code: any; message: string; }} error
+	 * @param {{ response: { status: any; }; code: any; message: string; }} error - if an error occurs
 	 */
 	isApiRelevantRebuildError(error) {
 		const status = error?.response?.status;
