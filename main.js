@@ -100,6 +100,13 @@ class Senec extends utils.Adapter {
 		this.rebuildRunning = false;
 		this.unloaded = false;
 
+		this.lastApiDashboardPoll = 0;
+		this.lastApiDetailsPoll = 0;
+		this.lastApiHeavyPoll = 0;
+		this.dashboardInterval = 0;
+		this.detailsInterval = 0;
+		this.heavyInterval = 0;
+
 		this.apiKnownSystems = new Set();
 		this.highPrioObjects = new Map();
 		this.lowPrioForm = "";
@@ -166,6 +173,9 @@ class Senec extends utils.Adapter {
 
 			const apiConcurrencyStart = Math.max(1, Number(this.config.api_concurrency_start) || 1);
 			const apiConcurrencyMax = Math.max(apiConcurrencyStart, Number(this.config.api_concurrency_max) || 1);
+			this.dashboardInterval = (this.config.api_interval || 6) * this.baseTime;
+			this.detailsInterval = (this.config.api_interval_details || 60) * this.baseTime;
+			this.heavyInterval = (this.config.api_interval_heavy || 1440) * this.baseTime;
 
 			// create agents first
 			this.localAgent = new https.Agent({
@@ -779,15 +789,45 @@ class Senec extends utils.Adapter {
 			);
 			this.config.retrymultiplier = 2;
 		}
-		this.log.debug(`(checkConf) Configured api polling interval: ${this.config.api_interval}`);
+
+		this.log.debug(`(checkConf) Configured api polling interval dashboard: ${this.config.api_interval}`);
 		if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
 			this.log.warn(
 				`(checkConf) Config api polling interval ${
 					this.config.api_interval
-				} not [3..1440] seconds. Using default: 5`,
+				} not [3..1440] seconds. Using default: 6`,
 			);
-			this.config.api_interval = 5;
+			this.config.api_interval = 6;
 		}
+
+		this.log.debug(`(checkConf) Configured api polling interval details: ${this.config.api_interval_details}`);
+		if (
+			this.config.api_interval_details <= this.config.api_interval ||
+			this.config.api_interval_details < 10 ||
+			this.config.api_interval_details > 1440
+		) {
+			this.log.warn(
+				`(checkConf) Config api polling interval details ${
+					this.config.api_interval_details
+				} not [10..1440] seconds or <= polling interval dashboard. Using default: 60`,
+			);
+			this.config.api_interval_details = 60;
+		}
+
+		this.log.debug(`(checkConf) Configured api polling interval heavy: ${this.config.api_interval_heavy}`);
+		if (
+			this.config.api_interval_heavy <= this.config.api_interval_details ||
+			this.config.api_interval_heavy < 720 ||
+			this.config.api_interval_heavy > 2880
+		) {
+			this.log.warn(
+				`(checkConf) Config api polling interval heavy ${
+					this.config.api_interval_heavy
+				} not [720..2880] seconds or <= polling interval details. Using default: 1440`,
+			);
+			this.config.api_interval_heavy = 1440;
+		}
+
 		this.log.debug(`(checkConf) Configured api concurrency start: ${this.config.api_concurrency_start}`);
 		if (this.config.api_concurrency_start < 1 || this.config.api_concurrency_start > 4) {
 			this.log.warn(
@@ -1157,8 +1197,11 @@ class Senec extends utils.Adapter {
 
 		this.apiPollRunning = true;
 
-		const baseInterval = this.config.api_interval * this.baseTime;
+		const baseInterval = this.dashboardInterval;
 		let nextDelay = baseInterval;
+		const shouldRunDashboard = this.shouldRunInterval(this.lastApiDashboardPoll, this.dashboardInterval);
+		const shouldRunDetails = this.shouldRunInterval(this.lastApiDetailsPoll, this.detailsInterval);
+		const shouldRunHeavy = this.shouldRunInterval(this.lastApiHeavyPoll, this.heavyInterval);
 
 		try {
 			if (this.authBlocked) {
@@ -1205,34 +1248,41 @@ class Senec extends utils.Adapter {
 			const currentMonth = new Date(Date.UTC(utcYear, utcMonth, 1));
 			const lastMonth = new Date(Date.UTC(utcYear, utcMonth - 1, 1));
 
-			const nowTs = Date.now();
-			const heavyInterval = 24 * 60 * 60 * 1000;
-			const shouldRunHeavy = nowTs - this.lastHeavyUpdate > heavyInterval;
-
-			let successCount = 0;
+			let anyWorkScheduled = false;
+			let anyWorkSucceeded = false;
 			let failureCount = 0;
 
 			for (const anlagenId of this.apiKnownSystems) {
 				try {
 					this.log.debug(`🔄 Polling system ${anlagenId}...`);
 
-					// Dashboard (frequent)
-					const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
-					this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
-					await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
-					// If dashboard worked, count as success
-					successCount++;
+					// Dashboard (frequent, but light)
+					if (shouldRunDashboard) {
+						anyWorkScheduled = true;
+						const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
+						this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
+						await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
+						// If dashboard worked, count as success
+						anyWorkSucceeded = true;
+						this.markPollTimestamp("dashboard");
+					}
 
-					// Frequent measurements
-					await Promise.all([
-						this.doMeasurementsDay(anlagenId, today, "today"),
-						this.doMeasurementsDay(anlagenId, today, "today.hourly"),
-						this.doMeasurementsDay(anlagenId, yesterday, "yesterday"),
-						this.doMeasurementsDay(anlagenId, yesterday, "yesterday.hourly"),
-					]);
+					// Frequent measurements (once per detailsInterval - usually every hour)
+					if (shouldRunDetails) {
+						anyWorkScheduled = true;
+						await Promise.all([
+							this.doMeasurementsDay(anlagenId, today, "today"),
+							this.doMeasurementsDay(anlagenId, today, "today.hourly"),
+							this.doMeasurementsDay(anlagenId, yesterday, "yesterday"),
+							this.doMeasurementsDay(anlagenId, yesterday, "yesterday.hourly"),
+						]);
+						anyWorkSucceeded = true;
+						this.markPollTimestamp("details");
+					}
 
-					// Heavy measurements (once daily)
+					// Heavy measurements (once per heavyInterval - usually once per day) - these include month and year measurements which are more heavy to pull and process - so we do them less frequently)
 					if (shouldRunHeavy) {
+						anyWorkScheduled = true;
 						await Promise.all([
 							this.doMeasurementsMonth(anlagenId, currentMonth, "current_month"),
 							this.doMeasurementsMonth(anlagenId, currentMonth, "current_month.daily"),
@@ -1243,8 +1293,9 @@ class Senec extends utils.Adapter {
 							this.doMeasurementsYear(anlagenId, utcYear - 1, false), // check if we need last year too
 							this.doMeasurementsYear(anlagenId, utcYear - 1, true), // check if we need last year too
 						]);
-						this.lastHeavyUpdate = nowTs;
+						anyWorkSucceeded = true;
 						await this.updateAllTimeHistory(anlagenId);
+						this.markPollTimestamp("heavy");
 					}
 
 					if (this.config.api_alltimeRebuild) {
@@ -1259,15 +1310,14 @@ class Senec extends utils.Adapter {
 			}
 
 			// ---- Evaluate Global Result ----
-			if (successCount === 0) {
-				// TOTAL FAILURE
-				throw new Error("All systems failed during polling.");
+			if (anyWorkScheduled && !anyWorkSucceeded) {
+				throw new Error("All scheduled API tasks failed during polling.");
 			}
 
 			// Partial or full success
 			if (failureCount > 0) {
 				this.log.warn(
-					`⚠ Partial API failure: ${failureCount} system(s) failed, ${successCount} system(s) or dashboard succeeded.`,
+					`⚠ Partial API failure: ${failureCount} system(s) failed, at least one scheduled task succeeded.`,
 				);
 			}
 
@@ -2257,6 +2307,37 @@ class Senec extends utils.Adapter {
 
 		if (e?.stack) {
 			this.log.debug(e.stack);
+		}
+	}
+
+	/**
+	 * @param {number} lastRunTs timestamp of last run
+	 * @param {number} intervalMs interval in milliseconds
+	 * @returns {boolean} true if the interval has passed since lastRunTs, false otherwise
+	 */
+	shouldRunInterval(lastRunTs, intervalMs) {
+		if (!lastRunTs) {
+			return true;
+		}
+		return Date.now() - lastRunTs >= intervalMs;
+	}
+
+	/**
+	 * @param {"dashboard" | "details" | "heavy"} type type of poll to mark
+	 */
+	markPollTimestamp(type) {
+		const now = Date.now();
+
+		switch (type) {
+			case "dashboard":
+				this.lastApiDashboardPoll = now;
+				break;
+			case "details":
+				this.lastApiDetailsPoll = now;
+				break;
+			case "heavy":
+				this.lastApiHeavyPoll = now;
+				break;
 		}
 	}
 }

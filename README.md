@@ -265,6 +265,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 -->
 ### **WORK IN PROGRESS**
 - Increased default API poll interval to 6 minutes. This appears to be causing less issues with the server than 5 minutes.
+- You can now define different polling intervals for dashboard (frequently), details (usually hourly and daily information), heavy (for everything else that usually is done per month or year).
 - Dependency updates
 
 ### 2.5.0 (2026-03-28)

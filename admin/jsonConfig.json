@@ -470,6 +470,36 @@
 					"hidden": "data.api_use !== true",
 					"newLine": true
 				},
+				"api_interval_details": {
+					"type": "number",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "PollIntervalAPIDetails",
+					"help": "PollIntervalAPIDetailsHelp",
+					"default": 60,
+					"min": 10,
+					"max": 1440,
+					"hidden": "data.api_use !== true",
+					"newLine": false
+				}, 
+				"api_interval_heavy": {
+					"type": "number",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "PollIntervalAPIHeavy",
+					"help": "PollIntervalAPIHeavyHelp",
+					"default": 1440,
+					"min": 720,
+					"max": 2880,
+					"hidden": "data.api_use !== true",
+					"newLine": false
+				},
 				"api_showPolling": {
 					"type": "checkbox",
 					"xs": 12,
@@ -481,7 +511,7 @@
 					"help": "apiShowPollingHelp",
 					"default": true,
 					"hidden": "data.api_use !== true",
-					"newLine": false
+					"newLine": true
 				},
 				"api_concurrency_start": {
 					"type": "number",

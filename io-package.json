@@ -195,6 +195,8 @@
     "highPrio_TEMPMEASURE_active": false,
     "api_use": false,
     "api_interval": 6,
+    "api_interval_details": 60,
+    "api_interval_heavy": 1440,
     "api_alltimeRebuild": false,
     "api_concurrency_start": 1,
     "api_concurrency_max": 1,
