@@ -265,6 +265,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 -->
 ### **WORK IN PROGRESS**
 - Increased default API poll interval to 6 minutes. This appears to be causing less issues with the server than 5 minutes.
+- Dependency updates
 
 ### 2.5.0 (2026-03-28)
 - Added control.RebootAppliance to initiate appliance reboot. Only works if local lala.cgi is available and connected. Function requires extra permission via adapter settings. Please use responsible!
