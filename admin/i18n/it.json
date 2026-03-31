@@ -45,6 +45,8 @@
     "PollRetryFactorHelp": "Qui inserisci come vuoi distanziare i tentativi l'uno dall'altro. L'ennesimo tentativo avverrà dopo Intervallo * Moltiplicatore * n secondi. [minimo 1, massimo 10]. Predefinito = 2.",
     "ReBuildHistory": "Ricostruisci la storia di tutti i tempi",
     "ReBuildHistoryHelp": "Spento = Modalità normale, Riprendi = Continua la ricostruzione con i dati esistenti, Completo = Recupera nuovamente tutti i dati dall'API prima di riprendere. Utilizza Completo se ritieni che i dati locali siano errati. (Verranno eseguiti fino a due riavvii dell'adattatore per Completo e Riprendi!)",
+    "ReBuildHistoryStartYear": "Inizio anno per la ricostruzione della Storia",
+    "ReBuildHistoryStartYearHelp": "Questo di solito è l'anno in cui il tuo sistema è stato messo in atto. Puoi tornare indietro fino al 2009, ma ogni anno in cui non disponi di dati verranno visualizzate le cartelle vuote per anno. Impostazione predefinita: 2025, Intervallo [2009..anno corrente]",
     "RequestTimeout": "Timeout richiesta (ms)",
     "RequestTimeoutHelp": "Tieni presente che definisci il timeout della richiesta durante il polling da SENEC [min 1000, max 100000]. Valore predefinito = 5000.",
     "Resume": "Riprendere",

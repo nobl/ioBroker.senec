@@ -45,6 +45,8 @@
     "PollRetryFactorHelp": "您可以在此处输入您希望如何间隔重试。第 n 次重试将在 Interval * Multiplier * n 秒后发生。 [最小 1，最大 10]。默认 = 2。",
     "ReBuildHistory": "重建历史",
     "ReBuildHistoryHelp": "关闭 = 正常模式，恢复 = 继续使用现有数据重建，完整 = 在恢复之前再次从 API 重新获取所有数据。如果您认为本地数据有错误，请使用 Full。 （对于“完全”和“恢复”，最多会发生两次适配器重新启动！）",
+    "ReBuildHistoryStartYear": "历史重建的开始之年",
+    "ReBuildHistoryStartYearHelp": "这通常是您的系统安装的年份。您可以追溯到 2009 年，但每年您没有数据都会显示空文件夹。默认值：2025，范围 [2009..当前年份]",
     "RequestTimeout": "请求超时（毫秒）",
     "RequestTimeoutHelp": "听您定义从 SENEC 轮询时的请求超时 [最小 1000，最大 100000]。默认 = 5000。",
     "Resume": "恢复",

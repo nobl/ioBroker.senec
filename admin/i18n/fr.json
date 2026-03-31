@@ -45,6 +45,8 @@
     "PollRetryFactorHelp": "Ici, vous indiquez comment vous souhaitez espacer les tentatives les unes des autres. La nième tentative aura lieu après Intervalle * Multiplicateur * n secondes. [min 1, max 10]. Par défaut = 2.",
     "ReBuildHistory": "Reconstruire l'historique AllTime",
     "ReBuildHistoryHelp": "Désactivé = Mode normal, Reprendre = Continuer la reconstruction avec les données existantes, Complet = Récupérer à nouveau toutes les données de l'API avant de reprendre. Utilisez Full si vous pensez que les données locales sont erronées. (Jusqu'à deux redémarrages de l'adaptateur auront lieu pour Full et Resume !)",
+    "ReBuildHistoryStartYear": "Année de début pour la reconstruction de l’Histoire",
+    "ReBuildHistoryStartYearHelp": "C'est généralement l'année où votre système a été mis en place. Vous pouvez remonter jusqu'en 2009, mais chaque année où vous n'avez pas de données, vous afficherez alors des dossiers vides par an. Par défaut : 2025, plage [2009..année en cours]",
     "RequestTimeout": "Délai d'expiration de la demande (ms)",
     "RequestTimeoutHelp": "Vous entendez définir le délai d'expiration de la demande lors de l'interrogation de SENEC [min 1000, max 100000]. Par défaut = 5 000.",
     "Resume": "CV",

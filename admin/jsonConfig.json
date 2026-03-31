@@ -610,6 +610,20 @@
 					"hidden": "data.api_use !== true",
 					"newLine": true
 				},
+				"api_alltimeRebuildStartYear": {
+					"type": "number",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "ReBuildHistoryStartYear",
+					"help": "ReBuildHistoryStartYearHelp",
+					"min": 2009,
+					"default": 2025,
+					"hidden": "data.api_use !== true || data.api_alltimeRebuildMode === 'off'",
+					"newLine": false
+				},
 				"api_debug_states": {
 					"type": "checkbox",
 					"xs": 12,

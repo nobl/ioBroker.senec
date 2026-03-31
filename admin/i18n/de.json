@@ -45,6 +45,8 @@
     "PollRetryFactorHelp": "Hier geben Sie an, wie weit die Wiederholungsversuche voneinander entfernt sein sollen. Der n-te Wiederholungsversuch erfolgt nach Intervall * Multiplikator * n Sekunden. [min. 1, max. 10]. Standard = 2.",
     "ReBuildHistory": "Erstellen Sie den AllTime-Verlauf neu",
     "ReBuildHistoryHelp": "Aus = Normaler Modus, Fortsetzen = Neuaufbau mit vorhandenen Daten fortsetzen, Vollständig = Alle Daten erneut von der API abrufen, bevor fortgefahren wird. Verwenden Sie „Vollständig“, wenn Sie der Meinung sind, dass lokale Daten fehlerhaft sind. (Für „Vollständig“ und „Fortsetzen“ werden bis zu zwei Adapter-Neustarts durchgeführt!)",
+    "ReBuildHistoryStartYear": "Beginn des Jahres für den Wiederaufbau der Geschichte",
+    "ReBuildHistoryStartYearHelp": "Dies ist normalerweise das Jahr, in dem Ihr System eingeführt wurde. Sie können bis 2009 zurückgehen, aber jedes Jahr, für das Sie keine Daten haben, wird in den Yearly Measurements einen leeren Jahresordner haben.. Standard: 2025, Bereich [2009..aktuelles Jahr]",
     "RequestTimeout": "Anfrage-Timeout (ms)",
     "RequestTimeoutHelp": "Hier definieren Sie das Anfrage-Timeout beim Abfragen von SENEC [min. 1000, max. 100000]. Standard = 5000.",
     "Resume": "Fortsetzen",

@@ -45,6 +45,8 @@
     "PollRetryFactorHelp": "Hier geeft u aan hoe u de nieuwe pogingen uit elkaar wilt plaatsen. De volgende poging zal plaatsvinden na Interval * Multiplier * n seconden. [min. 1, max. 10]. Standaard = 2.",
     "ReBuildHistory": "Herbouw de geschiedenis van AllTime",
     "ReBuildHistoryHelp": "Uit = Normale modus, Hervatten = Doorgaan met opnieuw opbouwen met bestaande gegevens, Volledig = Alle gegevens opnieuw ophalen uit de API voordat u verdergaat. Gebruik Volledig als u denkt dat lokale gegevens onjuist zijn. (Er zijn maximaal twee herstarts van de adapter mogelijk voor Volledig en Hervatten!)",
+    "ReBuildHistoryStartYear": "Startjaar voor de wederopbouw van de geschiedenis",
+    "ReBuildHistoryStartYearHelp": "Dit is meestal het jaar waarin uw systeem werd geïnstalleerd. U kunt teruggaan tot 2009, maar voor elk jaar dat u geen gegevens heeft, worden er dan lege mappen per jaar weergegeven. Standaard: 2025, bereik [2009..huidig ​​jaar]",
     "RequestTimeout": "Verzoek-time-out (ms)",
     "RequestTimeoutHelp": "Hoor dat u de time-out voor het verzoek definieert bij het pollen van SENEC [min. 1000, max. 100.000]. Standaard = 5000.",
     "Resume": "Cv",

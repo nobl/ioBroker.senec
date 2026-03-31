@@ -72,5 +72,7 @@
     "ReBuildHistoryHelp": "Off = Normal mode, Resume = Continue rebuild with existing data, Full = Re-Fetch all data from API again before resuming. Use Full if you think local data is erraneous. (Up to two adapter restarts will happen for Full and Resume!)",
     "Off": "Off",
     "Resume": "Resume",
-    "Full": "Full"
+    "Full": "Full",
+    "ReBuildHistoryStartYear": "Start year for History rebuild",
+    "ReBuildHistoryStartYearHelp": "This usually is the year your system was put in place. You can go back until 2009 but every year you don't have data will show empty yearly measurements folders. Default: 2025, Range [2009..current Year]"
 }

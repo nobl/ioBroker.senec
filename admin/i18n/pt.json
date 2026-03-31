@@ -45,6 +45,8 @@
     "PollRetryFactorHelp": "Aqui você insere como deseja espaçar as tentativas umas das outras. A enésima tentativa acontecerá após Intervalo * Multiplicador * n segundos. [mínimo 1, máximo 10]. Padrão = 2.",
     "ReBuildHistory": "Reconstruir o histórico do AllTime",
     "ReBuildHistoryHelp": "Desligado = modo normal, Retomar = Continuar a reconstrução com os dados existentes, Completo = Buscar novamente todos os dados da API antes de retomar. Use Full se achar que os dados locais estão errados. (Até duas reinicializações do adaptador acontecerão para Full e Resume!)",
+    "ReBuildHistoryStartYear": "Ano inicial para reconstrução da História",
+    "ReBuildHistoryStartYearHelp": "Geralmente este é o ano em que seu sistema foi implementado. Você pode voltar até 2009, mas todos os anos em que não tiver dados, as pastas vazias serão exibidas por ano. Padrão: 2025, intervalo [2009..ano atual]",
     "RequestTimeout": "Tempo limite de solicitação (ms)",
     "RequestTimeoutHelp": "Aqui você define o tempo limite da solicitação ao pesquisar no SENEC [min 1000, max 100000]. Padrão = 5000.",
     "Resume": "Retomar",

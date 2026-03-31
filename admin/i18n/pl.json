@@ -45,6 +45,8 @@
     "PollRetryFactorHelp": "Tutaj możesz wprowadzić sposób rozdzielania ponownych prób. n-ta ponowna próba nastąpi po Interwał * Mnożnik * n sekund. [min. 1, maks. 10]. Wartość domyślna = 2.",
     "ReBuildHistory": "Odbuduj historię AllTime",
     "ReBuildHistoryHelp": "Off = tryb normalny, Resume = kontynuacja odbudowy z istniejącymi danymi, Full = ponownie pobierz wszystkie dane z API przed wznowieniem. Użyj opcji Pełny, jeśli uważasz, że dane lokalne są błędne. (W przypadku opcji Pełny i Wznów nastąpi maksymalnie dwa ponowne uruchomienia adaptera!)",
+    "ReBuildHistoryStartYear": "Rozpocznij rok odbudowy Historii",
+    "ReBuildHistoryStartYearHelp": "Zwykle jest to rok wdrożenia systemu. Możesz cofnąć się do roku 2009, ale po każdym roku, w którym nie masz danych, będą wyświetlane puste foldery. Wartość domyślna: 2025, zakres [2009..bieżący rok]",
     "RequestTimeout": "Limit czasu żądania (ms)",
     "RequestTimeoutHelp": "Słyszałem, że definiujesz limit czasu żądania podczas odpytywania z SENEC [min. 1000, maks. 100000]. Wartość domyślna = 5000.",
     "Resume": "Wznawiać",

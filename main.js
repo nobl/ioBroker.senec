@@ -32,7 +32,7 @@ const CONFIG = {
 	scope: "roles profile meinsenec",
 };
 
-const FIRST_HISTORY_YEAR = 2009; // senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
+const MIN_REBUILD_START_YEAR = 2009; // senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
 
 const REBUILD_MODE = Object.freeze({
 	OFF: "off",
@@ -892,6 +892,23 @@ class Senec extends utils.Adapter {
 			);
 		}
 		this.config.api_alltimeRebuildMode = normalizedRebuildMode;
+
+		this.log.debug(`(checkConf) Configured alltime rebuild start year: ${this.config.api_alltimeRebuildStartYear}`);
+		const currentYear = new Date().getUTCFullYear();
+		const configuredStartYear = Number(this.config.api_alltimeRebuildStartYear);
+		if (
+			!Number.isInteger(configuredStartYear) ||
+			configuredStartYear < MIN_REBUILD_START_YEAR ||
+			configuredStartYear > currentYear
+		) {
+			this.log.warn(
+				`(checkConf) Config api_alltimeRebuildStartYear ${this.config.api_alltimeRebuildStartYear} ` +
+					`not [${MIN_REBUILD_START_YEAR}..${currentYear}]. Using default: ${currentYear}`,
+			);
+			this.config.api_alltimeRebuildStartYear = currentYear;
+		} else {
+			this.config.api_alltimeRebuildStartYear = configuredStartYear;
+		}
 	}
 
 	/**
@@ -2374,6 +2391,17 @@ class Senec extends utils.Adapter {
 		await this.doState(valueStore, JSON.stringify(stats), "", "", false);
 	}
 
+	getRebuildStartYear() {
+		const currentYear = new Date().getUTCFullYear();
+		const year = Number(this.config.api_alltimeRebuildStartYear);
+
+		if (Number.isInteger(year) && year >= MIN_REBUILD_START_YEAR && year <= currentYear) {
+			return year;
+		}
+
+		return currentYear;
+	}
+
 	/**
 	 * Updated AllTimeHistory based on what we have in our AllTimeValueStore
 	 * The method reads the existing values from the AllTimeValueStore for the specified system ID and calculates the historical data for all time periods based on the stored values.
@@ -2911,7 +2939,8 @@ class Senec extends utils.Adapter {
 	getAllRebuildStepsForSystem(anlagenId) {
 		const steps = [];
 		const currentYear = new Date().getUTCFullYear();
-		for (let year = currentYear; year >= FIRST_HISTORY_YEAR; year--) {
+		const startYear = this.getRebuildStartYear();
+		for (let year = currentYear; year >= startYear; year--) {
 			steps.push({ anlagenId, year, monthly: false });
 			steps.push({ anlagenId, year, monthly: true });
 		}
@@ -2920,7 +2949,8 @@ class Senec extends utils.Adapter {
 
 	getTotalRebuildStepsPerSystem() {
 		const currentYear = new Date().getUTCFullYear();
-		const yearCount = currentYear - FIRST_HISTORY_YEAR + 1;
+		const startYear = this.getRebuildStartYear();
+		const yearCount = currentYear - startYear + 1;
 		return yearCount * 2;
 	}
 
