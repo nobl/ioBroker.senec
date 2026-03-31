@@ -32,6 +32,7 @@ const CONFIG = {
 	scope: "roles profile meinsenec",
 };
 
+const FIRST_HISTORY_YEAR = 2009; // senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
 const batteryOn =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 const batteryOff =
@@ -97,8 +98,15 @@ class Senec extends utils.Adapter {
 		this.apiConnected = false;
 		this.lalaConnected = false;
 		this.connectVia = "https://";
-		this.rebuildRunning = false;
 		this.unloaded = false;
+
+		this.rebuildRunning = false; // true only while one rebuild batch is actively executing
+		this.rebuildStepsPerCycle = 1; // bewusst klein halten wegen API-Last
+		this.rebuildStepMaxRetries = 3;
+		this.rebuildRetryBaseDelayMs = 13 * 60 * 1000; // 13 min
+		this.rebuildFailures = new Map(); // key => { attempts, nextTryAt, lastError }
+		this.rebuildCompletedSteps = new Set();
+		this.lastLoggedRebuildPendingSummary = "";
 
 		this.lastApiDashboardPoll = 0;
 		this.lastApiDetailsPoll = 0;
@@ -150,7 +158,6 @@ class Senec extends utils.Adapter {
 		this.lastLoggedQueueSnapshot = null;
 
 		this.guiLang = "1"; // fallback english
-		this.guiLangInitialized = false;
 
 		this.on("ready", this.onReady.bind(this));
 		this.on("stateChange", this.onStateChange.bind(this));
@@ -367,6 +374,7 @@ class Senec extends utils.Adapter {
 
 			if (this.lalaConnected || this.apiConnected) {
 				await this.setState("info.connection", true, true);
+				await this.refreshGuiLangCache();
 			} else {
 				this.log.error("Neither local connection nor API connection configured. Please check config!");
 			}
@@ -887,6 +895,15 @@ class Senec extends utils.Adapter {
 		}
 	}
 
+	/**
+	 * Starts the token manager and attempts to obtain a valid API token.
+	 * The method first checks for an existing refresh token in the state. If a refresh token is found, it attempts to refresh the access token using that refresh token. If the refresh attempt fails (e.g., due to an invalid or expired refresh token), it falls back to performing a full login to obtain new tokens.
+	 *
+	 * The method ensures that the adapter can authenticate with the SENEC App API and is ready for subsequent API calls. It also handles the initial setup of the token management process, including scheduling future token refreshes.
+	 * Important: This method should be called during adapter startup to ensure that the adapter has a valid token before making any API calls. If this method returns false, it indicates that the adapter was unable to authenticate with the SENEC App API, and API polling should not be started.
+	 *
+	 * @returns {Promise<boolean>} A promise resolving to true if a valid token is obtained, false otherwise.
+	 */
 	async startTokenManager() {
 		try {
 			const tokenState = await this.getStateAsync(`${TOKEN_STATE}`);
@@ -910,6 +927,15 @@ class Senec extends utils.Adapter {
 		}
 	}
 
+	/**
+	 * Performs the Senec API login flow.
+	 * This method is responsible for authenticating with the SENEC App API using the Resource Owner Password Credentials flow with PKCE.
+	 * It handles the entire login process, including form parsing, handling multi-step authentication (username/password), and token exchange.
+	 * Upon successful login, it stores the access token and refresh token securely and schedules the next token refresh.
+	 * Important: This method should only be called when there is no valid refresh token available or when a full re-authentication is required (e.g., after multiple failed refresh attempts).
+	 *
+	 * @returns {Promise<string|null>} The access token if login is successful, or null if login fails.
+	 */
 	async senecLogin() {
 		this.log.info("🔄 Start Senec API Login Flow...");
 
@@ -1028,6 +1054,13 @@ class Senec extends utils.Adapter {
 		}
 	}
 
+	/**
+	 * Schedules the refresh of the API token based on its expiration time.
+	 * Includes a safety margin to refresh the token before it actually expires and implements an exponential backoff strategy in case of refresh failures to prevent excessive load on the SENEC / Keycloak servers.
+	 * Important: This method should be called after obtaining a new token (either via login or refresh) to ensure continuous authentication.
+	 *
+	 * @returns {void}
+	 */
 	scheduleTokenRefresh() {
 		if (!this.tokenExpiresAt || this.unloaded) {
 			return;
@@ -1179,10 +1212,7 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Polls the SENEC API for updates.
-	 * The method handles scheduling, error handling with exponential backoff, and ensures that only one poll cycle runs at a time. It also updates connection status and logs relevant information about the polling process.
-	 * The actual API calls are delegated to the `runApiPollCycle` method, which is responsible for executing the necessary API requests based on the configured intervals and updating the relevant states.
-	 * The method also includes logic to handle authentication issues, such as blocking further polls if authentication is currently recovering, and it manages the scheduling of the next poll based on the success or failure of the current poll cycle.
-	 * The method ensures that the adapter remains responsive and does not overload the SENEC API with requests, especially in cases of repeated failures, by implementing a backoff strategy for scheduling subsequent polls.
+	 * Runs one API poll cycle, applies global error/backoff handling and schedules the next execution.
 	 *
 	 * @returns {Promise<void>}
 	 * @throws Will throw an error if the API call fails or if all scheduled tasks fail during the poll cycle.
@@ -1350,15 +1380,14 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * Runs a complete API poll cycle.
-	 * The method iterates through all known systems and performs the necessary API calls for each system based on the configured intervals and the context built for the poll cycle. It keeps track of the success and failure of each system's API calls, updates the relevant states, and logs the results of the poll cycle. The method returns an object indicating whether there was a total failure (all scheduled tasks failed), a partial failure (some tasks failed but at least one succeeded), the number of failed systems, and a message describing the outcome. This method is central to the adapter's functionality, as it orchestrates the entire process of polling data from the SENEC App API and handling the results appropriately.
-	 * The method also includes error handling to catch any exceptions that occur during the polling of each system, ensuring that a failure in one system does not prevent the polling of other systems. By providing detailed results about the poll cycle, the method allows for better monitoring and debugging of the adapter's interactions with the SENEC App API.
-	 * The method assumes that the necessary authentication token is available and that the API systems are loaded before it is called, as it relies on this information to perform the API calls effectively. It also updates the poll timestamps for each task type based on the success of the API calls, which is essential for the scheduling logic of subsequent poll cycles.
-	 
+	 * Executes one full API cycle across all known systems.
+	 * Handles dashboard/details/heavy polling and optionally one rebuild batch.
+	 *
 	 * @returns {Promise<{totalFailure: boolean, partialFailure: boolean, failedSystems: number, message: string}>} Result of the poll cycle, including failure status and messages.
 	 * @throws Will throw an error if all scheduled tasks fail during the poll cycle.
 	 */
 	async runApiPollCycle() {
+		let rebuildExecuted = false;
 		if (this.config.api_showPolling) {
 			this.log.info("🔄 Polling SENEC App API...");
 		} else {
@@ -1388,8 +1417,12 @@ class Senec extends utils.Adapter {
 		};
 
 		for (const anlagenId of this.apiKnownSystems) {
-			const systemResult = await this.pollSingleApiSystem(anlagenId, ctx);
+			const systemResult = await this.pollSingleApiSystem(anlagenId, ctx, rebuildExecuted);
 			this.mergeSystemPollResult(result, systemResult);
+
+			if (systemResult.rebuildExecuted) {
+				rebuildExecuted = true;
+			}
 		}
 
 		this.finalizePollTimestamps(result);
@@ -1406,13 +1439,13 @@ class Senec extends utils.Adapter {
 	 * Polls the API for a single system based on the provided context.
 	 * The method performs the necessary API calls for the dashboard, details, and heavy tasks based on the flags set in the context. It keeps track of the success and failure of each task type for the system and returns an object summarizing the results. The method includes error handling to catch any exceptions that occur during the API calls for the system, ensuring that a failure in one task does not prevent the execution of other tasks for the same system. By providing detailed results for each system, this method allows for better monitoring and debugging of individual system interactions with the SENEC App API.
 	 * The method assumes that the necessary authentication token is available and that the API systems are loaded before it is called, as it relies on this information to perform the API calls effectively. It also updates the poll timestamps for each task type based on the success of the API calls, which is essential for the scheduling logic of subsequent poll cycles.
-	 
+	 *
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 * @param {object} ctx - The context object containing flags for which tasks to run and relevant date information for the API calls.
-	 * @returns {Promise<{failed: boolean, dashboardScheduled: boolean, detailsScheduled: boolean, heavyScheduled: boolean, dashboardSucceeded: boolean, detailsSucceeded: boolean, heavySucceeded: boolean}>} Result of the API poll for the system, including success and failure status for each task type.
-	 * @throws Will throw an error if any of the API calls for the system fail.
+	 * @param {boolean} rebuildAlreadyExecuted - was rebuild already executed
+	 * @returns {Promise<{failed: boolean;dashboardScheduled: boolean;detailsScheduled: boolean;heavyScheduled: boolean;dashboardSucceeded: boolean;detailsSucceeded: boolean;heavySucceeded: boolean;rebuildExecuted: boolean;}>} Result of the API poll for the system, including success and failure status for each task type.
 	 */
-	async pollSingleApiSystem(anlagenId, ctx) {
+	async pollSingleApiSystem(anlagenId, ctx, rebuildAlreadyExecuted) {
 		const logType = this.config.api_showPolling ? "info" : "debug";
 		const result = {
 			failed: false,
@@ -1422,6 +1455,7 @@ class Senec extends utils.Adapter {
 			dashboardSucceeded: false,
 			detailsSucceeded: false,
 			heavySucceeded: false,
+			rebuildExecuted: false,
 		};
 
 		try {
@@ -1447,14 +1481,18 @@ class Senec extends utils.Adapter {
 				await this.pollApiHeavy(anlagenId, ctx);
 				result.heavySucceeded = true;
 			}
-
-			if (this.config.api_alltimeRebuild) {
-				this.log.info(`🔄 Rebuilding AllTime history for system ${anlagenId}`);
-				await this.doRebuild(anlagenId);
-			}
 		} catch (systemError) {
 			result.failed = true;
 			this.logError(systemError, `❌ System ${anlagenId} failed.`);
+		}
+
+		if (this.config.api_alltimeRebuild && !this.rebuildRunning && !rebuildAlreadyExecuted) {
+			try {
+				await this.doRebuild(anlagenId);
+				result.rebuildExecuted = true;
+			} catch (rebuildError) {
+				this.logError(rebuildError, `❌ Rebuild for system ${anlagenId} failed.`);
+			}
 		}
 
 		return result;
@@ -1475,43 +1513,83 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Polls the API for the details data of a single system.
-	 * The method makes multiple API calls to retrieve the details data for the specified system ID based on the provided context, which includes date information for the API calls. It logs the keys of the returned data for debugging purposes and then evaluates the poll to update the relevant states based on the retrieved data. The method includes error handling to catch any exceptions that occur during the API calls, ensuring that a failure in retrieving the details data does not prevent the execution of other tasks for the same system. By providing detailed logging of the retrieved data, this method allows for better monitoring and debugging of the interactions with the SENEC App API for the details data.
-	 * The method assumes that the necessary authentication token is available and that the API systems are loaded before it is called, as it relies on this information to perform the API calls effectively. It also updates the poll timestamps for the details task based on the success of the API calls, which is essential for the scheduling logic of subsequent poll cycles.
-	 * The method makes API calls for both daily and hourly details for today and yesterday, ensuring that the adapter has the most up-to-date information for the details data of the system. By structuring the API calls in this way, the method optimizes the retrieval of details data while also providing comprehensive coverage of the relevant time periods.
 	 *
-	 * @param {string} anlagenId - The ID of the system to poll.
-	 * @param {object} ctx - The context object containing flags for which tasks to run and relevant date information for the API calls.
+	 * @param {string} anlagenId anlagen id
+	 * @param {object} ctx context
+	 * @returns {Promise<void>}
 	 */
 	async pollApiDetails(anlagenId, ctx) {
-		await Promise.all([
-			this.doMeasurementsDay(anlagenId, ctx.today, "today"),
-			this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly"),
-			this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday"),
-			this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly"),
-		]);
+		const tasks = [
+			{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today"), label: "today" },
+			{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly"), label: "today.hourly" },
+			{ fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday"), label: "yesterday" },
+			{
+				fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly"),
+				label: "yesterday.hourly",
+			},
+		];
+
+		const results = await Promise.all(
+			tasks.map(async (task) => {
+				const res = await task.fn();
+				return { label: task.label, ...res };
+			}),
+		);
+
+		// optionales Debug-Logging (nur wenn aktiviert)
+		if (this.config.api_debug_log) {
+			for (const r of results) {
+				this.log.debug(`Details ${anlagenId} / ${r.label}: ${r.status}`);
+			}
+		}
+		const summary = this.summarizeMeasurementResults(results);
+		this.log.debug(`Details summary ${anlagenId}: ${this.formatMeasurementSummary(summary)}`);
 	}
 
 	/**
 	 * Polls the API for the heavy data of a single system.
-	 * The method makes multiple API calls to retrieve the heavy data for the specified system ID based on the provided context, which includes date information for the API calls. It logs the keys of the returned data for debugging purposes and then evaluates the poll to update the relevant states based on the retrieved data. The method includes error handling to catch any exceptions that occur during the API calls, ensuring that a failure in retrieving the heavy data does not prevent the execution of other tasks for the same system. By providing detailed logging of the retrieved data, this method allows for better monitoring and debugging of the interactions with the SENEC App API for the heavy data.
-	 * The method assumes that the necessary authentication token is available and that the API systems are loaded before it is called, as it relies on this information to perform the API calls effectively. It also updates the poll timestamps for the heavy task based on the success of the API calls, which is essential for the scheduling logic of subsequent poll cycles.
-	 * The method makes API calls for monthly measurements for the current and last month, as well as yearly measurements for the current and last year, ensuring that the adapter has comprehensive information for the heavy data of the system. By structuring the API calls in this way, the method optimizes the retrieval of heavy data while also providing coverage of the relevant time periods.
-	 * The method also includes a call to update the all-time history for the system, ensuring that the adapter maintains a complete record of the historical data for the system. This comprehensive approach to polling heavy data allows the adapter to provide valuable insights and information about the system's performance over time.
 	 *
-	 * @param {string} anlagenId - The ID of the system to poll.
-	 * @param {object} ctx - The context object containing flags for which tasks to run and relevant date information for the API calls.
+	 * @param {string} anlagenId Anlagen id to poll
+	 * @param {object} ctx context
+	 * @returns {Promise<void>}
 	 */
 	async pollApiHeavy(anlagenId, ctx) {
-		await Promise.all([
-			this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month"),
-			this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily"),
-			this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month"),
-			this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily"),
-			this.doMeasurementsYear(anlagenId, ctx.utcYear, false),
-			this.doMeasurementsYear(anlagenId, ctx.utcYear, true),
-			this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false),
-			this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true),
-		]);
+		const tasks = [
+			{
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month"),
+				label: "current_month",
+			},
+			{
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily"),
+				label: "current_month.daily",
+			},
+			{ fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month"), label: "previous_month" },
+			{
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily"),
+				label: "previous_month.daily",
+			},
+
+			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, false), label: "year" },
+			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, true), label: "year.monthly" },
+			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false), label: "prev_year" },
+			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true), label: "prev_year.monthly" },
+		];
+
+		const results = await Promise.all(
+			tasks.map(async (task) => {
+				const res = await task.fn();
+				return { label: task.label, ...res };
+			}),
+		);
+
+		if (this.config.api_debug_log) {
+			for (const r of results) {
+				this.log.debug(`Heavy ${anlagenId} / ${r.label}: ${r.status}`);
+			}
+		}
+
+		const summary = this.summarizeMeasurementResults(results);
+		this.log.debug(`Heavy summary ${anlagenId}: ${this.formatMeasurementSummary(summary)}`);
 
 		await this.updateAllTimeHistory(anlagenId);
 	}
@@ -1665,22 +1743,69 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * Rebuild all-time measurements
-	 *
-	 * @param {string | number} anlagenId Anlagen ID to read measurements for
+	 * Performs the rebuild of the all-time history for a given system (Anlage).
+	 * The method checks for pending rebuild steps for the specified system ID and executes them in batches based on the configured number of steps per cycle. It logs the progress of the rebuild process, including any pending failures, and updates the all-time history once the rebuild is complete. The method also checks if the rebuild is finished for all systems and resets the relevant state if necessary. This method is essential for maintaining the integrity and completeness of the historical data for each system, allowing for accurate analysis and insights based on the all-time history.
+	 * The method includes error handling to ensure that any exceptions that occur during the rebuild process are logged appropriately, and it manages the state of the rebuild process to prevent overlapping executions. By structuring the rebuild process in this way, the method optimizes the execution of rebuild steps while also providing comprehensive coverage of the necessary tasks to complete the rebuild effectively.
+	 
+	 * @param {*} anlagenId - The ID of the system (Anlage) for which to perform the rebuild of the all-time history.
+	 * @returns {Promise<void>}
 	 */
 	async doRebuild(anlagenId) {
-		this.rebuildRunning = true;
-		for (let year = new Date().getFullYear(); year >= 2009; year--) {
-			// senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
-			await this.doMeasurementsYear(anlagenId, year, false);
-			await this.doMeasurementsYear(anlagenId, year, true);
+		if (this.rebuildRunning) {
+			this.log.debug(`Rebuild already running — skipping overlapping execution.`);
+			return;
 		}
-		this.log.info(`Rebuild ended. Adapter restarting ...`);
-		this.rebuildRunning = false;
-		await this.extendForeignObject(`system.adapter.${this.namespace}`, {
-			native: { api_alltimeRebuild: false },
-		});
+
+		this.rebuildRunning = true;
+
+		try {
+			const pendingSteps = await this.getPendingRebuildSteps(anlagenId);
+
+			if (pendingSteps.length === 0) {
+				if (await this.isRebuildFinishedForSystem(anlagenId)) {
+					this.log.debug(`✅ Rebuild bereits vollständig für Anlage ${anlagenId}.`);
+				} else {
+					this.log.debug(`✅ Aktuell keine Rebuild-Schritte fällig für Anlage ${anlagenId}.`);
+				}
+				return;
+			}
+
+			const stepsToRun = pendingSteps.slice(0, this.rebuildStepsPerCycle);
+
+			this.log.info(
+				`🔄 Rebuild-Fortsetzung für Anlage ${anlagenId}: ${stepsToRun.length} Schritt(e) werden jetzt versucht.`,
+			);
+
+			for (const step of stepsToRun) {
+				await this.runSingleRebuildStep(anlagenId, step);
+			}
+
+			const totalSteps = this.getTotalRebuildStepsPerSystem();
+			const remainingSteps = (await this.getPendingRebuildSteps(anlagenId)).length;
+			const doneSteps = totalSteps - remainingSteps;
+			const percent = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
+
+			this.log.info(`Rebuild progress für Anlage ${anlagenId}: ${doneSteps}/${totalSteps} (${percent}%)`);
+
+			if (await this.isRebuildFinishedForSystem(anlagenId)) {
+				this.log.info(`✅ Rebuild vollständig abgeschlossen für Anlage ${anlagenId}.`);
+				await this.updateAllTimeHistory(anlagenId);
+			} else {
+				this.logRebuildPendingFailuresIfChanged();
+			}
+
+			if (await this.isRebuildFinishedGlobally()) {
+				this.log.info(
+					"✅ Rebuild für alle Anlagen vollständig abgeschlossen. Setze api_alltimeRebuild zurück. (⚠️ Adapter startet dabei neu!)",
+				);
+
+				await this.extendForeignObject(`system.adapter.${this.namespace}`, {
+					native: { api_alltimeRebuild: false },
+				});
+			}
+		} finally {
+			this.rebuildRunning = false;
+		}
 	}
 
 	/**
@@ -1688,20 +1813,22 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {number} year Year to read measurements for
-	 * @param {boolean} months Read daily measurements
+	 * @param {boolean} months Read monthly measurements
+	 * @returns {Promise<{status: "success" | "no_data" | "skipped_existing"}>} Result of the measurement request indicating success, absence of data, or that the data was already up to date.
 	 */
 	async doMeasurementsYear(anlagenId, year, months) {
 		this.log.debug(`🔄 Reading measurements for year: ${year}${months ? ".monthly" : ""}`);
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Yearly.`;
-		const lastUpdate = await this.getStateAsync(`${pfx + year}.${months ? "monthly." : ""}${LAST_UPDATED}`);
+
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.Yearly.`;
+		const lastUpdate = await this.getStateAsync(`${pfx}${year}.${months ? "monthly." : ""}${LAST_UPDATED}`);
 		const now = new Date();
 		let lastDate = null;
+
 		if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 			lastDate = new Date(String(lastUpdate.val));
 		}
-		if (year != new Date().getUTCFullYear()) {
-			// check if a previous was already updated this year
-			// this ensures that we read last year data at most once per year and current year data at most once per day (in case of daily reset of measurements in SENEC App API)
+
+		if (year !== new Date().getUTCFullYear()) {
 			if (
 				!this.rebuildRunning &&
 				lastDate != null &&
@@ -1711,10 +1838,9 @@ class Senec extends utils.Adapter {
 				this.log.debug(
 					`Measurements for ${year}${months ? ".monthly" : ""} already updated this year. Skipping.`,
 				);
-				return;
+				return { status: "skipped_existing" };
 			}
 		} else {
-			// current year - check if already updated today
 			if (
 				!this.rebuildRunning &&
 				lastDate != null &&
@@ -1724,25 +1850,36 @@ class Senec extends utils.Adapter {
 				lastDate.getUTCDate() === now.getUTCDate()
 			) {
 				this.log.debug(`Measurements for ${year}${months ? ".monthly" : ""} already updated today. Skipping.`);
-				return;
+				return { status: "skipped_existing" };
 			}
 		}
+
 		const startDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0));
 		const endDate = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0) - 1);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
+
 		let resolution = "YEAR";
 		if (months) {
 			resolution = "MONTH";
 		}
+
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
+
 		const measurements = await this.apiGet(url);
-		if (!measurements.data.timeSeries || measurements.data.timeSeries.length === 0) {
-			this.log.debug(`No measurements found for ${year}. Skipping.`);
-			return;
+
+		if (!measurements?.data || !Array.isArray(measurements.data.timeSeries)) {
+			throw new Error(`Malformed measurement response for ${url}`);
 		}
+
+		if (measurements.data.timeSeries.length === 0) {
+			this.log.debug(`No measurements found for ${year}${months ? ".monthly" : ""}.`);
+			return { status: "no_data" };
+		}
+
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, `year${months ? ".monthly" : ""}`);
+		return { status: "success" };
 	}
 
 	/**
@@ -1751,15 +1888,19 @@ class Senec extends utils.Adapter {
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {Date} date Date to read measurements for
 	 * @param {string} period period to sum for
+	 * @returns {Promise<{status: "success" | "no_data" | "skipped_existing"}>} Result of the measurement request indicating success, absence of data, or that the data was already up to date.
 	 */
 	async doMeasurementsMonth(anlagenId, date, period) {
 		this.log.debug(`🔄 Reading measurements for ${period}.`);
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Monthly.`;
+
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.Monthly.`;
+
 		if (period === "previous_month" || period === "previous_month.daily") {
-			// check if already updated this month
-			const lastUpdate = await this.getStateAsync(`${pfx + period}.${LAST_UPDATED}`);
+			const lastUpdate = await this.getStateAsync(`${pfx}${period}.${LAST_UPDATED}`);
+
 			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 				const lastDate = new Date(String(lastUpdate.val));
+
 				if (
 					!this.rebuildRunning &&
 					!isNaN(lastDate.getTime()) &&
@@ -1767,26 +1908,37 @@ class Senec extends utils.Adapter {
 					lastDate.getUTCMonth() === new Date().getUTCMonth()
 				) {
 					this.log.debug(`Measurements for ${period} already updated this month. Skipping.`);
-					return;
+					return { status: "skipped_existing" };
 				}
 			}
 		}
+
 		const startDate = date;
 		const endDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) - 1);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
+
 		let resolution = "MONTH";
 		if (period === "current_month.daily" || period === "previous_month.daily") {
 			resolution = "DAY";
 		}
+
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
+
 		const measurements = await this.apiGet(url);
-		if (!measurements?.data?.timeSeries) {
-			this.log.warn(`Malformed measurement response for ${url}`);
-			return;
+
+		if (!measurements?.data || !Array.isArray(measurements.data.timeSeries)) {
+			throw new Error(`Malformed measurement response for ${url}`);
 		}
+
+		if (measurements.data.timeSeries.length === 0) {
+			this.log.debug(`No measurements found for ${period}.`);
+			return { status: "no_data" };
+		}
+
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
+		return { status: "success" };
 	}
 
 	/**
@@ -1795,15 +1947,19 @@ class Senec extends utils.Adapter {
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {Date} date Date to read measurements for
 	 * @param {string} period period to sum for
+	 * @returns {Promise<{status: "success" | "no_data" | "skipped_existing"}>} Result of the measurement request indicating success, absence of data, or that the data was already up to date.
 	 */
 	async doMeasurementsDay(anlagenId, date, period) {
 		this.log.debug(`🔄 Reading measurements for ${period}`);
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.Daily.`;
+
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.Daily.`;
+
 		if (period === "yesterday" || period === "yesterday.hourly") {
-			// check if already updated today
-			const lastUpdate = await this.getStateAsync(`${pfx + period}.${LAST_UPDATED}`);
+			const lastUpdate = await this.getStateAsync(`${pfx}${period}.${LAST_UPDATED}`);
+
 			if (lastUpdate && lastUpdate.val !== null && lastUpdate.val !== undefined) {
 				const lastDate = new Date(String(lastUpdate.val));
+
 				if (
 					!this.rebuildRunning &&
 					!isNaN(lastDate.getTime()) &&
@@ -1812,48 +1968,43 @@ class Senec extends utils.Adapter {
 					lastDate.getDate() === new Date().getDate()
 				) {
 					this.log.debug(`Measurements for ${period} already updated today. Skipping.`);
-					return;
+					return { status: "skipped_existing" };
 				}
 			}
 		}
+
 		const startDate = date;
 		const endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
+
 		let resolution = "DAY";
 		if (period === "today.hourly" || period === "yesterday.hourly") {
 			resolution = "HOUR";
 		}
+
 		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
+
 		const measurements = await this.apiGet(url);
-		if (!measurements?.data?.timeSeries) {
-			this.log.warn(`Malformed measurement response for ${url}`);
-			return;
+
+		if (!measurements?.data || !Array.isArray(measurements.data.timeSeries)) {
+			throw new Error(`Malformed measurement response for ${url}`);
 		}
+
+		if (measurements.data.timeSeries.length === 0) {
+			this.log.debug(`No measurements found for ${period}.`);
+			return { status: "no_data" };
+		}
+
 		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
+		return { status: "success" };
 	}
 
 	/**
 	 * Sums the measurements based on the provided period and updates the relevant states.
 	 * The method iterates through the measurement data and sums the values based on the specified period (e.g., hourly, daily, monthly).
 	 * It updates the sums for each measurement key and then evaluates the poll to update the relevant states with the calculated sums.
-	 * The method includes logging of the measurement data and the calculated sums for debugging purposes. By structuring the summation logic based on the period,
-	 * the method ensures that the adapter can provide accurate and relevant information based on the time intervals specified in the API calls.
-	 * The method assumes that the measurement data is structured in a way that allows for iteration through time series entries and their corresponding measurement values.
-	 * It also relies on the presence of measurement keys to correctly sum and update the states based on the retrieved data from the API.
-	 * The method also includes logic to handle the grouping of sums based on the period, ensuring that the data is organized in a way that allows for efficient retrieval and analysis of the measurement data over time.
-	 * By providing detailed logging of the measurement data and the calculated sums, the method allows for better monitoring and debugging of the interactions with the SENEC App API for the measurement data.
-	 * The method also includes a call to update the all-time value store for yearly measurements, ensuring that the adapter maintains a complete record of the historical data for the system.
-	 * This comprehensive approach to summing measurements allows the adapter to provide valuable insights and information about the system's performance over time based on the specified periods.
-	 * The method also updates the last updated timestamp for the measurements, allowing for better tracking of when the data was last refreshed and ensuring that the adapter can make informed decisions
-	 * about when to poll for new data based on the freshness of the existing data. By systematically summing the measurements and updating the relevant states,
-	 * the method helps to ensure that the adapter operates efficiently and effectively in its interactions with the SENEC App API for measurement data.
-	 * The method also includes error handling to catch any exceptions that may occur during the summation process, ensuring that a failure in processing the measurement data does
-	 * not prevent the execution of other tasks for the same system. By providing detailed logging of any errors that occur, the method allows for better monitoring and debugging of issues
-	 * related to the processing of measurement data from the API.
-	 * Overall, this method is a critical component of the adapter's functionality, as it processes the raw measurement data retrieved from the API and transforms it into meaningful information
-	 * that can be used to update the states and provide insights about the system's performance over time based on the specified periods.
 	 *
 	 * @param {any} data measurement data
 	 * @param {string | number} anlagenId Anlagen ID
@@ -1905,6 +2056,45 @@ class Senec extends utils.Adapter {
 				groupBy = period;
 		}
 		await this.evalPoll(sums, `${pfx + groupBy}.`);
+	}
+
+	/**
+	 * Builds a compact summary of measurement result statuses.
+	 *
+	 * @param {Array<{label: string; status: "success" | "no_data" | "skipped_existing"}>} results
+	 * @returns {{success: number; no_data: number; skipped_existing: number; total: number}}
+	 * Aggregated count of result statuses.
+	 */
+	summarizeMeasurementResults(results) {
+		const summary = {
+			success: 0,
+			no_data: 0,
+			skipped_existing: 0,
+			total: results.length,
+		};
+
+		for (const result of results) {
+			if (result && result.status && summary[result.status] !== undefined) {
+				summary[result.status]++;
+			}
+		}
+
+		return summary;
+	}
+
+	/**
+	 * Formats a measurement result summary for log output.
+	 *
+	 * @param {{success: number; no_data: number; skipped_existing: number; total: number}} summary
+	 * @returns {string} Human-readable summary string.
+	 */
+	formatMeasurementSummary(summary) {
+		return (
+			`success=${summary.success}, ` +
+			`no_data=${summary.no_data}, ` +
+			`skipped_existing=${summary.skipped_existing}, ` +
+			`total=${summary.total}`
+		);
 	}
 
 	/**
@@ -2004,9 +2194,6 @@ class Senec extends utils.Adapter {
 			const obj = JSON.parse(body, reviverNumParse);
 			this.log.silly(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
 			await this.evalPoll(obj, "", "");
-			if (!isHighPrio && !this.guiLangInitialized) {
-				await this.refreshGuiLangCache();
-			}
 
 			retry = 0;
 			if (!this.unloaded) {
@@ -2062,15 +2249,6 @@ class Senec extends utils.Adapter {
 	 * It checks if the retrieved state has a valid value and handles different data formats (string or object) to ensure that the returned object is correctly structured.
 	 * If the value store does not exist or does not contain valid data, it returns an empty object. This method is essential for managing the historical data for each system,
 	 * allowing the adapter to maintain an accurate record of all-time measurements and provide valuable insights into the long-term performance of the system.
-	 * By structuring the retrieval and parsing of the all-time measurements in this way, the method optimizes the management of historical data while also ensuring that the adapter can effectively
-	 * utilize this information for various calculations and insights related to the system's performance over time. The method also includes error handling to catch any exceptions that occur during the
-	 * retrieval and parsing process, ensuring that a failure in this process does not prevent the execution of other tasks for the same system. By providing detailed logging of the retrieved data
-	 * and any errors that occur, this method allows for better monitoring and debugging of the historical data management for each system.
-	 * The method assumes that the value store is properly maintained and contains the necessary data for the specified system ID and year, as it relies on this information to manage the historical data effectively.
-	 * By systematically loading the all-time measurements for each system, the method helps to ensure that the adapter provides valuable insights into the long-term performance and trends of the system,
-	 * enhancing its overall functionality and usefulness for users.
-	 * Overall, this method plays a critical role in the management of historical data for each system, allowing the adapter to maintain an accurate and up-to-date record of all-time measurements
-	 * and provide valuable insights into the long-term performance of the system, enhancing its overall functionality and usefulness for users.
 	 *
 	 * @param {string} valueStore ValueStore
 	 * @returns {Promise<{ [s: string]: any; }>} AllTimeValueStore as object
@@ -2091,29 +2269,15 @@ class Senec extends utils.Adapter {
 	/**
 	 * Insert values into AllTimeValueStore
 	 * The method reads the existing values from the AllTimeValueStore for the specified system ID and year, updates the values based on the provided sums, and then writes the updated values back to the AllTimeValueStore.
-	 * It iterates through the entries of the sums object, skipping the LAST_UPDATED key, and updates the corresponding entries in the stats object for the specified year.
-	 * Finally, it calls the doState method to save the updated stats back to the AllTimeValueStore.
-	 * This method is essential for maintaining an accurate and up-to-date record of all-time measurements for each system, allowing for comprehensive historical analysis and insights into the performance of the system over time.
-	 * The method assumes that the AllTimeValueStore is properly maintained and contains the necessary data for the specified system ID and year, as it relies on this information to update the values accurately.
-	 * By systematically updating the AllTimeValueStore based on the provided sums, the method helps to ensure that the adapter provides valuable insights into the long-term performance and trends of the system,
-	 * enhancing its overall functionality and usefulness for users.
-	 * The method also includes error handling to catch any exceptions that occur during the reading and writing of the AllTimeValueStore,
-	 * ensuring that a failure in this process does not prevent the execution of other tasks for the same system. By providing detailed logging of the updates to the AllTimeValueStore,
-	 * this method allows for better monitoring and debugging of the historical data management for the system.
-	 * The method is designed to be flexible and can handle updates for multiple keys and years, allowing for comprehensive management of the all-time measurements for each system.
-	 * By structuring the updates in this way, the method optimizes the retrieval and processing of historical data while also providing comprehensive coverage of the relevant metrics for the system's performance over time.
-	 * The method also ensures that the LAST_UPDATED key is not overwritten during the update process, allowing for accurate tracking of when the all-time measurements were last updated for each system.
-	 * This is crucial for maintaining the integrity of the historical data and ensuring that users have accurate information about the performance of their systems over time.
-	 * Overall, this method plays a critical role in the management of all-time measurements for each system, allowing the adapter to provide valuable insights
-	 * and information about the long-term performance and trends of the system, enhancing its overall functionality and usefulness for users.
 	 *
 	 * @param {{ [s: string]: number; } | ArrayLike<any>} sums sums to insert
 	 * @param {string | number} anlagenId Anlagen ID
 	 * @param {number} year Year to insert for
 	 */
 	async insertIntoAllTimeValueStore(sums, anlagenId, year) {
-		const valueStore = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.AllTime.valueStore`;
+		const valueStore = `${API_PFX}Anlagen.${anlagenId}.Measurements.AllTime.valueStore`;
 		const stats = await this.readAllTimeValueStore(valueStore);
+
 		for (const [key, value] of Object.entries(sums)) {
 			if (key === LAST_UPDATED) {
 				continue;
@@ -2121,12 +2285,10 @@ class Senec extends utils.Adapter {
 			if (!stats[key]) {
 				stats[key] = {};
 			}
-			if (!stats[key][year]) {
-				stats[key][year] = {};
-			}
 			stats[key][year] = value;
-			await this.doState(valueStore, JSON.stringify(stats), "", "", false);
 		}
+
+		await this.doState(valueStore, JSON.stringify(stats), "", "", false);
 	}
 
 	/**
@@ -2136,14 +2298,11 @@ class Senec extends utils.Adapter {
 	 * The method then updates the relevant states with the calculated historical data, ensuring that the adapter maintains an accurate and up-to-date record of the all-time history for the system.
 	 * By structuring the calculations in this way, the method optimizes the retrieval and processing of historical data while also providing comprehensive coverage of the relevant metrics for the system's performance over time.
 	 * The method assumes that the AllTimeValueStore is properly maintained and contains the necessary data for the calculations, as it relies on this information to compute the historical values accurately.
-	 * It also includes logging of the calculated historical data for debugging purposes, allowing for better monitoring and analysis of the all-time history for the system.
-	 * By systematically updating the all-time history based on the stored values, the method helps to ensure that the adapter provides valuable insights into the long-term performance and trends of the system,
-	 * enhancing its overall functionality and usefulness for users.
 	 *
 	 * @param {string | number} anlagenId Anlagen ID
 	 */
 	async updateAllTimeHistory(anlagenId) {
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.` + `Measurements.AllTime.`;
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.AllTime.`;
 		const valueStore = `${pfx}valueStore`;
 		const input = await this.readAllTimeValueStore(valueStore);
 
@@ -2278,7 +2437,6 @@ class Senec extends utils.Adapter {
 	 * If a translation is found, it retrieves the translated text and updates the corresponding _Text state with the translated value and description.
 	 * This allows for dynamic translation of state values based on the user's language preferences in the ioBroker interface, enhancing the usability and accessibility of the adapter for users with different language settings.
 	 * The method assumes that the state attributes contain the necessary translation information for the supported languages, and it relies on this information to perform the decoding and updating of the _Text states accurately.
-	 * By providing dynamic translations for state values, this method helps to ensure that the adapter is user-friendly and accessible to a wider audience, enhancing its overall functionality and usefulness for users with different language preferences.
 	 *
 	 * @param {*} name Name of the state
 	 * @param {*} value Value of the state
@@ -2636,14 +2794,290 @@ class Senec extends utils.Adapter {
 
 			this.guiLang = "1";
 			this.log.info(
-				"No GUI language state available - using fallback language: 1 (English). If you just started the adapter for the first time, this is expected. If you restarted the adapter, this means that the state was not yet populated during startup - it should be available after the first successful poll.",
+				"No GUI language state available. Using fallback language: 1 (English). " +
+					"This is expected on first startup and can also happen on systems without local polling.",
 			);
 		} catch (error) {
 			this.guiLang = "1";
 			this.log.debug(`Failed to refresh GUI language cache: ${error.message}`);
-		} finally {
-			this.guiLangInitialized = true;
 		}
+	}
+
+	/**
+	 * Generates a unique key for one rebuild step.
+	 * The key is used for rebuildFailures and rebuildCompletedSteps.
+	 *
+	 * @param {string} anlagenId - System id
+	 * @param {*} year - Year of the rebuild step
+	 * @param {boolean} monthly - true for monthly aggregation step, false for yearly
+	 * @returns {string} The unique key for the rebuild step.
+	 */
+	getRebuildStepKey(anlagenId, year, monthly) {
+		return `${anlagenId}:${year}:${monthly ? "monthly" : "year"}`;
+	}
+
+	/**
+	 * @param {string} anlagenId - System id
+	 */
+	getAllRebuildStepsForSystem(anlagenId) {
+		const steps = [];
+		const currentYear = new Date().getUTCFullYear();
+		for (let year = currentYear; year >= FIRST_HISTORY_YEAR; year--) {
+			steps.push({ anlagenId, year, monthly: false });
+			steps.push({ anlagenId, year, monthly: true });
+		}
+		return steps;
+	}
+
+	getTotalRebuildStepsPerSystem() {
+		const currentYear = new Date().getUTCFullYear();
+		const yearCount = currentYear - FIRST_HISTORY_YEAR + 1;
+		return yearCount * 2;
+	}
+
+	/**
+	 * @param {{ response: { status: any; }; code: any; message: string; }} error
+	 */
+	isApiRelevantRebuildError(error) {
+		const status = error?.response?.status;
+		const code = error?.code;
+		const msg = error?.message || "";
+
+		return (
+			status === 401 ||
+			status === 429 ||
+			(status >= 500 && status < 600) ||
+			code === "ECONNABORTED" ||
+			code === "ETIMEDOUT" ||
+			/timeout/i.test(msg)
+		);
+	}
+
+	/**
+	 * @param {string} anlagenId - System id
+	 */
+	async getPendingRebuildSteps(anlagenId) {
+		const allSteps = this.getAllRebuildStepsForSystem(anlagenId);
+		const pending = [];
+		const now = Date.now();
+
+		for (const step of allSteps) {
+			const stepKey = this.getRebuildStepKey(anlagenId, step.year, step.monthly);
+
+			if (this.rebuildCompletedSteps.has(stepKey)) {
+				continue;
+			}
+
+			const done = await this.isRebuildStepDone(anlagenId, step.year, step.monthly);
+			if (done) {
+				this.rebuildCompletedSteps.add(stepKey);
+				this.rebuildFailures.delete(stepKey);
+				continue;
+			}
+
+			const failureInfo = this.rebuildFailures.get(stepKey);
+			if (failureInfo && failureInfo.nextTryAt > now) {
+				continue;
+			}
+
+			pending.push(step);
+		}
+
+		return pending;
+	}
+
+	/**
+	 * Returns true if this rebuild step already has a persisted successful result.
+	 * For rebuild purposes any valid existing LAST_UPDATED value is sufficient.
+	 *
+	 * @param {string} anlagenId - System id
+	 * @param {number} year - year
+	 * @param {boolean} monthly - monthly or yearly
+	 */
+	async isRebuildStepDone(anlagenId, year, monthly) {
+		const stepKey = this.getRebuildStepKey(anlagenId, year, monthly);
+
+		if (this.rebuildCompletedSteps.has(stepKey)) {
+			return true;
+		}
+
+		const pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.Yearly.`;
+		const stateId = `${pfx}${year}.${monthly ? "monthly." : ""}${LAST_UPDATED}`;
+
+		const state = await this.getStateAsync(stateId);
+		if (!state || state.val === null || state.val === undefined) {
+			return false;
+		}
+
+		const lastDate = new Date(String(state.val));
+		if (isNaN(lastDate.getTime())) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Checks if the rebuild process is finished for a specific system.
+	 *
+	 * @param {string} anlagenId - The ID of the system to check.
+	 * @returns {Promise<boolean>} True if the rebuild is finished for the specified system, false otherwise.
+	 */
+	async isRebuildFinishedForSystem(anlagenId) {
+		const pending = await this.getPendingRebuildSteps(anlagenId);
+		return pending.length === 0;
+	}
+
+	/**
+	 * Checks if the rebuild process is finished for all systems.
+	 *
+	 * @returns {Promise<boolean>} True if the rebuild is finished for all systems, false otherwise.
+	 */
+	async isRebuildFinishedGlobally() {
+		for (const anlagenId of this.apiKnownSystems) {
+			if (!(await this.isRebuildFinishedForSystem(anlagenId))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Logs the pending rebuild failures in a user-friendly format.
+	 * This method retrieves the list of pending failures and logs them in an informative way, indicating which systems and steps are still pending and when the next retry attempts will occur.
+	 * If there are no pending failures, the method simply returns without logging anything.
+	 */
+	logRebuildPendingFailuresIfChanged() {
+		const now = Date.now();
+		const entries = [];
+
+		for (const [stepKey, info] of this.rebuildFailures.entries()) {
+			const remainingMs = Math.max(0, info.nextTryAt - now);
+			const remainingMin = Math.ceil(remainingMs / 60000);
+
+			entries.push(`${stepKey} (next try in ${remainingMin} min, last error: ${info.lastError})`);
+		}
+
+		entries.sort();
+		const summary = entries.join(" | ");
+
+		if (summary && summary !== this.lastLoggedRebuildPendingSummary) {
+			this.lastLoggedRebuildPendingSummary = summary;
+			this.log.info(`ℹ️ Noch offene Rebuild-Schritte: ${summary}`);
+		}
+
+		if (!summary) {
+			this.lastLoggedRebuildPendingSummary = "";
+		}
+	}
+
+	/**
+	 * Executes a single rebuild step for a specific system, year, and mode.
+	 * The method attempts to perform the measurements for the specified year and mode, and based on the outcome, it marks the step as successful or failed.
+	 * If the step is successful, it logs an informational message indicating the success. If the step fails due to an API-relevant error, it marks the step as failed, schedules a retry, and logs an informational message with the error details and the next retry time.
+	 *
+	 * @param {string} anlagenId - The ID of the system for which to run the rebuild step.
+	 * @param {{ anlagenId?: string; year: any; monthly: any; }} step - The rebuild step object containing the year, mode, and other relevant information for the step to be executed.
+	 */
+	async runSingleRebuildStep(anlagenId, step) {
+		const stepLabel = `${step.year}${step.monthly ? ".monthly" : ""}`;
+		const stepKey = this.getRebuildStepKey(anlagenId, step.year, step.monthly);
+
+		for (let attempt = 1; attempt <= this.rebuildStepMaxRetries; attempt++) {
+			try {
+				this.log.info(
+					`🔄 Rebuild Schritt für Anlage ${anlagenId}: ${stepLabel} (Versuch ${attempt}/${this.rebuildStepMaxRetries})`,
+				);
+
+				const result = await this.doMeasurementsYear(anlagenId, step.year, step.monthly);
+
+				if (result?.status === "success" || result?.status === "skipped_existing") {
+					this.rebuildCompletedSteps.add(stepKey);
+					this.rebuildFailures.delete(stepKey);
+					if (result?.status === "success") {
+						this.rebuildCompletedSteps.add(stepKey);
+						this.rebuildFailures.delete(stepKey);
+						this.log.info(`✅ Rebuild Schritt erfolgreich: Anlage ${anlagenId} / ${stepLabel}`);
+						return true;
+					}
+
+					if (result?.status === "skipped_existing") {
+						this.rebuildCompletedSteps.add(stepKey);
+						this.rebuildFailures.delete(stepKey);
+						this.log.info(`✅ Rebuild Schritt bereits vorhanden: Anlage ${anlagenId} / ${stepLabel}`);
+						return true;
+					}
+					return true;
+				}
+
+				if (result?.status === "no_data") {
+					this.rebuildCompletedSteps.add(stepKey);
+					this.rebuildFailures.delete(stepKey);
+					this.log.info(`✅ Rebuild Schritt ohne Daten abgeschlossen: Anlage ${anlagenId} / ${stepLabel}`);
+					return true;
+				}
+
+				throw new Error(`Unexpected rebuild result for ${stepLabel}`);
+			} catch (error) {
+				const isLastAttempt = attempt >= this.rebuildStepMaxRetries;
+				const isApiRelevant = this.isApiRelevantRebuildError(error);
+
+				this.log.warn(
+					`⚠️ Rebuild Schritt fehlgeschlagen: Anlage ${anlagenId} / ${stepLabel} ` +
+						`(Versuch ${attempt}/${this.rebuildStepMaxRetries}): ${error.message}`,
+				);
+
+				if (!isApiRelevant) {
+					this.log.error(
+						`❌ Rebuild Schritt dauerhaft abgebrochen (kein retrybarer API-Fehler): Anlage ${anlagenId} / ${stepLabel}: ${error.message}`,
+					);
+					throw error;
+				}
+
+				if (isLastAttempt) {
+					const delayMs = Math.min(
+						this.rebuildRetryBaseDelayMs * Math.pow(2, attempt - 1),
+						24 * 60 * 60 * 1000,
+					);
+
+					this.rebuildFailures.set(stepKey, {
+						attempts: attempt,
+						nextTryAt: Date.now() + delayMs,
+						lastError: error.message,
+					});
+
+					this.log.info(
+						`ℹ️ Rebuild Schritt wird später erneut versucht: Anlage ${anlagenId} / ${stepLabel} ` +
+							`(nächster Versuch in ${Math.round(delayMs / 60000)} min)`,
+					);
+
+					return false;
+				}
+
+				await this.delay(Math.min(30000, attempt * 5000));
+			}
+		}
+	}
+
+	/**
+	 * @param {number} ms - ms to wait
+	 * @returns {Promise<void>}
+	 */
+	delay(ms) {
+		return new Promise((resolve) => {
+			if (this.unloaded || ms <= 0) {
+				resolve(undefined);
+				return;
+			}
+
+			const timer = setTimeout(() => {
+				this.timers = this.timers.filter((t) => t !== timer);
+				resolve(undefined);
+			}, ms);
+
+			this.timers.push(timer);
+			timer.unref?.();
+		});
 	}
 }
 
