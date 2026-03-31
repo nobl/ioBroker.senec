@@ -1413,6 +1413,7 @@ class Senec extends utils.Adapter {
 	 * @throws Will throw an error if any of the API calls for the system fail.
 	 */
 	async pollSingleApiSystem(anlagenId, ctx) {
+		const logType = this.config.api_showPolling ? "info" : "debug";
 		const result = {
 			failed: false,
 			dashboardScheduled: false,
@@ -1427,24 +1428,28 @@ class Senec extends utils.Adapter {
 			this.log.debug(`🔄 Polling system ${anlagenId}...`);
 
 			if (ctx.shouldRunDashboard) {
+				this.log[logType](`🔄 Polling system ${anlagenId} - Dashboard`);
 				result.dashboardScheduled = true;
 				await this.pollApiDashboard(anlagenId);
 				result.dashboardSucceeded = true;
 			}
 
 			if (ctx.shouldRunDetails) {
+				this.log[logType](`🔄 Polling system ${anlagenId} - Details (day values)`);
 				result.detailsScheduled = true;
 				await this.pollApiDetails(anlagenId, ctx);
 				result.detailsSucceeded = true;
 			}
 
 			if (ctx.shouldRunHeavy) {
+				this.log[logType](`🔄 Polling system ${anlagenId} - Heavy (month / year values)`);
 				result.heavyScheduled = true;
 				await this.pollApiHeavy(anlagenId, ctx);
 				result.heavySucceeded = true;
 			}
 
 			if (this.config.api_alltimeRebuild) {
+				this.log.info(`🔄 Rebuilding AllTime history for system ${anlagenId}`);
 				await this.doRebuild(anlagenId);
 			}
 		} catch (systemError) {
