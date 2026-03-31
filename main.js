@@ -140,7 +140,6 @@ class Senec extends utils.Adapter {
 		this.timerAPI = null;
 		this.apiPollRunning = false;
 		this.apiFailureCount = 0;
-		this.lastHeavyUpdate = 0;
 		this.baseTime = 60000;
 
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
@@ -149,6 +148,9 @@ class Senec extends utils.Adapter {
 
 		this.lastLoggedRecommendedConcurrency = null;
 		this.lastLoggedQueueSnapshot = null;
+
+		this.guiLang = "1"; // fallback english
+		this.guiLangInitialized = false;
 
 		this.on("ready", this.onReady.bind(this));
 		this.on("stateChange", this.onStateChange.bind(this));
@@ -169,7 +171,7 @@ class Senec extends utils.Adapter {
 		await this.setState("info.connection", false, true);
 
 		try {
-			await this.checkConfig();
+			this.checkConfig();
 
 			const apiConcurrencyStart = Math.max(1, Number(this.config.api_concurrency_start) || 1);
 			const apiConcurrencyMax = Math.max(apiConcurrencyStart, Number(this.config.api_concurrency_max) || 1);
@@ -334,7 +336,7 @@ class Senec extends utils.Adapter {
 			if (this.config.lala_use) {
 				this.log.info("Usage of lala.cgi (local) configured.");
 				await this.initPollSettings();
-				await this.checkConnection();
+				await this.checkLocalConnection();
 				if (this.lalaConnected) {
 					this.pollSenecLocal(true, 0).catch((e) =>
 						this.logError(e, "❌ Initial local highPrio poll failed"),
@@ -747,7 +749,7 @@ class Senec extends utils.Adapter {
 	 * checks config paramaters
 	 * Fallback to default values in case they are out of scope
 	 */
-	async checkConfig() {
+	checkConfig() {
 		this.log.debug(`(checkConf) Configured polling interval high priority: ${this.config.interval}s`);
 		if (this.config.interval < 1 || this.config.interval > 3600) {
 			this.log.warn(
@@ -868,7 +870,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * checks connection to senec service
 	 */
-	async checkConnection() {
+	async checkLocalConnection() {
 		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 		const form = '{"ENERGY":{"STAT_STATE":""}}';
 		try {
@@ -1175,6 +1177,16 @@ class Senec extends utils.Adapter {
 		return this.refreshPromise;
 	}
 
+	/**
+	 * Polls the SENEC API for updates.
+	 * The method handles scheduling, error handling with exponential backoff, and ensures that only one poll cycle runs at a time. It also updates connection status and logs relevant information about the polling process.
+	 * The actual API calls are delegated to the `runApiPollCycle` method, which is responsible for executing the necessary API requests based on the configured intervals and updating the relevant states.
+	 * The method also includes logic to handle authentication issues, such as blocking further polls if authentication is currently recovering, and it manages the scheduling of the next poll based on the success or failure of the current poll cycle.
+	 * The method ensures that the adapter remains responsive and does not overload the SENEC API with requests, especially in cases of repeated failures, by implementing a backoff strategy for scheduling subsequent polls.
+	 *
+	 * @returns {Promise<void>}
+	 * @throws Will throw an error if the API call fails or if all scheduled tasks fail during the poll cycle.
+	 */
 	async pollSenecApi() {
 		if (this.unloaded) {
 			return;
@@ -1199,146 +1211,39 @@ class Senec extends utils.Adapter {
 
 		const baseInterval = this.dashboardInterval;
 		let nextDelay = baseInterval;
-		const shouldRunDashboard = this.shouldRunInterval(this.lastApiDashboardPoll, this.dashboardInterval);
-		const shouldRunDetails = this.shouldRunInterval(this.lastApiDetailsPoll, this.detailsInterval);
-		const shouldRunHeavy = this.shouldRunInterval(this.lastApiHeavyPoll, this.heavyInterval);
 
 		try {
 			if (this.authBlocked) {
 				this.log.debug("⏸ Poll skipped - authentication currently recovering.");
-				// override delay explicitly
-				nextDelay = this.config.api_interval * this.baseTime;
-				return; // safe now, because finally WILL still run
-			}
-			if (this.config.api_showPolling) {
-				this.log.info("🔄 Polling SENEC App API...");
-			} else {
-				this.log.debug("🔄 Polling SENEC App API...");
+				nextDelay = baseInterval;
+				return;
 			}
 
-			// Ensure token exists
-			if (!this.currentToken) {
-				await this.refreshTokenSingleFlight();
+			const cycleResult = await this.runApiPollCycle();
+
+			if (cycleResult.totalFailure) {
+				throw new Error(cycleResult.message || "All scheduled API tasks failed during polling.");
 			}
 
-			// Read systems once from API and keep them in memory - we will need them for every poll and they don't change that often
-			if (this.apiKnownSystems.size === 0) {
-				this.log.debug("🔄 Reading available systems from API ...");
-				const sysRes = await this.apiGet(`${HOST_SYSTEMS}/v1/systems`);
-				if (!sysRes?.data?.length) {
-					throw new Error("No systems returned from API.");
-				}
-				for (const sys of sysRes.data) {
-					this.log.debug(`System found: ${JSON.stringify(sys)}`);
-					this.apiKnownSystems.add(sys.id);
-					await this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
-				}
-			}
-
-			// Precompute dates once
-			// today/yesterday must not be UTC or they will be off - month / year must be UTC or we will have issues at month / year boundaries
-			// that way daily numbers are ok - but month/year are off a bit compared to mein-senec.de
-			const now = new Date();
-			const utcYear = now.getUTCFullYear();
-			const utcMonth = now.getUTCMonth();
-			const utcDate = now.getUTCDate();
-
-			const today = new Date(utcYear, utcMonth, utcDate, 0, 0, 0, 0);
-			const yesterday = new Date(utcYear, utcMonth, utcDate - 1, 0, 0, 0, 0);
-			const currentMonth = new Date(Date.UTC(utcYear, utcMonth, 1));
-			const lastMonth = new Date(Date.UTC(utcYear, utcMonth - 1, 1));
-
-			let anyWorkScheduled = false;
-			let anyWorkSucceeded = false;
-			let failureCount = 0;
-
-			for (const anlagenId of this.apiKnownSystems) {
-				try {
-					this.log.debug(`🔄 Polling system ${anlagenId}...`);
-
-					// Dashboard (frequent, but light)
-					if (shouldRunDashboard) {
-						anyWorkScheduled = true;
-						const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
-						this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
-						await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
-						// If dashboard worked, count as success
-						anyWorkSucceeded = true;
-						this.markPollTimestamp("dashboard");
-					}
-
-					// Frequent measurements (once per detailsInterval - usually every hour)
-					if (shouldRunDetails) {
-						anyWorkScheduled = true;
-						await Promise.all([
-							this.doMeasurementsDay(anlagenId, today, "today"),
-							this.doMeasurementsDay(anlagenId, today, "today.hourly"),
-							this.doMeasurementsDay(anlagenId, yesterday, "yesterday"),
-							this.doMeasurementsDay(anlagenId, yesterday, "yesterday.hourly"),
-						]);
-						anyWorkSucceeded = true;
-						this.markPollTimestamp("details");
-					}
-
-					// Heavy measurements (once per heavyInterval - usually once per day) - these include month and year measurements which are more heavy to pull and process - so we do them less frequently)
-					if (shouldRunHeavy) {
-						anyWorkScheduled = true;
-						await Promise.all([
-							this.doMeasurementsMonth(anlagenId, currentMonth, "current_month"),
-							this.doMeasurementsMonth(anlagenId, currentMonth, "current_month.daily"),
-							this.doMeasurementsMonth(anlagenId, lastMonth, "previous_month"),
-							this.doMeasurementsMonth(anlagenId, lastMonth, "previous_month.daily"),
-							this.doMeasurementsYear(anlagenId, utcYear, false), // Current year
-							this.doMeasurementsYear(anlagenId, utcYear, true), // Current year
-							this.doMeasurementsYear(anlagenId, utcYear - 1, false), // check if we need last year too
-							this.doMeasurementsYear(anlagenId, utcYear - 1, true), // check if we need last year too
-						]);
-						anyWorkSucceeded = true;
-						await this.updateAllTimeHistory(anlagenId);
-						this.markPollTimestamp("heavy");
-					}
-
-					if (this.config.api_alltimeRebuild) {
-						// rebuild all-time history if requested - will also pull everying again
-						await this.doRebuild(anlagenId);
-					}
-				} catch (systemError) {
-					// Important: isolate system failure
-					failureCount++;
-					this.logError(systemError, `❌ System ${anlagenId} failed.`);
-				}
-			}
-
-			// ---- Evaluate Global Result ----
-			if (anyWorkScheduled && !anyWorkSucceeded) {
-				throw new Error("All scheduled API tasks failed during polling.");
-			}
-
-			// Partial or full success
-			if (failureCount > 0) {
+			if (cycleResult.partialFailure) {
 				this.log.warn(
-					`⚠ Partial API failure: ${failureCount} system(s) failed, at least one scheduled task succeeded.`,
+					`⚠ Partial API failure: ${cycleResult.failedSystems} system(s) failed, ` +
+						`at least one scheduled task succeeded.`,
 				);
 			}
 
-			// Reset global failure counter
 			this.apiFailureCount = 0;
-
-			// Connection is healthy
 			await this.setState("info.connection", true, true);
 
 			nextDelay = baseInterval;
 		} catch (err) {
-			// ---- TOTAL FAILURE HANDLING ----
 			this.apiFailureCount = (this.apiFailureCount || 0) + 1;
 			this.logError(err, `🚨 API Poll failed - ⚠️ Failure count: ${this.apiFailureCount}`);
 			await this.setState("info.connection", false, true);
 
-			// Exponential full jitter backoff
 			nextDelay = computeBackoffDelay(baseInterval, this.apiFailureCount);
-			// Safety cap (max 8x base interval)
-			const maxDelay = baseInterval * 8;
-			nextDelay = Math.min(nextDelay, maxDelay);
+			nextDelay = Math.min(nextDelay, baseInterval * 8);
+
 			this.log.warn(`⏱ Backoff delay: Retry ${this.apiFailureCount} in ${(nextDelay / 1000).toFixed(0)}s`);
 		} finally {
 			this.apiPollRunning = false;
@@ -1360,18 +1265,304 @@ class Senec extends utils.Adapter {
 				}
 			}
 
-			if (!this.unloaded) {
-				if (this.timerAPI) {
-					clearTimeout(this.timerAPI);
-					this.timerAPI = null;
-				}
-				this.timerAPI = setTimeout(() => {
-					this.timers = this.timers.filter((t) => t !== this.timerAPI);
-					this.pollSenecApi().catch((e) => this.logError(e, "❌ Scheduled API poll failed"));
-				}, nextDelay);
-				this.timers.push(this.timerAPI);
-				this.log.debug(`⏱ Next API poll scheduled in ${(nextDelay / 1000).toFixed(0)}s`);
+			this.scheduleNextApiPoll(nextDelay);
+		}
+	}
+
+	/**
+	 * Schedules the next API poll.
+	 * The method calculates the delay for the next poll based on the success or failure of the current poll cycle, implementing a backoff strategy in case of failures to prevent overwhelming the SENEC API. It also ensures that no new poll is scheduled if the adapter is unloaded, and it clears any existing timers to avoid overlapping polls. The method logs the scheduled time for the next poll for debugging purposes.
+	 *
+	 * @param {number} delay - The delay in milliseconds before the next poll.
+	 */
+	scheduleNextApiPoll(delay) {
+		if (this.unloaded) {
+			return;
+		}
+
+		if (this.timerAPI) {
+			clearTimeout(this.timerAPI);
+			this.timerAPI = null;
+		}
+
+		this.timerAPI = setTimeout(() => {
+			this.timers = this.timers.filter((t) => t !== this.timerAPI);
+			this.pollSenecApi().catch((e) => this.logError(e, "❌ Scheduled API poll failed"));
+		}, delay);
+
+		this.timers.push(this.timerAPI);
+		this.log.debug(`⏱ Next API poll scheduled in ${(delay / 1000).toFixed(0)}s`);
+	}
+
+	/**
+	 * Builds the context for an API poll cycle, determining which tasks should run based on the last poll timestamps and configured intervals.
+	 * The method calculates whether the dashboard, details, and heavy tasks should run by comparing the current time with the last poll timestamps for each task type and the respective configured intervals. It also prepares relevant date information (today, yesterday, current month, last month) in UTC to be used for API calls that require date parameters. The resulting context object contains flags indicating which tasks to run and the prepared date information for use in the API polling methods.
+	 * The method ensures that the API polling logic can make informed decisions about which data to fetch during each poll cycle, optimizing the polling process based on the configured intervals and the timing of previous polls.
+	 *
+	 * @returns {object} Context object containing flags for which tasks to run and relevant date information for the API calls.
+	 */
+	buildApiPollContext() {
+		const shouldRunDashboard = this.shouldRunInterval(this.lastApiDashboardPoll, this.dashboardInterval);
+		const shouldRunDetails = this.shouldRunInterval(this.lastApiDetailsPoll, this.detailsInterval);
+		const shouldRunHeavy = this.shouldRunInterval(this.lastApiHeavyPoll, this.heavyInterval);
+
+		const now = new Date();
+		const utcYear = now.getUTCFullYear();
+		const utcMonth = now.getUTCMonth();
+		const utcDate = now.getUTCDate();
+
+		return {
+			shouldRunDashboard,
+			shouldRunDetails,
+			shouldRunHeavy,
+			today: new Date(utcYear, utcMonth, utcDate, 0, 0, 0, 0),
+			yesterday: new Date(utcYear, utcMonth, utcDate - 1, 0, 0, 0, 0),
+			currentMonth: new Date(Date.UTC(utcYear, utcMonth, 1)),
+			lastMonth: new Date(Date.UTC(utcYear, utcMonth - 1, 1)),
+			utcYear,
+		};
+	}
+
+	/**
+	 * Ensures that the API systems are loaded.
+	 * The method checks if the known systems from the API are already loaded, and if not, it makes an API call to fetch the available systems. It then iterates through the returned systems, logs their information for debugging purposes, adds their IDs to the set of known systems, and evaluates the poll for each system to prepare for subsequent API calls. This method is crucial for ensuring that the adapter has the necessary information about the available systems before attempting to poll data from the API.
+	 * The method also includes error handling to throw an error if no systems are returned from the API, which is essential for the proper functioning of the adapter, as it relies on having at least one system to poll data from. By loading the systems at this stage, the adapter can optimize its polling process and ensure that it is targeting the correct systems for data retrieval.
+	 *
+	 * @returns {Promise<void>}
+	 */
+	async ensureApiSystemsLoaded() {
+		if (this.apiKnownSystems.size > 0) {
+			return;
+		}
+
+		this.log.debug("🔄 Reading available systems from API ...");
+		const sysRes = await this.apiGet(`${HOST_SYSTEMS}/v1/systems`);
+
+		if (!sysRes?.data?.length) {
+			throw new Error("No systems returned from API.");
+		}
+
+		for (const sys of sysRes.data) {
+			this.log.debug(`System found: ${JSON.stringify(sys)}`);
+			this.apiKnownSystems.add(sys.id);
+			await this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
+		}
+	}
+
+	/**
+	 * Runs a complete API poll cycle.
+	 * The method iterates through all known systems and performs the necessary API calls for each system based on the configured intervals and the context built for the poll cycle. It keeps track of the success and failure of each system's API calls, updates the relevant states, and logs the results of the poll cycle. The method returns an object indicating whether there was a total failure (all scheduled tasks failed), a partial failure (some tasks failed but at least one succeeded), the number of failed systems, and a message describing the outcome. This method is central to the adapter's functionality, as it orchestrates the entire process of polling data from the SENEC App API and handling the results appropriately.
+	 * The method also includes error handling to catch any exceptions that occur during the polling of each system, ensuring that a failure in one system does not prevent the polling of other systems. By providing detailed results about the poll cycle, the method allows for better monitoring and debugging of the adapter's interactions with the SENEC App API.
+	 * The method assumes that the necessary authentication token is available and that the API systems are loaded before it is called, as it relies on this information to perform the API calls effectively. It also updates the poll timestamps for each task type based on the success of the API calls, which is essential for the scheduling logic of subsequent poll cycles.
+	 
+	 * @returns {Promise<{totalFailure: boolean, partialFailure: boolean, failedSystems: number, message: string}>} Result of the poll cycle, including failure status and messages.
+	 * @throws Will throw an error if all scheduled tasks fail during the poll cycle.
+	 */
+	async runApiPollCycle() {
+		if (this.config.api_showPolling) {
+			this.log.info("🔄 Polling SENEC App API...");
+		} else {
+			this.log.debug("🔄 Polling SENEC App API...");
+		}
+
+		if (!this.currentToken) {
+			await this.refreshTokenSingleFlight();
+		}
+
+		await this.ensureApiSystemsLoaded();
+
+		const ctx = this.buildApiPollContext();
+
+		const result = {
+			anyWorkScheduled: false,
+			anyWorkSucceeded: false,
+			failedSystems: 0,
+
+			dashboardScheduled: ctx.shouldRunDashboard,
+			detailsScheduled: ctx.shouldRunDetails,
+			heavyScheduled: ctx.shouldRunHeavy,
+
+			dashboardSucceeded: 0,
+			detailsSucceeded: 0,
+			heavySucceeded: 0,
+		};
+
+		for (const anlagenId of this.apiKnownSystems) {
+			const systemResult = await this.pollSingleApiSystem(anlagenId, ctx);
+			this.mergeSystemPollResult(result, systemResult);
+		}
+
+		this.finalizePollTimestamps(result);
+
+		return {
+			totalFailure: result.anyWorkScheduled && !result.anyWorkSucceeded,
+			partialFailure: result.failedSystems > 0 && result.anyWorkSucceeded,
+			failedSystems: result.failedSystems,
+			message: "All scheduled API tasks failed during polling.",
+		};
+	}
+
+	/**
+	 * Polls the API for a single system based on the provided context.
+	 * The method performs the necessary API calls for the dashboard, details, and heavy tasks based on the flags set in the context. It keeps track of the success and failure of each task type for the system and returns an object summarizing the results. The method includes error handling to catch any exceptions that occur during the API calls for the system, ensuring that a failure in one task does not prevent the execution of other tasks for the same system. By providing detailed results for each system, this method allows for better monitoring and debugging of individual system interactions with the SENEC App API.
+	 * The method assumes that the necessary authentication token is available and that the API systems are loaded before it is called, as it relies on this information to perform the API calls effectively. It also updates the poll timestamps for each task type based on the success of the API calls, which is essential for the scheduling logic of subsequent poll cycles.
+	 
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 * @param {object} ctx - The context object containing flags for which tasks to run and relevant date information for the API calls.
+	 * @returns {Promise<{failed: boolean, dashboardScheduled: boolean, detailsScheduled: boolean, heavyScheduled: boolean, dashboardSucceeded: boolean, detailsSucceeded: boolean, heavySucceeded: boolean}>} Result of the API poll for the system, including success and failure status for each task type.
+	 * @throws Will throw an error if any of the API calls for the system fail.
+	 */
+	async pollSingleApiSystem(anlagenId, ctx) {
+		const result = {
+			failed: false,
+			dashboardScheduled: false,
+			detailsScheduled: false,
+			heavyScheduled: false,
+			dashboardSucceeded: false,
+			detailsSucceeded: false,
+			heavySucceeded: false,
+		};
+
+		try {
+			this.log.debug(`🔄 Polling system ${anlagenId}...`);
+
+			if (ctx.shouldRunDashboard) {
+				result.dashboardScheduled = true;
+				await this.pollApiDashboard(anlagenId);
+				result.dashboardSucceeded = true;
 			}
+
+			if (ctx.shouldRunDetails) {
+				result.detailsScheduled = true;
+				await this.pollApiDetails(anlagenId, ctx);
+				result.detailsSucceeded = true;
+			}
+
+			if (ctx.shouldRunHeavy) {
+				result.heavyScheduled = true;
+				await this.pollApiHeavy(anlagenId, ctx);
+				result.heavySucceeded = true;
+			}
+
+			if (this.config.api_alltimeRebuild) {
+				await this.doRebuild(anlagenId);
+			}
+		} catch (systemError) {
+			result.failed = true;
+			this.logError(systemError, `❌ System ${anlagenId} failed.`);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Polls the API for the dashboard data of a single system.
+	 * The method makes an API call to retrieve the dashboard data for the specified system ID, logs the keys of the returned data for debugging purposes, and then evaluates the poll to update the relevant states based on the retrieved data. The method includes error handling to catch any exceptions that occur during the API call, ensuring that a failure in retrieving the dashboard data does not prevent the execution of other tasks for the same system. By providing detailed logging of the retrieved data, this method allows for better monitoring and debugging of the interactions with the SENEC App API for the dashboard data.
+	 * The method assumes that the necessary authentication token is available and that the API systems are loaded before it is called, as it relies on this information to perform the API call effectively. It also updates the poll timestamps for the dashboard task based on the success of the API call, which is essential for the scheduling logic of subsequent poll cycles.
+	 *
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 */
+	async pollApiDashboard(anlagenId) {
+		const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
+		this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
+		await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
+	}
+
+	/**
+	 * Polls the API for the details data of a single system.
+	 * The method makes multiple API calls to retrieve the details data for the specified system ID based on the provided context, which includes date information for the API calls. It logs the keys of the returned data for debugging purposes and then evaluates the poll to update the relevant states based on the retrieved data. The method includes error handling to catch any exceptions that occur during the API calls, ensuring that a failure in retrieving the details data does not prevent the execution of other tasks for the same system. By providing detailed logging of the retrieved data, this method allows for better monitoring and debugging of the interactions with the SENEC App API for the details data.
+	 * The method assumes that the necessary authentication token is available and that the API systems are loaded before it is called, as it relies on this information to perform the API calls effectively. It also updates the poll timestamps for the details task based on the success of the API calls, which is essential for the scheduling logic of subsequent poll cycles.
+	 * The method makes API calls for both daily and hourly details for today and yesterday, ensuring that the adapter has the most up-to-date information for the details data of the system. By structuring the API calls in this way, the method optimizes the retrieval of details data while also providing comprehensive coverage of the relevant time periods.
+	 *
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 * @param {object} ctx - The context object containing flags for which tasks to run and relevant date information for the API calls.
+	 */
+	async pollApiDetails(anlagenId, ctx) {
+		await Promise.all([
+			this.doMeasurementsDay(anlagenId, ctx.today, "today"),
+			this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly"),
+			this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday"),
+			this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly"),
+		]);
+	}
+
+	/**
+	 * Polls the API for the heavy data of a single system.
+	 * The method makes multiple API calls to retrieve the heavy data for the specified system ID based on the provided context, which includes date information for the API calls. It logs the keys of the returned data for debugging purposes and then evaluates the poll to update the relevant states based on the retrieved data. The method includes error handling to catch any exceptions that occur during the API calls, ensuring that a failure in retrieving the heavy data does not prevent the execution of other tasks for the same system. By providing detailed logging of the retrieved data, this method allows for better monitoring and debugging of the interactions with the SENEC App API for the heavy data.
+	 * The method assumes that the necessary authentication token is available and that the API systems are loaded before it is called, as it relies on this information to perform the API calls effectively. It also updates the poll timestamps for the heavy task based on the success of the API calls, which is essential for the scheduling logic of subsequent poll cycles.
+	 * The method makes API calls for monthly measurements for the current and last month, as well as yearly measurements for the current and last year, ensuring that the adapter has comprehensive information for the heavy data of the system. By structuring the API calls in this way, the method optimizes the retrieval of heavy data while also providing coverage of the relevant time periods.
+	 * The method also includes a call to update the all-time history for the system, ensuring that the adapter maintains a complete record of the historical data for the system. This comprehensive approach to polling heavy data allows the adapter to provide valuable insights and information about the system's performance over time.
+	 *
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 * @param {object} ctx - The context object containing flags for which tasks to run and relevant date information for the API calls.
+	 */
+	async pollApiHeavy(anlagenId, ctx) {
+		await Promise.all([
+			this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month"),
+			this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily"),
+			this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month"),
+			this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily"),
+			this.doMeasurementsYear(anlagenId, ctx.utcYear, false),
+			this.doMeasurementsYear(anlagenId, ctx.utcYear, true),
+			this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false),
+			this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true),
+		]);
+
+		await this.updateAllTimeHistory(anlagenId);
+	}
+
+	/**
+	 * Merges the results of a system poll into the overall poll result.
+	 * The method takes the results of a single system poll and updates the overall poll result object by incrementing the counts for scheduled and succeeded tasks, as well as the count of failed systems. It checks the flags for each task type (dashboard, details, heavy) in the single system result and updates the corresponding fields in the total result accordingly. This method is essential for aggregating the results of individual system polls into a comprehensive summary of the entire poll cycle, allowing for better monitoring and analysis of the polling process across all systems.
+	 * The method assumes that the total result object is initialized with the necessary fields to track the counts of scheduled and succeeded tasks, as well as the count of failed systems. By systematically merging the results of each system poll, the method ensures that the overall poll result accurately reflects the performance and outcomes of the API polling process for all systems.
+	 *
+	 * @param {object} total - The overall poll result object that aggregates the results of all system polls.
+	 * @param {object} single - The result object for a single system poll, containing flags for scheduled and succeeded tasks, as well as a failure flag.
+	 */
+	mergeSystemPollResult(total, single) {
+		if (single.dashboardScheduled || single.detailsScheduled || single.heavyScheduled) {
+			total.anyWorkScheduled = true;
+		}
+
+		if (single.dashboardSucceeded || single.detailsSucceeded || single.heavySucceeded) {
+			total.anyWorkSucceeded = true;
+		}
+
+		if (single.failed) {
+			total.failedSystems++;
+		}
+
+		if (single.dashboardSucceeded) {
+			total.dashboardSucceeded++;
+		}
+		if (single.detailsSucceeded) {
+			total.detailsSucceeded++;
+		}
+		if (single.heavySucceeded) {
+			total.heavySucceeded++;
+		}
+	}
+
+	/**
+	 * Finalizes the poll timestamps based on the results of the poll cycle.
+	 * The method checks the results of the poll cycle for each task type (dashboard, details, heavy) and updates the last poll timestamps accordingly if all scheduled tasks of that type succeeded for all known systems. It compares the count of succeeded tasks with the total number of known systems to determine if the poll timestamp should be updated. This method is crucial for maintaining accurate scheduling of subsequent poll cycles, as it ensures that the adapter has the correct information about when each task type was last successfully polled, allowing for optimized scheduling based on the configured intervals.
+	 * The method assumes that the total result object contains accurate counts of scheduled and succeeded tasks for each task type, as well as the total number of known systems. By systematically finalizing the poll timestamps based on the results, the method helps to ensure that the adapter operates efficiently and effectively in its interactions with the SENEC App API.
+	 *
+	 * @param {*} result - The result object of the poll cycle, containing counts of scheduled and succeeded tasks for each task type, as well as the total number of known systems.
+	 */
+	finalizePollTimestamps(result) {
+		const systemsCount = this.apiKnownSystems.size;
+
+		if (result.dashboardScheduled && result.dashboardSucceeded === systemsCount) {
+			this.markPollTimestamp("dashboard");
+		}
+
+		if (result.detailsScheduled && result.detailsSucceeded === systemsCount) {
+			this.markPollTimestamp("details");
+		}
+
+		if (result.heavyScheduled && result.heavySucceeded === systemsCount) {
+			this.markPollTimestamp("heavy");
 		}
 	}
 
@@ -1639,6 +1830,26 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Sums the measurements based on the provided period and updates the relevant states.
+	 * The method iterates through the measurement data and sums the values based on the specified period (e.g., hourly, daily, monthly).
+	 * It updates the sums for each measurement key and then evaluates the poll to update the relevant states with the calculated sums.
+	 * The method includes logging of the measurement data and the calculated sums for debugging purposes. By structuring the summation logic based on the period,
+	 * the method ensures that the adapter can provide accurate and relevant information based on the time intervals specified in the API calls.
+	 * The method assumes that the measurement data is structured in a way that allows for iteration through time series entries and their corresponding measurement values.
+	 * It also relies on the presence of measurement keys to correctly sum and update the states based on the retrieved data from the API.
+	 * The method also includes logic to handle the grouping of sums based on the period, ensuring that the data is organized in a way that allows for efficient retrieval and analysis of the measurement data over time.
+	 * By providing detailed logging of the measurement data and the calculated sums, the method allows for better monitoring and debugging of the interactions with the SENEC App API for the measurement data.
+	 * The method also includes a call to update the all-time value store for yearly measurements, ensuring that the adapter maintains a complete record of the historical data for the system.
+	 * This comprehensive approach to summing measurements allows the adapter to provide valuable insights and information about the system's performance over time based on the specified periods.
+	 * The method also updates the last updated timestamp for the measurements, allowing for better tracking of when the data was last refreshed and ensuring that the adapter can make informed decisions
+	 * about when to poll for new data based on the freshness of the existing data. By systematically summing the measurements and updating the relevant states,
+	 * the method helps to ensure that the adapter operates efficiently and effectively in its interactions with the SENEC App API for measurement data.
+	 * The method also includes error handling to catch any exceptions that may occur during the summation process, ensuring that a failure in processing the measurement data does
+	 * not prevent the execution of other tasks for the same system. By providing detailed logging of any errors that occur, the method allows for better monitoring and debugging of issues
+	 * related to the processing of measurement data from the API.
+	 * Overall, this method is a critical component of the adapter's functionality, as it processes the raw measurement data retrieved from the API and transforms it into meaningful information
+	 * that can be used to update the states and provide insights about the system's performance over time based on the specified periods.
+	 *
 	 * @param {any} data measurement data
 	 * @param {string | number} anlagenId Anlagen ID
 	 * @param {string} pfx prefix for state
@@ -1743,7 +1954,8 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Read values from Senec Home V2.1
-	 * Careful with the amount and interval of HighPrio values polled because this causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
+	 * Careful with the amount and interval of HighPrio values polled because this causes high demand on the SENEC machine so it shouldn't run too often.
+	 * Adverse effects: No sync with Senec possible if called too often.
 	 *
 	 * @param isHighPrio high priority poll
 	 * @param retry retry count
@@ -1787,6 +1999,9 @@ class Senec extends utils.Adapter {
 			const obj = JSON.parse(body, reviverNumParse);
 			this.log.silly(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
 			await this.evalPoll(obj, "", "");
+			if (!isHighPrio && !this.guiLangInitialized) {
+				await this.refreshGuiLangCache();
+			}
 
 			retry = 0;
 			if (!this.unloaded) {
@@ -1838,6 +2053,19 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Load AllTimeValueStore for given anlagenId and prefix
+	 * The method retrieves the state of the specified value store and parses its value to return an object representing the all-time measurements for the given system ID and year.
+	 * It checks if the retrieved state has a valid value and handles different data formats (string or object) to ensure that the returned object is correctly structured.
+	 * If the value store does not exist or does not contain valid data, it returns an empty object. This method is essential for managing the historical data for each system,
+	 * allowing the adapter to maintain an accurate record of all-time measurements and provide valuable insights into the long-term performance of the system.
+	 * By structuring the retrieval and parsing of the all-time measurements in this way, the method optimizes the management of historical data while also ensuring that the adapter can effectively
+	 * utilize this information for various calculations and insights related to the system's performance over time. The method also includes error handling to catch any exceptions that occur during the
+	 * retrieval and parsing process, ensuring that a failure in this process does not prevent the execution of other tasks for the same system. By providing detailed logging of the retrieved data
+	 * and any errors that occur, this method allows for better monitoring and debugging of the historical data management for each system.
+	 * The method assumes that the value store is properly maintained and contains the necessary data for the specified system ID and year, as it relies on this information to manage the historical data effectively.
+	 * By systematically loading the all-time measurements for each system, the method helps to ensure that the adapter provides valuable insights into the long-term performance and trends of the system,
+	 * enhancing its overall functionality and usefulness for users.
+	 * Overall, this method plays a critical role in the management of historical data for each system, allowing the adapter to maintain an accurate and up-to-date record of all-time measurements
+	 * and provide valuable insights into the long-term performance of the system, enhancing its overall functionality and usefulness for users.
 	 *
 	 * @param {string} valueStore ValueStore
 	 * @returns {Promise<{ [s: string]: any; }>} AllTimeValueStore as object
@@ -1857,6 +2085,22 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Insert values into AllTimeValueStore
+	 * The method reads the existing values from the AllTimeValueStore for the specified system ID and year, updates the values based on the provided sums, and then writes the updated values back to the AllTimeValueStore.
+	 * It iterates through the entries of the sums object, skipping the LAST_UPDATED key, and updates the corresponding entries in the stats object for the specified year.
+	 * Finally, it calls the doState method to save the updated stats back to the AllTimeValueStore.
+	 * This method is essential for maintaining an accurate and up-to-date record of all-time measurements for each system, allowing for comprehensive historical analysis and insights into the performance of the system over time.
+	 * The method assumes that the AllTimeValueStore is properly maintained and contains the necessary data for the specified system ID and year, as it relies on this information to update the values accurately.
+	 * By systematically updating the AllTimeValueStore based on the provided sums, the method helps to ensure that the adapter provides valuable insights into the long-term performance and trends of the system,
+	 * enhancing its overall functionality and usefulness for users.
+	 * The method also includes error handling to catch any exceptions that occur during the reading and writing of the AllTimeValueStore,
+	 * ensuring that a failure in this process does not prevent the execution of other tasks for the same system. By providing detailed logging of the updates to the AllTimeValueStore,
+	 * this method allows for better monitoring and debugging of the historical data management for the system.
+	 * The method is designed to be flexible and can handle updates for multiple keys and years, allowing for comprehensive management of the all-time measurements for each system.
+	 * By structuring the updates in this way, the method optimizes the retrieval and processing of historical data while also providing comprehensive coverage of the relevant metrics for the system's performance over time.
+	 * The method also ensures that the LAST_UPDATED key is not overwritten during the update process, allowing for accurate tracking of when the all-time measurements were last updated for each system.
+	 * This is crucial for maintaining the integrity of the historical data and ensuring that users have accurate information about the performance of their systems over time.
+	 * Overall, this method plays a critical role in the management of all-time measurements for each system, allowing the adapter to provide valuable insights
+	 * and information about the long-term performance and trends of the system, enhancing its overall functionality and usefulness for users.
 	 *
 	 * @param {{ [s: string]: number; } | ArrayLike<any>} sums sums to insert
 	 * @param {string | number} anlagenId Anlagen ID
@@ -1882,6 +2126,14 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Updated AllTimeHistory based on what we have in our AllTimeValueStore
+	 * The method reads the existing values from the AllTimeValueStore for the specified system ID and calculates the historical data for all time periods based on the stored values.
+	 * It handles special cases for certain keys, such as "AUTARKY_IN_PERCENT" and "BATTERY_LEVEL_IN_PERCENT", which require specific calculations based on other related keys.
+	 * The method then updates the relevant states with the calculated historical data, ensuring that the adapter maintains an accurate and up-to-date record of the all-time history for the system.
+	 * By structuring the calculations in this way, the method optimizes the retrieval and processing of historical data while also providing comprehensive coverage of the relevant metrics for the system's performance over time.
+	 * The method assumes that the AllTimeValueStore is properly maintained and contains the necessary data for the calculations, as it relies on this information to compute the historical values accurately.
+	 * It also includes logging of the calculated historical data for debugging purposes, allowing for better monitoring and analysis of the all-time history for the system.
+	 * By systematically updating the all-time history based on the stored values, the method helps to ensure that the adapter provides valuable insights into the long-term performance and trends of the system,
+	 * enhancing its overall functionality and usefulness for users.
 	 *
 	 * @param {string | number} anlagenId Anlagen ID
 	 */
@@ -2015,19 +2267,19 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * Checks if there is decoding possible for a given value and creates/updates a decoded state
-	 * Language used for translations is the language of the SENEC appliance
+	 * Decodes a state value based on the language-specific translations defined in the state
+	 * and updates the corresponding _Text state with the translated value.
+	 * The method checks if there is a translation available for the given state name and value based on the current GUI language.
+	 * If a translation is found, it retrieves the translated text and updates the corresponding _Text state with the translated value and description.
+	 * This allows for dynamic translation of state values based on the user's language preferences in the ioBroker interface, enhancing the usability and accessibility of the adapter for users with different language settings.
+	 * The method assumes that the state attributes contain the necessary translation information for the supported languages, and it relies on this information to perform the decoding and updating of the _Text states accurately.
+	 * By providing dynamic translations for state values, this method helps to ensure that the adapter is user-friendly and accessible to a wider audience, enhancing its overall functionality and usefulness for users with different language preferences.
 	 *
-	 * @param name Name of State
-	 * @param value Value of State
+	 * @param {*} name Name of the state
+	 * @param {*} value Value of the state
 	 */
 	async doDecode(name, value) {
-		// Lang: WIZARD.GUI_LANG 0=German, 1=English, 2=Italian
-		let lang = "1"; // fallback to english
-		const langState = await this.getStateAsync("WIZARD.GUI_LANG");
-		if (langState && langState.val !== null && langState.val !== undefined) {
-			lang = String(langState.val);
-		}
+		const lang = this.guiLang || "1";
 		this.log.silly(`(Decode) Senec language: ${lang}`);
 		let key = name;
 		if (!isNaN(name.substring(name.lastIndexOf(".")) + 1)) {
@@ -2084,6 +2336,14 @@ class Senec extends utils.Adapter {
 		}
 	}
 
+	/**
+	 * Evaluates a single polled value and updates the corresponding state.
+	 * This is a helper function for evalPoll to handle individual values, including logging and state attribute resolution.
+	 *
+	 * @param {*} pfx - The prefix for the state name.
+	 * @param {*} value - The value to evaluate.
+	 * @param {*} fullKey - The full key for the state.
+	 */
 	async evalPollHelper(pfx, value, fullKey) {
 		if (state_attr[fullKey] === undefined && state_attr[fullKey.replace(/\.\d+$/, "")] === undefined) {
 			this.log.debug(`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`);
@@ -2301,6 +2561,15 @@ class Senec extends utils.Adapter {
 		}
 	}
 
+	/**
+	 * Logs an error message with an optional prefix.
+	 * The method checks if the error object has a message property and logs it accordingly. If the error object also contains a stack trace,
+	 * it logs that at the debug level for more detailed troubleshooting information.
+	 * This method is used throughout the adapter to ensure consistent and informative error logging, making it easier to identify and resolve issues that may arise during API calls, polling, or other operations.
+	 *
+	 * @param {*} e - The error object or message to log.
+	 * @param {*} prefix - The prefix for the error message.
+	 */
 	logError(e, prefix = "") {
 		const msg = e?.message ?? String(e);
 		this.log.error(prefix ? `${prefix}: ${msg}` : msg);
@@ -2323,7 +2592,10 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * @param {"dashboard" | "details" | "heavy"} type type of poll to mark
+	 * Marks the current timestamp for the given poll type. This is used to track when the last successful poll of each type occurred, which can be helpful for debugging and ensuring that polling intervals are respected.
+	 * The type parameter indicates which poll type is being marked, allowing for separate tracking of dashboard, details, and heavy polls.
+	 *
+	 * @param {"dashboard" | "details" | "heavy"} type - The type of poll to mark the timestamp for (e.g., "dashboard", "details", "heavy").
 	 */
 	markPollTimestamp(type) {
 		const now = Date.now();
@@ -2338,6 +2610,34 @@ class Senec extends utils.Adapter {
 			case "heavy":
 				this.lastApiHeavyPoll = now;
 				break;
+		}
+	}
+
+	/**
+	 * Refreshes the cached GUI language from the existing state.
+	 * No extra request is performed for this. The value is only taken
+	 * from states that were already populated during normal local startup.
+	 * Lang: WIZARD.GUI_LANG 0=German, 1=English, 2=Italian
+	 */
+	async refreshGuiLangCache() {
+		try {
+			const langState = await this.getStateAsync("WIZARD.GUI_LANG");
+
+			if (langState && langState.val !== null && langState.val !== undefined && langState.val !== "") {
+				this.guiLang = String(langState.val);
+				this.log.info(`Cached SENEC language from existing state: ${this.guiLang}`);
+				return;
+			}
+
+			this.guiLang = "1";
+			this.log.info(
+				"No GUI language state available - using fallback language: 1 (English). If you just started the adapter for the first time, this is expected. If you restarted the adapter, this means that the state was not yet populated during startup - it should be available after the first successful poll.",
+			);
+		} catch (error) {
+			this.guiLang = "1";
+			this.log.debug(`Failed to refresh GUI language cache: ${error.message}`);
+		} finally {
+			this.guiLangInitialized = true;
 		}
 	}
 }

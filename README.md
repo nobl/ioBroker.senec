@@ -265,8 +265,9 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 -->
 ### **WORK IN PROGRESS**
 - Increased default API poll interval to 6 minutes. This appears to be causing less issues with the server than 5 minutes.
-- You can now define different polling intervals for dashboard (frequently), details (usually hourly and daily information), heavy (for everything else that usually is done per month or year).
+- You can now define different polling intervals for dashboard (frequently), details (usually hourly and daily information), heavy (for everything else that usually is done per month or year).<br>Please be careful with high frequency polling as this can and will lead to problems and the senec server will stop responding to your requests. Longer delays between polls are preferred.
 - Dependency updates
+- Code optimizations
 
 ### 2.5.0 (2026-03-28)
 - Added control.RebootAppliance to initiate appliance reboot. Only works if local lala.cgi is available and connected. Function requires extra permission via adapter settings. Please use responsible!
