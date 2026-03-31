@@ -264,7 +264,9 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- Rewrote AllTime History Rebuild: We should now be able to rebuild AllTime History even if the senec server struggles with timeouts. Warning! Rebuild will take considerable time now depending on the server. Current state of rebuild will be reported to log (info).
 - More comprehensive logging on what is being polled from API.
+- Better debug-logging for polling
 
 ### 2.5.1 (2026-03-31)
 - Increased default API poll interval to 6 minutes. This appears to be causing less issues with the server than 5 minutes.

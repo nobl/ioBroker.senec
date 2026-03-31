@@ -1543,7 +1543,11 @@ class Senec extends utils.Adapter {
 			}
 		}
 		const summary = this.summarizeMeasurementResults(results);
-		this.log.debug(`Details summary ${anlagenId}: ${this.formatMeasurementSummary(summary)}`);
+		const classification = this.classifyMeasurementSummary(summary);
+
+		this.log.debug(
+			`Details summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
+		);
 	}
 
 	/**
@@ -1589,7 +1593,11 @@ class Senec extends utils.Adapter {
 		}
 
 		const summary = this.summarizeMeasurementResults(results);
-		this.log.debug(`Heavy summary ${anlagenId}: ${this.formatMeasurementSummary(summary)}`);
+		const classification = this.classifyMeasurementSummary(summary);
+
+		this.log.debug(
+			`Heavy summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
+		);
 
 		await this.updateAllTimeHistory(anlagenId);
 	}
@@ -1835,7 +1843,7 @@ class Senec extends utils.Adapter {
 				!isNaN(lastDate.getTime()) &&
 				lastDate.getUTCFullYear() === now.getUTCFullYear()
 			) {
-				this.log.debug(
+				this.log.silly(
 					`Measurements for ${year}${months ? ".monthly" : ""} already updated this year. Skipping.`,
 				);
 				return { status: "skipped_existing" };
@@ -1849,7 +1857,7 @@ class Senec extends utils.Adapter {
 				lastDate.getUTCMonth() === now.getUTCMonth() &&
 				lastDate.getUTCDate() === now.getUTCDate()
 			) {
-				this.log.debug(`Measurements for ${year}${months ? ".monthly" : ""} already updated today. Skipping.`);
+				this.log.silly(`Measurements for ${year}${months ? ".monthly" : ""} already updated today. Skipping.`);
 				return { status: "skipped_existing" };
 			}
 		}
@@ -1907,7 +1915,7 @@ class Senec extends utils.Adapter {
 					lastDate.getUTCFullYear() === new Date().getUTCFullYear() &&
 					lastDate.getUTCMonth() === new Date().getUTCMonth()
 				) {
-					this.log.debug(`Measurements for ${period} already updated this month. Skipping.`);
+					this.log.silly(`Measurements for ${period} already updated this month. Skipping.`);
 					return { status: "skipped_existing" };
 				}
 			}
@@ -1967,7 +1975,7 @@ class Senec extends utils.Adapter {
 					lastDate.getMonth() === new Date().getMonth() &&
 					lastDate.getDate() === new Date().getDate()
 				) {
-					this.log.debug(`Measurements for ${period} already updated today. Skipping.`);
+					this.log.silly(`Measurements for ${period} already updated today. Skipping.`);
 					return { status: "skipped_existing" };
 				}
 			}
@@ -2095,6 +2103,58 @@ class Senec extends utils.Adapter {
 			`skipped_existing=${summary.skipped_existing}, ` +
 			`total=${summary.total}`
 		);
+	}
+
+	/**
+	 * Classifies aggregated measurement results into a higher-level health state.
+	 *
+	 * @param {{success: number; no_data: number; skipped_existing: number; total: number}} summary
+	 * @returns {"productive" | "up_to_date" | "empty" | "mixed" | "unknown"}
+	 * High-level interpretation of the measurement results.
+	 */
+	classifyMeasurementSummary(summary) {
+		if (!summary || summary.total <= 0) {
+			return "unknown";
+		}
+
+		if (summary.success === summary.total) {
+			return "productive";
+		}
+
+		if (summary.skipped_existing === summary.total) {
+			return "up_to_date";
+		}
+
+		if (summary.no_data === summary.total) {
+			return "empty";
+		}
+
+		if (summary.success > 0 || summary.no_data > 0 || summary.skipped_existing > 0) {
+			return "mixed";
+		}
+
+		return "unknown";
+	}
+
+	/**
+	 * Returns a human-readable explanation for a classified measurement summary.
+	 *
+	 * @param {"productive" | "up_to_date" | "empty" | "mixed" | "unknown"} classification
+	 * @returns {string} Description for log output.
+	 */
+	formatMeasurementClassification(classification) {
+		switch (classification) {
+			case "productive":
+				return "new data fetched successfully";
+			case "up_to_date":
+				return "all requested data already up to date";
+			case "empty":
+				return "API returned no data for all requests";
+			case "mixed":
+				return "mixed result set";
+			default:
+				return "result unclear";
+		}
 	}
 
 	/**
@@ -2806,6 +2866,12 @@ class Senec extends utils.Adapter {
 	/**
 	 * Generates a unique key for one rebuild step.
 	 * The key is used for rebuildFailures and rebuildCompletedSteps.
+	 *
+	 * Rebuild includes yearly and monthly steps.
+	 * Reason:
+	 * - yearly rebuild is needed for complete all-time aggregation
+	 * - monthly rebuild is needed because normal polling only fetches monthly breakdowns for the current and previous year
+	 * - older historic monthly data would otherwise never be populated
 	 *
 	 * @param {string} anlagenId - System id
 	 * @param {*} year - Year of the rebuild step
