@@ -197,7 +197,7 @@
     "api_interval": 6,
     "api_interval_details": 60,
     "api_interval_heavy": 1440,
-    "api_alltimeRebuild": false,
+    "api_alltimeRebuildMode": "off",
     "api_concurrency_start": 1,
     "api_concurrency_max": 1,
     "api_debug_states": false,

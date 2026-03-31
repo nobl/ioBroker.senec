@@ -583,16 +583,30 @@
 					"xl": 4,
 					"newLine": false
 				},
-				"api_alltimeRebuild": {
-					"type": "checkbox",
+				"api_alltimeRebuildMode": {
+					"type": "select",
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
 					"lg": 4,
 					"xl": 4,
 					"label": "ReBuildHistory",
-					"help": "RebuildHistoryHelp",
-					"default": false,
+					"help": "ReBuildHistoryHelp",
+					"options": [
+						{
+							"label": "Off",
+							"value": "off"
+						},
+						{
+							"label": "Resume",
+							"value": "resume"
+						},
+						{
+							"label": "Full",
+							"value": "force_full"
+						}
+					],
+					"default": "off",
 					"hidden": "data.api_use !== true",
 					"newLine": true
 				},

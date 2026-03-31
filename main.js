@@ -33,6 +33,13 @@ const CONFIG = {
 };
 
 const FIRST_HISTORY_YEAR = 2009; // senec was founded in 2009 by Mathias Hammer as Deutsche Energieversorgung GmbH (DEV) - so no way we have older data :)
+
+const REBUILD_MODE = Object.freeze({
+	OFF: "off",
+	RESUME: "resume",
+	FORCE_FULL: "force_full",
+});
+
 const batteryOn =
 	'{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 const batteryOff =
@@ -107,6 +114,8 @@ class Senec extends utils.Adapter {
 		this.rebuildFailures = new Map(); // key => { attempts, nextTryAt, lastError }
 		this.rebuildCompletedSteps = new Set();
 		this.lastLoggedRebuildPendingSummary = "";
+		this.rebuildInitializedForRun = false;
+		this.rebuildForceFullRunActive = false;
 
 		this.lastApiDashboardPoll = 0;
 		this.lastApiDetailsPoll = 0;
@@ -873,6 +882,16 @@ class Senec extends utils.Adapter {
 			this.log.warn("(checkConf) Config customUserAgent invalid. Using default: empty string");
 			this.config.api_customUserAgent = "";
 		}
+
+		this.log.debug(`(checkConf) Configured alltime rebuild mode: ${this.config.api_alltimeRebuildMode}`);
+		const configuredRebuildMode = this.config.api_alltimeRebuildMode;
+		const normalizedRebuildMode = normalizeRebuildMode(configuredRebuildMode);
+		if (String(configuredRebuildMode || "").toLowerCase() !== normalizedRebuildMode) {
+			this.log.warn(
+				`(checkConf) Config api_alltimeRebuildMode ${configuredRebuildMode} invalid. Using default: off`,
+			);
+		}
+		this.config.api_alltimeRebuildMode = normalizedRebuildMode;
 	}
 
 	/**
@@ -1486,7 +1505,7 @@ class Senec extends utils.Adapter {
 			this.logError(systemError, `❌ System ${anlagenId} failed.`);
 		}
 
-		if (this.config.api_alltimeRebuild && !this.rebuildRunning && !rebuildAlreadyExecuted) {
+		if (this.isRebuildEnabled() && !this.rebuildRunning && !rebuildAlreadyExecuted) {
 			try {
 				await this.doRebuild(anlagenId);
 				result.rebuildExecuted = true;
@@ -1752,11 +1771,9 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Performs the rebuild of the all-time history for a given system (Anlage).
-	 * The method checks for pending rebuild steps for the specified system ID and executes them in batches based on the configured number of steps per cycle. It logs the progress of the rebuild process, including any pending failures, and updates the all-time history once the rebuild is complete. The method also checks if the rebuild is finished for all systems and resets the relevant state if necessary. This method is essential for maintaining the integrity and completeness of the historical data for each system, allowing for accurate analysis and insights based on the all-time history.
-	 * The method includes error handling to ensure that any exceptions that occur during the rebuild process are logged appropriately, and it manages the state of the rebuild process to prevent overlapping executions. By structuring the rebuild process in this way, the method optimizes the execution of rebuild steps while also providing comprehensive coverage of the necessary tasks to complete the rebuild effectively.
-	 
-	 * @param {*} anlagenId - The ID of the system (Anlage) for which to perform the rebuild of the all-time history.
-	 * @returns {Promise<void>}
+	 *
+	 * @param {string} anlagenId - The ID of the system (Anlage) for which to perform the rebuild
+	 * @returns {Promise<void>} Resolves when the current rebuild batch is done
 	 */
 	async doRebuild(anlagenId) {
 		if (this.rebuildRunning) {
@@ -1764,6 +1781,7 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
+		await this.initializeForcedRebuildIfNeeded();
 		this.rebuildRunning = true;
 
 		try {
@@ -1796,7 +1814,7 @@ class Senec extends utils.Adapter {
 			this.log.info(`Rebuild progress für Anlage ${anlagenId}: ${doneSteps}/${totalSteps} (${percent}%)`);
 
 			if (await this.isRebuildFinishedForSystem(anlagenId)) {
-				this.log.info(`✅ Rebuild vollständig abgeschlossen für Anlage ${anlagenId}.`);
+				this.log.info(`✅ Rebuild completed for system: ${anlagenId}.`);
 				await this.updateAllTimeHistory(anlagenId);
 			} else {
 				this.logRebuildPendingFailuresIfChanged();
@@ -1804,11 +1822,16 @@ class Senec extends utils.Adapter {
 
 			if (await this.isRebuildFinishedGlobally()) {
 				this.log.info(
-					"✅ Rebuild für alle Anlagen vollständig abgeschlossen. Setze api_alltimeRebuild zurück. (⚠️ Adapter startet dabei neu!)",
+					"✅ Rebuild completed for all systems. Resetting rebuild mode to 'off'. (⚠️ Adapter restarts!)",
 				);
 
+				this.rebuildInitializedForRun = false;
+				this.rebuildForceFullRunActive = false;
+
 				await this.extendForeignObject(`system.adapter.${this.namespace}`, {
-					native: { api_alltimeRebuild: false },
+					native: {
+						api_alltimeRebuildMode: REBUILD_MODE.OFF,
+					},
 				});
 			}
 		} finally {
@@ -2953,12 +2976,17 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * Returns true if this rebuild step already has a persisted successful result.
-	 * For rebuild purposes any valid existing LAST_UPDATED value is sufficient.
+	 * Checks if one rebuild step is already done.
+	 *
+	 * Order:
+	 * 1. in-memory cache
+	 * 2. persisted rebuild done marker
+	 * 3. fallback: existing LAST_UPDATED state
 	 *
 	 * @param {string} anlagenId - System id
 	 * @param {number} year - year
 	 * @param {boolean} monthly - monthly or yearly
+	 * @returns {Promise<boolean>} True if the step is already complete
 	 */
 	async isRebuildStepDone(anlagenId, year, monthly) {
 		const stepKey = this.getRebuildStepKey(anlagenId, year, monthly);
@@ -2967,20 +2995,17 @@ class Senec extends utils.Adapter {
 			return true;
 		}
 
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.Yearly.`;
-		const stateId = `${pfx}${year}.${monthly ? "monthly." : ""}${LAST_UPDATED}`;
+		const rebuildDoneState = await this.getStateAsync(this.getRebuildDoneStateId(anlagenId, year, monthly));
+		if (rebuildDoneState && rebuildDoneState.val === true) {
+			this.rebuildCompletedSteps.add(stepKey);
+			return true;
+		}
 
-		const state = await this.getStateAsync(stateId);
-		if (!state || state.val === null || state.val === undefined) {
+		if (this.rebuildForceFullRunActive) {
 			return false;
 		}
 
-		const lastDate = new Date(String(state.val));
-		if (isNaN(lastDate.getTime())) {
-			return false;
-		}
-
-		return true;
+		return false;
 	}
 
 	/**
@@ -3038,12 +3063,11 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * Executes a single rebuild step for a specific system, year, and mode.
-	 * The method attempts to perform the measurements for the specified year and mode, and based on the outcome, it marks the step as successful or failed.
-	 * If the step is successful, it logs an informational message indicating the success. If the step fails due to an API-relevant error, it marks the step as failed, schedules a retry, and logs an informational message with the error details and the next retry time.
+	 * Executes one rebuild step.
 	 *
-	 * @param {string} anlagenId - The ID of the system for which to run the rebuild step.
-	 * @param {{ anlagenId?: string; year: any; monthly: any; }} step - The rebuild step object containing the year, mode, and other relevant information for the step to be executed.
+	 * @param {string} anlagenId - The ID of the system for which to run the rebuild step
+	 * @param {{ anlagenId?: string; year: number; monthly: boolean; }} step - rebuild step
+	 * @returns {Promise<boolean>} True if step finished successfully, otherwise false
 	 */
 	async runSingleRebuildStep(anlagenId, step) {
 		const stepLabel = `${step.year}${step.monthly ? ".monthly" : ""}`;
@@ -3060,26 +3084,18 @@ class Senec extends utils.Adapter {
 				if (result?.status === "success" || result?.status === "skipped_existing") {
 					this.rebuildCompletedSteps.add(stepKey);
 					this.rebuildFailures.delete(stepKey);
-					if (result?.status === "success") {
-						this.rebuildCompletedSteps.add(stepKey);
-						this.rebuildFailures.delete(stepKey);
-						this.log.info(`✅ Rebuild Schritt erfolgreich: Anlage ${anlagenId} / ${stepLabel}`);
-						return true;
-					}
+					await this.persistRebuildDone(anlagenId, step.year, step.monthly);
 
-					if (result?.status === "skipped_existing") {
-						this.rebuildCompletedSteps.add(stepKey);
-						this.rebuildFailures.delete(stepKey);
-						this.log.info(`✅ Rebuild Schritt bereits vorhanden: Anlage ${anlagenId} / ${stepLabel}`);
-						return true;
-					}
+					this.log.info(`✅ Rebuild step successful: System ${anlagenId} / ${stepLabel}`);
 					return true;
 				}
 
 				if (result?.status === "no_data") {
 					this.rebuildCompletedSteps.add(stepKey);
 					this.rebuildFailures.delete(stepKey);
-					this.log.info(`✅ Rebuild Schritt ohne Daten abgeschlossen: Anlage ${anlagenId} / ${stepLabel}`);
+					await this.persistRebuildDone(anlagenId, step.year, step.monthly);
+
+					this.log.info(`✅ Rebuild step completed with no data: System ${anlagenId} / ${stepLabel}`);
 					return true;
 				}
 
@@ -3089,13 +3105,13 @@ class Senec extends utils.Adapter {
 				const isApiRelevant = this.isApiRelevantRebuildError(error);
 
 				this.log.warn(
-					`⚠️ Rebuild Schritt fehlgeschlagen: Anlage ${anlagenId} / ${stepLabel} ` +
+					`⚠️ Rebuild step failed: System ${anlagenId} / ${stepLabel} ` +
 						`(Versuch ${attempt}/${this.rebuildStepMaxRetries}): ${error.message}`,
 				);
 
 				if (!isApiRelevant) {
 					this.log.error(
-						`❌ Rebuild Schritt dauerhaft abgebrochen (kein retrybarer API-Fehler): Anlage ${anlagenId} / ${stepLabel}: ${error.message}`,
+						`❌ Rebuild step aborted eventually (no recoverable API error): System ${anlagenId} / ${stepLabel}: ${error.message}`,
 					);
 					throw error;
 				}
@@ -3113,8 +3129,8 @@ class Senec extends utils.Adapter {
 					});
 
 					this.log.info(
-						`ℹ️ Rebuild Schritt wird später erneut versucht: Anlage ${anlagenId} / ${stepLabel} ` +
-							`(nächster Versuch in ${Math.round(delayMs / 60000)} min)`,
+						`ℹ️ Trying rebuild step again later: System ${anlagenId} / ${stepLabel} ` +
+							`(next try in ${Math.round(delayMs / 60000)} min)`,
 					);
 
 					return false;
@@ -3123,6 +3139,121 @@ class Senec extends utils.Adapter {
 				await this.delay(Math.min(30000, attempt * 5000));
 			}
 		}
+
+		return false;
+	}
+
+	/**
+	 * Returns the state id used to persist rebuild completion for one rebuild step.
+	 *
+	 * @param {string} anlagenId - System id
+	 * @param {number} year - year
+	 * @param {boolean} monthly - monthly or yearly
+	 * @returns {string} Fully qualified state id for the rebuild done marker
+	 */
+	getRebuildDoneStateId(anlagenId, year, monthly) {
+		return `${API_PFX}Anlagen.${anlagenId}.Measurements.Yearly.${year}.${monthly ? "monthly." : ""}_rebuildDone`;
+	}
+
+	/**
+	 * Persists a rebuild completion marker for one step.
+	 *
+	 * This allows the adapter to remember across restarts that a year/month step
+	 * was already checked successfully, including "no_data" situations.
+	 *
+	 * @param {string} anlagenId - System id
+	 * @param {number} year - year
+	 * @param {boolean} monthly - monthly or yearly
+	 * @returns {Promise<void>} Resolves when marker was written
+	 */
+	async persistRebuildDone(anlagenId, year, monthly) {
+		const stateId = this.getRebuildDoneStateId(anlagenId, year, monthly);
+		await this.doState(stateId, true, "Rebuild step completed", "", false, true);
+	}
+
+	/**
+	 * Initializes a forced rebuild run.
+	 *
+	 * If rebuild mode is "force_full", previously persisted rebuild completion
+	 * markers are cleared once so that the next rebuild run really starts from scratch.
+	 *
+	 * Important:
+	 * - rebuild mode "resume" remains active afterwards
+	 * - rebuild mode "force_full" is reset immediately to "resume"
+	 *   to avoid restarting the forced full rebuild again after adapter restarts
+	 *
+	 * @returns {Promise<void>} Resolves when initialization is complete
+	 */
+	async initializeForcedRebuildIfNeeded() {
+		if (!this.isRebuildEnabled() || !this.isForceFullRebuildRequested() || this.rebuildInitializedForRun) {
+			return;
+		}
+
+		this.log.info(
+			"🔄 Initializing forced full rebuild: clearing previous rebuild markers so that all rebuild steps are checked again.",
+		);
+
+		this.rebuildCompletedSteps.clear();
+		this.rebuildFailures.clear();
+		this.lastLoggedRebuildPendingSummary = "";
+		this.rebuildForceFullRunActive = true;
+
+		for (const anlagenId of this.apiKnownSystems) {
+			for (const step of this.getAllRebuildStepsForSystem(anlagenId)) {
+				const stateId = this.getRebuildDoneStateId(anlagenId, step.year, step.monthly);
+
+				try {
+					await this.delStateAsync(stateId);
+				} catch {
+					// ignore
+				}
+
+				try {
+					await this.delObjectAsync(stateId);
+				} catch {
+					// ignore
+				}
+			}
+		}
+
+		this.rebuildInitializedForRun = true;
+
+		this.log.info(
+			"⚠️ Forced full rebuild initialization finished. Rebuild mode is being reset from 'force_full' to 'resume' now, which will restart the adapter once. This is expected. The rebuild itself will continue afterwards in resume mode.",
+		);
+
+		await this.extendForeignObject(`system.adapter.${this.namespace}`, {
+			native: {
+				api_alltimeRebuildMode: REBUILD_MODE.RESUME,
+			},
+		});
+	}
+
+	/**
+	 * @returns {string} normalized rebuild mode
+	 */
+	getRebuildMode() {
+		const mode = String(this.config.api_alltimeRebuildMode || REBUILD_MODE.OFF).toLowerCase();
+
+		if (mode !== REBUILD_MODE.OFF && mode !== REBUILD_MODE.RESUME && mode !== REBUILD_MODE.FORCE_FULL) {
+			return REBUILD_MODE.OFF;
+		}
+
+		return mode;
+	}
+
+	/**
+	 * @returns {boolean} true if any rebuild mode is active
+	 */
+	isRebuildEnabled() {
+		return this.getRebuildMode() !== REBUILD_MODE.OFF;
+	}
+
+	/**
+	 * @returns {boolean} true if current rebuild mode requests a forced full rebuild
+	 */
+	isForceFullRebuildRequested() {
+		return this.getRebuildMode() === REBUILD_MODE.FORCE_FULL;
 	}
 
 	/**
@@ -3345,4 +3476,14 @@ function computeBackoffDelay(baseInterval, attempt, maxMultiplier = 8) {
 
 	// Full jitter
 	return Math.floor(Math.random() * expDelay);
+}
+
+function normalizeRebuildMode(value) {
+	const mode = String(value || "").toLowerCase();
+
+	if (mode === REBUILD_MODE.OFF || mode === REBUILD_MODE.RESUME || mode === REBUILD_MODE.FORCE_FULL) {
+		return mode;
+	}
+
+	return REBUILD_MODE.OFF;
 }

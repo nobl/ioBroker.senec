@@ -68,6 +68,9 @@
     "PollIntervalAPIDetailsHelp": "Here you can define the polling interval [min 10, max 1440 minutes] for detailed data. Default = 60. This includes data for hour and day that can therefore be polled less frequently. Setting it to 60 minutes is recommended to get the most up-to-date data without putting too much load on the API or errors.",
     "PollIntervalAPIHeavy": "Polling Interval Heavy (minutes)",
     "PollIntervalAPIHeavyHelp": "Here you can define the polling interval [min 720, max 2880 minutes] for heavy data. Default = 1440 (once per day). This includes data for month and year that can therefore be polled less frequently. Setting it to 1440 minutes is recommended to get the most up-to-date data without putting too much load on the API or errors.",
-    "ReBuildHistory": "Rebuild AllTime history (one-time)",
-    "RebuildHistoryHelp": "Check this if you want the adapter to rebuild history values back to date of installation."
+    "ReBuildHistory": "Rebuild AllTime history",
+    "ReBuildHistoryHelp": "Off = Normal mode, Resume = Continue rebuild with existing data, Full = Re-Fetch all data from API again before resuming. Use Full if you think local data is erraneous. (Up to two adapter restarts will happen for Full and Resume!)",
+    "Off": "Off",
+    "Resume": "Resume",
+    "Full": "Full"
 }
