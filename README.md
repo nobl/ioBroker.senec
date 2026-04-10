@@ -264,6 +264,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- Dependency updates
 - Updated iobroker\testing-action-* versions
 
 ### 2.5.2 (2026-03-31)
