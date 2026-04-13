@@ -1903,9 +1903,13 @@ class Senec extends utils.Adapter {
 		}
 
 		const startDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0));
-		const endDate = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0) - 1);
+		const rawEndDate = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0) - 1);
+		const endDate = this.clampEndDateToNow(rawEndDate);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
+		this.log.debug(
+			`Measurement window YEAR (${year}${months ? ".monthly" : ""}): from=${startDate.toISOString()} to=${endDate.toISOString()}`,
+		);
 
 		let resolution = "YEAR";
 		if (months) {
@@ -1962,9 +1966,13 @@ class Senec extends utils.Adapter {
 		}
 
 		const startDate = date;
-		const endDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) - 1);
+		const rawEndDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) - 1);
+		const endDate = this.clampEndDateToNow(rawEndDate);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
+		this.log.debug(
+			`Measurement window MONTH (${period}): from=${startDate.toISOString()} to=${endDate.toISOString()}`,
+		);
 
 		let resolution = "MONTH";
 		if (period === "current_month.daily" || period === "previous_month.daily") {
@@ -2022,9 +2030,13 @@ class Senec extends utils.Adapter {
 		}
 
 		const startDate = date;
-		const endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+		const rawEndDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+		const endDate = this.clampEndDateToNow(rawEndDate);
 		const start = encodeURIComponent(startDate.toISOString());
 		const end = encodeURIComponent(endDate.toISOString());
+		this.log.debug(
+			`Measurement window DAY (${period}): from=${startDate.toISOString()} to=${endDate.toISOString()}`,
+		);
 
 		let resolution = "DAY";
 		if (period === "today.hourly" || period === "yesterday.hourly") {
@@ -3305,6 +3317,17 @@ class Senec extends utils.Adapter {
 			this.timers.push(timer);
 			timer.unref?.();
 		});
+	}
+
+	/**
+	 * Clamp an end date so it never lies in the future.
+	 *
+	 * @param {Date} endDate calculated period end
+	 * @returns {Date} endDate or current time, whichever is earlier
+	 */
+	clampEndDateToNow(endDate) {
+		const now = new Date();
+		return endDate.getTime() > now.getTime() ? now : endDate;
 	}
 }
 
