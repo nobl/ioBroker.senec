@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.5.2",
+    "version": "2.5.3",
     "news": {
+      "2.5.3": {
+        "en": "Clamping end-dates to current time if they are in the future to avoid issues with API\nDependency updates\nUpdated iobroker\\testing-action-* versions",
+        "de": "Ende-Zeitpunkte sind nun nicht mehr in der Zukunft, um Probleme mit API zu vermeiden\nÄnderung der Abhängigkeit\nAktualisierte iobroker\\testing-action-* Versionen",
+        "ru": "Закрепление конечных дат до текущего времени, если они в будущем, чтобы избежать проблем с API\nОбновления зависимостей\nОбновленные версии iobroker\\testing-action-*",
+        "pt": "Fechando as datas finais para a hora atual se elas estiverem no futuro para evitar problemas com API\nAtualizações de dependência\nVersão actualizada do iobroker\\testing-action-*",
+        "nl": "Klemmen van einddatums naar de huidige tijd als ze in de toekomst om problemen met API te voorkomen\nAfhankelijkheidsupdates\nBijgewerkte iobroker\\testing-action-* versies",
+        "fr": "Relier les dates de fin à l'heure actuelle si elles sont à l'avenir pour éviter les problèmes avec l'API\nMises à jour sur la dépendance\nMise à jour des versions iobroker\\testing-action-*",
+        "it": "Clamping end-dates al momento attuale se sono in futuro per evitare problemi con API\nAggiornamenti di dipendenza\nVersioni aggiornate dello iobroker\\testing-action-*",
+        "es": "Clamping end-dates to current time if they are in the future to avoid issues with API\nActualizaciones de dependencia\nActualizado iobroker\\testing-action-*",
+        "pl": "Zaciśnięcie daty zakończenia do bieżącego czasu, jeśli są w przyszłości, aby uniknąć problemów z API\nAktualizacje zależności\nAktualizacja iobroker\\ testing- action- * wersje",
+        "uk": "Затискання кінцевих оновлень до поточного часу, якщо вони в майбутньому, щоб уникнути проблем з API\nОновлення залежності\nОновлено iobroker\\testing-action-* версії",
+        "zh-cn": "如果最终日期是为了避免与API发生问题,则将最终日期压缩到当前时间\n依赖性更新\n更新的 iobroker\\ testing- action- * 版本"
+      },
       "2.5.2": {
         "en": "Rewrote AllTime History Rebuild: We should now be able to rebuild AllTime History even if the senec server struggles with timeouts. Warning! Rebuild will take considerable time now depending on the server. Current state of rebuild will be reported to log (info).\nYou will now need to supply the installation year of your appliance upon AllTime History rebuild if you don't want empty yearly folders in the measurements path for yours you don't have data.\nMore comprehensive logging on what is being polled from API.\nBetter debug-logging for polling",
         "de": "Rewrote AllTime History Rebuild: Wir sollten jetzt in der Lage sein, AllTime History wieder aufzubauen, auch wenn der senec Server mit Timeouts kämpft. Warnung! Rebuild wird jetzt - abhängig vom Server - deutlich mehr Zeit in Anspruch nehmen. Aktueller Zustand des Wiederaufbaus wird im log gemeldet (info).\nSie müssen jetzt das Installationsjahr Ihres Geräts für den Aufbau der AllTime History angeben, um leere Ordner für Jahre ohne Daten zu vermeiden.\nUmfassendere Protokollierung der API Abfragen.\nBesseres Debug-Logging für die Abfragen.",
@@ -80,19 +93,6 @@
         "pl": "Optymalizacja w Token Refesh Szenarios\nOptymalizacja w przypadku kwestii uwierzytelniania\nPersisted RefreshToken na adapterze restartuje (mniej login)\nPrzeformułowane błędy / komunikaty ostrzegawcze\nAktualizacje zależności",
         "uk": "Оптимізація в Token Refesh Szenarios\nОптимізація у разі автентифікації\nПеревірений RefreshToken через перезавантаження адаптерів (без логінів)\nПомилки/пожежні повідомлення\nОновлення залежності",
         "zh-cn": "Token Refesh Szenarios的优化\n认证问题的优化\n跨越适配器重启( 减少登录) 的 Persisted rescrewToken\n重写错误/ 警告消息\n依赖性更新"
-      },
-      "2.4.5": {
-        "en": "fixed typo that made today/hourly today/horly. You can safely delete the horly branch Measurements/Daily/horly\nUpdated delay for token refresh (it can be up to 2 min now).",
-        "de": "fester Typus, der heute / stundenlang gemacht wird. Sie können die horly branch Messungen/Daily/horly sicher löschen\nAktualisierte Verzögerung für Token-Erfrischung (es kann jetzt bis zu 2 min sein).",
-        "ru": "фиксированная опечатка, сделанная сегодня / почасово сегодня / вслух. Вы можете безопасно удалить измерения / Ежедневные / Хорли\nОбновленная задержка обновления токена (можно до 2 минут).",
-        "pt": "erro de digitação fixo que fez hoje/hourly hoje/horly. Você pode excluir com segurança as medidas horly branch / diário / baixo\nAtraso atualizado para atualização do token (pode ser até 2 min agora).",
-        "nl": "vaste typefout die vandaag/dag per uur is gemaakt. U kunt veilig verwijderen van de horly tak Metingen/Daily/horly\nBijgewerkte vertraging voor token vernieuwen (het kan tot 2 min nu).",
-        "fr": "typo fixe qui a été fait aujourd'hui/heureusement aujourd'hui/horly. Vous pouvez supprimer en toute sécurité la branche horly Mesures/Daily/Horly\nDélai mis à jour pour le rafraîchissement du jeton (il peut être jusqu'à 2 min maintenant).",
-        "it": "typo fisso che ha fatto oggi / ora odierna / breve. È possibile eliminare in modo sicuro il ramo orrendo Misure/Daily/horly\nRitardo aggiornato per rinfrescare token (può essere fino a 2 minuti ora).",
-        "es": "typo fijo que hizo hoy/hora hoy/horly. Usted puede eliminar de forma segura la rama horrible Medidas/Daily/horly\nRetraso actualizado para el refresco de token (puede ser hasta 2 min ahora).",
-        "pl": "naprawiono literówkę, która była dziś / co godzinę dzisiaj / horly. Można bezpiecznie usunąć koński oddział Pomiary / Daily / Horly\nAktualizacja opóźnienia dla token odświeżania (może być do 2 min teraz).",
-        "uk": "фіксований тип, який зробив сьогодні/часно. Ви можете сміливо видалити заміри орлі/Daily/horly\nОновлена затримка для освіження токени (він тепер може бути до 2 хв).",
-        "zh-cn": "今天/今天/小时的固定类型。 您可以安全删除 Horly 分支测量/ Daily/ horly\n更新更新的令牌刷新延迟( 现在最多可达2分钟) ."
       }
     },
     "docs": {
