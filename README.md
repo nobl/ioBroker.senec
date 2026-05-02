@@ -263,6 +263,9 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- (copilot) Adapter requires node.js >= 22 now
+
 ### 2.5.3 (2026-04-13)
 - Clamping end-dates to current time if they are in the future to avoid issues with API
 - Dependency updates
