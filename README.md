@@ -393,6 +393,8 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 
 ### [Former Updates](CHANGELOG_old.md)
 
+[Older changelogs can be found there](CHANGELOG_OLD.md)
+
 ## License
 MIT License
 
