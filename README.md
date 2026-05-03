@@ -265,6 +265,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 -->
 ### **WORK IN PROGRESS**
 - (copilot) Adapter requires node.js >= 22 now
+- Dependency updates
 
 ### 2.5.3 (2026-04-13)
 - Clamping end-dates to current time if they are in the future to avoid issues with API
@@ -391,7 +392,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 * Updated to use new SENEC API via mein-senec.de - Thanks to @maett81
 * Some code and dependency housekeeping
 
-### [Former Updates](CHANGELOG_old.md)
+### [Former Updates](CHANGELOG_OLD.md)
 
 ## License
 MIT License
