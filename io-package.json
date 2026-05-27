@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.5.3",
+    "version": "2.5.4",
     "news": {
+      "2.5.4": {
+        "en": "Adapter requires node.js >= 22 now\nMinor fixes\nDependency updates",
+        "de": "Adapter benötigt node.js >= 22 jetzt\nKleinere Reparaturen\nÄnderung der Abhängigkeit",
+        "ru": "Адаптер требует node.js >= 22 сейчас\nНезначительные исправления\nОбновления зависимостей",
+        "pt": "Adaptador requer nod.js >= 22 agora\nCorrecções menores\nAtualizações de dependência",
+        "nl": "Voor de adapter zijn node.js < 22 nu nodig\nKleine correcties\nAfhankelijkheidsupdates",
+        "fr": "Adaptateur nécessite node.js >= 22 maintenant\nCorrections mineures\nMises à jour sur la dépendance",
+        "it": "Adattatore richiede node.js >= 22 ora\nCorrezioni minori\nAggiornamenti di dipendenza",
+        "es": "Adaptador requiere node.js ю= 22 ahora\nArreglos menores\nActualizaciones de dependencia",
+        "pl": "Adapter wymaga node.js > = 22\nMałe poprawki\nAktualizacje zależności",
+        "uk": "Адаптер вимагає node.js >= 22 тепер\nМінорні кріплення\nОновлення залежності",
+        "zh-cn": "适配器需要节点.js 现在22\n小修补\n依赖性更新"
+      },
       "2.5.3": {
         "en": "Clamping end-dates to current time if they are in the future to avoid issues with API\nDependency updates\nUpdated iobroker\\testing-action-* versions",
         "de": "Ende-Zeitpunkte sind nun nicht mehr in der Zukunft, um Probleme mit API zu vermeiden\nÄnderung der Abhängigkeit\nAktualisierte iobroker\\testing-action-* Versionen",
@@ -80,19 +93,6 @@
         "pl": "Wyraźnie wskazuje, że początkowy logowanie API zepsuty i adapter będzie wyłączyć API sondażu do ponownego uruchomienia\nNiektóre ostrzeżenia przesunęły się do debugowania (ponieważ są one w zasadzie przeznaczone wyłącznie do debugowania)\nWykonane z axios- cookiejar- wsparcie ESM kompatybilne (dynamiczny import). Rozwiązuje problemy z węzłem 22.\nRND wykonane node22 + bezpieczne.\nOptymalizacja kodu",
         "uk": "Очистити, що початковий логін API, завантажений і адаптер буде вимкнено опитування API до перезавантаження\nДеякі попередження переїхали на дебвуг (як вони досить багато для цілей дебюг)\nЗроблено використання axios-cookiejar-support ESM сумісний (динамічний імпорт). Поки питання з вершиною 22.\nRND виготовлений вузол22+ сейф.\nОптимізація коду",
         "zh-cn": "明确显示初始API登录失败, 适配器将关闭API投票, 直到重新启动\n某些警告移动到调试( 因为它们几乎只用于调试目的)\n使Axios-cookiejar-支持无害环境管理的使用兼容(动态导入)。 用22号节点解决问题.\nRND使节点22+安全.\n代码优化"
-      },
-      "2.4.6": {
-        "en": "Optimizations in Token Refesh Szenarios\nOptimizations in case of authentication issues\nPersisted RefreshToken across adapter restarts (less logins)\nReworded errors/warning messages\nDependency updates",
-        "de": "Optimierungen in Token Refesh Szenarios\nOptimierungen bei Authentifizierungsproblemen\nPersisted RefreshToken über Adapter neu gestartet (weniger Logins)\nReworded Fehler/Warnmeldungen\nÄnderung der Abhängigkeit",
-        "ru": "Оптимизация в Token Refesh Szenarios\nОптимизация в случае проблем с аутентификацией\nPersisted RefreshToken через перезапуск адаптера (меньше логинов)\nПерефразированные ошибки/предупреждающие сообщения\nОбновления зависимостей",
-        "pt": "Otimizações em Token Refesh Szenarios\nOtimizações em caso de problemas de autenticação\nActualização PersistidaToken através do adaptador reinicia (menos logins)\nErros/mensagens de aviso reformuladas\nAtualizações de dependência",
-        "nl": "Optimalisaties in Szenarios\nOptimalisaties bij authenticatieproblemen\nPersisted RefreshToken over adapter herstarten (minder logins)\nHerformuleerde fouten/waarschuwingsberichten\nAfhankelijkheidsupdates",
-        "fr": "Optimisations en jeton Refesh Szenarios\nOptimisations en cas de problèmes d'authentification\nPersisted RefreshToken sur les redémarrages de l'adaptateur (moins de connexions)\nErreurs ou messages d'avertissement reformulés\nMises à jour sur la dépendance",
-        "it": "Ottimizzazione in Token Refesh Szenarios\nOttimizzazione in caso di problemi di autenticazione\nPersisted RefreshToken attraverso l'adattatore riavvia (meno login)\nErrori riformulati / messaggi di avviso\nAggiornamenti di dipendenza",
-        "es": "Optimizaciones en Token Refesh Szenarios\nOptimizaciones en caso de problemas de autenticación\nPersisted RefreshToken cruza el adaptador descansa (sin logins)\nErrores o mensajes de alerta\nActualizaciones de dependencia",
-        "pl": "Optymalizacja w Token Refesh Szenarios\nOptymalizacja w przypadku kwestii uwierzytelniania\nPersisted RefreshToken na adapterze restartuje (mniej login)\nPrzeformułowane błędy / komunikaty ostrzegawcze\nAktualizacje zależności",
-        "uk": "Оптимізація в Token Refesh Szenarios\nОптимізація у разі автентифікації\nПеревірений RefreshToken через перезавантаження адаптерів (без логінів)\nПомилки/пожежні повідомлення\nОновлення залежності",
-        "zh-cn": "Token Refesh Szenarios的优化\n认证问题的优化\n跨越适配器重启( 减少登录) 的 Persisted rescrewToken\n重写错误/ 警告消息\n依赖性更新"
       }
     },
     "docs": {
