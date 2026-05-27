@@ -264,7 +264,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
-- (copilot) Adapter requires node.js >= 22 now
+- Adapter requires node.js >= 22 now
 - Minor fixes
 - Dependency updates
 
