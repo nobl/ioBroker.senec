@@ -425,7 +425,7 @@
 					"xl": 4,
 					"label": "USE_SENEC_API",
 					"help": "USE_SENEC_API_HELP",
-					"default": "",
+					"default": false,
 					"newLine": true
 				},
 				"api_mail": {
