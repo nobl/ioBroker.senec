@@ -23,6 +23,7 @@ const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`)
 const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev/systems/api";
 const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev/measurements/api";
 const HOST_ABILITIES = "https://senec-app-abilities-proxy.prod.senec.dev/abilities/api";
+const HOST_WALLBOX = "https://senec-app-wallbox-proxy.prod.senec.dev/wallbox/api";
 const SSO_BASE_URL = "https://sso.senec.com/realms/senec/protocol/openid-connect";
 const SSO_AUTH_URL = `${SSO_BASE_URL}/auth`;
 const SSO_TOKEN_URL = `${SSO_BASE_URL}/token`;
@@ -174,6 +175,7 @@ class Senec extends utils.Adapter {
 		this.socketControlsCreated = false;
 		this.wallboxCount = undefined; // set after first local poll reads WALLBOX data
 		this.wallboxControlsCreated = false;
+		this.apiWallboxCount = 0; // set after wallbox search via App API
 
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
@@ -1942,6 +1944,7 @@ class Senec extends utils.Adapter {
 			this.apiKnownSystems.add(sys.id);
 			await this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
 			await this.pollApiAbilities(sys.id);
+			await this.pollApiWallboxSearch(sys.id);
 		}
 	}
 
@@ -2029,11 +2032,15 @@ class Senec extends utils.Adapter {
 		if (ctx.shouldRunDashboard) {
 			this.log[logType](`🔄 Polling system ${anlagenId} - Dashboard`);
 			result.dashboardScheduled = true;
-			const results = await Promise.allSettled([
+			const dashboardPolls = [
 				this.pollApiDashboard(anlagenId),
 				this.pollApiSystemStatus(anlagenId),
 				// pollApiOnlineState disabled — endpoint returns 404, not yet active on SENEC side
-			]);
+			];
+			if (this.apiWallboxCount > 0) {
+				dashboardPolls.push(this.pollApiWallboxSearch(anlagenId));
+			}
+			const results = await Promise.allSettled(dashboardPolls);
 			result.dashboardSucceeded = results.every((r) => r.status === "fulfilled");
 		}
 
@@ -2246,6 +2253,46 @@ class Senec extends utils.Adapter {
 		} catch (error) {
 			this.logError(error, `❌ Forecast charging settings poll failed for ${anlagenId}`);
 			throw error;
+		}
+	}
+
+	/**
+	 * Searches for wallboxes via the App API.
+	 * Called once at startup. Stores wallbox data under _api.Anlagen.{id}.Wallboxes.
+	 *
+	 * @param {string} anlagenId - The ID of the system to search wallboxes for.
+	 */
+	async pollApiWallboxSearch(anlagenId) {
+		try {
+			const res = await this.apiPost(`${HOST_WALLBOX}/v1/systems/wallboxes/search`, {
+				systemIds: [anlagenId],
+			});
+			if (!res?.data) {
+				return;
+			}
+			if (!Array.isArray(res.data)) {
+				this.log.debug(`Wallbox search returned non-array response for ${anlagenId}`);
+				return;
+			}
+			if (res.data.length === 0) {
+				this.log.debug(`No wallboxes found for ${anlagenId}`);
+				return;
+			}
+			this.apiWallboxCount = res.data.length;
+			this.log.info(`Found ${this.apiWallboxCount} wallbox(es) via API for ${anlagenId}`);
+			for (let i = 0; i < res.data.length; i++) {
+				await this.evalPoll(res.data[i], `${API_PFX}Anlagen.${anlagenId}.Wallboxes.${i}.`);
+			}
+			await this.doState(
+				`${API_PFX}info.lastPoll.WallboxSearch`,
+				new Date().toISOString(),
+				"Last successful WallboxSearch poll",
+				"",
+				false,
+			);
+		} catch (error) {
+			this.logError(error, `❌ Wallbox search failed for ${anlagenId}`);
+			// Don't re-throw — wallbox search failure at startup shouldn't block anything
 		}
 	}
 
@@ -2539,6 +2586,85 @@ class Senec extends utils.Adapter {
 
 					// Retry only for auth errors (handled above)
 					// For rate limiting / timeouts we let AdaptiveRequestQueue decide pacing
+					throw e;
+				}
+			}
+		});
+	}
+
+	/**
+	 * API Post with the same token management and retry logic as apiGet.
+	 *
+	 * @param {string} url - The URL to post to
+	 * @param {object} data - The JSON body to send
+	 * @param {object} [config] - Optional axios config overrides
+	 * @returns {Promise<object>} The axios response
+	 */
+	async apiPost(url, data, config = {}) {
+		if (this.unloaded) {
+			return;
+		}
+
+		if (!this.apiClient) {
+			throw new Error("API client not initialized");
+		}
+		if (!this.apiQueue) {
+			throw new Error("API queue not initialized");
+		}
+
+		const client = this.apiClient;
+		return this.apiQueue.add(async () => {
+			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
+				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
+				await this.refreshTokenSingleFlight();
+			}
+
+			if (!this.currentToken) {
+				this.log.debug("🔐 No current token. Refreshing before request...");
+				await this.refreshTokenSingleFlight();
+			}
+
+			const maxAttempts = 3;
+
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				try {
+					return await client.post(url, data, {
+						...config,
+						headers: {
+							Authorization: `Bearer ${this.currentToken}`,
+							"Content-Type": "application/json",
+							...(config.headers || {}),
+						},
+					});
+				} catch (e) {
+					const status = e.response?.status;
+
+					const isTimeout =
+						e.code === "ECONNABORTED" ||
+						e.code === "ETIMEDOUT" ||
+						e.name === "AbortError" ||
+						e.name === "CanceledError" ||
+						/timeout/i.test(e.message || "");
+
+					if (status === 401 && attempt < maxAttempts - 1) {
+						this.log.debug("🔐 401 received. Refreshing token...");
+						await this.refreshTokenSingleFlight();
+						continue;
+					}
+
+					if (status === 429) {
+						this.log.warn("🚦 API returned 429 (rate limited). Backoff handled by AdaptiveRequestQueue.");
+					}
+
+					if (isTimeout) {
+						this.log.warn("⏱ API request timed out - likely server overload or implicit rate limiting.");
+					}
+
+					this.log.debug(
+						`API POST request failed (attempt ${attempt + 1}/${maxAttempts}) ` +
+							`for ${url} - status=${status || "none"} - code=${e.code || "n/a"}`,
+					);
+
 					throw e;
 				}
 			}
