@@ -263,7 +263,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.6.0 (2026-07-06)
 - TOTP/2FA: If your mein-senec.de account requires two-factor authentication, you can now enter your TOTP secret (the base32 key from your authenticator app setup) in the adapter settings. The adapter will automatically generate login codes — no manual interaction needed.
 - Switchable sockets: If your SENEC system has switchable sockets configured, you can now control them via `control.Sockets` datapoints. Enable in adapter settings under active appliance control.
 - Section discovery: The adapter now queries the device at startup to discover available data sections. New sections are automatically added to polling, and unavailable sections are removed. Check `info.discoveredSections` and `info.unavailableSections` for details.
@@ -297,12 +297,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - You will now need to supply the installation year of your appliance upon AllTime History rebuild if you don't want empty yearly folders in the measurements path for yours you don't have data.
 - More comprehensive logging on what is being polled from API.
 - Better debug-logging for polling
-
-### 2.5.1 (2026-03-31)
-- Increased default API poll interval to 6 minutes. This appears to be causing less issues with the server than 5 minutes.
-- You can now define different polling intervals for dashboard (frequently), details (usually hourly and daily information), heavy (for everything else that usually is done per month or year).<br>Please be careful with high frequency polling as this can and will lead to problems and the senec server will stop responding to your requests. Longer delays between polls are preferred.
-- Dependency updates
-- Code optimizations
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
