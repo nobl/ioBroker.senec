@@ -176,6 +176,7 @@ class Senec extends utils.Adapter {
 		this.wallboxCount = undefined; // set after first local poll reads WALLBOX data
 		this.wallboxControlsCreated = false;
 		this.apiWallboxCount = 0; // set after wallbox search via App API
+		this.apiWallboxUuids = []; // UUIDs from wallbox search, needed for measurements and control
 
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
@@ -2047,10 +2048,8 @@ class Senec extends utils.Adapter {
 		if (ctx.shouldRunDetails) {
 			this.log[logType](`🔄 Polling system ${anlagenId} - Details (day values)`);
 			result.detailsScheduled = true;
-			const results = await Promise.allSettled([
-				this.pollApiDetails(anlagenId, ctx),
-				this.pollApiSystemDetails(anlagenId),
-			]);
+			const detailsPolls = [this.pollApiDetails(anlagenId, ctx), this.pollApiSystemDetails(anlagenId)];
+			const results = await Promise.allSettled(detailsPolls);
 			result.detailsSucceeded = results.every((r) => r.status === "fulfilled");
 		}
 
@@ -2279,6 +2278,7 @@ class Senec extends utils.Adapter {
 				return;
 			}
 			this.apiWallboxCount = res.data.length;
+			this.apiWallboxUuids = res.data.map((wb) => wb.id).filter(Boolean);
 			this.log.info(`Found ${this.apiWallboxCount} wallbox(es) via API for ${anlagenId}`);
 			for (let i = 0; i < res.data.length; i++) {
 				await this.evalPoll(res.data[i], `${API_PFX}Anlagen.${anlagenId}.Wallboxes.${i}.`);
@@ -2345,6 +2345,27 @@ class Senec extends utils.Adapter {
 				},
 			];
 
+			// Add wallbox measurement tasks
+			for (let i = 0; i < this.apiWallboxUuids.length; i++) {
+				const wb = { uuid: this.apiWallboxUuids[i], index: i };
+				tasks.push({
+					fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today", wb),
+					label: `wb${i}.today`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly", wb),
+					label: `wb${i}.today.hourly`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday", wb),
+					label: `wb${i}.yesterday`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly", wb),
+					label: `wb${i}.yesterday.hourly`,
+				});
+			}
+
 			const results = await Promise.all(
 				tasks.map(async (task) => {
 					const res = await task.fn();
@@ -2408,6 +2429,43 @@ class Senec extends utils.Adapter {
 				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false), label: "prev_year" },
 				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true), label: "prev_year.monthly" },
 			];
+
+			// Add wallbox measurement tasks
+			for (let i = 0; i < this.apiWallboxUuids.length; i++) {
+				const wb = { uuid: this.apiWallboxUuids[i], index: i };
+				tasks.push({
+					fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month", wb),
+					label: `wb${i}.current_month`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily", wb),
+					label: `wb${i}.current_month.daily`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month", wb),
+					label: `wb${i}.previous_month`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily", wb),
+					label: `wb${i}.previous_month.daily`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, false, wb),
+					label: `wb${i}.year`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, true, wb),
+					label: `wb${i}.year.monthly`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false, wb),
+					label: `wb${i}.prev_year`,
+				});
+				tasks.push({
+					fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true, wb),
+					label: `wb${i}.prev_year.monthly`,
+				});
+			}
 
 			const results = await Promise.all(
 				tasks.map(async (task) => {
@@ -2742,17 +2800,55 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Build measurement URL and state prefix, supporting both regular and wallbox measurements.
+	 *
+	 * @param {string | number} anlagenId - System ID
+	 * @param {string} resolution - Resolution (HOUR, DAY, MONTH, YEAR)
+	 * @param {string} start - URL-encoded start date ISO string
+	 * @param {string} end - URL-encoded end date ISO string
+	 * @param {string} tier - Tier name for prefix (Daily, Monthly, Yearly)
+	 * @param {{ uuid: string, index: number }} [wallbox] - Wallbox info, or undefined for regular measurements
+	 * @returns {{ url: string, pfx: string }} The measurement URL and state prefix
+	 */
+	buildMeasurementUrlAndPrefix(anlagenId, resolution, start, end, tier, wallbox) {
+		let url;
+		let pfx;
+		if (wallbox) {
+			url =
+				`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/wallboxes/measurements` +
+				`?wallboxIds=${encodeURIComponent(wallbox.uuid)}&resolution=${resolution}&from=${start}&to=${end}`;
+			pfx = `${API_PFX}Anlagen.${anlagenId}.WallboxMeasurements.${wallbox.index}.${tier}.`;
+		} else {
+			url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
+			pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.${tier}.`;
+		}
+		return { url, pfx };
+	}
+
+	/**
 	 * Poll measurements by year
 	 *
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {number} year Year to read measurements for
 	 * @param {boolean} months Read monthly measurements
+	 * @param {{ uuid: string, index: number }} [wallbox] Wallbox info, or undefined for regular measurements
 	 * @returns {Promise<{status: "success" | "no_data" | "skipped_existing"}>} Result of the measurement request indicating success, absence of data, or that the data was already up to date.
 	 */
-	async doMeasurementsYear(anlagenId, year, months) {
+	async doMeasurementsYear(anlagenId, year, months, wallbox) {
 		this.log.debug(`🔄 Reading measurements for year: ${year}${months ? ".monthly" : ""}`);
 
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.Yearly.`;
+		const startDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0));
+		const rawEndDate = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0) - 1);
+		const endDate = this.clampEndDateToNow(rawEndDate);
+		const start = encodeURIComponent(startDate.toISOString());
+		const end = encodeURIComponent(endDate.toISOString());
+
+		let resolution = "YEAR";
+		if (months) {
+			resolution = "MONTH";
+		}
+
+		const { url, pfx } = this.buildMeasurementUrlAndPrefix(anlagenId, resolution, start, end, "Yearly", wallbox);
 		const lastUpdate = await this.getStateAsync(`${pfx}${year}.${months ? "monthly." : ""}${LAST_UPDATED}`);
 		const now = new Date();
 		let lastDate = null;
@@ -2787,30 +2883,19 @@ class Senec extends utils.Adapter {
 			}
 		}
 
-		const startDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0));
-		const rawEndDate = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0) - 1);
-		const endDate = this.clampEndDateToNow(rawEndDate);
-		const start = encodeURIComponent(startDate.toISOString());
-		const end = encodeURIComponent(endDate.toISOString());
 		this.log.debug(
 			`Measurement window YEAR (${year}${months ? ".monthly" : ""}): from=${startDate.toISOString()} to=${endDate.toISOString()}`,
 		);
-
-		let resolution = "YEAR";
-		if (months) {
-			resolution = "MONTH";
-		}
-
-		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 
 		const measurements = await this.apiGet(url);
 
-		if (!measurements?.data || !Array.isArray(measurements.data.timeSeries)) {
+		const ts = measurements?.data?.timeSeries || measurements?.data?.timeseries;
+		if (!measurements?.data || !Array.isArray(ts)) {
 			throw new Error(`Malformed measurement response for ${url}`);
 		}
 
-		if (measurements.data.timeSeries.length === 0) {
+		if (ts.length === 0) {
 			this.log.debug(`No measurements found for ${year}${months ? ".monthly" : ""}.`);
 			return { status: "no_data" };
 		}
@@ -2825,12 +2910,24 @@ class Senec extends utils.Adapter {
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {Date} date Date to read measurements for
 	 * @param {string} period period to sum for
+	 * @param {{ uuid: string, index: number }} [wallbox] Wallbox info, or undefined for regular measurements
 	 * @returns {Promise<{status: "success" | "no_data" | "skipped_existing"}>} Result of the measurement request indicating success, absence of data, or that the data was already up to date.
 	 */
-	async doMeasurementsMonth(anlagenId, date, period) {
+	async doMeasurementsMonth(anlagenId, date, period, wallbox) {
 		this.log.debug(`🔄 Reading measurements for ${period}.`);
 
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.Monthly.`;
+		const startDate = date;
+		const rawEndDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) - 1);
+		const endDate = this.clampEndDateToNow(rawEndDate);
+		const start = encodeURIComponent(startDate.toISOString());
+		const end = encodeURIComponent(endDate.toISOString());
+
+		let resolution = "MONTH";
+		if (period === "current_month.daily" || period === "previous_month.daily") {
+			resolution = "DAY";
+		}
+
+		const { url, pfx } = this.buildMeasurementUrlAndPrefix(anlagenId, resolution, start, end, "Monthly", wallbox);
 
 		if (period === "previous_month" || period === "previous_month.daily") {
 			const lastUpdate = await this.getStateAsync(`${pfx}${period}.${LAST_UPDATED}`);
@@ -2850,30 +2947,19 @@ class Senec extends utils.Adapter {
 			}
 		}
 
-		const startDate = date;
-		const rawEndDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) - 1);
-		const endDate = this.clampEndDateToNow(rawEndDate);
-		const start = encodeURIComponent(startDate.toISOString());
-		const end = encodeURIComponent(endDate.toISOString());
 		this.log.debug(
 			`Measurement window MONTH (${period}): from=${startDate.toISOString()} to=${endDate.toISOString()}`,
 		);
-
-		let resolution = "MONTH";
-		if (period === "current_month.daily" || period === "previous_month.daily") {
-			resolution = "DAY";
-		}
-
-		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 
 		const measurements = await this.apiGet(url);
 
-		if (!measurements?.data || !Array.isArray(measurements.data.timeSeries)) {
+		const ts = measurements?.data?.timeSeries || measurements?.data?.timeseries;
+		if (!measurements?.data || !Array.isArray(ts)) {
 			throw new Error(`Malformed measurement response for ${url}`);
 		}
 
-		if (measurements.data.timeSeries.length === 0) {
+		if (ts.length === 0) {
 			this.log.debug(`No measurements found for ${period}.`);
 			return { status: "no_data" };
 		}
@@ -2888,12 +2974,24 @@ class Senec extends utils.Adapter {
 	 * @param {string | number} anlagenId Anlagen ID to read measurements for
 	 * @param {Date} date Date to read measurements for
 	 * @param {string} period period to sum for
+	 * @param {{ uuid: string, index: number }} [wallbox] Wallbox info, or undefined for regular measurements
 	 * @returns {Promise<{status: "success" | "no_data" | "skipped_existing"}>} Result of the measurement request indicating success, absence of data, or that the data was already up to date.
 	 */
-	async doMeasurementsDay(anlagenId, date, period) {
+	async doMeasurementsDay(anlagenId, date, period, wallbox) {
 		this.log.debug(`🔄 Reading measurements for ${period}`);
 
-		const pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.Daily.`;
+		const startDate = date;
+		const rawEndDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+		const endDate = this.clampEndDateToNow(rawEndDate);
+		const start = encodeURIComponent(startDate.toISOString());
+		const end = encodeURIComponent(endDate.toISOString());
+
+		let resolution = "DAY";
+		if (period === "today.hourly" || period === "yesterday.hourly") {
+			resolution = "HOUR";
+		}
+
+		const { url, pfx } = this.buildMeasurementUrlAndPrefix(anlagenId, resolution, start, end, "Daily", wallbox);
 
 		if (period === "yesterday" || period === "yesterday.hourly") {
 			const lastUpdate = await this.getStateAsync(`${pfx}${period}.${LAST_UPDATED}`);
@@ -2914,30 +3012,19 @@ class Senec extends utils.Adapter {
 			}
 		}
 
-		const startDate = date;
-		const rawEndDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
-		const endDate = this.clampEndDateToNow(rawEndDate);
-		const start = encodeURIComponent(startDate.toISOString());
-		const end = encodeURIComponent(endDate.toISOString());
 		this.log.debug(
 			`Measurement window DAY (${period}): from=${startDate.toISOString()} to=${endDate.toISOString()}`,
 		);
-
-		let resolution = "DAY";
-		if (period === "today.hourly" || period === "yesterday.hourly") {
-			resolution = "HOUR";
-		}
-
-		const url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 
 		const measurements = await this.apiGet(url);
 
-		if (!measurements?.data || !Array.isArray(measurements.data.timeSeries)) {
+		const ts = measurements?.data?.timeSeries || measurements?.data?.timeseries;
+		if (!measurements?.data || !Array.isArray(ts)) {
 			throw new Error(`Malformed measurement response for ${url}`);
 		}
 
-		if (measurements.data.timeSeries.length === 0) {
+		if (ts.length === 0) {
 			this.log.debug(`No measurements found for ${period}.`);
 			return { status: "no_data" };
 		}
@@ -2958,13 +3045,16 @@ class Senec extends utils.Adapter {
 	 */
 	async doSumMeasurements(data, anlagenId, pfx, period) {
 		this.log.debug(`Measurements sample: ${JSON.stringify(data).slice(0, 500)}`);
-		const sums = Object.fromEntries(data.measurements.map((key) => [key, 0]));
-		const year = new Date(data.timeSeries[0].date).getUTCFullYear();
+		// Wallbox measurements use lowercase "timeseries"/"measurements", regular uses camelCase
+		const timeSeries = data.timeSeries || data.timeseries;
+		const measurementKeys = data.measurements;
+		const sums = Object.fromEntries(measurementKeys.map((key) => [key, 0]));
+		const year = new Date(timeSeries[0].date).getUTCFullYear();
 
 		// Durch timeSeries iterieren und Werte addieren
-		data.timeSeries.forEach((entry) => {
+		timeSeries.forEach((entry) => {
 			entry.measurements.values.forEach((value, index) => {
-				const key = data.measurements[index];
+				const key = measurementKeys[index];
 				if (period === "today.hourly" || period === "yesterday.hourly") {
 					if (sums[key] === undefined || !sums[key]) {
 						sums[key] = Array(24).fill(0);
@@ -3828,6 +3918,12 @@ class Senec extends utils.Adapter {
 		for (let year = currentYear; year >= startYear; year--) {
 			steps.push({ anlagenId, year, monthly: false });
 			steps.push({ anlagenId, year, monthly: true });
+			// Add wallbox measurement rebuild steps
+			for (let i = 0; i < this.apiWallboxUuids.length; i++) {
+				const wb = { uuid: this.apiWallboxUuids[i], index: i };
+				steps.push({ anlagenId, year, monthly: false, wallbox: wb });
+				steps.push({ anlagenId, year, monthly: true, wallbox: wb });
+			}
 		}
 		return steps;
 	}
@@ -3836,7 +3932,8 @@ class Senec extends utils.Adapter {
 		const currentYear = new Date().getUTCFullYear();
 		const startYear = this.getRebuildStartYear();
 		const yearCount = currentYear - startYear + 1;
-		return yearCount * 2;
+		const wallboxMultiplier = 1 + this.apiWallboxUuids.length;
+		return yearCount * 2 * wallboxMultiplier;
 	}
 
 	/**
@@ -3985,8 +4082,9 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<boolean>} True if step finished successfully, otherwise false
 	 */
 	async runSingleRebuildStep(anlagenId, step) {
-		const stepLabel = `${step.year}${step.monthly ? ".monthly" : ""}`;
-		const stepKey = this.getRebuildStepKey(anlagenId, step.year, step.monthly);
+		const wbLabel = step.wallbox ? `.wb${step.wallbox.index}` : "";
+		const stepLabel = `${step.year}${step.monthly ? ".monthly" : ""}${wbLabel}`;
+		const stepKey = this.getRebuildStepKey(anlagenId, step.year, step.monthly) + wbLabel;
 
 		for (let attempt = 1; attempt <= this.rebuildStepMaxRetries; attempt++) {
 			try {
@@ -3994,7 +4092,7 @@ class Senec extends utils.Adapter {
 					`🔄 Rebuild Schritt für Anlage ${anlagenId}: ${stepLabel} (Versuch ${attempt}/${this.rebuildStepMaxRetries})`,
 				);
 
-				const result = await this.doMeasurementsYear(anlagenId, step.year, step.monthly);
+				const result = await this.doMeasurementsYear(anlagenId, step.year, step.monthly, step.wallbox);
 
 				if (result?.status === "success" || result?.status === "skipped_existing") {
 					this.rebuildCompletedSteps.add(stepKey);
