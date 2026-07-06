@@ -161,8 +161,6 @@ class Senec extends utils.Adapter {
 
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
-		this.timers = [];
-
 		this.lastLoggedRecommendedConcurrency = null;
 		this.lastLoggedQueueSnapshot = null;
 
@@ -220,6 +218,8 @@ class Senec extends utils.Adapter {
 				minTimeBetweenStartsMs: 400,
 				successThreshold: 8,
 				cooldownMs: 8000,
+				setTimeout: (fn, ms) => this.setTimeout(fn, ms),
+				clearTimeout: (id) => this.clearTimeout(id),
 			});
 
 			// Then create axios clients with the respective agents
@@ -529,23 +529,10 @@ class Senec extends utils.Adapter {
 	onUnload(callback) {
 		try {
 			this.unloaded = true;
-			for (const t of this.timers) {
-				// clear all timers that we have scheduled in this.timers to prevent them from running after unload and to prevent memory leaks
-				clearTimeout(t);
-			}
-			this.timers = [];
 
 			if (this.abortController) {
 				// abort any ongoing API calls to prevent them from running after unload and to prevent memory leaks
 				this.abortController.abort();
-			}
-
-			// might be redundant due to the loop above but to be sure, we also clear these specific timers that are used for polling and token refresh
-			if (this.timerAPI) {
-				clearTimeout(this.timerAPI);
-			}
-			if (this.timerTokenRefresh) {
-				clearTimeout(this.timerTokenRefresh);
 			}
 
 			// destroy axios agents to close all open sockets and prevent them from running after unload and to prevent memory leaks
@@ -1118,22 +1105,18 @@ class Senec extends utils.Adapter {
 		}
 		delay = Math.max(delay, 10000); // never less than 10s - important to prevent too aggressive refreshes in case of clock sync issues or senec / keycloak response delays
 
-		if (this.timerTokenRefresh) {
-			clearTimeout(this.timerTokenRefresh);
-		}
+		this.clearTimeout(this.timerTokenRefresh);
 
 		if (!this.unloaded) {
 			this.log.debug(
 				`🔐 Next token refresh in ${(delay / 1000).toFixed(0)}s ` +
 					`(remaining ${Math.round(remaining / 1000 / 60)} min, failures=${this.tokenFailureCount})`,
 			);
-			this.timerTokenRefresh = setTimeout(() => {
-				this.timers = this.timers.filter((t) => t !== this.timerTokenRefresh);
+			this.timerTokenRefresh = this.setTimeout(() => {
 				this.refreshTokenSingleFlight().catch((err) => {
 					this.log.debug(`⚠ Token refresh failed: ${err.message}`);
 				});
 			}, delay);
-			this.timers.push(this.timerTokenRefresh);
 		}
 	}
 
@@ -1152,10 +1135,8 @@ class Senec extends utils.Adapter {
 		}
 
 		// cancel scheduled refresh while manual refresh runs
-		if (this.timerTokenRefresh) {
-			clearTimeout(this.timerTokenRefresh);
-			this.timerTokenRefresh = null;
-		}
+		this.clearTimeout(this.timerTokenRefresh);
+		this.timerTokenRefresh = null;
 
 		if (!this.refreshToken) {
 			this.log.debug("🔐 No refresh token available — skipping refresh.");
@@ -1230,11 +1211,9 @@ class Senec extends utils.Adapter {
 						`🔁 Token refresh retry #${attempt} scheduled in ${(retryDelay / 1000).toFixed(0)}s ` +
 							`(failures = ${this.tokenFailureCount})`,
 					);
-					this.timerTokenRefresh = setTimeout(() => {
-						this.timers = this.timers.filter((t) => t !== this.timerTokenRefresh);
+					this.timerTokenRefresh = this.setTimeout(() => {
 						this.refreshTokenSingleFlight().catch(() => {});
 					}, retryDelay);
-					this.timers.push(this.timerTokenRefresh);
 				}
 
 				throw err;
@@ -1258,10 +1237,8 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		if (this.timerAPI) {
-			clearTimeout(this.timerAPI);
-			this.timerAPI = null;
-		}
+		this.clearTimeout(this.timerAPI);
+		this.timerAPI = null;
 
 		if (!this.config.api_use || !this.apiConnected || this.unloaded) {
 			this.log.info("Usage of SENEC App API not configured or not connected.");
@@ -1346,17 +1323,12 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		if (this.timerAPI) {
-			clearTimeout(this.timerAPI);
-			this.timerAPI = null;
-		}
+		this.clearTimeout(this.timerAPI);
+		this.timerAPI = null;
 
-		this.timerAPI = setTimeout(() => {
-			this.timers = this.timers.filter((t) => t !== this.timerAPI);
+		this.timerAPI = this.setTimeout(() => {
 			this.pollSenecApi().catch((e) => this.logError(e, "❌ Scheduled API poll failed"));
 		}, delay);
-
-		this.timers.push(this.timerAPI);
 		this.log.debug(`⏱ Next API poll scheduled in ${(delay / 1000).toFixed(0)}s`);
 	}
 
@@ -2291,14 +2263,11 @@ class Senec extends utils.Adapter {
 
 			if (!body) {
 				if (!this.unloaded) {
-					const timer = setTimeout(() => {
-						this.timers = this.timers.filter((t) => t !== timer);
+					this.setTimeout(() => {
 						this.pollSenecLocal(isHighPrio, retry).catch((e) =>
 							this.logError(e, `❌ Local poll failed (highPrio=${isHighPrio})`),
 						);
 					}, interval);
-					this.timers.push(timer);
-					timer.unref?.();
 				}
 				return;
 			}
@@ -2309,14 +2278,11 @@ class Senec extends utils.Adapter {
 
 			retry = 0;
 			if (!this.unloaded) {
-				const timer = setTimeout(() => {
-					this.timers = this.timers.filter((t) => t !== timer);
+				this.setTimeout(() => {
 					this.pollSenecLocal(isHighPrio, retry).catch((e) =>
 						this.logError(e, `❌ Local poll failed (highPrio=${isHighPrio})`),
 					);
 				}, interval);
-				this.timers.push(timer);
-				timer.unref?.();
 				this.log.debug(
 					`⏱ Next local poll (highPrio=${isHighPrio}) scheduled in ${(interval / 1000).toFixed(0)}s`,
 				);
@@ -2339,14 +2305,11 @@ class Senec extends utils.Adapter {
 					}/${this.config.retries} in ${delay / 1000} seconds! (${error})`,
 				);
 				if (!this.unloaded) {
-					const timer = setTimeout(() => {
-						this.timers = this.timers.filter((t) => t !== timer);
+					this.setTimeout(() => {
 						this.pollSenecLocal(isHighPrio, retry).catch((e) =>
 							this.logError(e, `❌ Local poll failed (highPrio=${isHighPrio})`),
 						);
 					}, delay);
-					this.timers.push(timer);
-					timer.unref?.();
 					this.log.debug(
 						`⏱ Next local poll (highPrio=${isHighPrio}) scheduled in ${(delay / 1000).toFixed(0)}s`,
 					);
@@ -3309,13 +3272,9 @@ class Senec extends utils.Adapter {
 				return;
 			}
 
-			const timer = setTimeout(() => {
-				this.timers = this.timers.filter((t) => t !== timer);
+			this.setTimeout(() => {
 				resolve(undefined);
 			}, ms);
-
-			this.timers.push(timer);
-			timer.unref?.();
 		});
 	}
 

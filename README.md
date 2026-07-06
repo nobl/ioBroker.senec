@@ -263,6 +263,10 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- Replace plain setTimeout/clearTimeout with adapter-managed timers
+- Dependency updates
+
 ### 2.5.4 (2026-05-27)
 - Adapter requires node.js >= 22 now
 - Minor fixes
