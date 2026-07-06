@@ -177,6 +177,8 @@ class Senec extends utils.Adapter {
 		this.wallboxControlsCreated = false;
 		this.apiWallboxCount = 0; // set after wallbox search via App API
 		this.apiWallboxUuids = []; // UUIDs from wallbox search, needed for measurements and control
+		this.apiWallboxObjects = []; // full wallbox objects from search, needed for read-modify-write on settings
+		this.apiWallboxSystemId = null; // system ID owning the wallboxes
 
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
@@ -488,6 +490,18 @@ class Senec extends utils.Adapter {
 				}
 				const wbVal = state.val ?? false;
 				await this.handleWallboxControl(id, parseInt(wallboxMatch[1], 10), wallboxMatch[2], wbVal);
+				return;
+			}
+
+			// API Wallbox controls
+			const apiWbMatch = controlId.match(/^api\.Wallbox\.(\d+)\.(.+)$/);
+			if (apiWbMatch) {
+				if (!this.config.control_api_active || !this.config.control_api_wallbox) {
+					this.log.warn("API wallbox control command ignored (not enabled in config)");
+					return;
+				}
+				const apiWbVal = state.val ?? false;
+				await this.handleApiWallboxControl(parseInt(apiWbMatch[1], 10), apiWbMatch[2], apiWbVal);
 				return;
 			}
 
@@ -1946,6 +1960,7 @@ class Senec extends utils.Adapter {
 			await this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
 			await this.pollApiAbilities(sys.id);
 			await this.pollApiWallboxSearch(sys.id);
+			await this.createApiWallboxControls();
 		}
 	}
 
@@ -2279,6 +2294,8 @@ class Senec extends utils.Adapter {
 			}
 			this.apiWallboxCount = res.data.length;
 			this.apiWallboxUuids = res.data.map((wb) => wb.id).filter(Boolean);
+			this.apiWallboxObjects = res.data;
+			this.apiWallboxSystemId = anlagenId;
 			this.log.info(`Found ${this.apiWallboxCount} wallbox(es) via API for ${anlagenId}`);
 			for (let i = 0; i < res.data.length; i++) {
 				await this.evalPoll(res.data[i], `${API_PFX}Anlagen.${anlagenId}.Wallboxes.${i}.`);
@@ -2290,9 +2307,329 @@ class Senec extends utils.Adapter {
 				"",
 				false,
 			);
+			await this.syncApiWallboxControls();
 		} catch (error) {
 			this.logError(error, `❌ Wallbox search failed for ${anlagenId}`);
 			// Don't re-throw — wallbox search failure at startup shouldn't block anything
+		}
+	}
+
+	/**
+	 * Create control datapoints for API wallbox control.
+	 * Called once after wallbox search discovers wallboxes.
+	 */
+	async createApiWallboxControls() {
+		if (!this.config.control_api_active || !this.config.control_api_wallbox) {
+			return;
+		}
+		if (this.apiWallboxCount === 0) {
+			return;
+		}
+
+		for (let i = 0; i < this.apiWallboxCount; i++) {
+			const pfx = `control.api.Wallbox.${i}`;
+			await this.setObjectNotExistsAsync(pfx, {
+				type: "channel",
+				common: { name: `API Wallbox ${i} Control` },
+				native: {},
+			});
+
+			// Combined mode: LOCKED / FAST / SOLAR / COMFORT
+			await this.setObjectNotExistsAsync(`${pfx}.Mode`, {
+				type: "state",
+				common: {
+					name: "Wallbox mode",
+					type: "string",
+					role: "text",
+					read: true,
+					write: true,
+					states: { LOCKED: "Locked", FAST: "Fast", SOLAR: "Solar", COMFORT: "Comfort" },
+				},
+				native: {},
+			});
+
+			// Min charging current (A) — applicable in SOLAR and COMFORT mode
+			await this.setObjectNotExistsAsync(`${pfx}.MinChargingCurrentInA`, {
+				type: "state",
+				common: {
+					name: "Min charging current",
+					type: "number",
+					role: "level",
+					unit: "A",
+					read: true,
+					write: true,
+					min: 6,
+					max: 32,
+				},
+				native: {},
+			});
+
+			// AllowIntercharge — applicable in FAST and COMFORT mode
+			await this.setObjectNotExistsAsync(`${pfx}.AllowIntercharge`, {
+				type: "state",
+				common: {
+					name: "Allow intercharge (battery discharge for wallbox)",
+					type: "boolean",
+					role: "switch",
+					read: true,
+					write: true,
+				},
+				native: {},
+			});
+
+			// PreventInterruptions — applicable in SOLAR and COMFORT mode
+			await this.setObjectNotExistsAsync(`${pfx}.PreventInterruptions`, {
+				type: "state",
+				common: {
+					name: "Prevent charging interruptions",
+					type: "boolean",
+					role: "switch",
+					read: true,
+					write: true,
+				},
+				native: {},
+			});
+		}
+
+		await this.subscribeStatesAsync("control.api.*");
+		this.log.info(`Created API wallbox control datapoints for ${this.apiWallboxCount} wallbox(es)`);
+	}
+
+	/**
+	 * Sync API wallbox control datapoints with values from the cached wallbox objects.
+	 */
+	async syncApiWallboxControls() {
+		if (!this.config.control_api_active || !this.config.control_api_wallbox) {
+			return;
+		}
+
+		for (let i = 0; i < this.apiWallboxObjects.length; i++) {
+			const wb = this.apiWallboxObjects[i];
+			if (!wb) {
+				continue;
+			}
+			const pfx = `control.api.Wallbox.${i}`;
+
+			// Determine combined mode
+			let mode = "LOCKED";
+			if (!wb.prohibitUsage) {
+				const chargingType = wb.chargingMode?.type?.toUpperCase();
+				if (chargingType === "SOLAR" || chargingType === "FAST" || chargingType === "COMFORT") {
+					mode = chargingType;
+				}
+			}
+			await this.setStateChangedAsync(`${pfx}.Mode`, { val: mode, ack: true });
+
+			// Sync settings based on current mode
+			const solarSettings = wb.chargingMode?.solarOptimizeSettings;
+			const fastSettings = wb.chargingMode?.fastChargingSettings;
+			const comfortSettings = wb.chargingMode?.comfortChargeSettings;
+
+			// MinChargingCurrentInA — from solar or comfort settings
+			if (solarSettings?.minChargingCurrentInA !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.MinChargingCurrentInA`, {
+					val: solarSettings.minChargingCurrentInA,
+					ack: true,
+				});
+			} else if (comfortSettings?.configuredChargingCurrent !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.MinChargingCurrentInA`, {
+					val: comfortSettings.configuredChargingCurrent,
+					ack: true,
+				});
+			}
+
+			// AllowIntercharge — from fast or comfort settings
+			if (fastSettings?.allowIntercharge !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.AllowIntercharge`, {
+					val: !!fastSettings.allowIntercharge,
+					ack: true,
+				});
+			} else if (comfortSettings?.allowIntercharge !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.AllowIntercharge`, {
+					val: !!comfortSettings.allowIntercharge,
+					ack: true,
+				});
+			}
+
+			// PreventInterruptions — from solar or comfort settings
+			if (solarSettings?.preventInterruptions !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.PreventInterruptions`, {
+					val: !!solarSettings.preventInterruptions,
+					ack: true,
+				});
+			} else if (comfortSettings?.preventInterruptions !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.PreventInterruptions`, {
+					val: !!comfortSettings.preventInterruptions,
+					ack: true,
+				});
+			}
+		}
+	}
+
+	/**
+	 * Handle an API wallbox control state change.
+	 *
+	 * @param {number} wbIdx - Wallbox index (0-based)
+	 * @param {string} field - The control field name (Mode, MinChargingCurrentInA, etc.)
+	 * @param {boolean | number | string} value - The value to set
+	 */
+	async handleApiWallboxControl(wbIdx, field, value) {
+		if (wbIdx >= this.apiWallboxCount || !this.apiWallboxSystemId) {
+			this.log.warn(`API Wallbox ${wbIdx} does not exist`);
+			return;
+		}
+		const uuid = this.apiWallboxUuids[wbIdx];
+		if (!uuid) {
+			this.log.warn(`No UUID for API wallbox ${wbIdx}`);
+			return;
+		}
+		const systemId = this.apiWallboxSystemId;
+		const baseUrl = `${HOST_WALLBOX}/v1/systems/${systemId}/wallboxes/${encodeURIComponent(uuid)}`;
+
+		try {
+			if (field === "Mode") {
+				const targetMode = String(value).toUpperCase();
+				const wb = this.apiWallboxObjects[wbIdx];
+				const currentlyLocked = !!wb?.prohibitUsage;
+
+				if (targetMode === "LOCKED") {
+					// Lock the wallbox
+					this.log.info(`Locking API wallbox ${wbIdx}...`);
+					const res = await this.apiPatch(`${baseUrl}/locked/true`);
+					if (res?.data) {
+						this.apiWallboxObjects[wbIdx] = res.data;
+					}
+				} else {
+					// If currently locked, unlock first
+					if (currentlyLocked) {
+						this.log.info(`Unlocking API wallbox ${wbIdx} before mode change...`);
+						const unlockRes = await this.apiPatch(`${baseUrl}/locked/false`);
+						if (!unlockRes?.data) {
+							this.log.warn(`Unlock failed for API wallbox ${wbIdx}`);
+							return;
+						}
+						this.apiWallboxObjects[wbIdx] = unlockRes.data;
+					}
+					// Set charging mode
+					this.log.info(`Setting API wallbox ${wbIdx} mode to ${targetMode}...`);
+					const res = await this.apiPatch(`${baseUrl}/charging-mode/${targetMode}`);
+					if (res?.data) {
+						this.apiWallboxObjects[wbIdx] = res.data;
+					}
+				}
+			} else if (field === "MinChargingCurrentInA") {
+				const wb = this.apiWallboxObjects[wbIdx];
+				const modeType = wb?.chargingMode?.type?.toUpperCase();
+
+				if (modeType === "SOLAR") {
+					const settings = wb.chargingMode.solarOptimizeSettings || {};
+					const postData = {
+						minChargingCurrentInA: parseFloat(String(value)),
+						preventInterruptions: settings.preventInterruptions ?? false,
+						compatibilityMode: settings.compatibilityMode ?? false,
+						useDynamicTariffs: settings.useDynamicTariffs ?? false,
+						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
+					};
+					this.log.info(`Setting API wallbox ${wbIdx} solar minChargingCurrent to ${value}A...`);
+					const res = await this.apiPatch(`${baseUrl}/settings/solar-charge`, postData);
+					if (res?.data) {
+						this.apiWallboxObjects[wbIdx] = res.data;
+					}
+				} else if (modeType === "COMFORT") {
+					const settings = wb.chargingMode.comfortChargeSettings || {};
+					const postData = {
+						minChargingCurrentInA: parseFloat(String(value)),
+						allowIntercharge: settings.allowIntercharge ?? false,
+						preventInterruptions: settings.preventInterruptions ?? false,
+						useDynamicTariffs: settings.useDynamicTariffs ?? false,
+						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
+					};
+					this.log.info(`Setting API wallbox ${wbIdx} comfort minChargingCurrent to ${value}A...`);
+					const res = await this.apiPatch(`${baseUrl}/comfort-charge-expert-settings`, postData);
+					if (res?.data) {
+						this.apiWallboxObjects[wbIdx] = res.data;
+					}
+				} else {
+					this.log.warn(
+						`MinChargingCurrentInA only supported in SOLAR or COMFORT mode (current: ${modeType})`,
+					);
+					return;
+				}
+			} else if (field === "AllowIntercharge") {
+				const wb = this.apiWallboxObjects[wbIdx];
+				const modeType = wb?.chargingMode?.type?.toUpperCase();
+				const boolVal = !!value;
+
+				if (modeType === "FAST") {
+					this.log.info(`Setting API wallbox ${wbIdx} fast allowIntercharge to ${boolVal}...`);
+					const res = await this.apiPatch(`${baseUrl}/settings/fast-charge`, { allowIntercharge: boolVal });
+					if (res?.data) {
+						this.apiWallboxObjects[wbIdx] = res.data;
+					}
+				} else if (modeType === "COMFORT") {
+					const settings = wb.chargingMode.comfortChargeSettings || {};
+					const postData = {
+						allowIntercharge: boolVal,
+						preventInterruptions: settings.preventInterruptions ?? false,
+						useDynamicTariffs: settings.useDynamicTariffs ?? false,
+						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
+					};
+					this.log.info(`Setting API wallbox ${wbIdx} comfort allowIntercharge to ${boolVal}...`);
+					const res = await this.apiPatch(`${baseUrl}/comfort-charge-expert-settings`, postData);
+					if (res?.data) {
+						this.apiWallboxObjects[wbIdx] = res.data;
+					}
+				} else {
+					this.log.warn(`AllowIntercharge only supported in FAST or COMFORT mode (current: ${modeType})`);
+					return;
+				}
+			} else if (field === "PreventInterruptions") {
+				const wb = this.apiWallboxObjects[wbIdx];
+				const modeType = wb?.chargingMode?.type?.toUpperCase();
+				const boolVal = !!value;
+
+				if (modeType === "SOLAR") {
+					const settings = wb.chargingMode.solarOptimizeSettings || {};
+					const postData = {
+						preventInterruptions: boolVal,
+						minChargingCurrentInA: settings.minChargingCurrentInA ?? 6,
+						compatibilityMode: settings.compatibilityMode ?? false,
+						useDynamicTariffs: settings.useDynamicTariffs ?? false,
+						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
+					};
+					this.log.info(`Setting API wallbox ${wbIdx} solar preventInterruptions to ${boolVal}...`);
+					const res = await this.apiPatch(`${baseUrl}/settings/solar-charge`, postData);
+					if (res?.data) {
+						this.apiWallboxObjects[wbIdx] = res.data;
+					}
+				} else if (modeType === "COMFORT") {
+					const settings = wb.chargingMode.comfortChargeSettings || {};
+					const postData = {
+						preventInterruptions: boolVal,
+						allowIntercharge: settings.allowIntercharge ?? false,
+						useDynamicTariffs: settings.useDynamicTariffs ?? false,
+						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
+					};
+					this.log.info(`Setting API wallbox ${wbIdx} comfort preventInterruptions to ${boolVal}...`);
+					const res = await this.apiPatch(`${baseUrl}/comfort-charge-expert-settings`, postData);
+					if (res?.data) {
+						this.apiWallboxObjects[wbIdx] = res.data;
+					}
+				} else {
+					this.log.warn(
+						`PreventInterruptions only supported in SOLAR or COMFORT mode (current: ${modeType})`,
+					);
+					return;
+				}
+			} else {
+				this.log.warn(`Unknown API wallbox control field: ${field}`);
+				return;
+			}
+
+			// Sync control states after successful change
+			await this.syncApiWallboxControls();
+		} catch (error) {
+			this.logError(error, `Failed to control API wallbox ${wbIdx} ${field}`);
 		}
 	}
 
@@ -2720,6 +3057,88 @@ class Senec extends utils.Adapter {
 
 					this.log.debug(
 						`API POST request failed (attempt ${attempt + 1}/${maxAttempts}) ` +
+							`for ${url} - status=${status || "none"} - code=${e.code || "n/a"}`,
+					);
+
+					throw e;
+				}
+			}
+		});
+	}
+
+	/**
+	 * API Patch with the same token management and retry logic as apiGet.
+	 *
+	 * @param {string} url - The URL to patch
+	 * @param {object} [data] - Optional JSON body to send
+	 * @param {object} [config] - Optional axios config overrides
+	 * @returns {Promise<object>} The axios response
+	 */
+	async apiPatch(url, data, config = {}) {
+		if (this.unloaded) {
+			return;
+		}
+
+		if (!this.apiClient) {
+			throw new Error("API client not initialized");
+		}
+		if (!this.apiQueue) {
+			throw new Error("API queue not initialized");
+		}
+
+		const client = this.apiClient;
+		return this.apiQueue.add(async () => {
+			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
+				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
+				await this.refreshTokenSingleFlight();
+			}
+
+			if (!this.currentToken) {
+				this.log.debug("🔐 No current token. Refreshing before request...");
+				await this.refreshTokenSingleFlight();
+			}
+
+			const maxAttempts = 3;
+
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				try {
+					const headers = {
+						Authorization: `Bearer ${this.currentToken}`,
+						...(config.headers || {}),
+					};
+					if (data !== undefined && data !== null) {
+						headers["Content-Type"] = "application/json";
+					}
+					return await client.patch(url, data || undefined, {
+						...config,
+						headers,
+					});
+				} catch (e) {
+					const status = e.response?.status;
+
+					const isTimeout =
+						e.code === "ECONNABORTED" ||
+						e.code === "ETIMEDOUT" ||
+						e.name === "AbortError" ||
+						e.name === "CanceledError" ||
+						/timeout/i.test(e.message || "");
+
+					if (status === 401 && attempt < maxAttempts - 1) {
+						this.log.debug("🔐 401 received. Refreshing token...");
+						await this.refreshTokenSingleFlight();
+						continue;
+					}
+
+					if (status === 429) {
+						this.log.warn("🚦 API returned 429 (rate limited). Backoff handled by AdaptiveRequestQueue.");
+					}
+
+					if (isTimeout) {
+						this.log.warn("⏱ API request timed out - likely server overload or implicit rate limiting.");
+					}
+
+					this.log.debug(
+						`API PATCH request failed (attempt ${attempt + 1}/${maxAttempts}) ` +
 							`for ${url} - status=${status || "none"} - code=${e.code || "n/a"}`,
 					);
 

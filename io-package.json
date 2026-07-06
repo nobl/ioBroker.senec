@@ -168,6 +168,8 @@
     "control_reboot": false,
     "control_sockets": false,
     "control_wallbox": false,
+    "control_api_active": false,
+    "control_api_wallbox": false,
     "senecip": "0.0.0.0",
     "interval": 10,
     "intervalLow": 60,

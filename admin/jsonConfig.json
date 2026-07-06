@@ -114,58 +114,91 @@
 		"_activeApplianceControl": {
 			"type": "panel",
 			"label": "Active_Appliance_Control",
-			"hidden": "data.lala_use !== true",
+			"hidden": "data.lala_use !== true && data.api_use !== true",
 			"items": {
 				"control_active": {
 					"type": "checkbox",
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
-					"lg": 4,
-					"xl": 4,
+					"lg": 6,
+					"xl": 6,
 					"label": "activeControl",
 					"help": "activeControlHelp",
 					"default": false,
+					"hidden": "data.lala_use !== true",
 					"newLine": true
 				},
-				"control_reboot": {
+				"_localControl": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "localControl",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6,
+					"hidden": "data.lala_use !== true || data.control_active !== true",
+					"newLine": true,
+					"items": {
+						"control_reboot": {
+							"type": "checkbox",
+							"label": "controlReboot",
+							"help": "controlRebootHelp",
+							"default": false,
+							"newLine": true
+						},
+						"control_sockets": {
+							"type": "checkbox",
+							"label": "controlSockets",
+							"help": "controlSocketsHelp",
+							"default": false,
+							"newLine": true
+						},
+						"control_wallbox": {
+							"type": "checkbox",
+							"label": "controlWallbox",
+							"help": "controlWallboxHelp",
+							"default": false,
+							"hidden": "data.control_api_wallbox === true",
+							"newLine": true
+						}
+					}
+				},
+				"control_api_active": {
 					"type": "checkbox",
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "controlReboot",
-					"help": "controlRebootHelp",
+					"lg": 6,
+					"xl": 6,
+					"label": "activeApiControl",
+					"help": "activeApiControlHelp",
 					"default": false,
-					"hidden": "data.control_active !== true",
+					"hidden": "data.api_use !== true",
 					"newLine": true
 				},
-				"control_sockets": {
-					"type": "checkbox",
+				"_apiControl": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "apiControl",
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "controlSockets",
-					"help": "controlSocketsHelp",
-					"default": false,
-					"hidden": "data.control_active !== true",
-					"newLine": true
-				},
-				"control_wallbox": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "controlWallbox",
-					"help": "controlWallboxHelp",
-					"default": false,
-					"hidden": "data.control_active !== true",
-					"newLine": true
+					"lg": 6,
+					"xl": 6,
+					"hidden": "data.api_use !== true || data.control_api_active !== true",
+					"newLine": true,
+					"items": {
+						"control_api_wallbox": {
+							"type": "checkbox",
+							"label": "controlApiWallbox",
+							"help": "controlApiWallboxHelp",
+							"default": false,
+							"hidden": "data.control_wallbox === true",
+							"newLine": true
+						}
+					}
 				}
 			}
 		},
@@ -454,254 +487,290 @@
 					"default": false,
 					"newLine": true
 				},
-				"api_mail": {
-					"type": "text",
+				"_apiCredentials": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "apiCredentials",
 					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "Email",
-					"help": "Email-Help",
-					"default": "",
 					"hidden": "data.api_use !== true",
-					"newLine": true
-				},
-				"api_pwd": {
-					"type": "password",
-					"visible": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "Password",
-					"help": "Password_Help:",
-					"default": "",
-					"hidden": "data.api_use !== true",
-					"newLine": false
-				},
-				"api_totp_secret": {
-					"type": "password",
-					"visible": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "TOTPSecret",
-					"help": "TOTPSecretHelp",
-					"default": "",
-					"hidden": "data.api_use !== true",
-					"newLine": false
-				},
-				"api_interval": {
-					"type": "number",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "PollIntervalAPI",
-					"help": "PollIntervalAPIHelp",
-					"default": 6,
-					"min": 3,
-					"max": 1440,
-					"hidden": "data.api_use !== true",
-					"newLine": true
-				},
-				"api_interval_details": {
-					"type": "number",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "PollIntervalAPIDetails",
-					"help": "PollIntervalAPIDetailsHelp",
-					"default": 60,
-					"min": 10,
-					"max": 1440,
-					"hidden": "data.api_use !== true",
-					"newLine": false
-				}, 
-				"api_interval_heavy": {
-					"type": "number",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "PollIntervalAPIHeavy",
-					"help": "PollIntervalAPIHeavyHelp",
-					"default": 1440,
-					"min": 720,
-					"max": 2880,
-					"hidden": "data.api_use !== true",
-					"newLine": false
-				},
-				"api_showPolling": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "apiShowPolling",
-					"help": "apiShowPollingHelp",
-					"default": true,
-					"hidden": "data.api_use !== true",
-					"newLine": true
-				},
-				"api_concurrency_start": {
-					"type": "number",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "apiConcurrencyStart",
-					"help": "apiConcurrencyStartHelp",
-					"default": 1,
-					"min": 1,
-					"max": 3,
-					"hidden": "data.api_use !== true",
-					"newLine": true
-				},
-				"api_concurrency_max": {
-					"type": "number",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "apiConcurrencyMax",
-					"help": "apiConcurrencyMaxHelp",
-					"default": 1,
-					"min": 1,
-					"max": 6,
-					"hidden": "data.api_use !== true",
-					"newLine": false
-				},
-				"api_userAgentMode": {
-					"type": "select",
-					"label": "userAgentMode",
-					"help": "userAgentModeHelp",
-					"options": [
-						{
-							"label": "Integration",
-							"value": "integration"
+					"newLine": true,
+					"items": {
+						"api_mail": {
+							"type": "text",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "Email",
+							"help": "Email-Help",
+							"default": "",
+							"newLine": true
 						},
-						{
-							"label": "Browser",
-							"value": "browser"
+						"api_pwd": {
+							"type": "password",
+							"visible": true,
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "Password",
+							"help": "Password_Help:",
+							"default": "",
+							"newLine": false
 						},
-						{
-							"label": "Custom",
-							"value": "custom"
+						"api_totp_secret": {
+							"type": "password",
+							"visible": true,
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "TOTPSecret",
+							"help": "TOTPSecretHelp",
+							"default": "",
+							"newLine": false
 						}
-					],
-					"default": "integration",
+					}
+				},
+				"_apiPollIntervals": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "apiPollIntervals",
 					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
 					"hidden": "data.api_use !== true",
-					"newLine": true
-				},
-				"api_customUserAgent": {
-					"type": "text",
-					"label": "customUserAgent",
-					"help": "customUserAgentHelp",
-					"default": "",
-					"hidden": "data.api_userAgentMode !== 'custom' || data.api_use !== true",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"newLine": false
-				},
-				"api_alltimeRebuildMode": {
-					"type": "select",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "ReBuildHistory",
-					"help": "ReBuildHistoryHelp",
-					"options": [
-						{
-							"label": "Off",
-							"value": "off"
+					"newLine": true,
+					"items": {
+						"api_interval": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "PollIntervalAPI",
+							"help": "PollIntervalAPIHelp",
+							"default": 6,
+							"min": 3,
+							"max": 1440,
+							"newLine": true
 						},
-						{
-							"label": "Resume",
-							"value": "resume"
+						"api_interval_details": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "PollIntervalAPIDetails",
+							"help": "PollIntervalAPIDetailsHelp",
+							"default": 60,
+							"min": 10,
+							"max": 1440,
+							"newLine": false
 						},
-						{
-							"label": "Full",
-							"value": "force_full"
+						"api_interval_heavy": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "PollIntervalAPIHeavy",
+							"help": "PollIntervalAPIHeavyHelp",
+							"default": 1440,
+							"min": 720,
+							"max": 2880,
+							"newLine": false
+						},
+						"api_showPolling": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "apiShowPolling",
+							"help": "apiShowPollingHelp",
+							"default": true,
+							"newLine": true
 						}
-					],
-					"default": "off",
-					"hidden": "data.api_use !== true",
-					"newLine": true
+					}
 				},
-				"api_alltimeRebuildStartYear": {
-					"type": "number",
+				"_apiConcurrency": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "apiConcurrencyAndUA",
 					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "ReBuildHistoryStartYear",
-					"help": "ReBuildHistoryStartYearHelp",
-					"min": 2009,
-					"default": 2025,
-					"hidden": "data.api_use !== true || data.api_alltimeRebuildMode === 'off'",
-					"newLine": false
-				},
-				"api_debug_states": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "apiDebugStates",
-					"help": "apiDebugStatesHelp",
-					"default": false,
 					"hidden": "data.api_use !== true",
-					"newLine": true
+					"newLine": true,
+					"items": {
+						"api_concurrency_start": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "apiConcurrencyStart",
+							"help": "apiConcurrencyStartHelp",
+							"default": 1,
+							"min": 1,
+							"max": 3,
+							"newLine": true
+						},
+						"api_concurrency_max": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "apiConcurrencyMax",
+							"help": "apiConcurrencyMaxHelp",
+							"default": 1,
+							"min": 1,
+							"max": 6,
+							"newLine": false
+						},
+						"api_userAgentMode": {
+							"type": "select",
+							"label": "userAgentMode",
+							"help": "userAgentModeHelp",
+							"options": [
+								{
+									"label": "Integration",
+									"value": "integration"
+								},
+								{
+									"label": "Browser",
+									"value": "browser"
+								},
+								{
+									"label": "Custom",
+									"value": "custom"
+								}
+							],
+							"default": "integration",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"newLine": true
+						},
+						"api_customUserAgent": {
+							"type": "text",
+							"label": "customUserAgent",
+							"help": "customUserAgentHelp",
+							"default": "",
+							"hidden": "data.api_userAgentMode !== 'custom'",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"newLine": false
+						}
+					}
 				},
-				"api_debug_log": {
-					"type": "checkbox",
+				"_apiRebuild": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "apiHistoryRebuild",
 					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "apiDebugLog",
-					"help": "apiDebugLogHelp",
-					"default": false,
 					"hidden": "data.api_use !== true",
-					"newLine": false
+					"newLine": true,
+					"items": {
+						"api_alltimeRebuildMode": {
+							"type": "select",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "ReBuildHistory",
+							"help": "ReBuildHistoryHelp",
+							"options": [
+								{
+									"label": "Off",
+									"value": "off"
+								},
+								{
+									"label": "Resume",
+									"value": "resume"
+								},
+								{
+									"label": "Full",
+									"value": "force_full"
+								}
+							],
+							"default": "off",
+							"newLine": true
+						},
+						"api_alltimeRebuildStartYear": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "ReBuildHistoryStartYear",
+							"help": "ReBuildHistoryStartYearHelp",
+							"min": 2009,
+							"default": 2025,
+							"hidden": "data.api_alltimeRebuildMode === 'off'",
+							"newLine": false
+						}
+					}
 				},
-				"api_reqnresp_log": {
-					"type": "checkbox",
+				"_apiDebug": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "apiDebugAndLogging",
 					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "apiReqRespLog",
-					"help": "apiReqRespLogHelp",
-					"default": false,
 					"hidden": "data.api_use !== true",
-					"newLine": true
+					"newLine": true,
+					"items": {
+						"api_reqnresp_log": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "apiReqRespLog",
+							"help": "apiReqRespLogHelp",
+							"default": false,
+							"newLine": true
+						},
+						"api_debug_log": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "apiDebugLog",
+							"help": "apiDebugLogHelp",
+							"default": false,
+							"newLine": true
+						},
+						"api_debug_states": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "apiDebugStates",
+							"help": "apiDebugStatesHelp",
+							"default": false,
+							"newLine": true
+						}
+					}
 				}
 			}
 		}
