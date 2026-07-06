@@ -91,5 +91,17 @@
     "Resume": "Resume",
     "Full": "Full",
     "ReBuildHistoryStartYear": "Start year for History rebuild",
-    "ReBuildHistoryStartYearHelp": "This usually is the year your system was put in place. You can go back until 2009 but every year you don't have data will show empty yearly measurements folders. Default: 2025, Range [2009..current Year]"
+    "ReBuildHistoryStartYearHelp": "This usually is the year your system was put in place. You can go back until 2009 but every year you don't have data will show empty yearly measurements folders. Default: 2025, Range [2009..current Year]",
+    "SENEC_Connect": "SENEC.Connect",
+    "USE_SENEC_CONNECT": "Use SENEC.Connect API?",
+    "USE_SENEC_CONNECT_HELP": "Enable polling via the official SENEC.Connect API. Requires a SENEC.Connect subscription (paid product) and a V4/E4 system. Uses the same SENEC account but a separate subscription key. Older systems (V2/V3) are not supported by SENEC.Connect.",
+    "connectSubscription": "Subscription",
+    "connectSubscriptionKey": "Subscription Key",
+    "connectSubscriptionKeyHelp": "Your SENEC.Connect subscription key (Ocp-Apim-Subscription-Key). Found under your profile at developer.senec.com after subscribing to the SENEC.Connect product.",
+    "connectSubscriptionInfo": "To obtain a subscription key:<br>1. Go to <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Sign in with your mein-senec.de credentials<br>3. Browse to the SENEC.Connect product and click Subscribe<br>4. Find your subscription key under Profile \u2192 My Subscriptions<br>5. Copy the key and paste it above",
+    "connectPolling": "Polling",
+    "connectPollInterval": "Polling Interval (seconds)",
+    "connectPollIntervalHelp": "Here you can define the polling interval [min 60, max 86400 seconds]. Default = 300 (5 minutes). SENEC.Connect allows approx. 45,000 requests per month (~1/minute). Going below 60 seconds is not recommended and may exhaust your quota.",
+    "connectInclude": "Include sections",
+    "connectIncludeHelp": "Comma-separated list of data sections to include: battery, meter, evse, bessNameplate. Leave as default to get all available data."
 }

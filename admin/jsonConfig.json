@@ -771,6 +771,91 @@
 					}
 				}
 			}
+		},
+		"_senecConnect": {
+			"type": "panel",
+			"label": "SENEC_Connect",
+			"items": {
+				"connect_use": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "USE_SENEC_CONNECT",
+					"help": "USE_SENEC_CONNECT_HELP",
+					"default": false,
+					"newLine": true
+				},
+				"_connectSubscription": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "connectSubscription",
+					"xs": 12,
+					"hidden": "data.connect_use !== true",
+					"newLine": true,
+					"items": {
+						"connect_subscription_key": {
+							"type": "password",
+							"visible": true,
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 6,
+							"xl": 6,
+							"label": "connectSubscriptionKey",
+							"help": "connectSubscriptionKeyHelp",
+							"default": "",
+							"newLine": true
+						},
+						"_connectSubscriptionInfo": {
+							"type": "staticText",
+							"xs": 12,
+							"text": "connectSubscriptionInfo",
+							"hidden": "data.connect_use !== true",
+							"newLine": true
+						}
+					}
+				},
+				"_connectPolling": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "connectPolling",
+					"xs": 12,
+					"hidden": "data.connect_use !== true",
+					"newLine": true,
+					"items": {
+						"connect_interval": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "connectPollInterval",
+							"help": "connectPollIntervalHelp",
+							"default": 300,
+							"min": 60,
+							"max": 86400,
+							"newLine": true
+						},
+						"connect_include": {
+							"type": "text",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 6,
+							"xl": 6,
+							"label": "connectInclude",
+							"help": "connectIncludeHelp",
+							"default": "battery,meter,evse,bessNameplate",
+							"hidden": "data.connect_use !== true",
+							"newLine": true
+						}
+					}
+				}
+			}
 		}
 	}
 }

@@ -24,6 +24,7 @@ const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev/systems/api
 const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev/measurements/api";
 const HOST_ABILITIES = "https://senec-app-abilities-proxy.prod.senec.dev/abilities/api";
 const HOST_WALLBOX = "https://senec-app-wallbox-proxy.prod.senec.dev/wallbox/api";
+const HOST_CONNECT = "https://apim-eds-gwc-prod.azure-api.net/senec-connect";
 const SSO_BASE_URL = "https://sso.senec.com/realms/senec/protocol/openid-connect";
 const SSO_AUTH_URL = `${SSO_BASE_URL}/auth`;
 const SSO_TOKEN_URL = `${SSO_BASE_URL}/token`;
@@ -405,11 +406,19 @@ class Senec extends utils.Adapter {
 				);
 			}
 
-			if (this.lalaConnected || this.apiConnected) {
+			if (this.config.connect_use) {
+				this.log.info("Usage of SENEC.Connect API configured.");
+				this.pollSenecConnect().catch((e) => this.logError(e, "❌ Initial SENEC.Connect poll failed"));
+				this.connectEnabled = true;
+			}
+
+			if (this.lalaConnected || this.apiConnected || this.connectEnabled) {
 				await this.setState("info.connection", true, true);
 				await this.refreshGuiLangCache();
 			} else {
-				this.log.error("Neither local connection nor API connection configured. Please check config!");
+				this.log.error(
+					"Neither local connection, API connection, nor SENEC.Connect configured. Please check config!",
+				);
 			}
 
 			if (this.config.control_active) {
@@ -3751,6 +3760,74 @@ class Senec extends utils.Adapter {
 	 * @param isHighPrio high priority poll
 	 * @param retry retry count
 	 */
+
+	// ── SENEC.Connect Polling ──────────────────────────────────────────────
+
+	/**
+	 * Polls the SENEC.Connect API for device data.
+	 * Uses subscription key authentication (Ocp-Apim-Subscription-Key header).
+	 * All requested data sections are fetched in a single request via the include parameter.
+	 */
+	async pollSenecConnect() {
+		if (this.unloaded) {
+			return;
+		}
+
+		const interval = (this.config.connect_interval || 300) * 1000;
+		const include = this.config.connect_include || "battery,meter";
+		const subscriptionKey = this.config.connect_subscription_key;
+
+		if (!subscriptionKey) {
+			this.log.warn("SENEC.Connect: No subscription key configured. Skipping poll.");
+			return;
+		}
+
+		try {
+			this.log.debug("🔄 Polling SENEC.Connect API...");
+
+			const url = `${HOST_CONNECT}/v1/systems/device-data/general?include=${encodeURIComponent(include)}`;
+			if (!this.connectClient) {
+				this.connectClient = axios.create({
+					timeout: this.config.pollingTimeout || 5000,
+					headers: {
+						"Ocp-Apim-Subscription-Key": subscriptionKey,
+					},
+				});
+			}
+			const response = await this.connectClient.get(url);
+
+			this.log.debug(`SENEC.Connect response: ${JSON.stringify(response?.data).slice(0, 1000)}`);
+			if (response?.data && Array.isArray(response.data)) {
+				for (let i = 0; i < response.data.length; i++) {
+					await this.evalPoll(response.data[i], `_connect.Systems.${i}.`);
+				}
+				await this.doState(
+					"_connect.info.lastPoll",
+					new Date().toISOString(),
+					"Last successful SENEC.Connect poll",
+					"",
+					false,
+				);
+				this.log.debug(`SENEC.Connect: polled ${response.data.length} system(s)`);
+			} else {
+				this.log.warn(
+					`SENEC.Connect: unexpected response format: ${JSON.stringify(response?.data).slice(0, 200)}`,
+				);
+			}
+		} catch (error) {
+			this.logError(error, "❌ SENEC.Connect poll failed");
+		}
+
+		if (!this.unloaded) {
+			this.setTimeout(() => {
+				this.pollSenecConnect().catch((e) => this.logError(e, "❌ SENEC.Connect scheduled poll failed"));
+			}, interval);
+			this.log.debug(`⏱ Next SENEC.Connect poll scheduled in ${(interval / 1000).toFixed(0)}s`);
+		}
+	}
+
+	// ── Local Polling ──────────────────────────────────────────────────────
+
 	async pollSenecLocal(isHighPrio, retry) {
 		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 		let interval = this.config.interval * 1000;

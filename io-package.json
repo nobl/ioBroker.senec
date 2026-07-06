@@ -213,17 +213,23 @@
     "api_totp_secret": "",
     "api_userAgentMode": "integration",
     "api_customUserAgent": "",
-    "api_showPolling": true
+    "api_showPolling": true,
+    "connect_use": false,
+    "connect_subscription_key": "",
+    "connect_interval": 300,
+    "connect_include": "battery,meter,evse,bessNameplate"
   },
   "encryptedNative": [
     "api_mail",
     "api_pwd",
-    "api_totp_secret"
+    "api_totp_secret",
+    "connect_subscription_key"
   ],
   "protectedNative": [
     "api_mail",
     "api_pwd",
-    "api_totp_secret"
+    "api_totp_secret",
+    "connect_subscription_key"
   ],
   "objects": [],
   "instanceObjects": [
