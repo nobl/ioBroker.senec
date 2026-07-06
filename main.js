@@ -159,6 +159,9 @@ class Senec extends utils.Adapter {
 		this.apiFailureCount = 0;
 		this.baseTime = 60000;
 
+		this.socketCount = undefined; // set after first local poll reads SOCKETS.NUMBER_OF_SOCKETS
+		this.socketControlsCreated = false;
+
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
 		this.lastLoggedRecommendedConcurrency = null;
@@ -405,82 +408,63 @@ class Senec extends utils.Adapter {
 	 * @param {ioBroker.State | null | undefined} state The state object that changed
 	 */
 	async onStateChange(id, state) {
-		if (state && !state.ack) {
+		if (!state) {
+			return;
+		}
+
+		// --- User control commands (ack = false) ---
+		if (!state.ack) {
 			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
-			if (this.config.control_active) {
-				// All state-changes for .control.* need active config value
 
-				// ForceLoadBattery control
-				if (id === `${this.namespace}.control.ForceLoadBattery`) {
-					if (this.lalaConnected) {
-						const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
-						try {
-							if (state.val) {
-								this.log.info("Enable force battery charging ...");
-								await this.evalPoll(
-									JSON.parse(
-										await this.doGetLocal(url, batteryOn, this.config.pollingTimeout, true),
-										reviverNumParse,
-									),
-									"",
-									"",
-								);
-							} else {
-								this.log.info("Disable force battery charging ...");
-								await this.evalPoll(
-									JSON.parse(
-										await this.doGetLocal(url, batteryOff, this.config.pollingTimeout, true),
-										reviverNumParse,
-									),
-									"",
-									"",
-								);
-							}
-						} catch (error) {
-							this.logError(
-								error,
-								`Failed to control: setting force battery charging mode to ${state.val}`,
-							);
-							return;
-						}
-					} else {
-						this.log.warn(
-							`State change for ${id} not handled (control active: ${this.config.control_active}, lalaConnected: ${this.lalaConnected})`,
-						);
-					}
-				}
-
-				// reboot control
-				if (id === `${this.namespace}.control.RebootAppliance`) {
-					if (this.lalaConnected && this.config.control_reboot) {
-						const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
-						try {
-							if (state.val) {
-								this.log.info("Rebooting appliance ...");
-								await this.evalPoll(
-									JSON.parse(
-										await this.doGetLocal(url, rebootAppliance, this.config.pollingTimeout, true),
-										reviverNumParse,
-									),
-									"",
-									"",
-								);
-							}
-						} catch (error) {
-							this.logError(error, `Failed to control: setting reboot to ${state.val}`);
-							return;
-						}
-					} else {
-						this.log.warn(
-							`State change for ${id} not handled (control active: ${this.config.control_active}, lalaConnected: ${this.lalaConnected}, reboot allowed: ${this.config.control_reboot})`,
-						);
-					}
-				}
+			if (!this.config.control_active) {
+				return;
 			}
 
-			await this.setState(id, { val: state.val, ack: true }); // Verarbeitung bestätigen
-		} else if (state && id === `${this.namespace}.ENERGY.STAT_STATE`) {
-			// states that do have state.ack already
+			const controlId = id.slice(`${this.namespace}.control.`.length);
+
+			if (!this.lalaConnected) {
+				this.log.warn(`Control command for ${controlId} ignored (not connected via lala.cgi)`);
+				return;
+			}
+
+			// ForceLoadBattery
+			if (controlId === "ForceLoadBattery") {
+				const payload = state.val ? batteryOn : batteryOff;
+				this.log.info(`${state.val ? "Enable" : "Disable"} force battery charging ...`);
+				await this.sendLocalControl(id, payload, `setting force battery charging to ${state.val}`);
+				return;
+			}
+
+			// RebootAppliance
+			if (controlId === "RebootAppliance") {
+				if (!this.config.control_reboot) {
+					this.log.warn("Reboot command ignored (control_reboot not enabled in config)");
+					return;
+				}
+				if (state.val) {
+					this.log.info("Rebooting appliance ...");
+					await this.sendLocalControl(id, rebootAppliance, "rebooting appliance");
+				}
+				return;
+			}
+
+			// Socket controls
+			const socketMatch = controlId.match(/^Sockets\.(\d+)\.(.+)$/);
+			if (socketMatch) {
+				if (!this.config.control_sockets) {
+					this.log.warn("Socket control command ignored (control_sockets not enabled in config)");
+					return;
+				}
+				const socketVal = state.val ?? false;
+				await this.handleSocketControl(id, parseInt(socketMatch[1], 10), socketMatch[2], socketVal);
+				return;
+			}
+
+			return;
+		}
+
+		// --- Device state sync (ack = true) ---
+		if (id === `${this.namespace}.ENERGY.STAT_STATE`) {
 			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
 			const forceLoad = await this.getStateAsync(`${this.namespace}.control.ForceLoadBattery`);
 			if (state.val == 8 || state.val == 9) {
@@ -507,7 +491,7 @@ class Senec extends utils.Adapter {
 					});
 				}
 			}
-		} else if (state && id === `${this.namespace}.SYS_UPDATE.USER_REBOOT_DEVICE`) {
+		} else if (id === `${this.namespace}.SYS_UPDATE.USER_REBOOT_DEVICE`) {
 			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
 			if (state.val) {
 				this.log.info("Rebooting appliance in progress ...");
@@ -517,6 +501,189 @@ class Senec extends utils.Adapter {
 					val: false,
 					ack: true,
 				});
+			}
+		}
+	}
+
+	/**
+	 * Send a control command to the local SENEC device via lala.cgi.
+	 *
+	 * @param {string} stateId - The full state id to ack on success
+	 * @param {string} payload - The JSON payload to send
+	 * @param {string} description - Human-readable description for error logging
+	 */
+	async sendLocalControl(stateId, payload, description) {
+		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
+		try {
+			await this.evalPoll(
+				JSON.parse(await this.doGetLocal(url, payload, this.config.pollingTimeout, true), reviverNumParse),
+				"",
+				"",
+			);
+			await this.setState(stateId, { val: (await this.getStateAsync(stateId))?.val, ack: true });
+		} catch (error) {
+			this.logError(error, `Failed to control: ${description}`);
+		}
+	}
+
+	/**
+	 * Handle a socket control state change.
+	 *
+	 * @param {string} stateId - The full state id
+	 * @param {number} socketIdx - Socket index (0-based)
+	 * @param {string} field - The control field name (e.g. "ForceOn", "LowerLimit")
+	 * @param {boolean | number | string} value - The value to set
+	 */
+	async handleSocketControl(stateId, socketIdx, field, value) {
+		if (this.socketCount === undefined || socketIdx >= this.socketCount) {
+			this.log.warn(`Socket ${socketIdx} does not exist (device has ${this.socketCount ?? 0} sockets)`);
+			return;
+		}
+
+		const fieldMap = {
+			Enable: { key: "ENABLE", type: "u8", bool: true },
+			ForceOn: { key: "FORCE_ON", type: "u8", bool: true },
+			UseTime: { key: "USE_TIME", type: "u8", bool: true },
+			LowerLimit: { key: "LOWER_LIMIT", type: "u1", bool: false },
+			UpperLimit: { key: "UPPER_LIMIT", type: "u1", bool: false },
+			PowerOnTime: { key: "POWER_ON_TIME", type: "u1", bool: false },
+			SwitchOnHour: { key: "SWITCH_ON_HOUR", type: "u8", bool: false },
+			SwitchOnMinute: { key: "SWITCH_ON_MINUTE", type: "u8", bool: false },
+			TimeLimit: { key: "TIME_LIMIT", type: "u1", bool: false },
+		};
+
+		const mapping = fieldMap[field];
+		if (!mapping) {
+			this.log.warn(`Unknown socket control field: ${field}`);
+			return;
+		}
+
+		// Build array payload: empty string for positions we don't change
+		const arr = Array.from({ length: this.socketCount }, () => "");
+		if (mapping.bool) {
+			arr[socketIdx] = `${mapping.type}_${value ? "01" : "00"}`;
+		} else {
+			const numVal = typeof value === "number" ? value : parseInt(String(value), 10);
+			if (isNaN(numVal) || numVal < 0) {
+				this.log.warn(`Invalid value for socket control ${field}: ${value}`);
+				return;
+			}
+			const padLen = mapping.type === "u1" ? 4 : 2;
+			arr[socketIdx] = `${mapping.type}_${numVal.toString(16).toUpperCase().padStart(padLen, "0")}`;
+		}
+
+		const payload = JSON.stringify({ SOCKETS: { [mapping.key]: arr } });
+		this.log.debug(`Socket control payload: ${payload}`);
+		this.log.info(`Setting socket ${socketIdx} ${field} to ${value} ...`);
+		await this.sendLocalControl(stateId, payload, `setting socket ${socketIdx} ${field} to ${value}`);
+	}
+
+	/**
+	 * Create control datapoints for switchable sockets.
+	 * Called once after the first local poll reveals NUMBER_OF_SOCKETS.
+	 */
+	async createSocketControls() {
+		if (this.socketControlsCreated || !this.socketCount || this.socketCount <= 0) {
+			return;
+		}
+		if (!this.config.control_active || !this.config.control_sockets) {
+			return;
+		}
+
+		const boolStates = [
+			{ id: "Enable", name: "Enable socket", role: "switch" },
+			{ id: "ForceOn", name: "Force socket on", role: "switch" },
+			{ id: "UseTime", name: "Use time-based switching", role: "switch" },
+		];
+		const numStates = [
+			{ id: "LowerLimit", name: "Lower power limit", unit: "W", role: "level" },
+			{ id: "UpperLimit", name: "Upper power limit", unit: "W", role: "level" },
+			{ id: "PowerOnTime", name: "Power-on time", unit: "min", role: "level" },
+			{ id: "SwitchOnHour", name: "Switch-on hour", unit: "h", role: "level" },
+			{ id: "SwitchOnMinute", name: "Switch-on minute", unit: "min", role: "level" },
+			{ id: "TimeLimit", name: "Time limit", unit: "min", role: "level" },
+		];
+
+		for (let i = 0; i < this.socketCount; i++) {
+			const ch = `control.Sockets.${i}`;
+			await this.setObjectNotExistsAsync(ch, {
+				type: "channel",
+				common: { name: `Socket ${i}` },
+				native: {},
+			});
+
+			for (const s of boolStates) {
+				await this.setObjectNotExistsAsync(`${ch}.${s.id}`, {
+					type: "state",
+					common: {
+						name: s.name,
+						type: "boolean",
+						role: s.role,
+						read: true,
+						write: true,
+						def: false,
+					},
+					native: {},
+				});
+			}
+
+			for (const s of numStates) {
+				await this.setObjectNotExistsAsync(`${ch}.${s.id}`, {
+					type: "state",
+					common: {
+						name: s.name,
+						type: "number",
+						role: s.role,
+						unit: s.unit,
+						read: true,
+						write: true,
+						def: 0,
+					},
+					native: {},
+				});
+			}
+		}
+
+		this.socketControlsCreated = true;
+		this.log.info(`Created control datapoints for ${this.socketCount} socket(s)`);
+	}
+
+	/**
+	 * Sync socket control datapoints with values read from the device.
+	 *
+	 * @param {object} socketsData - The SOCKETS section from the poll response
+	 */
+	async syncSocketControls(socketsData) {
+		if (!this.socketControlsCreated || !socketsData) {
+			return;
+		}
+
+		const syncMap = {
+			ENABLE: "Enable",
+			FORCE_ON: "ForceOn",
+			USE_TIME: "UseTime",
+			LOWER_LIMIT: "LowerLimit",
+			UPPER_LIMIT: "UpperLimit",
+			POWER_ON_TIME: "PowerOnTime",
+			SWITCH_ON_HOUR: "SwitchOnHour",
+			SWITCH_ON_MINUTE: "SwitchOnMinute",
+			TIME_LIMIT: "TimeLimit",
+		};
+
+		for (let i = 0; i < this.socketCount; i++) {
+			for (const [deviceKey, controlField] of Object.entries(syncMap)) {
+				if (socketsData[deviceKey] !== undefined && Array.isArray(socketsData[deviceKey])) {
+					const rawVal = socketsData[deviceKey][i];
+					if (rawVal === undefined) {
+						continue;
+					}
+					const isBool = ["ENABLE", "FORCE_ON", "USE_TIME"].includes(deviceKey);
+					const val = isBool ? !!rawVal : rawVal;
+					await this.setStateChangedAsync(`control.Sockets.${i}.${controlField}`, {
+						val: val,
+						ack: true,
+					});
+				}
 			}
 		}
 	}
@@ -2293,6 +2460,16 @@ class Senec extends utils.Adapter {
 			const obj = JSON.parse(body, reviverNumParse);
 			this.log.silly(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
 			await this.evalPoll(obj, "", "");
+
+			// Socket control: detect socket count and sync control states (low-prio poll only)
+			if (!isHighPrio && obj.SOCKETS) {
+				if (this.socketCount === undefined && typeof obj.SOCKETS.NUMBER_OF_SOCKETS === "number") {
+					this.socketCount = obj.SOCKETS.NUMBER_OF_SOCKETS;
+					this.log.debug(`Detected ${this.socketCount} socket(s)`);
+					await this.createSocketControls();
+				}
+				await this.syncSocketControls(obj.SOCKETS);
+			}
 
 			retry = 0;
 			if (!this.unloaded) {

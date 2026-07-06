@@ -71,6 +71,8 @@
     "apiShowPollingHelp": "Toont dat de adapter de API pollt of probeert het accesstoken in log 'info' te vernieuwen. Schakel uit als de spam u irriteert.",
     "controlReboot": "Laat het apparaat opnieuw opstarten via het controledatapunt",
     "controlRebootHelp": "Indien geactiveerd is het mogelijk om het SENEC-apparaat opnieuw op te starten via het 'control.RebootAppliance'-datapunt. Normaal gesproken is dit niet beschikbaar via de webinterface.",
+    "controlSockets": "Schakelbare contacten bedienen",
+    "controlSocketsHelp": "lala.cgi-verbinding vereist! Indien geactiveerd kunnen schakelbare contacten worden bediend via de 'control.Sockets' datapunten. Alleen beschikbaar als uw SENEC-systeem schakelbare contacten heeft geconfigureerd.",
     "customUserAgent": "Aangepaste user-agent",
     "customUserAgentHelp": "Wordt alleen gebruikt als de User-Agent-modus is ingesteld op 'Aangepast'.",
     "usaLala": "Verbinden via lala.cgi?",

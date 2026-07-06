@@ -71,6 +71,8 @@
     "apiShowPollingHelp": "Muestra que el adaptador está sondeando la API o intentando actualizar el token de acceso en el registro 'información'. Desactívalo si el spam te molesta.",
     "controlReboot": "Permitir el reinicio del dispositivo a través del punto de datos de control",
     "controlRebootHelp": "Cuando está activado, es posible reiniciar el dispositivo SENEC a través del punto de datos 'control.RebootAppliance'. Normalmente esto no está disponible a través de la interfaz web.",
+    "controlSockets": "Control de contactos conmutables",
+    "controlSocketsHelp": "Se requiere conexi\u00f3n lala.cgi. Cuando est\u00e1 activado, los contactos conmutables se pueden controlar a trav\u00e9s de los puntos de datos 'control.Sockets'. Solo disponible si su sistema SENEC tiene contactos conmutables configurados.",
     "customUserAgent": "Agente de usuario personalizado",
     "customUserAgentHelp": "Solo se utiliza cuando el modo Usuario-Agente está configurado en \"Personalizado\".",
     "usaLala": "¿Conectarse a través de lala.cgi?",

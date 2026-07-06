@@ -71,6 +71,8 @@
     "apiShowPollingHelp": "显示适配器正在轮询 API 或尝试刷新日志“info”中的访问令牌。如果垃圾邮件让您烦恼，请关闭。",
     "controlReboot": "允许通过控制数据点重新启动设备",
     "controlRebootHelp": "激活后，可以通过“control.RebootAppliance”数据点重新启动 SENEC 设备。这通常无法通过网络界面获得。",
+    "controlSockets": "可切换触点控制",
+    "controlSocketsHelp": "需要 lala.cgi 连接！激活后，可通过 'control.Sockets' 数据点控制可切换触点。仅在您的 SENEC 系统配置了可切换触点时可用。",
     "customUserAgent": "自定义用户代理",
     "customUserAgentHelp": "仅当用户代理模式设置为“自定义”时使用。",
     "usaLala": "通过 lala.cgi 连接？",

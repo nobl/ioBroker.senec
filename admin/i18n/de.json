@@ -71,6 +71,8 @@
     "apiShowPollingHelp": "Zeigt an, dass der Adapter die API abfragt oder versucht, das Zugriffstoken im Protokoll „Info“ zu aktualisieren. Schalten Sie die Funktion aus, wenn Sie der Spam stört.",
     "controlReboot": "Ermöglichen Sie den Neustart der Appliance über den Kontrolldatenpunkt",
     "controlRebootHelp": "Bei Aktivierung ist es möglich, die SENEC-Appliance über den Datenpunkt „control.RebootAppliance“ neu zu starten. Dies ist normalerweise nicht über die Weboberfläche verfügbar.",
+    "controlSockets": "Schaltbare Kontakte steuern",
+    "controlSocketsHelp": "lala.cgi-Verbindung erforderlich! Bei Aktivierung k\u00f6nnen die schaltbaren Kontakte \u00fcber die Datenpunkte 'control.Sockets' gesteuert werden. Nur verf\u00fcgbar, wenn Ihr SENEC-System schaltbare Kontakte konfiguriert hat.",
     "customUserAgent": "Benutzerdefinierter Benutzeragent",
     "customUserAgentHelp": "Wird nur verwendet, wenn der User-Agent-Modus auf „Benutzerdefiniert“ eingestellt ist.",
     "usaLala": "Über lala.cgi verbinden?",

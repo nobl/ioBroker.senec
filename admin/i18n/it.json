@@ -71,6 +71,8 @@
     "apiShowPollingHelp": "Mostra che l'adattatore sta eseguendo il polling dell'API o tentando di aggiornare il token di accesso nel registro \"info\". Disattiva se lo spam ti infastidisce.",
     "controlReboot": "Consenti il ​​riavvio dell'appliance tramite datapoint di controllo",
     "controlRebootHelp": "Una volta attivato, è possibile riavviare l'appliance SENEC tramite il datapoint 'control.RebootAppliance'. Questo normalmente non è disponibile tramite l'interfaccia web.",
+    "controlSockets": "Controllo prese commutabili",
+    "controlSocketsHelp": "Connessione lala.cgi richiesta! Quando attivato, le prese commutabili possono essere controllate tramite i punti dati 'control.Sockets'. Disponibile solo se il sistema SENEC ha prese commutabili configurate.",
     "customUserAgent": "Agente utente personalizzato",
     "customUserAgentHelp": "Utilizzato solo quando la modalità agente utente è impostata su \"Personalizzato\".",
     "usaLala": "Connettersi tramite lala.cgi?",

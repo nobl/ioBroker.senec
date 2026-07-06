@@ -71,6 +71,8 @@
     "apiShowPollingHelp": "Indique que l'adaptateur interroge l'API ou tente d'actualiser le jeton d'accès dans le journal « info ». Désactivez-le si le spam vous ennuie.",
     "controlReboot": "Autoriser le redémarrage de l'appliance via le point de données de contrôle",
     "controlRebootHelp": "Lorsqu'il est activé, il est possible de redémarrer l'appliance SENEC via le point de données « control.RebootAppliance ». Ceci n’est normalement pas disponible via l’interface Web.",
+    "controlSockets": "Contr\u00f4le des prises commutables",
+    "controlSocketsHelp": "Connexion lala.cgi requise ! Lorsqu'il est activ\u00e9, les prises commutables peuvent \u00eatre contr\u00f4l\u00e9es via les points de donn\u00e9es \u00ab control.Sockets \u00bb. Disponible uniquement si votre syst\u00e8me SENEC a des prises commutables configur\u00e9es.",
     "customUserAgent": "Agent utilisateur personnalisé",
     "customUserAgentHelp": "Utilisé uniquement lorsque le mode User-Agent est défini sur « Personnalisé ».",
     "usaLala": "Vous connecter via lala.cgi ?",

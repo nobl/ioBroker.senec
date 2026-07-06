@@ -166,6 +166,7 @@
     "lala_use": true,
     "control_active": false,
     "control_reboot": false,
+    "control_sockets": false,
     "senecip": "0.0.0.0",
     "interval": 10,
     "intervalLow": 60,
