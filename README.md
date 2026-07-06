@@ -266,6 +266,8 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 ### **WORK IN PROGRESS**
 - TOTP/2FA: If your mein-senec.de account requires two-factor authentication, you can now enter your TOTP secret (the base32 key from your authenticator app setup) in the adapter settings. The adapter will automatically generate login codes — no manual interaction needed.
 - Switchable sockets: If your SENEC system has switchable sockets configured, you can now control them via `control.Sockets` datapoints. Enable in adapter settings under active appliance control.
+- Section discovery: The adapter now queries the device at startup to discover available data sections. New sections are automatically added to polling, and unavailable sections are removed. Check `info.discoveredSections` and `info.unavailableSections` for details.
+- Added support for AMPACE battery module data (cell temperatures, alarm/fault/warning states).
 
 ### 2.5.5 (2026-07-06)
 - Add TOTP/2FA support for SENEC API login (configure TOTP secret in adapter settings)

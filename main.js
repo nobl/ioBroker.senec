@@ -49,6 +49,7 @@ const rebootAppliance = '{"SYS_UPDATE":{"USER_REBOOT_DEVICE":"u8_01"}}';
 //const blockDischargeOff = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":"","STAT_STATE":""}}';
 
 const allKnownObjects = new Set([
+	"AMPACE",
 	"BAT1",
 	"BAT1OBJ1",
 	"BMS",
@@ -58,11 +59,15 @@ const allKnownObjects = new Set([
 	"CELL_DEVIATION_ROC",
 	"CURRENT_IMBALANCE_CONTROL",
 	"DEBUG",
+	"DISPLAY",
 	"ENERGY",
 	"FACTORY",
+	"FAN_SPEED",
+	"FAN_TEST",
 	"FEATURES",
+	"FILE",
 	"GRIDCONFIG",
-	"ISKRA",
+	"IPU",
 	"LOG",
 	"PM1",
 	"PM1OBJ1",
@@ -74,6 +79,7 @@ const allKnownObjects = new Set([
 	"SENEC_IO_OUTPUT",
 	"SELFTEST_RESULTS",
 	"SOCKETS",
+	"STATISTIC",
 	"STECA",
 	"SYS_UPDATE",
 	"TEMPMEASURE",
@@ -354,8 +360,11 @@ class Senec extends utils.Adapter {
 
 			if (this.config.lala_use) {
 				this.log.info("Usage of lala.cgi (local) configured.");
-				await this.initPollSettings();
 				await this.checkLocalConnection();
+				if (this.lalaConnected) {
+					await this.discoverSections();
+				}
+				await this.initPollSettings();
 				if (this.lalaConnected) {
 					this.pollSenecLocal(true, 0).catch((e) =>
 						this.logError(e, "❌ Initial local highPrio poll failed"),
@@ -646,6 +655,28 @@ class Senec extends utils.Adapter {
 
 		this.socketControlsCreated = true;
 		this.log.info(`Created control datapoints for ${this.socketCount} socket(s)`);
+	}
+
+	/**
+	 * Remove leftover socket control datapoints when sockets are unavailable or disabled.
+	 */
+	async cleanupSocketControls() {
+		const channels = await this.getChannelsOfAsync("control");
+		if (!channels) {
+			return;
+		}
+		for (const ch of channels) {
+			if (ch._id && ch._id.includes(".control.Sockets.")) {
+				const states = await this.getStatesOfAsync(ch._id.replace(`${this.namespace}.`, ""));
+				if (states) {
+					for (const state of states) {
+						await this.delObjectAsync(state._id);
+					}
+				}
+				await this.delObjectAsync(ch._id);
+				this.log.debug(`Cleaned up socket control channel: ${ch._id}`);
+			}
+		}
 	}
 
 	/**
@@ -1081,6 +1112,103 @@ class Senec extends utils.Adapter {
 				`Error connecting to Senec (IP: ${this.connectVia}${this.config.senecip}). Exiting! (${
 					error
 				}). Check FQDN of SENEC appliance.`,
+			);
+		}
+	}
+
+	/**
+	 * Discover available sections from the device via lala.cgi.
+	 * Posts {"DEBUG":{"SECTIONS":""},"PLAIN":{"SECTIONS":""}} and merges any
+	 * newly discovered section names into allKnownObjects.
+	 * Results are stored in the info.discoveredSections datapoint.
+	 */
+	async discoverSections() {
+		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
+		const form = '{"DEBUG":{"SECTIONS":""},"PLAIN":{"SECTIONS":""}}';
+
+		try {
+			this.log.info("Discovering available sections from device...");
+			const raw = await this.doGetLocal(url, form, this.config.pollingTimeout, true);
+			if (!raw) {
+				throw new Error("Empty response from section discovery");
+			}
+
+			const data = JSON.parse(raw);
+			const discovered = new Set();
+
+			// DEBUG.SECTIONS and PLAIN.SECTIONS contain arrays of section names prefixed with "st_"
+			for (const group of ["DEBUG", "PLAIN"]) {
+				if (data[group] && Array.isArray(data[group].SECTIONS)) {
+					for (const entry of data[group].SECTIONS) {
+						const name = typeof entry === "string" && entry.startsWith("st_") ? entry.substring(3) : entry;
+						if (name && typeof name === "string") {
+							discovered.add(name);
+						}
+					}
+				}
+			}
+
+			// Find sections that are new (not in allKnownObjects)
+			const newSections = [];
+			for (const section of discovered) {
+				if (!allKnownObjects.has(section)) {
+					allKnownObjects.add(section);
+					newSections.push(section);
+				}
+			}
+
+			// Remove hardcoded sections that the device does not have
+			for (const section of [...allKnownObjects]) {
+				if (!discovered.has(section)) {
+					allKnownObjects.delete(section);
+				}
+			}
+
+			// Find hardcoded sections that the device does not have
+			const unavailable = [];
+			for (const section of [...allKnownObjects]) {
+				if (!discovered.has(section)) {
+					unavailable.push(section);
+				}
+			}
+
+			if (newSections.length > 0) {
+				this.log.info(`Discovered ${newSections.length} new section(s): ${newSections.join(", ")}`);
+			}
+			if (unavailable.length > 0) {
+				this.log.info(
+					`Found ${unavailable.length} stale section(s) in ioBroker not on device: ${unavailable.join(", ")}`,
+				);
+			}
+			if (newSections.length === 0 && unavailable.length === 0) {
+				this.log.info("Section discovery complete. Device matches existing sections.");
+			}
+
+			await this.doState(
+				"info.discoveredSections",
+				newSections.length > 0 ? JSON.stringify(newSections) : "none",
+				"Sections discovered beyond hardcoded list",
+				"",
+				false,
+				false,
+			);
+			await this.doState(
+				"info.unavailableSections",
+				unavailable.length > 0 ? JSON.stringify(unavailable) : "none",
+				"Stale sections in ioBroker that the device no longer provides",
+				"",
+				false,
+				false,
+			);
+		} catch (error) {
+			this.log.warn(`Section discovery failed (device may restrict access): ${error.message}`);
+			await this.doState(
+				"info.discoveredSections",
+				`error: ${error.message}`,
+				"Sections discovered beyond hardcoded list",
+				"",
+				false,
+				false,
 			);
 		}
 	}
@@ -2466,7 +2594,12 @@ class Senec extends utils.Adapter {
 				if (this.socketCount === undefined && typeof obj.SOCKETS.NUMBER_OF_SOCKETS === "number") {
 					this.socketCount = obj.SOCKETS.NUMBER_OF_SOCKETS;
 					this.log.debug(`Detected ${this.socketCount} socket(s)`);
-					await this.createSocketControls();
+					if (this.socketCount > 0 && this.config.control_active && this.config.control_sockets) {
+						await this.createSocketControls();
+					}
+					if (this.socketCount === 0) {
+						await this.cleanupSocketControls();
+					}
 				}
 				await this.syncSocketControls(obj.SOCKETS);
 			}
