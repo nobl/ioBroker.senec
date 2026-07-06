@@ -29,6 +29,8 @@
     "Off": "Apagado",
     "Password": "Contraseña",
     "Password_Help:": "Contraseña utilizada para iniciar sesión en mein-senec.de",
+    "TOTPSecret": "Secreto TOTP (2FA)",
+    "TOTPSecretHelp": "Solo necesario si la autenticación de dos factores (2FA) está habilitada en su cuenta de mein-senec.de. Introduzca la clave secreta base32 que se muestra al configurar la 2FA (la clave de texto detrás del código QR, no el código de 6 dígitos). Déjelo vacío si la 2FA no está habilitada.",
     "PollInterval": "Intervalo de sondeo (segundos) Datos de alta prioridad",
     "PollIntervalAPI": "Intervalo de sondeo (minutos)",
     "PollIntervalAPIDetails": "Detalles del intervalo de sondeo (minutos)",

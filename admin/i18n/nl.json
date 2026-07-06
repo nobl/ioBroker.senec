@@ -29,6 +29,8 @@
     "Off": "Uit",
     "Password": "Wachtwoord",
     "Password_Help:": "Wachtwoord gebruikt om in te loggen op mein-senec.de",
+    "TOTPSecret": "TOTP-geheim (2FA)",
+    "TOTPSecretHelp": "Alleen nodig als tweefactorauthenticatie (2FA) is ingeschakeld op uw mein-senec.de-account. Voer de base32-geheime sleutel in die wordt weergegeven bij het instellen van 2FA (de tekstsleutel achter de QR-code, niet de 6-cijferige code). Laat leeg als 2FA niet is ingeschakeld.",
     "PollInterval": "Polling-interval (seconden) Gegevens met hoge prioriteit",
     "PollIntervalAPI": "Polling-interval (minuten)",
     "PollIntervalAPIDetails": "Details van pollinginterval (minuten)",

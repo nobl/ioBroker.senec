@@ -29,6 +29,8 @@
     "Off": "Aus",
     "Password": "Passwort",
     "Password_Help:": "Passwort für die Anmeldung bei mein-senec.de",
+    "TOTPSecret": "TOTP-Geheimnis (2FA)",
+    "TOTPSecretHelp": "Nur erforderlich, wenn die Zwei-Faktor-Authentifizierung (2FA) für Ihr mein-senec.de-Konto aktiviert ist. Geben Sie den base32-Geheimschlüssel ein, der beim Einrichten der 2FA angezeigt wird (der Textschlüssel hinter dem QR-Code, nicht der 6-stellige Code). Leer lassen, wenn 2FA nicht aktiviert ist.",
     "PollInterval": "Abfrageintervall (Sekunden) Daten mit hoher Priorität",
     "PollIntervalAPI": "Abfrageintervall (Minuten)",
     "PollIntervalAPIDetails": "Details zum Abfrageintervall (Minuten)",

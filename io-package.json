@@ -206,17 +206,20 @@
     "api_reqnresp_log": false,
     "api_mail": "",
     "api_pwd": "",
+    "api_totp_secret": "",
     "api_userAgentMode": "integration",
     "api_customUserAgent": "",
     "api_showPolling": true
   },
   "encryptedNative": [
     "api_mail",
-    "api_pwd"
+    "api_pwd",
+    "api_totp_secret"
   ],
   "protectedNative": [
     "api_mail",
-    "api_pwd"
+    "api_pwd",
+    "api_totp_secret"
   ],
   "objects": [],
   "instanceObjects": [

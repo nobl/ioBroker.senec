@@ -29,6 +29,8 @@
     "Off": "离开",
     "Password": "密码",
     "Password_Help:": "用于登录 mein-senec.de 的密码",
+    "TOTPSecret": "TOTP 密钥 (2FA)",
+    "TOTPSecretHelp": "仅在您的 mein-senec.de 帐户启用了双因素认证 (2FA) 时才需要。请输入设置 2FA 时显示的 base32 密钥（QR 码背后的文本密钥，而非 6 位数字代码）。如果未启用 2FA，请留空。",
     "PollInterval": "轮询间隔（秒） 高优先级数据",
     "PollIntervalAPI": "轮询间隔（分钟）",
     "PollIntervalAPIDetails": "轮询间隔详细信息（分钟）",

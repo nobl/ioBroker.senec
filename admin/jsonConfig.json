@@ -455,6 +455,20 @@
 					"hidden": "data.api_use !== true",
 					"newLine": false
 				},
+				"api_totp_secret": {
+					"type": "password",
+					"visible": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "TOTPSecret",
+					"help": "TOTPSecretHelp",
+					"default": "",
+					"hidden": "data.api_use !== true",
+					"newLine": false
+				},
 				"api_interval": {
 					"type": "number",
 					"xs": 12,

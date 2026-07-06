@@ -29,6 +29,8 @@
     "Off": "Wyłączony",
     "Password": "Hasło",
     "Password_Help:": "Hasło używane do logowania się na mein-senec.de",
+    "TOTPSecret": "Sekret TOTP (2FA)",
+    "TOTPSecretHelp": "Wymagane tylko wtedy, gdy uwierzytelnianie dwuskładnikowe (2FA) jest włączone na koncie mein-senec.de. Wprowadź klucz tajny base32 wyświetlany podczas konfiguracji 2FA (klucz tekstowy za kodem QR, nie 6-cyfrowy kod). Pozostaw puste, jeśli 2FA nie jest włączone.",
     "PollInterval": "Interwał odpytywania (sekundy) Dane o wysokim priorytecie",
     "PollIntervalAPI": "Interwał odpytywania (minuty)",
     "PollIntervalAPIDetails": "Szczegóły interwału odpytywania (minuty)",

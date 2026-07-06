@@ -62,6 +62,8 @@
     "Email-Help": "Email-Address used to login to mein-senec.de",
     "Password": "Password",
     "Password_Help:": "Password used to login to mein-senec.de",
+    "TOTPSecret": "TOTP Secret (2FA)",
+    "TOTPSecretHelp": "Only needed if two-factor authentication (2FA) is enabled on your mein-senec.de account. Enter the base32 secret key shown when setting up 2FA (the text key behind the QR code, not the 6-digit code). Leave empty if 2FA is not enabled.",
     "PollIntervalAPI": "Polling Interval Dashboard (minutes)",
     "PollIntervalAPIHelp": "Here you can define the polling interval [min 3, max 1440 minutes] for Dashboard. Default = 6. SENEC updates API Data every 5 minutes. Setting the interval to 6 minutes is recommended to get the most up-to-date data without putting too much load on the API or errors.",
     "PollIntervalAPIDetails": "Polling Interval Details (minutes)",

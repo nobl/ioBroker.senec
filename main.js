@@ -1024,6 +1024,23 @@ class Senec extends utils.Adapter {
 				loginRes = await postForm(actionUrl, formData);
 			}
 
+			// Step 3 (TOTP/2FA if required)
+			if (!loginRes.headers.location && loginRes.status === 200 && loginRes.data && hasOtp(loginRes.data)) {
+				if (!this.config.api_totp_secret) {
+					throw new Error(
+						"2FA/TOTP is required by your SENEC account but no TOTP secret is configured. " +
+							"Please enter your TOTP secret in the adapter settings.",
+					);
+				}
+				this.log.info("🔐 2FA/TOTP required. Submitting TOTP code...");
+				const otpAction = extractFormAction(loginRes.data);
+				if (!otpAction) {
+					throw new Error("TOTP form found but could not extract form action URL.");
+				}
+				const otpCode = generateTOTP(this.config.api_totp_secret);
+				loginRes = await postForm(otpAction, new URLSearchParams({ otp: otpCode }));
+			}
+
 			const redirectLocation = loginRes.headers.location;
 			if (!redirectLocation) {
 				throw new Error(
@@ -3474,6 +3491,55 @@ function hasPassword(html) {
 
 function hasUsernameAndPassword(html) {
 	return hasUsername(html) && hasPassword(html);
+}
+
+function hasOtp(html) {
+	return /<input\b[^>]*\b(?:name|id)\s*=\s*["']?otp["']?[^>]*>/i.test(html);
+}
+
+/**
+ * Generate a TOTP code from a base32-encoded secret.
+ * Uses Node built-in crypto — no external dependency needed.
+ *
+ * @param {string} base32Secret - The base32-encoded TOTP secret
+ * @returns {string} 6-digit TOTP code
+ */
+function generateTOTP(base32Secret) {
+	const crypto = require("node:crypto");
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+	const clean = base32Secret.replace(/[\s=-]+/g, "").toUpperCase();
+
+	// base32 decode
+	let bits = "";
+	for (const ch of clean) {
+		const idx = alphabet.indexOf(ch);
+		if (idx === -1) {
+			throw new Error(`Invalid base32 character: ${ch}`);
+		}
+		bits += idx.toString(2).padStart(5, "0");
+	}
+	const bytes = bits.match(/.{8}/g);
+	if (!bytes) {
+		throw new Error("TOTP secret too short");
+	}
+	const key = Buffer.from(bytes.map((b) => parseInt(b, 2)));
+
+	// TOTP counter (30-second window)
+	const counter = Math.floor(Date.now() / 30000);
+	const counterBuf = Buffer.alloc(8);
+	counterBuf.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+	counterBuf.writeUInt32BE(counter >>> 0, 4);
+
+	// HMAC-SHA1
+	const hmac = crypto.createHmac("sha1", key).update(counterBuf).digest();
+
+	// Dynamic truncation
+	const offset = hmac[hmac.length - 1] & 0x0f;
+	const code =
+		(((hmac[offset] & 0x7f) << 24) | (hmac[offset + 1] << 16) | (hmac[offset + 2] << 8) | hmac[offset + 3]) %
+		1000000;
+
+	return code.toString().padStart(6, "0");
 }
 
 /**

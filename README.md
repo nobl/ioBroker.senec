@@ -263,7 +263,11 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- TOTP/2FA: If your mein-senec.de account requires two-factor authentication, you can now enter your TOTP secret (the base32 key from your authenticator app setup) in the adapter settings. The adapter will automatically generate login codes — no manual interaction needed.
+
 ### 2.5.5 (2026-07-06)
+- Add TOTP/2FA support for SENEC API login (configure TOTP secret in adapter settings)
 - Replace plain setTimeout/clearTimeout with adapter-managed timers
 - Dependency updates
 
