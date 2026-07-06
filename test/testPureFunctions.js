@@ -434,3 +434,40 @@ describe("AdaptiveRequestQueue", () => {
 		assert.ok(timerCalled, "custom setTimeout should have been called for cooldown");
 	});
 });
+
+describe("resolveStateAttrKey", () => {
+	const resolve = t.resolveStateAttrKey;
+
+	it("returns exact match when present", () => {
+		const attrs = { "ENERGY.GUI_BAT_DATA_POWER": { name: "Battery Power" } };
+		assert.equal(resolve("ENERGY.GUI_BAT_DATA_POWER", attrs), "ENERGY.GUI_BAT_DATA_POWER");
+	});
+
+	it("strips trailing numeric index", () => {
+		const attrs = { "batteryModules": { name: "Battery Modules" } };
+		assert.equal(resolve("batteryModules.0", attrs), "batteryModules");
+	});
+
+	it("strips all embedded numeric indices (array resolution)", () => {
+		const attrs = { "batteryModules.serialNumber": { name: "Serial Number" } };
+		assert.equal(resolve("batteryModules.0.serialNumber", attrs), "batteryModules.serialNumber");
+	});
+
+	it("strips multiple embedded numeric indices", () => {
+		const attrs = { "a.b.c": { name: "Nested" } };
+		assert.equal(resolve("a.0.b.1.c", attrs), "a.b.c");
+	});
+
+	it("prefers exact match over stripped variants", () => {
+		const attrs = {
+			"batteryModules.0.serialNumber": { name: "Specific" },
+			"batteryModules.serialNumber": { name: "Generic" },
+		};
+		assert.equal(resolve("batteryModules.0.serialNumber", attrs), "batteryModules.0.serialNumber");
+	});
+
+	it("returns null when no resolution matches", () => {
+		const attrs = { "OTHER.KEY": { name: "Other" } };
+		assert.equal(resolve("MISSING.KEY", attrs), null);
+	});
+});

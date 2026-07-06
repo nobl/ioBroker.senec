@@ -533,8 +533,10 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Send a control command to the local SENEC device via lala.cgi.
+	 * The response contains the current device state which evalPoll processes.
+	 * We also ack the control state itself so the user gets immediate feedback.
 	 *
-	 * @param {string} stateId - The full state id to ack on success
+	 * @param {string} stateId - The control state id to ack on success
 	 * @param {string} payload - The JSON payload to send
 	 * @param {string} description - Human-readable description for error logging
 	 */
@@ -697,6 +699,44 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Discover device capabilities and sync all control datapoints.
+	 * Called after each low-priority local poll.
+	 *
+	 * @param {object} obj - The full parsed poll response
+	 */
+	async discoverAndSyncControls(obj) {
+		// Sockets
+		if (obj.SOCKETS) {
+			if (this.socketCount === undefined && typeof obj.SOCKETS.NUMBER_OF_SOCKETS === "number") {
+				this.socketCount = obj.SOCKETS.NUMBER_OF_SOCKETS;
+				this.log.debug(`Detected ${this.socketCount} socket(s)`);
+				if (this.socketCount > 0 && this.config.control_active && this.config.control_sockets) {
+					await this.createSocketControls();
+				}
+				if (this.socketCount === 0) {
+					await this.cleanupSocketControls();
+				}
+			}
+			await this.syncSocketControls(obj.SOCKETS);
+		}
+
+		// Wallboxes
+		if (obj.WIZARD && obj.WALLBOX) {
+			if (this.wallboxCount === undefined && typeof obj.WIZARD.SETUP_NUMBER_WALLBOXES === "number") {
+				this.wallboxCount = obj.WIZARD.SETUP_NUMBER_WALLBOXES;
+				this.log.debug(`Detected ${this.wallboxCount} wallbox(es)`);
+				if (this.wallboxCount > 0 && this.config.control_active && this.config.control_wallbox) {
+					await this.createWallboxControls();
+				}
+				if (this.wallboxCount === 0) {
+					await this.cleanupWallboxControls();
+				}
+			}
+			await this.syncWallboxControls(obj.WALLBOX);
+		}
+	}
+
+	/**
 	 * Sync socket control datapoints with values read from the device.
 	 *
 	 * @param {object} socketsData - The SOCKETS section from the poll response
@@ -755,6 +795,8 @@ class Senec extends utils.Adapter {
 			SetIdefault: { key: "SET_IDEFAULT", type: "fl", bool: false },
 			MinChargingCurrent: { key: "MIN_CHARGING_CURRENT", type: "fl", bool: false },
 			SmartChargeActive: { key: "SMART_CHARGE_ACTIVE", type: "u8", bool: true, onValue: "03" },
+			// Note: ALLOW_INTERCHARGE may be a single value (not array) on some devices.
+			// The array payload should still work; sync handles non-array gracefully.
 			AllowIntercharge: { key: "ALLOW_INTERCHARGE", type: "u8", bool: true },
 		};
 
@@ -875,17 +917,24 @@ class Senec extends utils.Adapter {
 
 		for (let i = 0; i < this.wallboxCount; i++) {
 			for (const [deviceKey, mapping] of Object.entries(syncMap)) {
-				if (wallboxData[deviceKey] !== undefined && Array.isArray(wallboxData[deviceKey])) {
-					const rawVal = wallboxData[deviceKey][i];
-					if (rawVal === undefined) {
-						continue;
-					}
-					const val = mapping.bool ? !!rawVal : rawVal;
-					await this.setStateChangedAsync(`control.Wallbox.${i}.${mapping.field}`, {
-						val: val,
-						ack: true,
-					});
+				if (wallboxData[deviceKey] === undefined) {
+					continue;
 				}
+				let rawVal;
+				if (Array.isArray(wallboxData[deviceKey])) {
+					rawVal = wallboxData[deviceKey][i];
+				} else if (i === 0) {
+					// Some fields (e.g. ALLOW_INTERCHARGE) may be a single value, not an array
+					rawVal = wallboxData[deviceKey];
+				}
+				if (rawVal === undefined) {
+					continue;
+				}
+				const val = mapping.bool ? !!rawVal : rawVal;
+				await this.setStateChangedAsync(`control.Wallbox.${i}.${mapping.field}`, {
+					val: val,
+					ack: true,
+				});
 			}
 		}
 	}
@@ -2850,35 +2899,9 @@ class Senec extends utils.Adapter {
 			this.log.silly(`(Poll) Parsed object: ${JSON.stringify(obj)}`);
 			await this.evalPoll(obj, "", "");
 
-			// Socket control: detect socket count and sync control states (low-prio poll only)
-			if (!isHighPrio && obj.SOCKETS) {
-				if (this.socketCount === undefined && typeof obj.SOCKETS.NUMBER_OF_SOCKETS === "number") {
-					this.socketCount = obj.SOCKETS.NUMBER_OF_SOCKETS;
-					this.log.debug(`Detected ${this.socketCount} socket(s)`);
-					if (this.socketCount > 0 && this.config.control_active && this.config.control_sockets) {
-						await this.createSocketControls();
-					}
-					if (this.socketCount === 0) {
-						await this.cleanupSocketControls();
-					}
-				}
-				await this.syncSocketControls(obj.SOCKETS);
-			}
-
-			// Wallbox control: detect wallbox count and sync control states (low-prio poll only)
-			if (!isHighPrio && obj.WIZARD && obj.WALLBOX) {
-				if (this.wallboxCount === undefined && typeof obj.WIZARD.SETUP_NUMBER_WALLBOXES === "number") {
-					this.wallboxCount = obj.WIZARD.SETUP_NUMBER_WALLBOXES;
-					this.log.debug(`Detected ${this.wallboxCount} wallbox(es)`);
-					if (this.wallboxCount > 0 && this.config.control_active && this.config.control_wallbox) {
-						await this.createWallboxControls();
-					}
-					if (this.wallboxCount === 0) {
-						await this.cleanupWallboxControls();
-					}
-				}
-				await this.syncWallboxControls(obj.WALLBOX);
-			}
+			// Discover and sync control states
+			// Runs on every poll — sections may be in high-prio if user configured them there
+			await this.discoverAndSyncControls(obj);
 
 			retry = 0;
 			if (!this.unloaded) {
@@ -3199,14 +3222,7 @@ class Senec extends utils.Adapter {
 	 */
 	async evalPollHelper(pfx, value, fullKey) {
 		// Resolve state attribute: try exact key, then strip trailing index, then strip all indices
-		const attrKey =
-			state_attr[fullKey] !== undefined
-				? fullKey
-				: state_attr[fullKey.replace(/\.\d+$/, "")] !== undefined
-					? fullKey.replace(/\.\d+$/, "")
-					: state_attr[fullKey.replace(/\.\d+\./g, ".")] !== undefined
-						? fullKey.replace(/\.\d+\./g, ".")
-						: null;
+		const attrKey = resolveStateAttrKey(fullKey, state_attr);
 
 		if (!attrKey) {
 			this.log.debug(`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`);
@@ -3895,6 +3911,31 @@ class Senec extends utils.Adapter {
 }
 
 /**
+ * Resolve a full key against state_attr with 3-level fallback:
+ * 1. Exact match (e.g. "batteryModules.0.serialNumber")
+ * 2. Strip trailing numeric index (e.g. "batteryModules.0" → "batteryModules")
+ * 3. Strip all numeric indices (e.g. "batteryModules.0.serialNumber" → "batteryModules.serialNumber")
+ *
+ * @param {string} fullKey - The full dotted key
+ * @param {object} attrs - The state_attr lookup object
+ * @returns {string | null} The resolved key or null
+ */
+function resolveStateAttrKey(fullKey, attrs) {
+	if (attrs[fullKey] !== undefined) {
+		return fullKey;
+	}
+	const strippedTrailing = fullKey.replace(/\.\d+$/, "");
+	if (attrs[strippedTrailing] !== undefined) {
+		return strippedTrailing;
+	}
+	const strippedAll = fullKey.replace(/\.\d+\./g, ".");
+	if (attrs[strippedAll] !== undefined) {
+		return strippedAll;
+	}
+	return null;
+}
+
+/**
  * modifies the supplied value based upon flags set for the specific key.
  * currently handles bool, date, ip objects
  *
@@ -4054,6 +4095,7 @@ if (require.main !== module) {
 		generateCodeVerifier,
 		generateCodeChallenge,
 		base64UrlEncode,
+		resolveStateAttrKey,
 	};
 } else {
 	// otherwise start the instance directly
