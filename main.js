@@ -22,6 +22,7 @@ const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`)
 // Old: const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev";
 const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev/systems/api";
 const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev/measurements/api";
+const HOST_ABILITIES = "https://senec-app-abilities-proxy.prod.senec.dev/abilities/api";
 const SSO_BASE_URL = "https://sso.senec.com/realms/senec/protocol/openid-connect";
 const SSO_AUTH_URL = `${SSO_BASE_URL}/auth`;
 const SSO_TOKEN_URL = `${SSO_BASE_URL}/token`;
@@ -1699,6 +1700,7 @@ class Senec extends utils.Adapter {
 			this.log.debug(`System found: ${JSON.stringify(sys)}`);
 			this.apiKnownSystems.add(sys.id);
 			await this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
+			await this.pollApiAbilities(sys.id);
 		}
 	}
 
@@ -1795,6 +1797,7 @@ class Senec extends utils.Adapter {
 				this.log[logType](`🔄 Polling system ${anlagenId} - Details (day values)`);
 				result.detailsScheduled = true;
 				await this.pollApiDetails(anlagenId, ctx);
+				await this.pollApiSystemDetails(anlagenId);
 				result.detailsSucceeded = true;
 			}
 
@@ -1832,6 +1835,71 @@ class Senec extends utils.Adapter {
 		const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
 		this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
 		await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
+	}
+
+	/**
+	 * Polls the API for system details (hardware info, battery state, inverter temps).
+	 * Called on the details tier (hourly).
+	 *
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 */
+	async pollApiSystemDetails(anlagenId) {
+		try {
+			const res = await this.apiGet(`${HOST_SYSTEMS}/v1/${anlagenId}/details`);
+			if (!res?.data) {
+				return;
+			}
+			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.SystemDetails.`);
+			this.log.debug(`System details polled for ${anlagenId}`);
+		} catch (error) {
+			this.logError(error, `❌ System details poll failed for ${anlagenId}`);
+		}
+	}
+
+	/**
+	 * Polls the API for installed abilities/feature packages.
+	 * Called once after systems are loaded.
+	 *
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 */
+	async pollApiAbilities(anlagenId) {
+		try {
+			const res = await this.apiGet(`${HOST_ABILITIES}/v1/packages/${anlagenId}`);
+			if (!res?.data) {
+				return;
+			}
+			const pfx = `${API_PFX}Anlagen.${anlagenId}.Abilities.`;
+
+			if (Array.isArray(res.data.packageTypes)) {
+				await this.doState(
+					`${pfx}packageTypes`,
+					JSON.stringify(res.data.packageTypes),
+					"Installed feature packages",
+					"",
+					false,
+				);
+
+				// Also create individual boolean states for each known package type
+				const knownTypes = ["MOBILITY", "PEAK_SHAVING", "SG_READY", "HEATING_ROD", "SOCKETS"];
+				for (const pkg of knownTypes) {
+					await this.doState(
+						`${pfx}${pkg}`,
+						res.data.packageTypes.includes(pkg),
+						`Feature: ${pkg}`,
+						"",
+						false,
+					);
+				}
+			}
+
+			if (res.data.warrantyPackage != null) {
+				await this.doState(`${pfx}warrantyPackage`, res.data.warrantyPackage, "Warranty package", "", false);
+			}
+
+			this.log.debug(`Abilities polled for ${anlagenId}`);
+		} catch (error) {
+			this.logError(error, `❌ Abilities poll failed for ${anlagenId}`);
+		}
 	}
 
 	/**
@@ -2925,23 +2993,23 @@ class Senec extends utils.Adapter {
 	 * @param {string} fullKey - The full key for the state.
 	 */
 	async evalPollHelper(pfx, value, fullKey) {
-		if (state_attr[fullKey] === undefined && state_attr[fullKey.replace(/\.\d+$/, "")] === undefined) {
+		// Resolve state attribute: try exact key, then strip trailing index, then strip all indices
+		const attrKey =
+			state_attr[fullKey] !== undefined
+				? fullKey
+				: state_attr[fullKey.replace(/\.\d+$/, "")] !== undefined
+					? fullKey.replace(/\.\d+$/, "")
+					: state_attr[fullKey.replace(/\.\d+\./g, ".")] !== undefined
+						? fullKey.replace(/\.\d+\./g, ".")
+						: null;
+
+		if (!attrKey) {
 			this.log.debug(`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`);
 		}
 		this.log.silly(`API Array Value: ${fullKey} = ${value}`);
-		const desc =
-			state_attr[fullKey] !== undefined
-				? state_attr[fullKey].name
-				: state_attr[fullKey.replace(/\.\d+$/, "")]
-					? state_attr[fullKey.replace(/\.\d+$/, "")].name
-					: fullKey;
-		const unit =
-			state_attr[fullKey] !== undefined
-				? state_attr[fullKey].unit
-				: state_attr[fullKey.replace(/\.\d+$/, "")]
-					? state_attr[fullKey.replace(/\.\d+$/, "")].unit
-					: "";
-		await this.doState(pfx + fullKey, ValueTyping(fullKey, value), desc, unit, false);
+		const desc = attrKey ? state_attr[attrKey].name : fullKey;
+		const unit = attrKey ? state_attr[attrKey].unit : "";
+		await this.doState(pfx + fullKey, ValueTyping(attrKey || fullKey, value), desc, unit, false);
 	}
 
 	/**

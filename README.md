@@ -268,6 +268,9 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Switchable sockets: If your SENEC system has switchable sockets configured, you can now control them via `control.Sockets` datapoints. Enable in adapter settings under active appliance control.
 - Section discovery: The adapter now queries the device at startup to discover available data sections. New sections are automatically added to polling, and unavailable sections are removed. Check `info.discoveredSections` and `info.unavailableSections` for details.
 - Added support for AMPACE battery module data (cell temperatures, alarm/fault/warning states).
+- System details: Battery SOH, inverter state/temperatures, module states, casing temperature, warranty info and more are now polled from the SENEC app API (hourly).
+- Abilities: Installed feature packages (MOBILITY, PEAK_SHAVING, SG_READY, etc.) are queried at startup.
+- API paths updated to June 2026 format for future compatibility.
 
 ### 2.5.5 (2026-07-06)
 - Add TOTP/2FA support for SENEC API login (configure TOTP secret in adapter settings)
