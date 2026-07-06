@@ -153,6 +153,19 @@
 					"default": false,
 					"hidden": "data.control_active !== true",
 					"newLine": true
+				},
+				"control_wallbox": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "controlWallbox",
+					"help": "controlWallboxHelp",
+					"default": false,
+					"hidden": "data.control_active !== true",
+					"newLine": true
 				}
 			}
 		},

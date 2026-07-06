@@ -270,6 +270,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Added support for AMPACE battery module data (cell temperatures, alarm/fault/warning states).
 - System details: Battery SOH, inverter state/temperatures, module states, casing temperature, warranty info and more are now polled from the SENEC app API (hourly).
 - Abilities: Installed feature packages (MOBILITY, PEAK_SHAVING, SG_READY, etc.) are queried at startup.
+- Wallbox control (experimental): If your SENEC system has wallboxes, you can control charging current, smart charge, and intercharge via `control.Wallbox` datapoints. Enable in adapter settings. Please report your experience to the developer.
 - API paths updated to June 2026 format for future compatibility.
 
 ### 2.5.5 (2026-07-06)

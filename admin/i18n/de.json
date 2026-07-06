@@ -73,6 +73,8 @@
     "controlRebootHelp": "Bei Aktivierung ist es möglich, die SENEC-Appliance über den Datenpunkt „control.RebootAppliance“ neu zu starten. Dies ist normalerweise nicht über die Weboberfläche verfügbar.",
     "controlSockets": "Schaltbare Kontakte steuern",
     "controlSocketsHelp": "lala.cgi-Verbindung erforderlich! Bei Aktivierung k\u00f6nnen die schaltbaren Kontakte \u00fcber die Datenpunkte 'control.Sockets' gesteuert werden. Nur verf\u00fcgbar, wenn Ihr SENEC-System schaltbare Kontakte konfiguriert hat.",
+    "controlWallbox": "Wallbox-Steuerung (experimentell)",
+    "controlWallboxHelp": "lala.cgi-Verbindung erforderlich! Bei Aktivierung kann die Wallbox-Ladung \u00fcber die Datenpunkte 'control.Wallbox' gesteuert werden. Datenpunkte werden nur erstellt, wenn Ihr System Wallboxen konfiguriert hat. Experimentelle Funktion \u2014 bitte berichten Sie dem Entwickler Ihre Erfahrungen.",
     "customUserAgent": "Benutzerdefinierter Benutzeragent",
     "customUserAgentHelp": "Wird nur verwendet, wenn der User-Agent-Modus auf „Benutzerdefiniert“ eingestellt ist.",
     "usaLala": "Über lala.cgi verbinden?",

@@ -73,6 +73,8 @@
     "controlRebootHelp": "Una volta attivato, è possibile riavviare l'appliance SENEC tramite il datapoint 'control.RebootAppliance'. Questo normalmente non è disponibile tramite l'interfaccia web.",
     "controlSockets": "Controllo prese commutabili",
     "controlSocketsHelp": "Connessione lala.cgi richiesta! Quando attivato, le prese commutabili possono essere controllate tramite i punti dati 'control.Sockets'. Disponibile solo se il sistema SENEC ha prese commutabili configurate.",
+    "controlWallbox": "Controllo Wallbox (sperimentale)",
+    "controlWallboxHelp": "Connessione lala.cgi richiesta! Quando attivato, la ricarica del wallbox pu\u00f2 essere controllata tramite i punti dati 'control.Wallbox'. Funzionalit\u00e0 sperimentale \u2014 si prega di segnalare la propria esperienza allo sviluppatore.",
     "customUserAgent": "Agente utente personalizzato",
     "customUserAgentHelp": "Utilizzato solo quando la modalità agente utente è impostata su \"Personalizzato\".",
     "usaLala": "Connettersi tramite lala.cgi?",

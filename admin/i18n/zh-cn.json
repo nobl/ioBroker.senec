@@ -73,6 +73,8 @@
     "controlRebootHelp": "激活后，可以通过“control.RebootAppliance”数据点重新启动 SENEC 设备。这通常无法通过网络界面获得。",
     "controlSockets": "可切换触点控制",
     "controlSocketsHelp": "需要 lala.cgi 连接！激活后，可通过 'control.Sockets' 数据点控制可切换触点。仅在您的 SENEC 系统配置了可切换触点时可用。",
+    "controlWallbox": "Wallbox \u63a7\u5236\uff08\u5b9e\u9a8c\u6027\uff09",
+    "controlWallboxHelp": "\u9700\u8981 lala.cgi \u8fde\u63a5\uff01\u6fc0\u6d3b\u540e\uff0c\u53ef\u901a\u8fc7 'control.Wallbox' \u6570\u636e\u70b9\u63a7\u5236 wallbox \u5145\u7535\u3002\u5b9e\u9a8c\u6027\u529f\u80fd \u2014 \u8bf7\u5411\u5f00\u53d1\u8005\u62a5\u544a\u60a8\u7684\u4f7f\u7528\u4f53\u9a8c\u3002",
     "customUserAgent": "自定义用户代理",
     "customUserAgentHelp": "仅当用户代理模式设置为“自定义”时使用。",
     "usaLala": "通过 lala.cgi 连接？",

@@ -21,6 +21,8 @@
     "controlRebootHelp": "When activated it is possible to reboot the SENEC appliance via 'control.RebootAppliance' datapoint. This is normally not available via web interface.",
     "controlSockets": "Allow switchable socket control",
     "controlSocketsHelp": "lala.cgi connection required! When activated, switchable sockets (schaltbare Kontakte) can be controlled via 'control.Sockets' datapoints. Only available if your SENEC system has switchable sockets configured.",
+    "controlWallbox": "Allow wallbox control (experimental)",
+    "controlWallboxHelp": "lala.cgi connection required! When activated, wallbox charging can be controlled via 'control.Wallbox' datapoints. Control datapoints are only created if your system has wallboxes configured. Experimental feature — please report your experience to the developer.",
     "usaLala": "Connect via lala.cgi?",
     "useLalaHelp": "Connect to SENEC appliance via local network. This requires access to local monitoring.",
     "activeControl": "Activate active appliance control",

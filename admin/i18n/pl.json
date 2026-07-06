@@ -73,6 +73,8 @@
     "controlRebootHelp": "Po aktywacji możliwe jest ponowne uruchomienie urządzenia SENEC poprzez punkt danych „control.RebootAppliance”. Zwykle nie jest to dostępne za pośrednictwem interfejsu internetowego.",
     "controlSockets": "Sterowanie prze\u0142\u0105czalnymi stykami",
     "controlSocketsHelp": "Wymagane po\u0142\u0105czenie lala.cgi! Po aktywacji prze\u0142\u0105czalne styki mog\u0105 by\u0107 sterowane za pomoc\u0105 punkt\u00f3w danych 'control.Sockets'. Dost\u0119pne tylko wtedy, gdy system SENEC ma skonfigurowane prze\u0142\u0105czalne styki.",
+    "controlWallbox": "Sterowanie Wallbox (eksperymentalne)",
+    "controlWallboxHelp": "Wymagane po\u0142\u0105czenie lala.cgi! Po aktywacji \u0142adowanie wallboxa mo\u017ce by\u0107 sterowane za pomoc\u0105 punkt\u00f3w danych 'control.Wallbox'. Funkcja eksperymentalna \u2014 prosimy o zg\u0142oszenie swoich do\u015bwiadcze\u0144 deweloperowi.",
     "customUserAgent": "Niestandardowy agent użytkownika",
     "customUserAgentHelp": "Używane tylko wtedy, gdy tryb User-Agent jest ustawiony na „Niestandardowy”.",
     "usaLala": "Połączyć się przez lala.cgi?",

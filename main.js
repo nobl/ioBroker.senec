@@ -170,6 +170,8 @@ class Senec extends utils.Adapter {
 
 		this.socketCount = undefined; // set after first local poll reads SOCKETS.NUMBER_OF_SOCKETS
 		this.socketControlsCreated = false;
+		this.wallboxCount = undefined; // set after first local poll reads WALLBOX data
+		this.wallboxControlsCreated = false;
 
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
@@ -472,6 +474,18 @@ class Senec extends utils.Adapter {
 				return;
 			}
 
+			// Wallbox controls
+			const wallboxMatch = controlId.match(/^Wallbox\.(\d+)\.(.+)$/);
+			if (wallboxMatch) {
+				if (!this.config.control_wallbox) {
+					this.log.warn("Wallbox control command ignored (control_wallbox not enabled in config)");
+					return;
+				}
+				const wbVal = state.val ?? false;
+				await this.handleWallboxControl(id, parseInt(wallboxMatch[1], 10), wallboxMatch[2], wbVal);
+				return;
+			}
+
 			return;
 		}
 
@@ -718,6 +732,182 @@ class Senec extends utils.Adapter {
 						ack: true,
 					});
 				}
+			}
+		}
+	}
+
+	/**
+	 * Handle a wallbox control state change.
+	 *
+	 * @param {string} stateId - The full state id
+	 * @param {number} wbIdx - Wallbox index (0-based)
+	 * @param {string} field - The control field name
+	 * @param {boolean | number | string} value - The value to set
+	 */
+	async handleWallboxControl(stateId, wbIdx, field, value) {
+		if (this.wallboxCount === undefined || wbIdx >= this.wallboxCount) {
+			this.log.warn(`Wallbox ${wbIdx} does not exist (device has ${this.wallboxCount ?? 0} wallboxes)`);
+			return;
+		}
+
+		const fieldMap = {
+			SetIcmax: { key: "SET_ICMAX", type: "fl", bool: false },
+			SetIdefault: { key: "SET_IDEFAULT", type: "fl", bool: false },
+			MinChargingCurrent: { key: "MIN_CHARGING_CURRENT", type: "fl", bool: false },
+			SmartChargeActive: { key: "SMART_CHARGE_ACTIVE", type: "u8", bool: true, onValue: "03" },
+			AllowIntercharge: { key: "ALLOW_INTERCHARGE", type: "u8", bool: true },
+		};
+
+		const mapping = fieldMap[field];
+		if (!mapping) {
+			this.log.warn(`Unknown wallbox control field: ${field}`);
+			return;
+		}
+
+		const arr = Array.from({ length: 4 }, () => "");
+		if (mapping.bool) {
+			const onVal = mapping.onValue || "01";
+			arr[wbIdx] = `${mapping.type}_${value ? onVal : "00"}`;
+		} else if (mapping.type === "fl") {
+			// IEEE754 float encoding
+			const buf = Buffer.alloc(4);
+			buf.writeFloatBE(parseFloat(String(value)), 0);
+			arr[wbIdx] = `fl_${buf.toString("hex").toUpperCase()}`;
+		} else {
+			const numVal = typeof value === "number" ? value : parseInt(String(value), 10);
+			if (isNaN(numVal) || numVal < 0) {
+				this.log.warn(`Invalid value for wallbox control ${field}: ${value}`);
+				return;
+			}
+			const padLen = mapping.type === "u1" ? 4 : 2;
+			arr[wbIdx] = `${mapping.type}_${numVal.toString(16).toUpperCase().padStart(padLen, "0")}`;
+		}
+
+		const payload = JSON.stringify({ WALLBOX: { [mapping.key]: arr } });
+		this.log.debug(`Wallbox control payload: ${payload}`);
+		this.log.info(`Setting wallbox ${wbIdx} ${field} to ${value} ...`);
+		await this.sendLocalControl(stateId, payload, `setting wallbox ${wbIdx} ${field} to ${value}`);
+	}
+
+	/**
+	 * Create control datapoints for wallboxes.
+	 * Called once after the first local poll reveals wallbox data.
+	 */
+	async createWallboxControls() {
+		if (this.wallboxControlsCreated || !this.wallboxCount || this.wallboxCount <= 0) {
+			return;
+		}
+		if (!this.config.control_active || !this.config.control_wallbox) {
+			return;
+		}
+
+		const numStates = [
+			{ id: "SetIcmax", name: "Max charging current", unit: "A", role: "level" },
+			{ id: "SetIdefault", name: "Default charging current", unit: "A", role: "level" },
+			{ id: "MinChargingCurrent", name: "Min charging current", unit: "A", role: "level" },
+		];
+		const boolStates = [
+			{ id: "SmartChargeActive", name: "Smart charge active", role: "switch" },
+			{ id: "AllowIntercharge", name: "Allow intercharge", role: "switch" },
+		];
+
+		for (let i = 0; i < this.wallboxCount; i++) {
+			const ch = `control.Wallbox.${i}`;
+			await this.setObjectNotExistsAsync(ch, {
+				type: "channel",
+				common: { name: `Wallbox ${i}` },
+				native: {},
+			});
+
+			for (const s of boolStates) {
+				await this.setObjectNotExistsAsync(`${ch}.${s.id}`, {
+					type: "state",
+					common: {
+						name: s.name,
+						type: "boolean",
+						role: s.role,
+						read: true,
+						write: true,
+						def: false,
+					},
+					native: {},
+				});
+			}
+
+			for (const s of numStates) {
+				await this.setObjectNotExistsAsync(`${ch}.${s.id}`, {
+					type: "state",
+					common: {
+						name: s.name,
+						type: "number",
+						role: s.role,
+						unit: s.unit,
+						read: true,
+						write: true,
+						def: 0,
+					},
+					native: {},
+				});
+			}
+		}
+
+		this.wallboxControlsCreated = true;
+		this.log.info(`Created control datapoints for ${this.wallboxCount} wallbox(es)`);
+	}
+
+	/**
+	 * Sync wallbox control datapoints with values read from the device.
+	 *
+	 * @param {object} wallboxData - The WALLBOX section from the poll response
+	 */
+	async syncWallboxControls(wallboxData) {
+		if (!this.wallboxControlsCreated || !wallboxData) {
+			return;
+		}
+
+		const syncMap = {
+			SET_ICMAX: { field: "SetIcmax", bool: false },
+			SET_IDEFAULT: { field: "SetIdefault", bool: false },
+			MIN_CHARGING_CURRENT: { field: "MinChargingCurrent", bool: false },
+			SMART_CHARGE_ACTIVE: { field: "SmartChargeActive", bool: true },
+			ALLOW_INTERCHARGE: { field: "AllowIntercharge", bool: true },
+		};
+
+		for (let i = 0; i < this.wallboxCount; i++) {
+			for (const [deviceKey, mapping] of Object.entries(syncMap)) {
+				if (wallboxData[deviceKey] !== undefined && Array.isArray(wallboxData[deviceKey])) {
+					const rawVal = wallboxData[deviceKey][i];
+					if (rawVal === undefined) {
+						continue;
+					}
+					const val = mapping.bool ? !!rawVal : rawVal;
+					await this.setStateChangedAsync(`control.Wallbox.${i}.${mapping.field}`, {
+						val: val,
+						ack: true,
+					});
+				}
+			}
+		}
+	}
+
+	/**
+	 * Remove leftover wallbox control datapoints when no wallboxes are available.
+	 */
+	async cleanupWallboxControls() {
+		const channels = await this.getChannelsOfAsync("control");
+		if (!channels) {
+			return;
+		}
+		for (const ch of channels) {
+			if (ch._id && ch._id.includes(".control.Wallbox.")) {
+				const states = await this.getStatesOfAsync(ch._id.replace(`${this.namespace}.`, ""));
+				if (states) {
+					for (const state of states) {
+						await this.delObjectAsync(state._id);
+					}
+				}
+				await this.delObjectAsync(ch._id);
+				this.log.debug(`Cleaned up wallbox control channel: ${ch._id}`);
 			}
 		}
 	}
@@ -2673,6 +2863,21 @@ class Senec extends utils.Adapter {
 					}
 				}
 				await this.syncSocketControls(obj.SOCKETS);
+			}
+
+			// Wallbox control: detect wallbox count and sync control states (low-prio poll only)
+			if (!isHighPrio && obj.WIZARD && obj.WALLBOX) {
+				if (this.wallboxCount === undefined && typeof obj.WIZARD.SETUP_NUMBER_WALLBOXES === "number") {
+					this.wallboxCount = obj.WIZARD.SETUP_NUMBER_WALLBOXES;
+					this.log.debug(`Detected ${this.wallboxCount} wallbox(es)`);
+					if (this.wallboxCount > 0 && this.config.control_active && this.config.control_wallbox) {
+						await this.createWallboxControls();
+					}
+					if (this.wallboxCount === 0) {
+						await this.cleanupWallboxControls();
+					}
+				}
+				await this.syncWallboxControls(obj.WALLBOX);
 			}
 
 			retry = 0;

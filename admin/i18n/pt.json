@@ -73,6 +73,8 @@
     "controlRebootHelp": "Quando ativado, é possível reinicializar o dispositivo SENEC através do ponto de dados 'control.RebootAppliance'. Normalmente, isso não está disponível via interface web.",
     "controlSockets": "Controlo de contactos comut\u00e1veis",
     "controlSocketsHelp": "Conex\u00e3o lala.cgi necess\u00e1ria! Quando ativado, os contactos comut\u00e1veis podem ser controlados atrav\u00e9s dos pontos de dados 'control.Sockets'. Dispon\u00edvel apenas se o seu sistema SENEC tiver contactos comut\u00e1veis configurados.",
+    "controlWallbox": "Controlo de Wallbox (experimental)",
+    "controlWallboxHelp": "Conex\u00e3o lala.cgi necess\u00e1ria! Quando ativado, o carregamento do wallbox pode ser controlado atrav\u00e9s dos pontos de dados 'control.Wallbox'. Funcionalidade experimental \u2014 por favor, reporte a sua experi\u00eancia ao desenvolvedor.",
     "customUserAgent": "Agente de usuário personalizado",
     "customUserAgentHelp": "Usado apenas quando o modo User-Agent está definido como 'Personalizado'.",
     "usaLala": "Conectar via lala.cgi?",

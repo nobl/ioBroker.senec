@@ -73,6 +73,8 @@
     "controlRebootHelp": "Indien geactiveerd is het mogelijk om het SENEC-apparaat opnieuw op te starten via het 'control.RebootAppliance'-datapunt. Normaal gesproken is dit niet beschikbaar via de webinterface.",
     "controlSockets": "Schakelbare contacten bedienen",
     "controlSocketsHelp": "lala.cgi-verbinding vereist! Indien geactiveerd kunnen schakelbare contacten worden bediend via de 'control.Sockets' datapunten. Alleen beschikbaar als uw SENEC-systeem schakelbare contacten heeft geconfigureerd.",
+    "controlWallbox": "Wallbox-besturing (experimenteel)",
+    "controlWallboxHelp": "lala.cgi-verbinding vereist! Indien geactiveerd kan het laden van de wallbox worden bestuurd via de 'control.Wallbox' datapunten. Experimentele functie \u2014 meld uw ervaring aan de ontwikkelaar.",
     "customUserAgent": "Aangepaste user-agent",
     "customUserAgentHelp": "Wordt alleen gebruikt als de User-Agent-modus is ingesteld op 'Aangepast'.",
     "usaLala": "Verbinden via lala.cgi?",
