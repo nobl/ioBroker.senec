@@ -575,15 +575,28 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Handle a socket control state change.
+	 * For settings, the value is just stored without ack.
+	 * For Apply, all pending values are read and sent to the device.
 	 *
 	 * @param {string} stateId - The full state id
 	 * @param {number} socketIdx - Socket index (0-based)
-	 * @param {string} field - The control field name (e.g. "ForceOn", "LowerLimit")
+	 * @param {string} field - The control field name (e.g. "ForceOn", "LowerLimit", "Apply")
 	 * @param {boolean | number | string} value - The value to set
 	 */
 	async handleSocketControl(stateId, socketIdx, field, value) {
 		if (this.socketCount === undefined || socketIdx >= this.socketCount) {
 			this.log.warn(`Socket ${socketIdx} does not exist (device has ${this.socketCount ?? 0} sockets)`);
+			return;
+		}
+
+		// Non-Apply fields: just store the pending value (no ack)
+		if (field !== "Apply") {
+			this.log.debug(`Socket ${socketIdx}: pending ${field} = ${value}`);
+			return;
+		}
+
+		// Apply: read all pending values and send each to device
+		if (!value) {
 			return;
 		}
 
@@ -599,30 +612,44 @@ class Senec extends utils.Adapter {
 			TimeLimit: { key: "TIME_LIMIT", type: "u1", bool: false },
 		};
 
-		const mapping = fieldMap[field];
-		if (!mapping) {
-			this.log.warn(`Unknown socket control field: ${field}`);
-			return;
-		}
+		const pfx = `control.Sockets.${socketIdx}`;
+		this.log.info(`Applying socket ${socketIdx} changes...`);
 
-		// Build array payload: empty string for positions we don't change
-		const arr = Array.from({ length: this.socketCount }, () => "");
-		if (mapping.bool) {
-			arr[socketIdx] = `${mapping.type}_${value ? "01" : "00"}`;
-		} else {
-			const numVal = typeof value === "number" ? value : parseInt(String(value), 10);
-			if (isNaN(numVal) || numVal < 0) {
-				this.log.warn(`Invalid value for socket control ${field}: ${value}`);
-				return;
+		// Build one combined payload with all changed fields
+		const socketsPayload = {};
+		for (const [fieldName, mapping] of Object.entries(fieldMap)) {
+			const state = await this.getStateAsync(`${pfx}.${fieldName}`);
+			if (!state || state.ack) {
+				continue; // Skip fields that haven't been changed (still acked)
 			}
-			const padLen = mapping.type === "u1" ? 4 : 2;
-			arr[socketIdx] = `${mapping.type}_${numVal.toString(16).toUpperCase().padStart(padLen, "0")}`;
+			const val = state.val;
+
+			const arr = Array.from({ length: this.socketCount }, () => "");
+			if (mapping.bool) {
+				arr[socketIdx] = `${mapping.type}_${val ? "01" : "00"}`;
+			} else {
+				const numVal = typeof val === "number" ? val : parseInt(String(val), 10);
+				if (isNaN(numVal) || numVal < 0) {
+					this.log.warn(`Invalid value for socket control ${fieldName}: ${val}`);
+					continue;
+				}
+				const padLen = mapping.type === "u1" ? 4 : 2;
+				arr[socketIdx] = `${mapping.type}_${numVal.toString(16).toUpperCase().padStart(padLen, "0")}`;
+			}
+			socketsPayload[mapping.key] = arr;
+			this.log.info(`Socket ${socketIdx} ${fieldName} = ${val}`);
 		}
 
-		const payload = JSON.stringify({ SOCKETS: { [mapping.key]: arr } });
-		this.log.debug(`Socket control payload: ${payload}`);
-		this.log.info(`Setting socket ${socketIdx} ${field} to ${value} ...`);
-		await this.sendLocalControl(stateId, payload, `setting socket ${socketIdx} ${field} to ${value}`);
+		if (Object.keys(socketsPayload).length > 0) {
+			const payload = JSON.stringify({ SOCKETS: socketsPayload });
+			this.log.debug(`Socket control payload: ${payload}`);
+			await this.sendLocalControl(stateId, payload, `applying socket ${socketIdx} changes`);
+		} else {
+			this.log.debug(`Socket ${socketIdx}: no pending changes to apply`);
+		}
+
+		await this.setState(`${pfx}.Apply`, { val: false, ack: true });
+		this.log.info(`Socket ${socketIdx} changes applied`);
 	}
 
 	/**
@@ -689,6 +716,22 @@ class Senec extends utils.Adapter {
 					native: {},
 				});
 			}
+		}
+
+		// Apply button per socket
+		for (let i = 0; i < this.socketCount; i++) {
+			await this.setObjectNotExistsAsync(`control.Sockets.${i}.Apply`, {
+				type: "state",
+				common: {
+					name: "Apply pending changes",
+					type: "boolean",
+					role: "button",
+					read: true,
+					write: true,
+					def: false,
+				},
+				native: {},
+			});
 		}
 
 		this.socketControlsCreated = true;
@@ -803,9 +846,30 @@ class Senec extends utils.Adapter {
 	 * @param {string} field - The control field name
 	 * @param {boolean | number | string} value - The value to set
 	 */
+	/**
+	 * Handle a local wallbox control state change.
+	 * For settings, the value is just stored without ack.
+	 * For Apply, all pending values are read and sent to the device.
+	 *
+	 * @param {string} stateId - The full state id
+	 * @param {number} wbIdx - Wallbox index (0-based)
+	 * @param {string} field - The control field name
+	 * @param {boolean | number | string} value - The value to set
+	 */
 	async handleWallboxControl(stateId, wbIdx, field, value) {
 		if (this.wallboxCount === undefined || wbIdx >= this.wallboxCount) {
 			this.log.warn(`Wallbox ${wbIdx} does not exist (device has ${this.wallboxCount ?? 0} wallboxes)`);
+			return;
+		}
+
+		// Non-Apply fields: just store the pending value (no ack)
+		if (field !== "Apply") {
+			this.log.debug(`Wallbox ${wbIdx}: pending ${field} = ${value}`);
+			return;
+		}
+
+		// Apply: read all pending values and send each to device
+		if (!value) {
 			return;
 		}
 
@@ -819,35 +883,49 @@ class Senec extends utils.Adapter {
 			AllowIntercharge: { key: "ALLOW_INTERCHARGE", type: "u8", bool: true },
 		};
 
-		const mapping = fieldMap[field];
-		if (!mapping) {
-			this.log.warn(`Unknown wallbox control field: ${field}`);
-			return;
-		}
+		const pfx = `control.Wallbox.${wbIdx}`;
+		this.log.info(`Applying wallbox ${wbIdx} changes...`);
 
-		const arr = Array.from({ length: 4 }, () => "");
-		if (mapping.bool) {
-			const onVal = mapping.onValue || "01";
-			arr[wbIdx] = `${mapping.type}_${value ? onVal : "00"}`;
-		} else if (mapping.type === "fl") {
-			// IEEE754 float encoding
-			const buf = Buffer.alloc(4);
-			buf.writeFloatBE(parseFloat(String(value)), 0);
-			arr[wbIdx] = `fl_${buf.toString("hex").toUpperCase()}`;
-		} else {
-			const numVal = typeof value === "number" ? value : parseInt(String(value), 10);
-			if (isNaN(numVal) || numVal < 0) {
-				this.log.warn(`Invalid value for wallbox control ${field}: ${value}`);
-				return;
+		// Build one combined payload with all changed fields
+		const wallboxPayload = {};
+		for (const [fieldName, mapping] of Object.entries(fieldMap)) {
+			const state = await this.getStateAsync(`${pfx}.${fieldName}`);
+			if (!state || state.ack) {
+				continue; // Skip fields that haven't been changed (still acked)
 			}
-			const padLen = mapping.type === "u1" ? 4 : 2;
-			arr[wbIdx] = `${mapping.type}_${numVal.toString(16).toUpperCase().padStart(padLen, "0")}`;
+			const val = state.val;
+
+			const arr = Array.from({ length: 4 }, () => "");
+			if (mapping.bool) {
+				const onVal = mapping.onValue || "01";
+				arr[wbIdx] = `${mapping.type}_${val ? onVal : "00"}`;
+			} else if (mapping.type === "fl") {
+				const buf = Buffer.alloc(4);
+				buf.writeFloatBE(parseFloat(String(val)), 0);
+				arr[wbIdx] = `fl_${buf.toString("hex").toUpperCase()}`;
+			} else {
+				const numVal = typeof val === "number" ? val : parseInt(String(val), 10);
+				if (isNaN(numVal) || numVal < 0) {
+					this.log.warn(`Invalid value for wallbox control ${fieldName}: ${val}`);
+					continue;
+				}
+				const padLen = mapping.type === "u1" ? 4 : 2;
+				arr[wbIdx] = `${mapping.type}_${numVal.toString(16).toUpperCase().padStart(padLen, "0")}`;
+			}
+			wallboxPayload[mapping.key] = arr;
+			this.log.info(`Wallbox ${wbIdx} ${fieldName} = ${val}`);
 		}
 
-		const payload = JSON.stringify({ WALLBOX: { [mapping.key]: arr } });
-		this.log.debug(`Wallbox control payload: ${payload}`);
-		this.log.info(`Setting wallbox ${wbIdx} ${field} to ${value} ...`);
-		await this.sendLocalControl(stateId, payload, `setting wallbox ${wbIdx} ${field} to ${value}`);
+		if (Object.keys(wallboxPayload).length > 0) {
+			const payload = JSON.stringify({ WALLBOX: wallboxPayload });
+			this.log.debug(`Wallbox control payload: ${payload}`);
+			await this.sendLocalControl(stateId, payload, `applying wallbox ${wbIdx} changes`);
+		} else {
+			this.log.debug(`Wallbox ${wbIdx}: no pending changes to apply`);
+		}
+
+		await this.setState(`${pfx}.Apply`, { val: false, ack: true });
+		this.log.info(`Wallbox ${wbIdx} changes applied`);
 	}
 
 	/**
@@ -910,6 +988,22 @@ class Senec extends utils.Adapter {
 					native: {},
 				});
 			}
+		}
+
+		// Apply button per wallbox
+		for (let i = 0; i < this.wallboxCount; i++) {
+			await this.setObjectNotExistsAsync(`control.Wallbox.${i}.Apply`, {
+				type: "state",
+				common: {
+					name: "Apply pending changes",
+					type: "boolean",
+					role: "button",
+					read: true,
+					write: true,
+					def: false,
+				},
+				native: {},
+			});
 		}
 
 		this.wallboxControlsCreated = true;
@@ -2391,6 +2485,22 @@ class Senec extends utils.Adapter {
 			});
 		}
 
+		// Apply button — user sets to true to send all pending changes
+		for (let i = 0; i < this.apiWallboxCount; i++) {
+			await this.setObjectNotExistsAsync(`control.api.Wallbox.${i}.Apply`, {
+				type: "state",
+				common: {
+					name: "Apply pending changes",
+					type: "boolean",
+					role: "button",
+					read: true,
+					write: true,
+					def: false,
+				},
+				native: {},
+			});
+		}
+
 		await this.subscribeStatesAsync("control.api.*");
 		this.log.info(`Created API wallbox control datapoints for ${this.apiWallboxCount} wallbox(es)`);
 	}
@@ -2468,9 +2578,11 @@ class Senec extends utils.Adapter {
 
 	/**
 	 * Handle an API wallbox control state change.
+	 * For settings (Mode, MinChargingCurrentInA, etc.) the value is just stored without ack.
+	 * For Apply, all pending values are read and sent to the API.
 	 *
 	 * @param {number} wbIdx - Wallbox index (0-based)
-	 * @param {string} field - The control field name (Mode, MinChargingCurrentInA, etc.)
+	 * @param {string} field - The control field name
 	 * @param {boolean | number | string} value - The value to set
 	 */
 	async handleApiWallboxControl(wbIdx, field, value) {
@@ -2478,158 +2590,136 @@ class Senec extends utils.Adapter {
 			this.log.warn(`API Wallbox ${wbIdx} does not exist`);
 			return;
 		}
+
+		// Non-Apply fields: just store the pending value (no ack)
+		if (field !== "Apply") {
+			this.log.debug(`API Wallbox ${wbIdx}: pending ${field} = ${value}`);
+			return;
+		}
+
+		// Apply: read all pending values and send to API
+		if (!value) {
+			return; // Only act on true
+		}
+
 		const uuid = this.apiWallboxUuids[wbIdx];
 		if (!uuid) {
 			this.log.warn(`No UUID for API wallbox ${wbIdx}`);
 			return;
 		}
+
+		const pfx = `control.api.Wallbox.${wbIdx}`;
 		const systemId = this.apiWallboxSystemId;
 		const baseUrl = `${HOST_WALLBOX}/v1/systems/${systemId}/wallboxes/${encodeURIComponent(uuid)}`;
 
 		try {
-			if (field === "Mode") {
-				const targetMode = String(value).toUpperCase();
-				const wb = this.apiWallboxObjects[wbIdx];
-				const currentlyLocked = !!wb?.prohibitUsage;
+			// Read pending values from states
+			const pendingMode = (await this.getStateAsync(`${pfx}.Mode`))?.val;
+			const pendingMinCurrent = (await this.getStateAsync(`${pfx}.MinChargingCurrentInA`))?.val;
+			const pendingAllowIntercharge = (await this.getStateAsync(`${pfx}.AllowIntercharge`))?.val;
+			const pendingPreventInterruptions = (await this.getStateAsync(`${pfx}.PreventInterruptions`))?.val;
 
-				if (targetMode === "LOCKED") {
-					// Lock the wallbox
+			const wb = this.apiWallboxObjects[wbIdx];
+			const targetMode = pendingMode ? String(pendingMode).toUpperCase() : null;
+
+			// 1. Handle mode/lock change
+			if (targetMode) {
+				const currentlyLocked = !!wb?.prohibitUsage;
+				const currentMode = wb?.chargingMode?.type?.toUpperCase();
+
+				if (targetMode === "LOCKED" && !currentlyLocked) {
 					this.log.info(`Locking API wallbox ${wbIdx}...`);
 					const res = await this.apiPatch(`${baseUrl}/locked/true`);
 					if (res?.data) {
 						this.apiWallboxObjects[wbIdx] = res.data;
 					}
-				} else {
-					// If currently locked, unlock first
+				} else if (targetMode !== "LOCKED") {
 					if (currentlyLocked) {
 						this.log.info(`Unlocking API wallbox ${wbIdx} before mode change...`);
 						const unlockRes = await this.apiPatch(`${baseUrl}/locked/false`);
 						if (!unlockRes?.data) {
 							this.log.warn(`Unlock failed for API wallbox ${wbIdx}`);
+							await this.setState(`${pfx}.Apply`, { val: false, ack: true });
 							return;
 						}
 						this.apiWallboxObjects[wbIdx] = unlockRes.data;
 					}
-					// Set charging mode
-					this.log.info(`Setting API wallbox ${wbIdx} mode to ${targetMode}...`);
-					const res = await this.apiPatch(`${baseUrl}/charging-mode/${targetMode}`);
-					if (res?.data) {
-						this.apiWallboxObjects[wbIdx] = res.data;
+					if (targetMode !== currentMode) {
+						this.log.info(`Setting API wallbox ${wbIdx} mode to ${targetMode}...`);
+						const res = await this.apiPatch(`${baseUrl}/charging-mode/${targetMode}`);
+						if (res?.data) {
+							this.apiWallboxObjects[wbIdx] = res.data;
+						}
 					}
 				}
-			} else if (field === "MinChargingCurrentInA") {
-				const wb = this.apiWallboxObjects[wbIdx];
-				const modeType = wb?.chargingMode?.type?.toUpperCase();
-
-				if (modeType === "SOLAR") {
-					const settings = wb.chargingMode.solarOptimizeSettings || {};
-					const postData = {
-						minChargingCurrentInA: parseFloat(String(value)),
-						preventInterruptions: settings.preventInterruptions ?? false,
-						compatibilityMode: settings.compatibilityMode ?? false,
-						useDynamicTariffs: settings.useDynamicTariffs ?? false,
-						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
-					};
-					this.log.info(`Setting API wallbox ${wbIdx} solar minChargingCurrent to ${value}A...`);
-					const res = await this.apiPatch(`${baseUrl}/settings/solar-charge`, postData);
-					if (res?.data) {
-						this.apiWallboxObjects[wbIdx] = res.data;
-					}
-				} else if (modeType === "COMFORT") {
-					const settings = wb.chargingMode.comfortChargeSettings || {};
-					const postData = {
-						minChargingCurrentInA: parseFloat(String(value)),
-						allowIntercharge: settings.allowIntercharge ?? false,
-						preventInterruptions: settings.preventInterruptions ?? false,
-						useDynamicTariffs: settings.useDynamicTariffs ?? false,
-						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
-					};
-					this.log.info(`Setting API wallbox ${wbIdx} comfort minChargingCurrent to ${value}A...`);
-					const res = await this.apiPatch(`${baseUrl}/comfort-charge-expert-settings`, postData);
-					if (res?.data) {
-						this.apiWallboxObjects[wbIdx] = res.data;
-					}
-				} else {
-					this.log.warn(
-						`MinChargingCurrentInA only supported in SOLAR or COMFORT mode (current: ${modeType})`,
-					);
-					return;
-				}
-			} else if (field === "AllowIntercharge") {
-				const wb = this.apiWallboxObjects[wbIdx];
-				const modeType = wb?.chargingMode?.type?.toUpperCase();
-				const boolVal = !!value;
-
-				if (modeType === "FAST") {
-					this.log.info(`Setting API wallbox ${wbIdx} fast allowIntercharge to ${boolVal}...`);
-					const res = await this.apiPatch(`${baseUrl}/settings/fast-charge`, { allowIntercharge: boolVal });
-					if (res?.data) {
-						this.apiWallboxObjects[wbIdx] = res.data;
-					}
-				} else if (modeType === "COMFORT") {
-					const settings = wb.chargingMode.comfortChargeSettings || {};
-					const postData = {
-						allowIntercharge: boolVal,
-						preventInterruptions: settings.preventInterruptions ?? false,
-						useDynamicTariffs: settings.useDynamicTariffs ?? false,
-						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
-					};
-					this.log.info(`Setting API wallbox ${wbIdx} comfort allowIntercharge to ${boolVal}...`);
-					const res = await this.apiPatch(`${baseUrl}/comfort-charge-expert-settings`, postData);
-					if (res?.data) {
-						this.apiWallboxObjects[wbIdx] = res.data;
-					}
-				} else {
-					this.log.warn(`AllowIntercharge only supported in FAST or COMFORT mode (current: ${modeType})`);
-					return;
-				}
-			} else if (field === "PreventInterruptions") {
-				const wb = this.apiWallboxObjects[wbIdx];
-				const modeType = wb?.chargingMode?.type?.toUpperCase();
-				const boolVal = !!value;
-
-				if (modeType === "SOLAR") {
-					const settings = wb.chargingMode.solarOptimizeSettings || {};
-					const postData = {
-						preventInterruptions: boolVal,
-						minChargingCurrentInA: settings.minChargingCurrentInA ?? 6,
-						compatibilityMode: settings.compatibilityMode ?? false,
-						useDynamicTariffs: settings.useDynamicTariffs ?? false,
-						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
-					};
-					this.log.info(`Setting API wallbox ${wbIdx} solar preventInterruptions to ${boolVal}...`);
-					const res = await this.apiPatch(`${baseUrl}/settings/solar-charge`, postData);
-					if (res?.data) {
-						this.apiWallboxObjects[wbIdx] = res.data;
-					}
-				} else if (modeType === "COMFORT") {
-					const settings = wb.chargingMode.comfortChargeSettings || {};
-					const postData = {
-						preventInterruptions: boolVal,
-						allowIntercharge: settings.allowIntercharge ?? false,
-						useDynamicTariffs: settings.useDynamicTariffs ?? false,
-						priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
-					};
-					this.log.info(`Setting API wallbox ${wbIdx} comfort preventInterruptions to ${boolVal}...`);
-					const res = await this.apiPatch(`${baseUrl}/comfort-charge-expert-settings`, postData);
-					if (res?.data) {
-						this.apiWallboxObjects[wbIdx] = res.data;
-					}
-				} else {
-					this.log.warn(
-						`PreventInterruptions only supported in SOLAR or COMFORT mode (current: ${modeType})`,
-					);
-					return;
-				}
-			} else {
-				this.log.warn(`Unknown API wallbox control field: ${field}`);
-				return;
 			}
 
-			// Sync control states after successful change
+			// 2. Handle settings for the active mode (use latest wb object after mode change)
+			const activeWb = this.apiWallboxObjects[wbIdx];
+			const activeMode = activeWb?.chargingMode?.type?.toUpperCase();
+
+			if (activeMode === "SOLAR") {
+				const settings = activeWb.chargingMode.solarOptimizeSettings || {};
+				const postData = {
+					minChargingCurrentInA:
+						pendingMinCurrent != null
+							? parseFloat(String(pendingMinCurrent))
+							: (settings.minChargingCurrentInA ?? 6),
+					preventInterruptions:
+						pendingPreventInterruptions != null
+							? !!pendingPreventInterruptions
+							: (settings.preventInterruptions ?? false),
+					compatibilityMode: settings.compatibilityMode ?? false,
+					useDynamicTariffs: settings.useDynamicTariffs ?? false,
+					priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
+				};
+				this.log.info(`Applying API wallbox ${wbIdx} solar settings...`);
+				const res = await this.apiPatch(`${baseUrl}/settings/solar-charge`, postData);
+				if (res?.data) {
+					this.apiWallboxObjects[wbIdx] = res.data;
+				}
+			} else if (activeMode === "FAST") {
+				if (pendingAllowIntercharge != null) {
+					this.log.info(`Applying API wallbox ${wbIdx} fast settings...`);
+					const res = await this.apiPatch(`${baseUrl}/settings/fast-charge`, {
+						allowIntercharge: !!pendingAllowIntercharge,
+					});
+					if (res?.data) {
+						this.apiWallboxObjects[wbIdx] = res.data;
+					}
+				}
+			} else if (activeMode === "COMFORT") {
+				const settings = activeWb.chargingMode.comfortChargeSettings || {};
+				const postData = {
+					minChargingCurrentInA:
+						pendingMinCurrent != null
+							? parseFloat(String(pendingMinCurrent))
+							: (settings.configuredChargingCurrent ?? 6),
+					allowIntercharge:
+						pendingAllowIntercharge != null
+							? !!pendingAllowIntercharge
+							: (settings.allowIntercharge ?? false),
+					preventInterruptions:
+						pendingPreventInterruptions != null
+							? !!pendingPreventInterruptions
+							: (settings.preventInterruptions ?? false),
+					useDynamicTariffs: settings.useDynamicTariffs ?? false,
+					priceLimitInCtPerKwh: settings.priceLimitInCtPerKwh ?? -99,
+				};
+				this.log.info(`Applying API wallbox ${wbIdx} comfort settings...`);
+				const res = await this.apiPatch(`${baseUrl}/comfort-charge-expert-settings`, postData);
+				if (res?.data) {
+					this.apiWallboxObjects[wbIdx] = res.data;
+				}
+			}
+
+			// Sync control states with actual device values and reset Apply
 			await this.syncApiWallboxControls();
+			await this.setState(`${pfx}.Apply`, { val: false, ack: true });
+			this.log.info(`API wallbox ${wbIdx} changes applied successfully`);
 		} catch (error) {
-			this.logError(error, `Failed to control API wallbox ${wbIdx} ${field}`);
+			this.logError(error, `Failed to apply API wallbox ${wbIdx} changes`);
+			await this.setState(`${pfx}.Apply`, { val: false, ack: true });
 		}
 	}
 

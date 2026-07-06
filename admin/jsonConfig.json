@@ -160,7 +160,6 @@
 							"label": "controlWallbox",
 							"help": "controlWallboxHelp",
 							"default": false,
-							"hidden": "data.control_api_wallbox === true",
 							"newLine": true
 						}
 					}
@@ -195,7 +194,6 @@
 							"label": "controlApiWallbox",
 							"help": "controlApiWallboxHelp",
 							"default": false,
-							"hidden": "data.control_wallbox === true",
 							"newLine": true
 						}
 					}
