@@ -17,9 +17,11 @@ const TOKEN_STATE = `${API_PFX}refreshToken`;
 
 const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`);
 
-// API Endpoints
-const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
-const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev";
+// API Endpoints (updated June 2026 — old paths kept as comments for fallback)
+// Old: const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
+// Old: const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev";
+const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev/systems/api";
+const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev/measurements/api";
 const SSO_BASE_URL = "https://sso.senec.com/realms/senec/protocol/openid-connect";
 const SSO_AUTH_URL = `${SSO_BASE_URL}/auth`;
 const SSO_TOKEN_URL = `${SSO_BASE_URL}/token`;
@@ -1686,7 +1688,8 @@ class Senec extends utils.Adapter {
 		}
 
 		this.log.debug("🔄 Reading available systems from API ...");
-		const sysRes = await this.apiGet(`${HOST_SYSTEMS}/v1/systems`);
+		// Old: /v1/systems → New: /systems/api/v1 (HOST_SYSTEMS already includes /systems/api)
+		const sysRes = await this.apiGet(`${HOST_SYSTEMS}/v1`);
 
 		if (!sysRes?.data?.length) {
 			throw new Error("No systems returned from API.");
