@@ -586,7 +586,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Apply default HTTP headers to an axios client.
 	 *
-	 * @param {any} client axios instance
+	 * @param {import("axios").AxiosInstance} client axios instance
 	 * @param {string} userAgent user agent string to apply
 	 */
 	applyDefaultHeaders(client, userAgent) {
@@ -1230,7 +1230,7 @@ class Senec extends utils.Adapter {
 	 * Runs one API poll cycle, applies global error/backoff handling and schedules the next execution.
 	 *
 	 * @returns {Promise<void>}
-	 * @throws Will throw an error if the API call fails or if all scheduled tasks fail during the poll cycle.
+	 * @throws {Error} Will throw an error if the API call fails or if all scheduled tasks fail during the poll cycle.
 	 */
 	async pollSenecApi() {
 		if (this.unloaded) {
@@ -1392,7 +1392,7 @@ class Senec extends utils.Adapter {
 	 * Handles dashboard/details/heavy polling and optionally one rebuild batch.
 	 *
 	 * @returns {Promise<{totalFailure: boolean, partialFailure: boolean, failedSystems: number, message: string}>} Result of the poll cycle, including failure status and messages.
-	 * @throws Will throw an error if all scheduled tasks fail during the poll cycle.
+	 * @throws {Error} Will throw an error if all scheduled tasks fail during the poll cycle.
 	 */
 	async runApiPollCycle() {
 		let rebuildExecuted = false;
@@ -1647,7 +1647,7 @@ class Senec extends utils.Adapter {
 	 * The method checks the results of the poll cycle for each task type (dashboard, details, heavy) and updates the last poll timestamps accordingly if all scheduled tasks of that type succeeded for all known systems. It compares the count of succeeded tasks with the total number of known systems to determine if the poll timestamp should be updated. This method is crucial for maintaining accurate scheduling of subsequent poll cycles, as it ensures that the adapter has the correct information about when each task type was last successfully polled, allowing for optimized scheduling based on the configured intervals.
 	 * The method assumes that the total result object contains accurate counts of scheduled and succeeded tasks for each task type, as well as the total number of known systems. By systematically finalizing the poll timestamps based on the results, the method helps to ensure that the adapter operates efficiently and effectively in its interactions with the SENEC App API.
 	 *
-	 * @param {*} result - The result object of the poll cycle, containing counts of scheduled and succeeded tasks for each task type, as well as the total number of known systems.
+	 * @param {object} result - The result object of the poll cycle, containing counts of scheduled and succeeded tasks for each task type, as well as the total number of known systems.
 	 */
 	finalizePollTimestamps(result) {
 		const systemsCount = this.apiKnownSystems.size;
@@ -1674,7 +1674,7 @@ class Senec extends utils.Adapter {
 	 *   AdaptiveRequestQueue. This function only logs and propagates signals.
 	 * - Token refresh (401) is handled here.
 	 *
-	 * @param {any} url url to call
+	 * @param {string} url url to call
 	 * @param config config for API call - will be extended by auth header - can be used to pass additional headers or other axios config parameters
 	 */
 	async apiGet(url, config = {}) {
@@ -1689,6 +1689,7 @@ class Senec extends utils.Adapter {
 			throw new Error("API queue not initialized");
 		}
 
+		const client = this.apiClient;
 		return this.apiQueue.add(async () => {
 			// Proactive expiry check - if token is close to expiry, refresh before making the call
 			// to avoid edge cases with token expiry during the call
@@ -1708,7 +1709,7 @@ class Senec extends utils.Adapter {
 
 			for (let attempt = 0; attempt < maxAttempts; attempt++) {
 				try {
-					return await this.apiClient.get(url, {
+					return await client.get(url, {
 						...config,
 						headers: {
 							Authorization: `Bearer ${this.currentToken}`,
@@ -2038,7 +2039,7 @@ class Senec extends utils.Adapter {
 	 * The method iterates through the measurement data and sums the values based on the specified period (e.g., hourly, daily, monthly).
 	 * It updates the sums for each measurement key and then evaluates the poll to update the relevant states with the calculated sums.
 	 *
-	 * @param {any} data measurement data
+	 * @param {object} data measurement data
 	 * @param {string | number} anlagenId Anlagen ID
 	 * @param {string} pfx prefix for state
 	 * @param {string} period period to sum for
@@ -2326,7 +2327,7 @@ class Senec extends utils.Adapter {
 	 * allowing the adapter to maintain an accurate record of all-time measurements and provide valuable insights into the long-term performance of the system.
 	 *
 	 * @param {string} valueStore ValueStore
-	 * @returns {Promise<{ [s: string]: any; }>} AllTimeValueStore as object
+	 * @returns {Promise<Record<string, number> | object>} AllTimeValueStore as object
 	 */
 	async readAllTimeValueStore(valueStore) {
 		const statsObj = await this.getStateAsync(valueStore);
@@ -2345,7 +2346,7 @@ class Senec extends utils.Adapter {
 	 * Insert values into AllTimeValueStore
 	 * The method reads the existing values from the AllTimeValueStore for the specified system ID and year, updates the values based on the provided sums, and then writes the updated values back to the AllTimeValueStore.
 	 *
-	 * @param {{ [s: string]: number; } | ArrayLike<any>} sums sums to insert
+	 * @param {{ [s: string]: number; }} sums sums to insert
 	 * @param {string | number} anlagenId Anlagen ID
 	 * @param {number} year Year to insert for
 	 */
@@ -2524,14 +2525,14 @@ class Senec extends utils.Adapter {
 	 * This allows for dynamic translation of state values based on the user's language preferences in the ioBroker interface, enhancing the usability and accessibility of the adapter for users with different language settings.
 	 * The method assumes that the state attributes contain the necessary translation information for the supported languages, and it relies on this information to perform the decoding and updating of the _Text states accurately.
 	 *
-	 * @param {*} name Name of the state
-	 * @param {*} value Value of the state
+	 * @param {string} name Name of the state
+	 * @param {string | number} value Value of the state
 	 */
 	async doDecode(name, value) {
 		const lang = this.guiLang || "1";
 		this.log.silly(`(Decode) Senec language: ${lang}`);
 		let key = name;
-		if (!isNaN(name.substring(name.lastIndexOf(".")) + 1)) {
+		if (!isNaN(Number(name.substring(name.lastIndexOf(".")) + 1))) {
 			key = name.substring(0, name.lastIndexOf("."));
 		}
 		this.log.silly(`(Decode) Checking: ${name} -> ${key}`);
@@ -2554,7 +2555,7 @@ class Senec extends utils.Adapter {
 	 * evaluates data polled from SENEC system.
 	 * creates / updates the state.
 	 *
-	 * @param {{ [s: string]: any; } | ArrayLike<any>} obj object to evaluate
+	 * @param {{ [s: string]: object; }} obj object to evaluate
 	 * @param {string} pfx prefix for state
 	 * @param keyPrefix current key prefix for nested objects
 	 */
@@ -2589,9 +2590,9 @@ class Senec extends utils.Adapter {
 	 * Evaluates a single polled value and updates the corresponding state.
 	 * This is a helper function for evalPoll to handle individual values, including logging and state attribute resolution.
 	 *
-	 * @param {*} pfx - The prefix for the state name.
-	 * @param {*} value - The value to evaluate.
-	 * @param {*} fullKey - The full key for the state.
+	 * @param {string} pfx - The prefix for the state name.
+	 * @param {string | number | boolean} value - The value to evaluate.
+	 * @param {string} fullKey - The full key for the state.
 	 */
 	async evalPollHelper(pfx, value, fullKey) {
 		if (state_attr[fullKey] === undefined && state_attr[fullKey.replace(/\.\d+$/, "")] === undefined) {
@@ -2816,8 +2817,8 @@ class Senec extends utils.Adapter {
 	 * it logs that at the debug level for more detailed troubleshooting information.
 	 * This method is used throughout the adapter to ensure consistent and informative error logging, making it easier to identify and resolve issues that may arise during API calls, polling, or other operations.
 	 *
-	 * @param {*} e - The error object or message to log.
-	 * @param {*} prefix - The prefix for the error message.
+	 * @param {Error} e - The error object or message to log.
+	 * @param {string} prefix - The prefix for the error message.
 	 */
 	logError(e, prefix = "") {
 		const msg = e?.message ?? String(e);
@@ -2900,7 +2901,7 @@ class Senec extends utils.Adapter {
 	 * - older historic monthly data would otherwise never be populated
 	 *
 	 * @param {string} anlagenId - System id
-	 * @param {*} year - Year of the rebuild step
+	 * @param {number} year - Year of the rebuild step
 	 * @param {boolean} monthly - true for monthly aggregation step, false for yearly
 	 * @returns {string} The unique key for the rebuild step.
 	 */
@@ -2930,7 +2931,7 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * @param {{ response: { status: any; }; code: any; message: string; }} error - if an error occurs
+	 * @param {Error & { response?: { status: number }; code?: string }} error - if an error occurs
 	 */
 	isApiRelevantRebuildError(error) {
 		const status = error?.response?.status;
@@ -2940,7 +2941,7 @@ class Senec extends utils.Adapter {
 		return (
 			status === 401 ||
 			status === 429 ||
-			(status >= 500 && status < 600) ||
+			(status !== undefined && status >= 500 && status < 600) ||
 			code === "ECONNABORTED" ||
 			code === "ETIMEDOUT" ||
 			/timeout/i.test(msg)
