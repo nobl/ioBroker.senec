@@ -4502,8 +4502,8 @@ class Senec extends utils.Adapter {
 		const currentYear = new Date().getUTCFullYear();
 		const startYear = this.getRebuildStartYear();
 		for (let year = currentYear; year >= startYear; year--) {
-			steps.push({ anlagenId, year, monthly: false });
-			steps.push({ anlagenId, year, monthly: true });
+			steps.push({ anlagenId, year, monthly: false, wallbox: undefined });
+			steps.push({ anlagenId, year, monthly: true, wallbox: undefined });
 			// Add wallbox measurement rebuild steps
 			for (let i = 0; i < this.apiWallboxUuids.length; i++) {
 				const wb = { uuid: this.apiWallboxUuids[i], index: i };
@@ -4664,7 +4664,7 @@ class Senec extends utils.Adapter {
 	 * Executes one rebuild step.
 	 *
 	 * @param {string} anlagenId - The ID of the system for which to run the rebuild step
-	 * @param {{ anlagenId?: string; year: number; monthly: boolean; }} step - rebuild step
+	 * @param {{ anlagenId?: string; year: number; monthly: boolean; wallbox?: { uuid: string; index: number } }} step - rebuild step
 	 * @returns {Promise<boolean>} True if step finished successfully, otherwise false
 	 */
 	async runSingleRebuildStep(anlagenId, step) {
