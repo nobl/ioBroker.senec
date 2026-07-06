@@ -82,7 +82,6 @@ const allKnownObjects = new Set([
 	"SENEC_IO_OUTPUT",
 	"SELFTEST_RESULTS",
 	"SOCKETS",
-	"STATISTIC",
 	"STECA",
 	"SYS_UPDATE",
 	"TEMPMEASURE",
@@ -91,6 +90,9 @@ const allKnownObjects = new Set([
 	"WALLBOX",
 	"WIZARD",
 ]);
+
+// Sections deprecated by SENEC — still reported by device but no longer functional
+const deprecatedSections = new Set(["STATISTIC"]);
 
 // process.on("unhandledRejection", (reason, _promise) => {
 // 	console.error("Unhandled Promise Rejection:", reason);
@@ -1390,10 +1392,10 @@ class Senec extends utils.Adapter {
 				}
 			}
 
-			// Find sections that are new (not in allKnownObjects)
+			// Find sections that are new (not in allKnownObjects, not deprecated)
 			const newSections = [];
 			for (const section of discovered) {
-				if (!allKnownObjects.has(section)) {
+				if (!allKnownObjects.has(section) && !deprecatedSections.has(section)) {
 					allKnownObjects.add(section);
 					newSections.push(section);
 				}
@@ -2022,33 +2024,38 @@ class Senec extends utils.Adapter {
 			rebuildExecuted: false,
 		};
 
-		try {
-			this.log.debug(`🔄 Polling system ${anlagenId}...`);
+		this.log.debug(`🔄 Polling system ${anlagenId}...`);
 
-			if (ctx.shouldRunDashboard) {
-				this.log[logType](`🔄 Polling system ${anlagenId} - Dashboard`);
-				result.dashboardScheduled = true;
-				await this.pollApiDashboard(anlagenId);
-				result.dashboardSucceeded = true;
-			}
+		if (ctx.shouldRunDashboard) {
+			this.log[logType](`🔄 Polling system ${anlagenId} - Dashboard`);
+			result.dashboardScheduled = true;
+			const results = await Promise.allSettled([
+				this.pollApiDashboard(anlagenId),
+				this.pollApiSystemStatus(anlagenId),
+				// pollApiOnlineState disabled — endpoint returns 404, not yet active on SENEC side
+			]);
+			result.dashboardSucceeded = results.every((r) => r.status === "fulfilled");
+		}
 
-			if (ctx.shouldRunDetails) {
-				this.log[logType](`🔄 Polling system ${anlagenId} - Details (day values)`);
-				result.detailsScheduled = true;
-				await this.pollApiDetails(anlagenId, ctx);
-				await this.pollApiSystemDetails(anlagenId);
-				result.detailsSucceeded = true;
-			}
+		if (ctx.shouldRunDetails) {
+			this.log[logType](`🔄 Polling system ${anlagenId} - Details (day values)`);
+			result.detailsScheduled = true;
+			const results = await Promise.allSettled([
+				this.pollApiDetails(anlagenId, ctx),
+				this.pollApiSystemDetails(anlagenId),
+			]);
+			result.detailsSucceeded = results.every((r) => r.status === "fulfilled");
+		}
 
-			if (ctx.shouldRunHeavy) {
-				this.log[logType](`🔄 Polling system ${anlagenId} - Heavy (month / year values)`);
-				result.heavyScheduled = true;
-				await this.pollApiHeavy(anlagenId, ctx);
-				result.heavySucceeded = true;
-			}
-		} catch (systemError) {
-			result.failed = true;
-			this.logError(systemError, `❌ System ${anlagenId} failed.`);
+		if (ctx.shouldRunHeavy) {
+			this.log[logType](`🔄 Polling system ${anlagenId} - Heavy (month / year values)`);
+			result.heavyScheduled = true;
+			const results = await Promise.allSettled([
+				this.pollApiHeavy(anlagenId, ctx),
+				this.pollApiDataAvailability(anlagenId),
+				// pollApiForecastChargingSettings disabled — endpoint returns 400, not yet active on SENEC side
+			]);
+			result.heavySucceeded = results.every((r) => r.status === "fulfilled");
 		}
 
 		if (this.isRebuildEnabled() && !this.rebuildRunning && !rebuildAlreadyExecuted) {
@@ -2071,9 +2078,75 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async pollApiDashboard(anlagenId) {
-		const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
-		this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
-		await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
+		try {
+			const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
+			this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
+			await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
+			await this.doState(
+				`${API_PFX}info.lastPoll.Dashboard`,
+				new Date().toISOString(),
+				"Last successful Dashboard poll",
+				"",
+				false,
+			);
+		} catch (error) {
+			this.logError(error, `❌ Dashboard poll failed for ${anlagenId}`);
+			throw error;
+		}
+	}
+
+	/**
+	 * Polls the API for online state (online/offline, since when).
+	 * Called on the dashboard tier.
+	 *
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 */
+	async pollApiOnlineState(anlagenId) {
+		try {
+			const res = await this.apiGet(`${HOST_SYSTEMS}/v1/${anlagenId}/online-state`);
+			if (!res?.data) {
+				return;
+			}
+			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.OnlineState.`);
+			await this.doState(
+				`${API_PFX}info.lastPoll.OnlineState`,
+				new Date().toISOString(),
+				"Last successful OnlineState poll",
+				"",
+				false,
+			);
+			this.log.debug(`Online state polled for ${anlagenId}`);
+		} catch (error) {
+			this.logError(error, `❌ Online state poll failed for ${anlagenId}`);
+			throw error;
+		}
+	}
+
+	/**
+	 * Polls the API for system status (operating mode, firmware, last contact).
+	 * Called on the dashboard tier.
+	 *
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 */
+	async pollApiSystemStatus(anlagenId) {
+		try {
+			const res = await this.apiGet(`${HOST_SYSTEMS}/v1/status/${anlagenId}`);
+			if (!res?.data) {
+				return;
+			}
+			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.SystemStatus.`);
+			await this.doState(
+				`${API_PFX}info.lastPoll.SystemStatus`,
+				new Date().toISOString(),
+				"Last successful SystemStatus poll",
+				"",
+				false,
+			);
+			this.log.debug(`System status polled for ${anlagenId}`);
+		} catch (error) {
+			this.logError(error, `❌ System status poll failed for ${anlagenId}`);
+			throw error;
+		}
 	}
 
 	/**
@@ -2089,9 +2162,17 @@ class Senec extends utils.Adapter {
 				return;
 			}
 			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.SystemDetails.`);
+			await this.doState(
+				`${API_PFX}info.lastPoll.SystemDetails`,
+				new Date().toISOString(),
+				"Last successful SystemDetails poll",
+				"",
+				false,
+			);
 			this.log.debug(`System details polled for ${anlagenId}`);
 		} catch (error) {
 			this.logError(error, `❌ System details poll failed for ${anlagenId}`);
+			throw error;
 		}
 	}
 
@@ -2142,6 +2223,63 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Polls the API for forecast charging settings.
+	 * Called on the heavy tier (daily).
+	 *
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 */
+	async pollApiForecastChargingSettings(anlagenId) {
+		try {
+			const res = await this.apiGet(`${HOST_SYSTEMS}/v1/settings/forecast-charging-settings/${anlagenId}`);
+			if (!res?.data) {
+				return;
+			}
+			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.ForecastChargingSettings.`);
+			await this.doState(
+				`${API_PFX}info.lastPoll.ForecastChargingSettings`,
+				new Date().toISOString(),
+				"Last successful ForecastChargingSettings poll",
+				"",
+				false,
+			);
+			this.log.debug(`Forecast charging settings polled for ${anlagenId}`);
+		} catch (error) {
+			this.logError(error, `❌ Forecast charging settings poll failed for ${anlagenId}`);
+			throw error;
+		}
+	}
+
+	/**
+	 * Polls the API for data availability timespan.
+	 * Called once after systems are loaded. Returns the date range for which
+	 * measurement data is available — useful for history rebuild.
+	 *
+	 * @param {string} anlagenId - The ID of the system to poll.
+	 */
+	async pollApiDataAvailability(anlagenId) {
+		try {
+			const res = await this.apiGet(
+				`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/data-availability/timespan?timezone=UTC`,
+			);
+			if (!res?.data) {
+				return;
+			}
+			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.DataAvailability.`);
+			await this.doState(
+				`${API_PFX}info.lastPoll.DataAvailability`,
+				new Date().toISOString(),
+				"Last successful DataAvailability poll",
+				"",
+				false,
+			);
+			this.log.debug(`Data availability polled for ${anlagenId}`);
+		} catch (error) {
+			this.logError(error, `❌ Data availability poll failed for ${anlagenId}`);
+			throw error;
+		}
+	}
+
+	/**
 	 * Polls the API for the details data of a single system.
 	 *
 	 * @param {string} anlagenId anlagen id
@@ -2149,35 +2287,46 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>}
 	 */
 	async pollApiDetails(anlagenId, ctx) {
-		const tasks = [
-			{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today"), label: "today" },
-			{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly"), label: "today.hourly" },
-			{ fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday"), label: "yesterday" },
-			{
-				fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly"),
-				label: "yesterday.hourly",
-			},
-		];
+		try {
+			const tasks = [
+				{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today"), label: "today" },
+				{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly"), label: "today.hourly" },
+				{ fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday"), label: "yesterday" },
+				{
+					fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly"),
+					label: "yesterday.hourly",
+				},
+			];
 
-		const results = await Promise.all(
-			tasks.map(async (task) => {
-				const res = await task.fn();
-				return { label: task.label, ...res };
-			}),
-		);
+			const results = await Promise.all(
+				tasks.map(async (task) => {
+					const res = await task.fn();
+					return { label: task.label, ...res };
+				}),
+			);
 
-		// optionales Debug-Logging (nur wenn aktiviert)
-		if (this.config.api_debug_log) {
-			for (const r of results) {
-				this.log.debug(`Details ${anlagenId} / ${r.label}: ${r.status}`);
+			if (this.config.api_debug_log) {
+				for (const r of results) {
+					this.log.debug(`Details ${anlagenId} / ${r.label}: ${r.status}`);
+				}
 			}
-		}
-		const summary = this.summarizeMeasurementResults(results);
-		const classification = this.classifyMeasurementSummary(summary);
+			const summary = this.summarizeMeasurementResults(results);
+			const classification = this.classifyMeasurementSummary(summary);
 
-		this.log.debug(
-			`Details summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
-		);
+			this.log.debug(
+				`Details summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
+			);
+			await this.doState(
+				`${API_PFX}info.lastPoll.Details`,
+				new Date().toISOString(),
+				"Last successful Details poll",
+				"",
+				false,
+			);
+		} catch (error) {
+			this.logError(error, `❌ Details poll failed for ${anlagenId}`);
+			throw error;
+		}
 	}
 
 	/**
@@ -2188,48 +2337,63 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>}
 	 */
 	async pollApiHeavy(anlagenId, ctx) {
-		const tasks = [
-			{
-				fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month"),
-				label: "current_month",
-			},
-			{
-				fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily"),
-				label: "current_month.daily",
-			},
-			{ fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month"), label: "previous_month" },
-			{
-				fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily"),
-				label: "previous_month.daily",
-			},
+		try {
+			const tasks = [
+				{
+					fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month"),
+					label: "current_month",
+				},
+				{
+					fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily"),
+					label: "current_month.daily",
+				},
+				{
+					fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month"),
+					label: "previous_month",
+				},
+				{
+					fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily"),
+					label: "previous_month.daily",
+				},
 
-			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, false), label: "year" },
-			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, true), label: "year.monthly" },
-			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false), label: "prev_year" },
-			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true), label: "prev_year.monthly" },
-		];
+				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, false), label: "year" },
+				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, true), label: "year.monthly" },
+				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false), label: "prev_year" },
+				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true), label: "prev_year.monthly" },
+			];
 
-		const results = await Promise.all(
-			tasks.map(async (task) => {
-				const res = await task.fn();
-				return { label: task.label, ...res };
-			}),
-		);
+			const results = await Promise.all(
+				tasks.map(async (task) => {
+					const res = await task.fn();
+					return { label: task.label, ...res };
+				}),
+			);
 
-		if (this.config.api_debug_log) {
-			for (const r of results) {
-				this.log.debug(`Heavy ${anlagenId} / ${r.label}: ${r.status}`);
+			if (this.config.api_debug_log) {
+				for (const r of results) {
+					this.log.debug(`Heavy ${anlagenId} / ${r.label}: ${r.status}`);
+				}
 			}
+
+			const summary = this.summarizeMeasurementResults(results);
+			const classification = this.classifyMeasurementSummary(summary);
+
+			this.log.debug(
+				`Heavy summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
+			);
+
+			await this.updateAllTimeHistory(anlagenId);
+			await this.doState(
+				`${API_PFX}info.lastPoll.Heavy`,
+				new Date().toISOString(),
+				"Last successful Heavy poll",
+				"",
+				false,
+			);
+		} catch (error) {
+			this.logError(error, `❌ Heavy poll failed for ${anlagenId}`);
+			throw error;
 		}
-
-		const summary = this.summarizeMeasurementResults(results);
-		const classification = this.classifyMeasurementSummary(summary);
-
-		this.log.debug(
-			`Heavy summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
-		);
-
-		await this.updateAllTimeHistory(anlagenId);
 	}
 
 	/**
