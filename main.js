@@ -3629,6 +3629,23 @@ if (require.main !== module) {
 	 * @param {Partial<ioBroker.AdapterOptions>} [options] options
 	 */
 	module.exports = (options) => new Senec(options);
+	// Export pure functions for unit testing
+	module.exports._testing = {
+		extractFormAction,
+		hasUsername,
+		hasPassword,
+		hasUsernameAndPassword,
+		hasOtp,
+		generateTOTP,
+		computeBackoffDelay,
+		normalizeRebuildMode,
+		HexToFloat32,
+		DecToIP,
+		reviverNumParse,
+		generateCodeVerifier,
+		generateCodeChallenge,
+		base64UrlEncode,
+	};
 } else {
 	// otherwise start the instance directly
 	new Senec();
