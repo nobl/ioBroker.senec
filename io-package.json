@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.5.4",
+    "version": "2.5.5",
     "news": {
+      "2.5.5": {
+        "en": "Replace plain setTimeout/clearTimeout with adapter-managed timers\nDependency updates",
+        "de": "Ersetzen Sie einfache setTimeout/clearTimeout-Funktionen durch adapterverwaltete Timer.\nAktualisierungen der Abhängigkeiten",
+        "ru": "Замените обычные setTimeout/clearTimeout таймерами, управляемыми адаптером.\nОбновления зависимостей",
+        "pt": "Substitua setTimeout/clearTimeout simples por temporizadores gerenciados pelo adaptador.\nAtualizações de dependências",
+        "nl": "Vervang de standaard setTimeout/clearTimeout-instructies door timers die door de adapter worden beheerd.\nAfhankelijkheidsupdates",
+        "fr": "Remplacez les fonctions setTimeout/clearTimeout classiques par des minuteurs gérés par adaptateur.\nMises à jour des dépendances",
+        "it": "Sostituire i semplici timer setTimeout/clearTimeout con timer gestiti dall'adattatore.\nAggiornamenti delle dipendenze",
+        "es": "Reemplazar setTimeout/clearTimeout simples con temporizadores administrados por el adaptador.\nActualizaciones de dependencias",
+        "pl": "Zastąp proste setTimeout/clearTimeout timerami zarządzanymi przez adapter\nAktualizacje zależności",
+        "uk": "Замініть звичайні setTimeout/clearTimeout таймерами, керованими адаптером\nОновлення залежностей",
+        "zh-cn": "将普通的 setTimeout/clearTimeout 替换为适配器管理的定时器\n依赖关系更新"
+      },
       "2.5.4": {
         "en": "Adapter requires node.js >= 22 now\nMinor fixes\nDependency updates",
         "de": "Adapter benötigt node.js >= 22 jetzt\nKleinere Reparaturen\nÄnderung der Abhängigkeit",
@@ -80,19 +93,6 @@
         "pl": "Typ połączenia teraz jest \"chmura\" (joBroker wewnętrzne ustawienie) - chociaż nadal wspieramy lokalną interakcję (jeśli to możliwe na indywidualne urządzenie)\nAktualizacje zależności",
         "uk": "Тип підключення тепер \"клоуд\" (іоБрокер внутрішнього налаштування) - хоча ми все ще підтримуємо локальну взаємодію (якщо це можливо для індивідуального застосування)\nОновлення залежності",
         "zh-cn": "连接类型现在是“ 云” (ioBroker 内部设置) - 尽管我们仍然支持本地交互( 如果每个单个应用程序可能的话)\n依赖性更新"
-      },
-      "2.4.7": {
-        "en": "Clearly indicating that initial API login busted and adapter will turn off API polling until restart\nCertain warnings moved to debug (as they are pretty much for debug purposes only)\nMade usage of axios-cookiejar-support ESM compatible (dynamic import). Solves issues with node 22.\nRND made node22+ safe.\nCode optimizations",
-        "de": "Deutlich angeben, dass anfängliche API-Anmelde-Busse und Adapter die API-Umfrage bis zum Neustart ausschalten\nBestimmte Warnungen bewegt zu Debug (wie sie sind ziemlich viel für Debug Zwecke nur)\nHergestellte Verwendung von axios-cookiejar-support ESM kompatibel (dynamischer Import). Solves Probleme mit Knoten 22.\nRND machte node22+ sicher.\nCodeoptimierungen",
-        "ru": "Четкое указание на то, что первоначальный логин API отключен и адаптер отключит опрос API до перезапуска\nНекоторые предупреждения перешли на отладку (поскольку они в значительной степени предназначены только для отладки)\nИспользование Axios-cookiejar-support ESM (динамический импорт). Решение проблем с узлом 22.\nRND сделал узел 22+ безопасным.\nОптимизация кода",
-        "pt": "Indicando claramente que o login inicial da API quebrado e adaptador irá desligar as pesquisas da API até reiniciar\nCertos avisos foram movidos para depuração (como eles são praticamente apenas para fins de depuração)\nUso feito de axios-cookiejar-suporte ESM compatível (importação dinâmica). Resolve problemas com o nó 22.\nRND fez nó22+ seguro.\nOtimizações de código",
-        "nl": "Duidelijk aangeven dat de initiële API-aanmelding is afgebroken en de adapter de API-peiling zal uitschakelen totdat opnieuw wordt gestart\nBepaalde waarschuwingen verplaatst naar debug (omdat ze vrijwel alleen voor debugdoeleinden zijn)\nGemaakt gebruik van axios-cookiejar-ondersteuning ESM compatibel (dynamische import). Lost problemen op met knooppunt 22.\nRND maakte node22+ veilig.\nCode optimalisaties",
-        "fr": "Indiquant clairement que la connexion initiale de l'API cassée et l'adaptateur va désactiver le sondage API jusqu'au redémarrage\nCertains avertissements ont été déplacés vers le débogage (car ils sont à peu près à des fins de débogage seulement)\nUtilisation d'axios-cookiejar compatible ESM (importation dynamique). Se pose des problèmes avec le nœud 22.\nRND a rendu le nœud22+ sûr.\nOptimisations du code",
-        "it": "Chiaramente indicando che il login API iniziale arrestato e adattatore spegnerà il polling API fino al riavvio\nCerti avvertimenti si sono spostati a debug (come sono praticamente per scopi debug solo)\nESM compatibile (importazione dinamica) con supporto assios-cookiejar. Solves ha problemi con il nodo 22.\nRND ha reso il nodo 22+ sicuro.\nOttimizzazione del codice",
-        "es": "Evidentemente indicando que el inicio de sesión de API se rompió y el adaptador apagará las encuestas de API hasta reiniciar\nCiertas advertencias se movieron a depurar (como son casi para propósitos de depuración solamente)\nHecho uso de axios-cookiejar-support ESM compatible (importación dinamica). Problemas de Solves con nodo 22.\nRND hizo nodo22+ seguro.\nOptimizaciones de código",
-        "pl": "Wyraźnie wskazuje, że początkowy logowanie API zepsuty i adapter będzie wyłączyć API sondażu do ponownego uruchomienia\nNiektóre ostrzeżenia przesunęły się do debugowania (ponieważ są one w zasadzie przeznaczone wyłącznie do debugowania)\nWykonane z axios- cookiejar- wsparcie ESM kompatybilne (dynamiczny import). Rozwiązuje problemy z węzłem 22.\nRND wykonane node22 + bezpieczne.\nOptymalizacja kodu",
-        "uk": "Очистити, що початковий логін API, завантажений і адаптер буде вимкнено опитування API до перезавантаження\nДеякі попередження переїхали на дебвуг (як вони досить багато для цілей дебюг)\nЗроблено використання axios-cookiejar-support ESM сумісний (динамічний імпорт). Поки питання з вершиною 22.\nRND виготовлений вузол22+ сейф.\nОптимізація коду",
-        "zh-cn": "明确显示初始API登录失败, 适配器将关闭API投票, 直到重新启动\n某些警告移动到调试( 因为它们几乎只用于调试目的)\n使Axios-cookiejar-支持无害环境管理的使用兼容(动态导入)。 用22号节点解决问题.\nRND使节点22+安全.\n代码优化"
       }
     },
     "docs": {

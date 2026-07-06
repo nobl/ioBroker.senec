@@ -263,7 +263,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.5.5 (2026-07-06)
 - Replace plain setTimeout/clearTimeout with adapter-managed timers
 - Dependency updates
 
@@ -288,19 +288,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - You can now define different polling intervals for dashboard (frequently), details (usually hourly and daily information), heavy (for everything else that usually is done per month or year).<br>Please be careful with high frequency polling as this can and will lead to problems and the senec server will stop responding to your requests. Longer delays between polls are preferred.
 - Dependency updates
 - Code optimizations
-
-### 2.5.0 (2026-03-28)
-- Added control.RebootAppliance to initiate appliance reboot. Only works if local lala.cgi is available and connected. Function requires extra permission via adapter settings. Please use responsible!
-- We are now revealing that an ioBroker integration is accessing the API per default (UserAgent is set to 'integration'). Please consider leaving that to 'integration' so SENEC knows there are many users using the ioBroker integration. If you don't want this or experience issues with 'integration' UserAgent, check settings and revert UserAgent to 'Browser' or define your 'custom' UserAgent.
-- Fixed incremential back-off for local polling.
-- Moved local appliance control settings into own tab.
-- Concurrency for API requests can now be controlled via settings. Please be cautious! Senec API is fragile. Go with 1 concurrent request if you experience issues.
-- You can now enable diagnostics for api-request-queue. You can log them to 'info' log or have them in _api.diagnostics.queue.*
-- Reduced local polling interval for lowPrio to 5 minutes.
-- UI now hides unavailable options.
-- Added option to remove API log spam. If you don't need to know every few minutes we are refreshing tokens or polling the API: Deactivate it.
-- Partial code rewrite (you can now safely have several instances of adapter - if you ever wanted)
-- Dependency updates
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
