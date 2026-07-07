@@ -18,13 +18,14 @@ const TOKEN_STATE = `${API_PFX}refreshToken`;
 const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`);
 
 // API Endpoints (updated June 2026 — old paths kept as comments for fallback)
-// Old: const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
-// Old: const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev";
-const HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev/systems/api";
-const HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev/measurements/api";
-const HOST_ABILITIES = "https://senec-app-abilities-proxy.prod.senec.dev/abilities/api";
-const HOST_WALLBOX = "https://senec-app-wallbox-proxy.prod.senec.dev/wallbox/api";
-const HOST_CONNECT = "https://apim-eds-gwc-prod.azure-api.net/senec-connect";
+// Old: const API_HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev";
+// Old: const API_HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev";
+const API_HOST_SYSTEMS = "https://senec-app-systems-proxy.prod.senec.dev/systems/api";
+const API_HOST_MEASUREMENTS = "https://senec-app-measurements-proxy.prod.senec.dev/measurements/api";
+const API_HOST_ABILITIES = "https://senec-app-abilities-proxy.prod.senec.dev/abilities/api";
+const API_HOST_WALLBOX = "https://senec-app-wallbox-proxy.prod.senec.dev/wallbox/api";
+const CONNECT_HOST = "https://apim-eds-gwc-prod.azure-api.net/senec-connect";
+const WEB_HOST = "https://mein-senec.de";
 const SSO_BASE_URL = "https://sso.senec.com/realms/senec/protocol/openid-connect";
 const SSO_AUTH_URL = `${SSO_BASE_URL}/auth`;
 const SSO_TOKEN_URL = `${SSO_BASE_URL}/token`;
@@ -180,6 +181,15 @@ class Senec extends utils.Adapter {
 		this.apiWallboxUuids = []; // UUIDs from wallbox search, needed for measurements and control
 		this.apiWallboxObjects = []; // full wallbox objects from search, needed for read-modify-write on settings
 		this.apiWallboxSystemId = null; // system ID owning the wallboxes
+
+		// mein-senec.de web session
+		this.webJar = null; // cookie jar for mein-senec.de
+		this.webAuthenticated = false;
+		this.webMasterPlantNumber = null; // anlageNummer for the matched system
+		this.webAbilities = {}; // feature visibility flags from getSystem
+		this.webStatusIntervalMs = 360000; // default 6 min, overwritten by checkConfig
+		this.webMediumIntervalMs = 21600000; // default 6h
+		this.webSlowIntervalMs = 86400000; // default 24h
 
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
@@ -346,7 +356,7 @@ class Senec extends utils.Adapter {
 			 * Instead:
 			 * - apiGet() handles authentication (401 → token refresh)
 			 * - AdaptiveRequestQueue handles overload (429, timeouts, cooldown, concurrency)
-			 * - pollSenecApi() handles global polling backoff
+			 * - apiPoll() handles global polling backoff
 			 *
 			 * Result:
 			 * - Fully deterministic request flow
@@ -355,7 +365,7 @@ class Senec extends utils.Adapter {
 			 */
 			// const { setTimeout } = require("timers/promises");
 			// this.apiClient.interceptors.response.use(
-			// 	// upon 429 Too Many Requests axios will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in pollSenecApi,
+			// 	// upon 429 Too Many Requests axios will auto-retry without breaking the poll-loop and without throwing an error to trigger the retry logic in apiPoll,
 			// 	// which includes increasing the delay between polls in case of repeated 429 responses.
 			// 	(response) => response,
 			// 	async (error) => {
@@ -373,18 +383,14 @@ class Senec extends utils.Adapter {
 
 			if (this.config.lala_use) {
 				this.log.info("Usage of lala.cgi (local) configured.");
-				await this.checkLocalConnection();
+				await this.localCheckConnection();
 				if (this.lalaConnected) {
-					await this.discoverSections();
+					await this.localDiscoverSections();
 				}
-				await this.initPollSettings();
+				await this.localInitPollSettings();
 				if (this.lalaConnected) {
-					this.pollSenecLocal(true, 0).catch((e) =>
-						this.logError(e, "❌ Initial local highPrio poll failed"),
-					);
-					this.pollSenecLocal(false, 0).catch((e) =>
-						this.logError(e, "❌ Initial local lowPrio poll failed"),
-					);
+					this.localPoll(true, 0).catch((e) => this.logError(e, "❌ Initial local highPrio poll failed"));
+					this.localPoll(false, 0).catch((e) => this.logError(e, "❌ Initial local lowPrio poll failed"));
 				}
 			} else {
 				this.log.warn("Usage of lala.cgi (local) not configured. Only polling SENEC App API if configured.");
@@ -392,9 +398,9 @@ class Senec extends utils.Adapter {
 
 			if (this.config.api_use) {
 				this.log.info("Usage of SENEC App API configured.");
-				this.apiConnected = await this.startTokenManager();
+				this.apiConnected = await this.apiStartTokenManager();
 				if (this.apiConnected) {
-					this.pollSenecApi().catch((e) => this.logError(e, "❌ Initial API poll failed"));
+					this.apiPoll().catch((e) => this.logError(e, "❌ Initial API poll failed"));
 				} else {
 					this.log.warn(
 						"Usage of SENEC App API configured but initial connection failed. Check credentials and connection to SENEC App API. API Polling turned of automatically until restart.",
@@ -408,11 +414,16 @@ class Senec extends utils.Adapter {
 
 			if (this.config.connect_use) {
 				this.log.info("Usage of SENEC.Connect API configured.");
-				this.pollSenecConnect().catch((e) => this.logError(e, "❌ Initial SENEC.Connect poll failed"));
+				this.connectPoll().catch((e) => this.logError(e, "❌ Initial SENEC.Connect poll failed"));
 				this.connectEnabled = true;
 			}
 
-			if (this.lalaConnected || this.apiConnected || this.connectEnabled) {
+			if (this.config.web_use) {
+				this.log.info("Usage of mein-senec.de configured.");
+				this.webInit().catch((e) => this.logError(e, "❌ mein-senec.de init failed"));
+			}
+
+			if (this.lalaConnected || this.apiConnected || this.connectEnabled || this.config.web_use) {
 				await this.setState("info.connection", true, true);
 				await this.refreshGuiLangCache();
 			} else {
@@ -461,7 +472,7 @@ class Senec extends utils.Adapter {
 			if (controlId === "ForceLoadBattery") {
 				const payload = state.val ? batteryOn : batteryOff;
 				this.log.info(`${state.val ? "Enable" : "Disable"} force battery charging ...`);
-				await this.sendLocalControl(id, payload, `setting force battery charging to ${state.val}`);
+				await this.localSendControl(id, payload, `setting force battery charging to ${state.val}`);
 				return;
 			}
 
@@ -473,7 +484,7 @@ class Senec extends utils.Adapter {
 				}
 				if (state.val) {
 					this.log.info("Rebooting appliance ...");
-					await this.sendLocalControl(id, rebootAppliance, "rebooting appliance");
+					await this.localSendControl(id, rebootAppliance, "rebooting appliance");
 				}
 				return;
 			}
@@ -486,7 +497,7 @@ class Senec extends utils.Adapter {
 					return;
 				}
 				const socketVal = state.val ?? false;
-				await this.handleSocketControl(id, parseInt(socketMatch[1], 10), socketMatch[2], socketVal);
+				await this.localHandleSocketControl(id, parseInt(socketMatch[1], 10), socketMatch[2], socketVal);
 				return;
 			}
 
@@ -498,7 +509,7 @@ class Senec extends utils.Adapter {
 					return;
 				}
 				const wbVal = state.val ?? false;
-				await this.handleWallboxControl(id, parseInt(wallboxMatch[1], 10), wallboxMatch[2], wbVal);
+				await this.localHandleWallboxControl(id, parseInt(wallboxMatch[1], 10), wallboxMatch[2], wbVal);
 				return;
 			}
 
@@ -510,7 +521,7 @@ class Senec extends utils.Adapter {
 					return;
 				}
 				const apiWbVal = state.val ?? false;
-				await this.handleApiWallboxControl(parseInt(apiWbMatch[1], 10), apiWbMatch[2], apiWbVal);
+				await this.apiHandleWallboxControl(parseInt(apiWbMatch[1], 10), apiWbMatch[2], apiWbVal);
 				return;
 			}
 
@@ -568,11 +579,11 @@ class Senec extends utils.Adapter {
 	 * @param {string} payload - The JSON payload to send
 	 * @param {string} description - Human-readable description for error logging
 	 */
-	async sendLocalControl(stateId, payload, description) {
+	async localSendControl(stateId, payload, description) {
 		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 		try {
 			await this.evalPoll(
-				JSON.parse(await this.doGetLocal(url, payload, this.config.pollingTimeout, true), reviverNumParse),
+				JSON.parse(await this.localDoGet(url, payload, this.config.pollingTimeout, true), reviverNumParse),
 				"",
 				"",
 			);
@@ -592,7 +603,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} field - The control field name (e.g. "ForceOn", "LowerLimit", "Apply")
 	 * @param {boolean | number | string} value - The value to set
 	 */
-	async handleSocketControl(stateId, socketIdx, field, value) {
+	async localHandleSocketControl(stateId, socketIdx, field, value) {
 		if (this.socketCount === undefined || socketIdx >= this.socketCount) {
 			this.log.warn(`Socket ${socketIdx} does not exist (device has ${this.socketCount ?? 0} sockets)`);
 			return;
@@ -652,7 +663,7 @@ class Senec extends utils.Adapter {
 		if (Object.keys(socketsPayload).length > 0) {
 			const payload = JSON.stringify({ SOCKETS: socketsPayload });
 			this.log.debug(`Socket control payload: ${payload}`);
-			await this.sendLocalControl(stateId, payload, `applying socket ${socketIdx} changes`);
+			await this.localSendControl(stateId, payload, `applying socket ${socketIdx} changes`);
 		} else {
 			this.log.debug(`Socket ${socketIdx}: no pending changes to apply`);
 		}
@@ -665,7 +676,7 @@ class Senec extends utils.Adapter {
 	 * Create control datapoints for switchable sockets.
 	 * Called once after the first local poll reveals NUMBER_OF_SOCKETS.
 	 */
-	async createSocketControls() {
+	async localCreateSocketControls() {
 		if (this.socketControlsCreated || !this.socketCount || this.socketCount <= 0) {
 			return;
 		}
@@ -750,7 +761,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Remove leftover socket control datapoints when sockets are unavailable or disabled.
 	 */
-	async cleanupSocketControls() {
+	async localCleanupSocketControls() {
 		const channels = await this.getChannelsOfAsync("control");
 		if (!channels) {
 			return;
@@ -775,20 +786,20 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {object} obj - The full parsed poll response
 	 */
-	async discoverAndSyncControls(obj) {
+	async localDiscoverAndSyncControls(obj) {
 		// Sockets
 		if (obj.SOCKETS) {
 			if (this.socketCount === undefined && typeof obj.SOCKETS.NUMBER_OF_SOCKETS === "number") {
 				this.socketCount = obj.SOCKETS.NUMBER_OF_SOCKETS;
 				this.log.debug(`Detected ${this.socketCount} socket(s)`);
 				if (this.socketCount > 0 && this.config.control_active && this.config.control_sockets) {
-					await this.createSocketControls();
+					await this.localCreateSocketControls();
 				}
 				if (this.socketCount === 0) {
-					await this.cleanupSocketControls();
+					await this.localCleanupSocketControls();
 				}
 			}
-			await this.syncSocketControls(obj.SOCKETS);
+			await this.localSyncSocketControls(obj.SOCKETS);
 		}
 
 		// Wallboxes
@@ -797,13 +808,13 @@ class Senec extends utils.Adapter {
 				this.wallboxCount = obj.WIZARD.SETUP_NUMBER_WALLBOXES;
 				this.log.debug(`Detected ${this.wallboxCount} wallbox(es)`);
 				if (this.wallboxCount > 0 && this.config.control_active && this.config.control_wallbox) {
-					await this.createWallboxControls();
+					await this.localCreateWallboxControls();
 				}
 				if (this.wallboxCount === 0) {
-					await this.cleanupWallboxControls();
+					await this.localCleanupWallboxControls();
 				}
 			}
-			await this.syncWallboxControls(obj.WALLBOX);
+			await this.localSyncWallboxControls(obj.WALLBOX);
 		}
 	}
 
@@ -812,7 +823,7 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {object} socketsData - The SOCKETS section from the poll response
 	 */
-	async syncSocketControls(socketsData) {
+	async localSyncSocketControls(socketsData) {
 		if (!this.socketControlsCreated || !socketsData) {
 			return;
 		}
@@ -865,7 +876,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} field - The control field name
 	 * @param {boolean | number | string} value - The value to set
 	 */
-	async handleWallboxControl(stateId, wbIdx, field, value) {
+	async localHandleWallboxControl(stateId, wbIdx, field, value) {
 		if (this.wallboxCount === undefined || wbIdx >= this.wallboxCount) {
 			this.log.warn(`Wallbox ${wbIdx} does not exist (device has ${this.wallboxCount ?? 0} wallboxes)`);
 			return;
@@ -928,7 +939,7 @@ class Senec extends utils.Adapter {
 		if (Object.keys(wallboxPayload).length > 0) {
 			const payload = JSON.stringify({ WALLBOX: wallboxPayload });
 			this.log.debug(`Wallbox control payload: ${payload}`);
-			await this.sendLocalControl(stateId, payload, `applying wallbox ${wbIdx} changes`);
+			await this.localSendControl(stateId, payload, `applying wallbox ${wbIdx} changes`);
 		} else {
 			this.log.debug(`Wallbox ${wbIdx}: no pending changes to apply`);
 		}
@@ -941,7 +952,7 @@ class Senec extends utils.Adapter {
 	 * Create control datapoints for wallboxes.
 	 * Called once after the first local poll reveals wallbox data.
 	 */
-	async createWallboxControls() {
+	async localCreateWallboxControls() {
 		if (this.wallboxControlsCreated || !this.wallboxCount || this.wallboxCount <= 0) {
 			return;
 		}
@@ -1024,7 +1035,7 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {object} wallboxData - The WALLBOX section from the poll response
 	 */
-	async syncWallboxControls(wallboxData) {
+	async localSyncWallboxControls(wallboxData) {
 		if (!this.wallboxControlsCreated || !wallboxData) {
 			return;
 		}
@@ -1064,7 +1075,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Remove leftover wallbox control datapoints when no wallboxes are available.
 	 */
-	async cleanupWallboxControls() {
+	async localCleanupWallboxControls() {
 		const channels = await this.getChannelsOfAsync("control");
 		if (!channels) {
 			return;
@@ -1163,7 +1174,7 @@ class Senec extends utils.Adapter {
 		client.defaults.headers.patch["Content-Type"] = "application/json";
 	}
 
-	async initPollSettings() {
+	async localInitPollSettings() {
 		this.highPrioObjects.clear();
 		// creating form for low priority pulling (which means pulling everything we know)
 		// we can do this while preparing values for high prio
@@ -1274,7 +1285,7 @@ class Senec extends utils.Adapter {
 		}
 
 		this.lowPrioForm = `${this.lowPrioForm.slice(0, -1)}}`;
-		this.log.debug(`(initPollSettings) lowPrio: ${this.lowPrioForm}`);
+		this.log.debug(`(localInitPollSettings) lowPrio: ${this.lowPrioForm}`);
 
 		// creating form for high priority pulling
 		if (this.highPrioObjects.size > 0) {
@@ -1290,7 +1301,7 @@ class Senec extends utils.Adapter {
 		} else {
 			this.highPrioForm = "{}";
 		}
-		this.log.debug(`(initPollSettings) highPrio: ${this.highPrioForm}`);
+		this.log.debug(`(localInitPollSettings) highPrio: ${this.highPrioForm}`);
 	}
 
 	addUserDps(value, objectsSet, dpToAdd) {
@@ -1458,17 +1469,42 @@ class Senec extends utils.Adapter {
 		} else {
 			this.config.api_alltimeRebuildStartYear = configuredStartYear;
 		}
+
+		// mein-senec.de intervals (minutes)
+		if (this.config.web_interval_status < 3 || this.config.web_interval_status > 60) {
+			this.log.warn(
+				`(checkConf) Config web_interval_status ${this.config.web_interval_status} not [3..60]. Using default: 6`,
+			);
+			this.config.web_interval_status = 6;
+		}
+		if (this.config.web_interval_medium < 60 || this.config.web_interval_medium > 1440) {
+			this.log.warn(
+				`(checkConf) Config web_interval_medium ${this.config.web_interval_medium} not [60..1440]. Using default: 360`,
+			);
+			this.config.web_interval_medium = 360;
+		}
+		if (this.config.web_interval_slow < 360 || this.config.web_interval_slow > 2880) {
+			this.log.warn(
+				`(checkConf) Config web_interval_slow ${this.config.web_interval_slow} not [360..2880]. Using default: 1440`,
+			);
+			this.config.web_interval_slow = 1440;
+		}
+
+		// Pre-compute mein-senec.de intervals in ms
+		this.webStatusIntervalMs = this.config.web_interval_status * 60000;
+		this.webMediumIntervalMs = this.config.web_interval_medium * 60000;
+		this.webSlowIntervalMs = this.config.web_interval_slow * 60000;
 	}
 
 	/**
 	 * checks connection to senec service
 	 */
-	async checkLocalConnection() {
+	async localCheckConnection() {
 		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 		const form = '{"ENERGY":{"STAT_STATE":""}}';
 		try {
 			this.log.info(`connecting to Senec (local): ${url}`);
-			await this.doGetLocal(url, form, this.config.pollingTimeout, true);
+			await this.localDoGet(url, form, this.config.pollingTimeout, true);
 			this.log.info(`connected to Senec (local): ${url}`);
 			this.lalaConnected = true;
 		} catch (error) {
@@ -1486,13 +1522,13 @@ class Senec extends utils.Adapter {
 	 * newly discovered section names into allKnownObjects.
 	 * Results are stored in the info.discoveredSections datapoint.
 	 */
-	async discoverSections() {
+	async localDiscoverSections() {
 		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 		const form = '{"DEBUG":{"SECTIONS":""},"PLAIN":{"SECTIONS":""}}';
 
 		try {
 			this.log.info("Discovering available sections from device...");
-			const raw = await this.doGetLocal(url, form, this.config.pollingTimeout, true);
+			const raw = await this.localDoGet(url, form, this.config.pollingTimeout, true);
 			if (!raw) {
 				throw new Error("Empty response from section discovery");
 			}
@@ -1586,25 +1622,25 @@ class Senec extends utils.Adapter {
 	 *
 	 * @returns {Promise<boolean>} A promise resolving to true if a valid token is obtained, false otherwise.
 	 */
-	async startTokenManager() {
+	async apiStartTokenManager() {
 		try {
 			const tokenState = await this.getStateAsync(`${TOKEN_STATE}`);
 			this.refreshToken = tokenState?.val ? this.decrypt(String(tokenState.val)) : null;
 			// No refresh token at all → full login
 			if (!this.refreshToken) {
 				this.log.info("🔐 No refresh token present. Performing full login...");
-				const token = await this.senecLogin();
+				const token = await this.apiLogin();
 				return !!token;
 			}
 			this.log.info("🔐 Using existing refresh token.");
 
 			// We have a refresh token → try refresh
 			this.log.info("🔐 Trying initial token refresh...");
-			await this.refreshTokenSingleFlight();
+			await this.apiRefreshToken();
 			return !!this.currentToken;
 		} catch (error) {
 			this.log.warn(`⚠️ Initial refresh failed. Falling back to full login... ${error.message}`);
-			const token = await this.senecLogin();
+			const token = await this.apiLogin();
 			return !!token;
 		}
 	}
@@ -1618,7 +1654,7 @@ class Senec extends utils.Adapter {
 	 *
 	 * @returns {Promise<string|null>} The access token if login is successful, or null if login fails.
 	 */
-	async senecLogin() {
+	async apiLogin() {
 		this.log.info("🔄 Start Senec API Login Flow...");
 
 		if (!this.authClient) {
@@ -1789,14 +1825,14 @@ class Senec extends utils.Adapter {
 					`(remaining ${Math.round(remaining / 1000 / 60)} min, failures=${this.tokenFailureCount})`,
 			);
 			this.timerTokenRefresh = this.setTimeout(() => {
-				this.refreshTokenSingleFlight().catch((err) => {
+				this.apiRefreshToken().catch((err) => {
 					this.log.debug(`⚠ Token refresh failed: ${err.message}`);
 				});
 			}, delay);
 		}
 	}
 
-	async refreshTokenSingleFlight() {
+	async apiRefreshToken() {
 		if (this.unloaded) {
 			return;
 		}
@@ -1816,7 +1852,7 @@ class Senec extends utils.Adapter {
 
 		if (!this.refreshToken) {
 			this.log.debug("🔐 No refresh token available — skipping refresh.");
-			return this.senecLogin();
+			return this.apiLogin();
 		}
 
 		this.refreshPromise = (async () => {
@@ -1868,7 +1904,7 @@ class Senec extends utils.Adapter {
 
 				if (errorCode === "invalid_grant" || status === 400) {
 					this.log.warn("⚠️ Refresh token invalid → full login required.");
-					await this.senecLogin();
+					await this.apiLogin();
 					return;
 				}
 
@@ -1888,7 +1924,7 @@ class Senec extends utils.Adapter {
 							`(failures = ${this.tokenFailureCount})`,
 					);
 					this.timerTokenRefresh = this.setTimeout(() => {
-						this.refreshTokenSingleFlight().catch(() => {});
+						this.apiRefreshToken().catch(() => {});
 					}, retryDelay);
 				}
 
@@ -1908,7 +1944,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>}
 	 * @throws {Error} Will throw an error if the API call fails or if all scheduled tasks fail during the poll cycle.
 	 */
-	async pollSenecApi() {
+	async apiPoll() {
 		if (this.unloaded) {
 			return;
 		}
@@ -1938,7 +1974,7 @@ class Senec extends utils.Adapter {
 				return;
 			}
 
-			const cycleResult = await this.runApiPollCycle();
+			const cycleResult = await this.apiRunPollCycle();
 
 			if (cycleResult.totalFailure) {
 				throw new Error(cycleResult.message || "All scheduled API tasks failed during polling.");
@@ -1969,7 +2005,7 @@ class Senec extends utils.Adapter {
 
 			if (this.config.api_debug_states) {
 				try {
-					await this.updateApiQueueStats();
+					await this.apiUpdateQueueStats();
 				} catch (statsError) {
 					this.log.debug(`Failed to update queue stats: ${statsError.message}`);
 				}
@@ -1984,7 +2020,7 @@ class Senec extends utils.Adapter {
 				}
 			}
 
-			this.scheduleNextApiPoll(nextDelay);
+			this.apiScheduleNextPoll(nextDelay);
 		}
 	}
 
@@ -1994,7 +2030,7 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {number} delay - The delay in milliseconds before the next poll.
 	 */
-	scheduleNextApiPoll(delay) {
+	apiScheduleNextPoll(delay) {
 		if (this.unloaded) {
 			return;
 		}
@@ -2003,7 +2039,7 @@ class Senec extends utils.Adapter {
 		this.timerAPI = null;
 
 		this.timerAPI = this.setTimeout(() => {
-			this.pollSenecApi().catch((e) => this.logError(e, "❌ Scheduled API poll failed"));
+			this.apiPoll().catch((e) => this.logError(e, "❌ Scheduled API poll failed"));
 		}, delay);
 		this.log.debug(`⏱ Next API poll scheduled in ${(delay / 1000).toFixed(0)}s`);
 	}
@@ -2015,10 +2051,10 @@ class Senec extends utils.Adapter {
 	 *
 	 * @returns {object} Context object containing flags for which tasks to run and relevant date information for the API calls.
 	 */
-	buildApiPollContext() {
-		const shouldRunDashboard = this.shouldRunInterval(this.lastApiDashboardPoll, this.dashboardInterval);
-		const shouldRunDetails = this.shouldRunInterval(this.lastApiDetailsPoll, this.detailsInterval);
-		const shouldRunHeavy = this.shouldRunInterval(this.lastApiHeavyPoll, this.heavyInterval);
+	apiBuildPollContext() {
+		const shouldRunDashboard = this.apiShouldRunInterval(this.lastApiDashboardPoll, this.dashboardInterval);
+		const shouldRunDetails = this.apiShouldRunInterval(this.lastApiDetailsPoll, this.detailsInterval);
+		const shouldRunHeavy = this.apiShouldRunInterval(this.lastApiHeavyPoll, this.heavyInterval);
 
 		const now = new Date();
 		const utcYear = now.getUTCFullYear();
@@ -2044,14 +2080,14 @@ class Senec extends utils.Adapter {
 	 *
 	 * @returns {Promise<void>}
 	 */
-	async ensureApiSystemsLoaded() {
+	async apiEnsureSystemsLoaded() {
 		if (this.apiKnownSystems.size > 0) {
 			return;
 		}
 
 		this.log.debug("🔄 Reading available systems from API ...");
-		// Old: /v1/systems → New: /systems/api/v1 (HOST_SYSTEMS already includes /systems/api)
-		const sysRes = await this.apiGet(`${HOST_SYSTEMS}/v1`);
+		// Old: /v1/systems → New: /systems/api/v1 (API_HOST_SYSTEMS already includes /systems/api)
+		const sysRes = await this.apiGet(`${API_HOST_SYSTEMS}/v1`);
 
 		if (!sysRes?.data?.length) {
 			throw new Error("No systems returned from API.");
@@ -2061,9 +2097,9 @@ class Senec extends utils.Adapter {
 			this.log.debug(`System found: ${JSON.stringify(sys)}`);
 			this.apiKnownSystems.add(sys.id);
 			await this.evalPoll(sys, `${API_PFX}Anlagen.${sys.id}.`);
-			await this.pollApiAbilities(sys.id);
-			await this.pollApiWallboxSearch(sys.id);
-			await this.createApiWallboxControls();
+			await this.apiPollAbilities(sys.id);
+			await this.apiPollWallboxSearch(sys.id);
+			await this.apiCreateWallboxControls();
 		}
 	}
 
@@ -2074,7 +2110,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<{totalFailure: boolean, partialFailure: boolean, failedSystems: number, message: string}>} Result of the poll cycle, including failure status and messages.
 	 * @throws {Error} Will throw an error if all scheduled tasks fail during the poll cycle.
 	 */
-	async runApiPollCycle() {
+	async apiRunPollCycle() {
 		let rebuildExecuted = false;
 		if (this.config.api_showPolling) {
 			this.log.info("🔄 Polling SENEC App API...");
@@ -2083,12 +2119,12 @@ class Senec extends utils.Adapter {
 		}
 
 		if (!this.currentToken) {
-			await this.refreshTokenSingleFlight();
+			await this.apiRefreshToken();
 		}
 
-		await this.ensureApiSystemsLoaded();
+		await this.apiEnsureSystemsLoaded();
 
-		const ctx = this.buildApiPollContext();
+		const ctx = this.apiBuildPollContext();
 
 		const result = {
 			anyWorkScheduled: false,
@@ -2105,15 +2141,15 @@ class Senec extends utils.Adapter {
 		};
 
 		for (const anlagenId of this.apiKnownSystems) {
-			const systemResult = await this.pollSingleApiSystem(anlagenId, ctx, rebuildExecuted);
-			this.mergeSystemPollResult(result, systemResult);
+			const systemResult = await this.apiPollSingleSystem(anlagenId, ctx, rebuildExecuted);
+			this.apiMergeSystemPollResult(result, systemResult);
 
 			if (systemResult.rebuildExecuted) {
 				rebuildExecuted = true;
 			}
 		}
 
-		this.finalizePollTimestamps(result);
+		this.apiFinalizePollTimestamps(result);
 
 		return {
 			totalFailure: result.anyWorkScheduled && !result.anyWorkSucceeded,
@@ -2133,7 +2169,7 @@ class Senec extends utils.Adapter {
 	 * @param {boolean} rebuildAlreadyExecuted - was rebuild already executed
 	 * @returns {Promise<{failed: boolean;dashboardScheduled: boolean;detailsScheduled: boolean;heavyScheduled: boolean;dashboardSucceeded: boolean;detailsSucceeded: boolean;heavySucceeded: boolean;rebuildExecuted: boolean;}>} Result of the API poll for the system, including success and failure status for each task type.
 	 */
-	async pollSingleApiSystem(anlagenId, ctx, rebuildAlreadyExecuted) {
+	async apiPollSingleSystem(anlagenId, ctx, rebuildAlreadyExecuted) {
 		const logType = this.config.api_showPolling ? "info" : "debug";
 		const result = {
 			failed: false,
@@ -2152,12 +2188,12 @@ class Senec extends utils.Adapter {
 			this.log[logType](`🔄 Polling system ${anlagenId} - Dashboard`);
 			result.dashboardScheduled = true;
 			const dashboardPolls = [
-				this.pollApiDashboard(anlagenId),
-				this.pollApiSystemStatus(anlagenId),
-				// pollApiOnlineState disabled — endpoint returns 404, not yet active on SENEC side
+				this.apiPollDashboard(anlagenId),
+				this.apiPollSystemStatus(anlagenId),
+				// apiPollOnlineState disabled — endpoint returns 404, not yet active on SENEC side
 			];
 			if (this.apiWallboxCount > 0) {
-				dashboardPolls.push(this.pollApiWallboxSearch(anlagenId));
+				dashboardPolls.push(this.apiPollWallboxSearch(anlagenId));
 			}
 			const results = await Promise.allSettled(dashboardPolls);
 			result.dashboardSucceeded = results.every((r) => r.status === "fulfilled");
@@ -2166,7 +2202,7 @@ class Senec extends utils.Adapter {
 		if (ctx.shouldRunDetails) {
 			this.log[logType](`🔄 Polling system ${anlagenId} - Details (day values)`);
 			result.detailsScheduled = true;
-			const detailsPolls = [this.pollApiDetails(anlagenId, ctx), this.pollApiSystemDetails(anlagenId)];
+			const detailsPolls = [this.apiPollDetails(anlagenId, ctx), this.apiPollSystemDetails(anlagenId)];
 			const results = await Promise.allSettled(detailsPolls);
 			result.detailsSucceeded = results.every((r) => r.status === "fulfilled");
 		}
@@ -2175,9 +2211,9 @@ class Senec extends utils.Adapter {
 			this.log[logType](`🔄 Polling system ${anlagenId} - Heavy (month / year values)`);
 			result.heavyScheduled = true;
 			const results = await Promise.allSettled([
-				this.pollApiHeavy(anlagenId, ctx),
-				this.pollApiDataAvailability(anlagenId),
-				// pollApiForecastChargingSettings disabled — endpoint returns 400, not yet active on SENEC side
+				this.apiPollHeavy(anlagenId, ctx),
+				this.apiPollDataAvailability(anlagenId),
+				// apiPollForecastChargingSettings disabled — endpoint returns 400, not yet active on SENEC side
 			]);
 			result.heavySucceeded = results.every((r) => r.status === "fulfilled");
 		}
@@ -2201,9 +2237,9 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
-	async pollApiDashboard(anlagenId) {
+	async apiPollDashboard(anlagenId) {
 		try {
-			const dashRes = await this.apiGet(`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
+			const dashRes = await this.apiGet(`${API_HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
 			this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
 			await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
 			await this.doState(
@@ -2225,9 +2261,9 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
-	async pollApiOnlineState(anlagenId) {
+	async apiPollOnlineState(anlagenId) {
 		try {
-			const res = await this.apiGet(`${HOST_SYSTEMS}/v1/${anlagenId}/online-state`);
+			const res = await this.apiGet(`${API_HOST_SYSTEMS}/v1/${anlagenId}/online-state`);
 			if (!res?.data) {
 				return;
 			}
@@ -2252,9 +2288,9 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
-	async pollApiSystemStatus(anlagenId) {
+	async apiPollSystemStatus(anlagenId) {
 		try {
-			const res = await this.apiGet(`${HOST_SYSTEMS}/v1/status/${anlagenId}`);
+			const res = await this.apiGet(`${API_HOST_SYSTEMS}/v1/status/${anlagenId}`);
 			if (!res?.data) {
 				return;
 			}
@@ -2279,9 +2315,9 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
-	async pollApiSystemDetails(anlagenId) {
+	async apiPollSystemDetails(anlagenId) {
 		try {
-			const res = await this.apiGet(`${HOST_SYSTEMS}/v1/${anlagenId}/details`);
+			const res = await this.apiGet(`${API_HOST_SYSTEMS}/v1/${anlagenId}/details`);
 			if (!res?.data) {
 				return;
 			}
@@ -2306,9 +2342,9 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
-	async pollApiAbilities(anlagenId) {
+	async apiPollAbilities(anlagenId) {
 		try {
-			const res = await this.apiGet(`${HOST_ABILITIES}/v1/packages/${anlagenId}`);
+			const res = await this.apiGet(`${API_HOST_ABILITIES}/v1/packages/${anlagenId}`);
 			if (!res?.data) {
 				return;
 			}
@@ -2352,9 +2388,9 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
-	async pollApiForecastChargingSettings(anlagenId) {
+	async apiPollForecastChargingSettings(anlagenId) {
 		try {
-			const res = await this.apiGet(`${HOST_SYSTEMS}/v1/settings/forecast-charging-settings/${anlagenId}`);
+			const res = await this.apiGet(`${API_HOST_SYSTEMS}/v1/settings/forecast-charging-settings/${anlagenId}`);
 			if (!res?.data) {
 				return;
 			}
@@ -2379,9 +2415,9 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string} anlagenId - The ID of the system to search wallboxes for.
 	 */
-	async pollApiWallboxSearch(anlagenId) {
+	async apiPollWallboxSearch(anlagenId) {
 		try {
-			const res = await this.apiPost(`${HOST_WALLBOX}/v1/systems/wallboxes/search`, {
+			const res = await this.apiPost(`${API_HOST_WALLBOX}/v1/systems/wallboxes/search`, {
 				systemIds: [anlagenId],
 			});
 			if (!res?.data) {
@@ -2410,7 +2446,7 @@ class Senec extends utils.Adapter {
 				"",
 				false,
 			);
-			await this.syncApiWallboxControls();
+			await this.apiSyncWallboxControls();
 		} catch (error) {
 			this.logError(error, `❌ Wallbox search failed for ${anlagenId}`);
 			// Don't re-throw — wallbox search failure at startup shouldn't block anything
@@ -2421,7 +2457,7 @@ class Senec extends utils.Adapter {
 	 * Create control datapoints for API wallbox control.
 	 * Called once after wallbox search discovers wallboxes.
 	 */
-	async createApiWallboxControls() {
+	async apiCreateWallboxControls() {
 		if (!this.config.control_api_active || !this.config.control_api_wallbox) {
 			return;
 		}
@@ -2517,7 +2553,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Sync API wallbox control datapoints with values from the cached wallbox objects.
 	 */
-	async syncApiWallboxControls() {
+	async apiSyncWallboxControls() {
 		if (!this.config.control_api_active || !this.config.control_api_wallbox) {
 			return;
 		}
@@ -2594,7 +2630,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} field - The control field name
 	 * @param {boolean | number | string} value - The value to set
 	 */
-	async handleApiWallboxControl(wbIdx, field, value) {
+	async apiHandleWallboxControl(wbIdx, field, value) {
 		if (wbIdx >= this.apiWallboxCount || !this.apiWallboxSystemId) {
 			this.log.warn(`API Wallbox ${wbIdx} does not exist`);
 			return;
@@ -2619,7 +2655,7 @@ class Senec extends utils.Adapter {
 
 		const pfx = `control.api.Wallbox.${wbIdx}`;
 		const systemId = this.apiWallboxSystemId;
-		const baseUrl = `${HOST_WALLBOX}/v1/systems/${systemId}/wallboxes/${encodeURIComponent(uuid)}`;
+		const baseUrl = `${API_HOST_WALLBOX}/v1/systems/${systemId}/wallboxes/${encodeURIComponent(uuid)}`;
 
 		try {
 			// Read pending values from states
@@ -2723,7 +2759,7 @@ class Senec extends utils.Adapter {
 			}
 
 			// Sync control states with actual device values and reset Apply
-			await this.syncApiWallboxControls();
+			await this.apiSyncWallboxControls();
 			await this.setState(`${pfx}.Apply`, { val: false, ack: true });
 			this.log.info(`API wallbox ${wbIdx} changes applied successfully`);
 		} catch (error) {
@@ -2739,10 +2775,10 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
-	async pollApiDataAvailability(anlagenId) {
+	async apiPollDataAvailability(anlagenId) {
 		try {
 			const res = await this.apiGet(
-				`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/data-availability/timespan?timezone=UTC`,
+				`${API_HOST_MEASUREMENTS}/v1/systems/${anlagenId}/data-availability/timespan?timezone=UTC`,
 			);
 			if (!res?.data) {
 				return;
@@ -2769,7 +2805,7 @@ class Senec extends utils.Adapter {
 	 * @param {object} ctx context
 	 * @returns {Promise<void>}
 	 */
-	async pollApiDetails(anlagenId, ctx) {
+	async apiPollDetails(anlagenId, ctx) {
 		try {
 			const tasks = [
 				{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today"), label: "today" },
@@ -2840,7 +2876,7 @@ class Senec extends utils.Adapter {
 	 * @param {object} ctx context
 	 * @returns {Promise<void>}
 	 */
-	async pollApiHeavy(anlagenId, ctx) {
+	async apiPollHeavy(anlagenId, ctx) {
 		try {
 			const tasks = [
 				{
@@ -2945,7 +2981,7 @@ class Senec extends utils.Adapter {
 	 * @param {object} total - The overall poll result object that aggregates the results of all system polls.
 	 * @param {object} single - The result object for a single system poll, containing flags for scheduled and succeeded tasks, as well as a failure flag.
 	 */
-	mergeSystemPollResult(total, single) {
+	apiMergeSystemPollResult(total, single) {
 		if (single.dashboardScheduled || single.detailsScheduled || single.heavyScheduled) {
 			total.anyWorkScheduled = true;
 		}
@@ -2976,19 +3012,19 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {object} result - The result object of the poll cycle, containing counts of scheduled and succeeded tasks for each task type, as well as the total number of known systems.
 	 */
-	finalizePollTimestamps(result) {
+	apiFinalizePollTimestamps(result) {
 		const systemsCount = this.apiKnownSystems.size;
 
 		if (result.dashboardScheduled && result.dashboardSucceeded === systemsCount) {
-			this.markPollTimestamp("dashboard");
+			this.apiMarkPollTimestamp("dashboard");
 		}
 
 		if (result.detailsScheduled && result.detailsSucceeded === systemsCount) {
-			this.markPollTimestamp("details");
+			this.apiMarkPollTimestamp("details");
 		}
 
 		if (result.heavyScheduled && result.heavySucceeded === systemsCount) {
-			this.markPollTimestamp("heavy");
+			this.apiMarkPollTimestamp("heavy");
 		}
 	}
 
@@ -3023,13 +3059,13 @@ class Senec extends utils.Adapter {
 			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
 				// 60s before expiry to avoid keycloak-server timedrift issues (usually 5-10 sec)
 				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
-				await this.refreshTokenSingleFlight();
+				await this.apiRefreshToken();
 			}
 
 			// Ensure we have a valid token at all
 			if (!this.currentToken) {
 				this.log.debug("🔐 No current token. Refreshing before request...");
-				await this.refreshTokenSingleFlight();
+				await this.apiRefreshToken();
 			}
 
 			const maxAttempts = 3;
@@ -3057,7 +3093,7 @@ class Senec extends utils.Adapter {
 					// 🔐 Token expired → refresh and retry
 					if (status === 401 && attempt < maxAttempts - 1) {
 						this.log.debug("🔐 401 received. Refreshing token...");
-						await this.refreshTokenSingleFlight();
+						await this.apiRefreshToken();
 						continue;
 					}
 
@@ -3110,12 +3146,12 @@ class Senec extends utils.Adapter {
 		return this.apiQueue.add(async () => {
 			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
 				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
-				await this.refreshTokenSingleFlight();
+				await this.apiRefreshToken();
 			}
 
 			if (!this.currentToken) {
 				this.log.debug("🔐 No current token. Refreshing before request...");
-				await this.refreshTokenSingleFlight();
+				await this.apiRefreshToken();
 			}
 
 			const maxAttempts = 3;
@@ -3142,7 +3178,7 @@ class Senec extends utils.Adapter {
 
 					if (status === 401 && attempt < maxAttempts - 1) {
 						this.log.debug("🔐 401 received. Refreshing token...");
-						await this.refreshTokenSingleFlight();
+						await this.apiRefreshToken();
 						continue;
 					}
 
@@ -3189,12 +3225,12 @@ class Senec extends utils.Adapter {
 		return this.apiQueue.add(async () => {
 			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
 				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
-				await this.refreshTokenSingleFlight();
+				await this.apiRefreshToken();
 			}
 
 			if (!this.currentToken) {
 				this.log.debug("🔐 No current token. Refreshing before request...");
-				await this.refreshTokenSingleFlight();
+				await this.apiRefreshToken();
 			}
 
 			const maxAttempts = 3;
@@ -3224,7 +3260,7 @@ class Senec extends utils.Adapter {
 
 					if (status === 401 && attempt < maxAttempts - 1) {
 						this.log.debug("🔐 401 received. Refreshing token...");
-						await this.refreshTokenSingleFlight();
+						await this.apiRefreshToken();
 						continue;
 					}
 
@@ -3333,11 +3369,11 @@ class Senec extends utils.Adapter {
 		let pfx;
 		if (wallbox) {
 			url =
-				`${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/wallboxes/measurements` +
+				`${API_HOST_MEASUREMENTS}/v1/systems/${anlagenId}/wallboxes/measurements` +
 				`?wallboxIds=${encodeURIComponent(wallbox.uuid)}&resolution=${resolution}&from=${start}&to=${end}`;
 			pfx = `${API_PFX}Anlagen.${anlagenId}.WallboxMeasurements.${wallbox.index}.${tier}.`;
 		} else {
-			url = `${HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
+			url = `${API_HOST_MEASUREMENTS}/v1/systems/${anlagenId}/measurements?resolution=${resolution}&from=${start}&to=${end}`;
 			pfx = `${API_PFX}Anlagen.${anlagenId}.Measurements.${tier}.`;
 		}
 		return { url, pfx };
@@ -3711,7 +3747,7 @@ class Senec extends utils.Adapter {
 	 * @param {boolean} isPost true for POST, false for GET
 	 * @returns {Promise<string>} Promise with result
 	 */
-	async doGetLocal(pUrl, pForm, pollingTimeout, isPost) {
+	async localDoGet(pUrl, pForm, pollingTimeout, isPost) {
 		if (!this.localClient) {
 			throw new Error("Local client not initialized");
 		}
@@ -3761,6 +3797,388 @@ class Senec extends utils.Adapter {
 	 * @param retry retry count
 	 */
 
+	// ── mein-senec.de Debug Probe ──────────────────────────────────────────
+
+	/**
+	 * Initialize mein-senec.de: authenticate, discover system, detect features, start polling.
+	 */
+	async webInit() {
+		const WEB_BASE = WEB_HOST;
+
+		// Step 1: Web login
+		this.webAuthenticated = await this.webLogin();
+		if (!this.webAuthenticated) {
+			this.log.warn("mein-senec.de: Web login failed. Check credentials.");
+			return;
+		}
+
+		// Step 2: Discover customer + system
+		let systemCount = 1;
+		try {
+			const custRes = await this.webGet(`${WEB_BASE}/endkunde/api/context/getEndkunde`);
+			if (custRes?.data && typeof custRes.data === "object") {
+				await this.evalPoll(custRes.data, "_meinsenec.Customer.");
+				systemCount = custRes.data.anzahlAnlagen || 1;
+				this.log.info(`mein-senec.de: Customer devNumber=${custRes.data.devNumber}, systems=${systemCount}`);
+			}
+		} catch (error) {
+			this.logError(error, "mein-senec.de: Failed to get customer info");
+		}
+
+		// Iterate systems to find our master and discover abilities
+		for (let plantNum = 0; plantNum < systemCount; plantNum++) {
+			try {
+				const sysRes = await this.webGet(
+					`${WEB_BASE}/endkunde/api/context/getAnlageBasedNavigationViewModel?anlageNummer=${plantNum}`,
+				);
+				if (!sysRes?.data || typeof sysRes.data !== "object") {
+					break;
+				}
+				const sys = sysRes.data;
+				if (!sys.master) {
+					continue;
+				}
+
+				this.webMasterPlantNumber = plantNum;
+				this.log.info(
+					`mein-senec.de: Found system ${plantNum}: ${sys.produktName} (${sys.steuereinheitnummer})`,
+				);
+
+				// Store feature visibility flags
+				this.webAbilities = {
+					peakShaving: !!sys.peakShavingVisible,
+					sockets: !!sys.steckdosenVisible,
+					socketsEnabled: !!sys.steckdosenEnabled,
+					sgReady: !!sys.sgReadyVisible,
+					heatingRod: !!sys.heizstaebeVisible,
+					autarky: !!sys.autarkieVisible,
+					battery: !!sys.akkuVisible,
+				};
+
+				await this.evalPoll(sys, "_meinsenec.System.");
+				for (const [key, val] of Object.entries(this.webAbilities)) {
+					await this.doState(`_meinsenec.info.abilities.${key}`, val, `Feature: ${key}`, "", false);
+				}
+
+				this.log.info(`mein-senec.de: Abilities: ${JSON.stringify(this.webAbilities)}`);
+				break;
+			} catch (error) {
+				this.logError(error, `mein-senec.de: Failed to get system ${plantNum}`);
+				break;
+			}
+		}
+
+		if (this.webMasterPlantNumber === null) {
+			this.log.warn("mein-senec.de: No master system found.");
+			return;
+		}
+
+		// Step 3: Start polling
+		this.webPoll().catch((e) => this.logError(e, "❌ mein-senec.de initial poll failed"));
+	}
+
+	/**
+	 * GET request to mein-senec.de with auto re-auth on session expiry.
+	 *
+	 * @param {string} url - URL to request
+	 * @returns {Promise<object>} axios response
+	 */
+	async webGet(url) {
+		const res = await this.authClient.get(url, {
+			jar: this.webJar,
+			maxRedirects: 5,
+			validateStatus: () => true,
+		});
+		if (res.status === 200 && typeof res.data === "string" && res.data.includes("Login - SENEC")) {
+			this.log.debug("mein-senec.de: Session expired, re-authenticating...");
+			this.webAuthenticated = await this.webLogin();
+			if (!this.webAuthenticated) {
+				throw new Error("mein-senec.de re-authentication failed");
+			}
+			return this.authClient.get(url, { jar: this.webJar, maxRedirects: 5 });
+		}
+		return res;
+	}
+
+	/**
+	 * POST request to mein-senec.de with auto re-auth on session expiry.
+	 *
+	 * @param {string} url - URL to request
+	 * @param {object} [data] - Optional JSON body
+	 * @returns {Promise<object>} axios response
+	 */
+	async webPost(url, data) {
+		const config = { jar: this.webJar, maxRedirects: 5, validateStatus: () => true };
+		if (data !== undefined) {
+			config.headers = { "Content-Type": "application/json" };
+		}
+		const res = await this.authClient.post(url, data, config);
+		if (res.status === 200 && typeof res.data === "string" && res.data.includes("Login - SENEC")) {
+			this.log.debug("mein-senec.de: Session expired, re-authenticating...");
+			this.webAuthenticated = await this.webLogin();
+			if (!this.webAuthenticated) {
+				throw new Error("mein-senec.de re-authentication failed");
+			}
+			return this.authClient.post(url, data, { jar: this.webJar, maxRedirects: 5 });
+		}
+		return res;
+	}
+
+	/**
+	 * Poll mein-senec.de for status, spare capacity, peak shaving, SG-Ready.
+	 * Self-scheduling poll loop.
+	 */
+	async webPoll() {
+		if (this.unloaded || !this.webAuthenticated || this.webMasterPlantNumber === null) {
+			return;
+		}
+
+		const WEB_BASE = WEB_HOST;
+		const pn = this.webMasterPlantNumber;
+		const now = Date.now();
+
+		try {
+			this.log.debug("🔄 Polling mein-senec.de...");
+
+			// Status overview — every poll
+			try {
+				const res = await this.webGet(
+					`${WEB_BASE}/endkunde/api/status/getstatusoverview.php?anlageNummer=${pn}`,
+				);
+				if (res?.data && typeof res.data === "object") {
+					await this.evalPoll(res.data, "_meinsenec.Status.");
+					await this.doState(
+						"_meinsenec.info.lastPoll.Status",
+						new Date().toISOString(),
+						"Last status poll",
+						"",
+						false,
+					);
+				}
+			} catch (error) {
+				this.logError(error, "mein-senec.de: Status poll failed");
+			}
+
+			// Spare capacity — every 6h
+			if (!this._webLastSpareCapacityPoll || now - this._webLastSpareCapacityPoll >= this.webMediumIntervalMs) {
+				try {
+					const res = await this.webGet(
+						`${WEB_BASE}/endkunde/api/senec/${pn}/emergencypower/reserve-in-percent`,
+					);
+					if (res?.data !== undefined) {
+						const val = typeof res.data === "number" ? res.data : parseInt(String(res.data), 10);
+						if (!isNaN(val)) {
+							await this.doState("_meinsenec.SpareCapacity", val, "Spare capacity", "%", false);
+							this._webLastSpareCapacityPoll = now;
+							await this.doState(
+								"_meinsenec.info.lastPoll.SpareCapacity",
+								new Date().toISOString(),
+								"Last spare capacity poll",
+								"",
+								false,
+							);
+						}
+					}
+				} catch (error) {
+					this.logError(error, "mein-senec.de: Spare capacity poll failed");
+				}
+			}
+
+			// Peak shaving — daily
+			if (
+				this.webAbilities.peakShaving &&
+				(!this._webLastPeakShavingPoll || now - this._webLastPeakShavingPoll >= this.webSlowIntervalMs)
+			) {
+				try {
+					const res = await this.webGet(
+						`${WEB_BASE}/endkunde/api/peakshaving/getSettings?anlageNummer=${pn}`,
+					);
+					if (res?.data && typeof res.data === "object") {
+						await this.evalPoll(res.data, "_meinsenec.PeakShaving.");
+						this._webLastPeakShavingPoll = now;
+						await this.doState(
+							"_meinsenec.info.lastPoll.PeakShaving",
+							new Date().toISOString(),
+							"Last peak shaving poll",
+							"",
+							false,
+						);
+					}
+				} catch (error) {
+					this.logError(error, "mein-senec.de: Peak shaving poll failed");
+				}
+			}
+
+			// SG-Ready state — every 6h
+			if (
+				this.webAbilities.sgReady &&
+				(!this._webLastSgReadyStatePoll || now - this._webLastSgReadyStatePoll >= this.webMediumIntervalMs)
+			) {
+				try {
+					const res = await this.webGet(`${WEB_BASE}/endkunde/api/senec/${pn}/sgready/state`);
+					if (res?.data !== undefined) {
+						await this.doState("_meinsenec.SGReady.State", String(res.data), "SG-Ready state", "", false);
+						this._webLastSgReadyStatePoll = now;
+					}
+				} catch (error) {
+					this.logError(error, "mein-senec.de: SG-Ready state poll failed");
+				}
+			}
+
+			// SG-Ready config — daily
+			if (
+				this.webAbilities.sgReady &&
+				(!this._webLastSgReadyConfPoll || now - this._webLastSgReadyConfPoll >= this.webSlowIntervalMs)
+			) {
+				try {
+					const res = await this.webGet(`${WEB_BASE}/endkunde/api/senec/${pn}/sgready/config`);
+					if (res?.data && typeof res.data === "object") {
+						await this.evalPoll(res.data, "_meinsenec.SGReady.Config.");
+						this._webLastSgReadyConfPoll = now;
+						await this.doState(
+							"_meinsenec.info.lastPoll.SGReadyConfig",
+							new Date().toISOString(),
+							"Last SG-Ready config poll",
+							"",
+							false,
+						);
+					}
+				} catch (error) {
+					this.logError(error, "mein-senec.de: SG-Ready config poll failed");
+				}
+			}
+		} catch (error) {
+			this.logError(error, "❌ mein-senec.de poll cycle failed");
+		}
+
+		if (!this.unloaded) {
+			this.setTimeout(() => {
+				this.webPoll().catch((e) => this.logError(e, "❌ mein-senec.de scheduled poll failed"));
+			}, this.webStatusIntervalMs);
+			this.log.debug(`⏱ Next mein-senec.de poll in ${(this.webStatusIntervalMs / 1000).toFixed(0)}s`);
+		}
+	}
+
+	/**
+	 * Perform web login to mein-senec.de via Keycloak SSO.
+	 * Uses a dedicated cookie jar (webJar) separate from the App API jar.
+	 *
+	 * @returns {Promise<boolean>} true if login succeeded
+	 */
+	async webLogin() {
+		const WEB_BASE = WEB_HOST;
+		const email = this.config.api_mail;
+		const password = this.config.api_pwd;
+
+		if (!email || !password) {
+			this.log.warn("mein-senec.de: No credentials configured (api_mail/api_pwd).");
+			return false;
+		}
+
+		this.webJar = new CookieJar();
+
+		try {
+			// Step 1: GET mein-senec.de → follows redirects to SSO login form
+			this.log.info("🔐 mein-senec.de: Requesting login page...");
+			const pageRes = await this.authClient.get(WEB_BASE, {
+				jar: this.webJar,
+				maxRedirects: 10,
+				validateStatus: () => true,
+			});
+
+			const html = typeof pageRes.data === "string" ? pageRes.data : "";
+			const formAction = extractFormAction(html);
+
+			if (!formAction) {
+				// Maybe already authenticated?
+				if (html.includes("ng-controller") || html.includes("endkunde")) {
+					this.log.info("mein-senec.de: Already authenticated (no login form found).");
+					return true;
+				}
+				this.log.warn("mein-senec.de: Could not find login form action URL.");
+				this.log.debug(`🔍 Login page HTML (first 500 chars): ${html.slice(0, 500)}`);
+				return false;
+			}
+
+			this.log.info("🔐 mein-senec.de: Found login form, posting credentials...");
+
+			// Step 2: POST credentials to SSO form
+			const loginRes = await this.authClient.post(
+				formAction.replace(/&amp;/g, "&"),
+				new URLSearchParams({ username: email, password: password }).toString(),
+				{
+					jar: this.webJar,
+					maxRedirects: 10,
+					validateStatus: () => true,
+					headers: {
+						"Content-Type": "application/x-www-form-urlencoded",
+					},
+				},
+			);
+
+			const loginHtml = typeof loginRes.data === "string" ? loginRes.data : "";
+
+			// Step 3: Check for TOTP/OTP form
+			if (hasOtp(loginHtml)) {
+				const totpSecret = this.config.api_totp_secret;
+				if (!totpSecret) {
+					this.log.warn("mein-senec.de: TOTP required but no TOTP secret configured.");
+					return false;
+				}
+
+				const otpFormAction = extractFormAction(loginHtml);
+				if (!otpFormAction) {
+					this.log.warn("mein-senec.de: TOTP form found but no action URL.");
+					return false;
+				}
+
+				const totpCode = generateTOTP(totpSecret);
+				this.log.info("🔐 mein-senec.de: Submitting TOTP code...");
+
+				const otpRes = await this.authClient.post(
+					otpFormAction.replace(/&amp;/g, "&"),
+					new URLSearchParams({ otp: totpCode }).toString(),
+					{
+						jar: this.webJar,
+						maxRedirects: 10,
+						validateStatus: () => true,
+						headers: {
+							"Content-Type": "application/x-www-form-urlencoded",
+						},
+					},
+				);
+
+				const otpHtml = typeof otpRes.data === "string" ? otpRes.data : "";
+				if (otpHtml.includes("Login - SENEC") || extractFormAction(otpHtml)) {
+					this.log.warn("mein-senec.de: TOTP login failed — still on login page.");
+					return false;
+				}
+			} else if (loginHtml.includes("Login - SENEC") || (hasUsername(loginHtml) && hasPassword(loginHtml))) {
+				this.log.warn("mein-senec.de: Login failed — still on login page. Check credentials.");
+				return false;
+			}
+
+			// Step 4: Verify we're authenticated
+			this.log.info("mein-senec.de: Login flow complete. Verifying session...");
+			const verifyRes = await this.authClient.get(`${WEB_BASE}/endkunde/api/context/getEndkunde`, {
+				jar: this.webJar,
+				maxRedirects: 0,
+				validateStatus: () => true,
+			});
+
+			if (verifyRes.status === 200 && typeof verifyRes.data === "object") {
+				this.log.info(`✅ mein-senec.de: Authenticated successfully! devNumber: ${verifyRes.data.devNumber}`);
+				return true;
+			}
+
+			this.log.warn(`mein-senec.de: Verification failed — HTTP ${verifyRes.status}`);
+			return false;
+		} catch (error) {
+			this.log.warn(`mein-senec.de: Login error — ${error.message}`);
+			return false;
+		}
+	}
+
 	// ── SENEC.Connect Polling ──────────────────────────────────────────────
 
 	/**
@@ -3768,7 +4186,7 @@ class Senec extends utils.Adapter {
 	 * Uses subscription key authentication (Ocp-Apim-Subscription-Key header).
 	 * All requested data sections are fetched in a single request via the include parameter.
 	 */
-	async pollSenecConnect() {
+	async connectPoll() {
 		if (this.unloaded) {
 			return;
 		}
@@ -3785,7 +4203,7 @@ class Senec extends utils.Adapter {
 		try {
 			this.log.debug("🔄 Polling SENEC.Connect API...");
 
-			const url = `${HOST_CONNECT}/v1/systems/device-data/general?include=${encodeURIComponent(include)}`;
+			const url = `${CONNECT_HOST}/v1/systems/device-data/general?include=${encodeURIComponent(include)}`;
 			if (!this.connectClient) {
 				this.connectClient = axios.create({
 					timeout: this.config.pollingTimeout || 5000,
@@ -3820,7 +4238,7 @@ class Senec extends utils.Adapter {
 
 		if (!this.unloaded) {
 			this.setTimeout(() => {
-				this.pollSenecConnect().catch((e) => this.logError(e, "❌ SENEC.Connect scheduled poll failed"));
+				this.connectPoll().catch((e) => this.logError(e, "❌ SENEC.Connect scheduled poll failed"));
 			}, interval);
 			this.log.debug(`⏱ Next SENEC.Connect poll scheduled in ${(interval / 1000).toFixed(0)}s`);
 		}
@@ -3828,7 +4246,7 @@ class Senec extends utils.Adapter {
 
 	// ── Local Polling ──────────────────────────────────────────────────────
 
-	async pollSenecLocal(isHighPrio, retry) {
+	async localPoll(isHighPrio, retry) {
 		const url = `${this.connectVia + this.config.senecip}/lala.cgi`;
 		let interval = this.config.interval * 1000;
 		if (!isHighPrio) {
@@ -3837,7 +4255,7 @@ class Senec extends utils.Adapter {
 		}
 
 		try {
-			let body = await this.doGetLocal(
+			let body = await this.localDoGet(
 				url,
 				isHighPrio ? this.highPrioForm : this.lowPrioForm,
 				this.config.pollingTimeout,
@@ -3853,7 +4271,7 @@ class Senec extends utils.Adapter {
 			if (!body) {
 				if (!this.unloaded) {
 					this.setTimeout(() => {
-						this.pollSenecLocal(isHighPrio, retry).catch((e) =>
+						this.localPoll(isHighPrio, retry).catch((e) =>
 							this.logError(e, `❌ Local poll failed (highPrio=${isHighPrio})`),
 						);
 					}, interval);
@@ -3867,12 +4285,12 @@ class Senec extends utils.Adapter {
 
 			// Discover and sync control states
 			// Runs on every poll — sections may be in high-prio if user configured them there
-			await this.discoverAndSyncControls(obj);
+			await this.localDiscoverAndSyncControls(obj);
 
 			retry = 0;
 			if (!this.unloaded) {
 				this.setTimeout(() => {
-					this.pollSenecLocal(isHighPrio, retry).catch((e) =>
+					this.localPoll(isHighPrio, retry).catch((e) =>
 						this.logError(e, `❌ Local poll failed (highPrio=${isHighPrio})`),
 					);
 				}, interval);
@@ -3899,7 +4317,7 @@ class Senec extends utils.Adapter {
 				);
 				if (!this.unloaded) {
 					this.setTimeout(() => {
-						this.pollSenecLocal(isHighPrio, retry).catch((e) =>
+						this.localPoll(isHighPrio, retry).catch((e) =>
 							this.logError(e, `❌ Local poll failed (highPrio=${isHighPrio})`),
 						);
 					}, delay);
@@ -4203,7 +4621,7 @@ class Senec extends utils.Adapter {
 	 * Update diagnostic states for AdaptiveRequestQueue.
 	 * This makes the currently observed / practical concurrency visible in ioBroker.
 	 */
-	async updateApiQueueStats() {
+	async apiUpdateQueueStats() {
 		if (!this.apiQueue || typeof this.apiQueue.getStats !== "function") {
 			return;
 		}
@@ -4419,7 +4837,7 @@ class Senec extends utils.Adapter {
 	 * @param {number} intervalMs interval in milliseconds
 	 * @returns {boolean} true if the interval has passed since lastRunTs, false otherwise
 	 */
-	shouldRunInterval(lastRunTs, intervalMs) {
+	apiShouldRunInterval(lastRunTs, intervalMs) {
 		if (!lastRunTs) {
 			return true;
 		}
@@ -4432,7 +4850,7 @@ class Senec extends utils.Adapter {
 	 *
 	 * @param {"dashboard" | "details" | "heavy"} type - The type of poll to mark the timestamp for (e.g., "dashboard", "details", "heavy").
 	 */
-	markPollTimestamp(type) {
+	apiMarkPollTimestamp(type) {
 		const now = Date.now();
 
 		switch (type) {
@@ -4930,7 +5348,9 @@ const ValueTyping = (key, value) => {
 	if (isBool) {
 		return value === 0 ? false : true;
 	} else if (isDate) {
-		return new Date(value * 1000).toString();
+		// If value > 1e12, it's already in milliseconds; otherwise convert from seconds
+		const ms = value > 1e12 ? value : value * 1000;
+		return new Date(ms).toString();
 	} else if (isIP) {
 		return DecToIP(value);
 	} else if (multiply !== 1) {

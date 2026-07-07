@@ -111,364 +111,6 @@
 				}
 			}
 		},
-		"_activeApplianceControl": {
-			"type": "panel",
-			"label": "Active_Appliance_Control",
-			"hidden": "data.lala_use !== true && data.api_use !== true",
-			"items": {
-				"control_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6,
-					"label": "activeControl",
-					"help": "activeControlHelp",
-					"default": false,
-					"hidden": "data.lala_use !== true",
-					"newLine": true
-				},
-				"_localControl": {
-					"type": "panel",
-					"collapsable": true,
-					"label": "localControl",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6,
-					"hidden": "data.lala_use !== true || data.control_active !== true",
-					"newLine": true,
-					"items": {
-						"control_reboot": {
-							"type": "checkbox",
-							"label": "controlReboot",
-							"help": "controlRebootHelp",
-							"default": false,
-							"newLine": true
-						},
-						"control_sockets": {
-							"type": "checkbox",
-							"label": "controlSockets",
-							"help": "controlSocketsHelp",
-							"default": false,
-							"newLine": true
-						},
-						"control_wallbox": {
-							"type": "checkbox",
-							"label": "controlWallbox",
-							"help": "controlWallboxHelp",
-							"default": false,
-							"newLine": true
-						}
-					}
-				},
-				"control_api_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6,
-					"label": "activeApiControl",
-					"help": "activeApiControlHelp",
-					"default": false,
-					"hidden": "data.api_use !== true",
-					"newLine": true
-				},
-				"_apiControl": {
-					"type": "panel",
-					"collapsable": true,
-					"label": "apiControl",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6,
-					"hidden": "data.api_use !== true || data.control_api_active !== true",
-					"newLine": true,
-					"items": {
-						"control_api_wallbox": {
-							"type": "checkbox",
-							"label": "controlApiWallbox",
-							"help": "controlApiWallboxHelp",
-							"default": false,
-							"newLine": true
-						}
-					}
-				}
-			}
-		},
-		"_highpriopolling": {
-			"type": "panel",
-			"label": "HighPrioDataPoints",
-			"hidden": "data.lala_use !== true",
-			"items": {
-				"disclaimer": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsDisclaimer",
-					"help": "HighPrioDataPointsDisclaimerHelp",
-					"default": false,
-					"newLine": true
-				},
-				"highPrio_BMS": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioBMS",
-					"help": "HighPrioBMSHelp",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_BMS_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_BMS === ''",
-					"newLine": false
-				},
-				"highPrio_ENERGY": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioENERGY",
-					"help": "HighPrioENERGYHelp",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_ENERGY_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_ENERGY === ''",
-					"newLine": false
-				},
-				"highPrio_PV1": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioPV1",
-					"help": "HighPrioPV1Help",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_PV1_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_PV1 === ''",
-					"newLine": false
-				},
-				"highPrio_PWR_UNIT": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioPWR_UNIT",
-					"help": "HighPrioPWR_UNITHelp",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_PWR_UNIT_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_PWR_UNIT === ''",
-					"newLine": false
-				},
-				"highPrio_PM1OBJ1": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioPM1OBJ1",
-					"help": "HighPrioPMOBJHelp",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_PM1OBJ1_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_PM1OBJ1 === ''",
-					"newLine": false
-				},
-				"highPrio_PM1OBJ2": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioPM1OBJ2",
-					"help": "HighPrioPMOBJHelp",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_PM1OBJ2_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_PM1OBJ2 === ''",
-					"newLine": false
-				},
-				"highPrio_WALLBOX": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioWALLBOX",
-					"help": "HighPrioWALLEmptyHelp",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_WALLBOX_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_WALLBOX === ''",
-					"newLine": false
-				},
-				"highPrio_BAT1": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioBAT1",
-					"help": "HighPrioWALLEmptyHelp",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_BAT1_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_BAT1 === ''",
-					"newLine": false
-				},
-				"highPrio_BAT1OBJ1": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioBAT1OBJ1",
-					"help": "HighPrioWALLEmptyHelp",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_BAT1OBJ1_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_BAT1OBJ1 === ''",
-					"newLine": false
-				},
-				"highPrio_TEMPMEASURE": {
-					"type": "text",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioTEMPMEASURE",
-					"help": "HighPrioWALLEmptyHelp",
-					"default": "",
-					"hidden": "data.disclaimer !== true",
-					"newLine": true
-				},
-				"highPrio_TEMPMEASURE_active": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "HighPrioDataPointsActive",
-					"default": false,
-					"hidden": "data.disclaimer !== true || data.highPrio_TEMPMEASURE === ''",
-					"newLine": false
-				}
-			}
-		},
 		"_api": {
 			"type": "panel",
 			"label": "SENEC API",
@@ -772,6 +414,69 @@
 				}
 			}
 		},
+		"_meinSenec": {
+			"type": "panel",
+			"label": "meinSenecDe",
+			"items": {
+				"web_use": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "USE_MEIN_SENEC",
+					"help": "USE_MEIN_SENEC_HELP",
+					"default": false,
+					"newLine": true
+				},
+				"web_interval_status": {
+					"type": "number",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "webPollIntervalStatus",
+					"help": "webPollIntervalStatusHelp",
+					"default": 6,
+					"min": 3,
+					"max": 60,
+					"hidden": "data.web_use !== true",
+					"newLine": true
+				},
+				"web_interval_medium": {
+					"type": "number",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "webPollIntervalMedium",
+					"help": "webPollIntervalMediumHelp",
+					"default": 360,
+					"min": 60,
+					"max": 1440,
+					"hidden": "data.web_use !== true",
+					"newLine": false
+				},
+				"web_interval_slow": {
+					"type": "number",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "webPollIntervalSlow",
+					"help": "webPollIntervalSlowHelp",
+					"default": 1440,
+					"min": 360,
+					"max": 2880,
+					"hidden": "data.web_use !== true",
+					"newLine": false
+				}
+			}
+		},
 		"_senecConnect": {
 			"type": "panel",
 			"label": "SENEC_Connect",
@@ -854,6 +559,384 @@
 							"newLine": true
 						}
 					}
+				}
+			}
+		},
+		"_activeApplianceControl": {
+			"type": "panel",
+			"label": "Active_Appliance_Control",
+			"hidden": "data.lala_use !== true && data.api_use !== true",
+			"items": {
+				"control_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6,
+					"label": "activeControl",
+					"help": "activeControlHelp",
+					"default": false,
+					"hidden": "data.lala_use !== true",
+					"newLine": true
+				},
+				"_localControl": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "localControl",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6,
+					"hidden": "data.lala_use !== true || data.control_active !== true",
+					"newLine": true,
+					"items": {
+						"control_reboot": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "controlReboot",
+							"help": "controlRebootHelp",
+							"default": false,
+							"newLine": true
+						},
+						"control_sockets": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "controlSockets",
+							"help": "controlSocketsHelp",
+							"default": false,
+							"newLine": true
+						},
+						"control_wallbox": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "controlWallbox",
+							"help": "controlWallboxHelp",
+							"default": false,
+							"newLine": true
+						}
+					}
+				},
+				"control_api_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6,
+					"label": "activeApiControl",
+					"help": "activeApiControlHelp",
+					"default": false,
+					"hidden": "data.api_use !== true",
+					"newLine": true
+				},
+				"_apiControl": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "apiControl",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6,
+					"hidden": "data.api_use !== true || data.control_api_active !== true",
+					"newLine": true,
+					"items": {
+						"control_api_wallbox": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "controlApiWallbox",
+							"help": "controlApiWallboxHelp",
+							"default": false,
+							"newLine": true
+						}
+					}
+				}
+			}
+		},
+		"_highpriopolling": {
+			"type": "panel",
+			"label": "HighPrioDataPoints",
+			"hidden": "data.lala_use !== true",
+			"items": {
+				"disclaimer": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsDisclaimer",
+					"help": "HighPrioDataPointsDisclaimerHelp",
+					"default": false,
+					"newLine": true
+				},
+				"highPrio_BMS": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioBMS",
+					"help": "HighPrioBMSHelp",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_BMS_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_BMS === ''",
+					"newLine": false
+				},
+				"highPrio_ENERGY": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioENERGY",
+					"help": "HighPrioENERGYHelp",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_ENERGY_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_ENERGY === ''",
+					"newLine": false
+				},
+				"highPrio_PV1": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioPV1",
+					"help": "HighPrioPV1Help",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_PV1_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_PV1 === ''",
+					"newLine": false
+				},
+				"highPrio_PWR_UNIT": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioPWR_UNIT",
+					"help": "HighPrioPWR_UNITHelp",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_PWR_UNIT_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_PWR_UNIT === ''",
+					"newLine": false
+				},
+				"highPrio_PM1OBJ1": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioPM1OBJ1",
+					"help": "HighPrioPMOBJHelp",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_PM1OBJ1_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_PM1OBJ1 === ''",
+					"newLine": false
+				},
+				"highPrio_PM1OBJ2": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioPM1OBJ2",
+					"help": "HighPrioPMOBJHelp",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_PM1OBJ2_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_PM1OBJ2 === ''",
+					"newLine": false
+				},
+				"highPrio_WALLBOX": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioWALLBOX",
+					"help": "HighPrioWALLEmptyHelp",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_WALLBOX_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_WALLBOX === ''",
+					"newLine": false
+				},
+				"highPrio_BAT1": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioBAT1",
+					"help": "HighPrioWALLEmptyHelp",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_BAT1_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_BAT1 === ''",
+					"newLine": false
+				},
+				"highPrio_BAT1OBJ1": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioBAT1OBJ1",
+					"help": "HighPrioWALLEmptyHelp",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_BAT1OBJ1_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_BAT1OBJ1 === ''",
+					"newLine": false
+				},
+				"highPrio_TEMPMEASURE": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioTEMPMEASURE",
+					"help": "HighPrioWALLEmptyHelp",
+					"default": "",
+					"hidden": "data.disclaimer !== true",
+					"newLine": true
+				},
+				"highPrio_TEMPMEASURE_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "HighPrioDataPointsActive",
+					"default": false,
+					"hidden": "data.disclaimer !== true || data.highPrio_TEMPMEASURE === ''",
+					"newLine": false
 				}
 			}
 		}
