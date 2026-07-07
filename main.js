@@ -485,24 +485,6 @@ class Senec extends utils.Adapter {
 				return;
 			}
 
-			// API controls — independent gate
-			if (controlId.startsWith("api.")) {
-				if (!this.config.control_api_active) {
-					this.log.warn(`API control command for ${controlId} ignored (API control not enabled)`);
-					return;
-				}
-				const apiWbMatch = controlId.match(/^api\.Wallbox\.(\d+)\.(.+)$/);
-				if (apiWbMatch) {
-					if (this.config.control_wallbox_connector !== "api") {
-						this.log.warn("API wallbox control command ignored (not enabled in config)");
-						return;
-					}
-					const apiWbVal = state.val ?? false;
-					await this.apiHandleWallboxControl(parseInt(apiWbMatch[1], 10), apiWbMatch[2], apiWbVal);
-				}
-				return;
-			}
-
 			// Socket controls — multi-connector, check before local gate
 			const socketMatch = controlId.match(/^Sockets\.(\d+)\.(.+)$/);
 			if (socketMatch) {
@@ -530,16 +512,25 @@ class Senec extends utils.Adapter {
 			// Wallbox controls — multi-connector, check before local gate
 			const wallboxMatch = controlId.match(/^Wallbox\.(\d+)\.(.+)$/);
 			if (wallboxMatch) {
-				if (this.config.control_wallbox_connector !== "local") {
-					this.log.warn("Wallbox control command ignored (control_wallbox not enabled in config)");
+				if (this.config.control_wallbox_connector === "local") {
+					if (!this.config.control_active || !this.lalaConnected) {
+						this.log.warn("Local wallbox control ignored (not connected via lala.cgi)");
+						return;
+					}
+					const wbVal = state.val ?? false;
+					await this.localHandleWallboxControl(id, parseInt(wallboxMatch[1], 10), wallboxMatch[2], wbVal);
 					return;
 				}
-				if (!this.config.control_active || !this.lalaConnected) {
-					this.log.warn("Local wallbox control ignored (not connected via lala.cgi)");
+				if (this.config.control_wallbox_connector === "api") {
+					if (!this.config.control_api_active) {
+						this.log.warn("API wallbox control ignored (API control not enabled)");
+						return;
+					}
+					const apiWbVal = state.val ?? false;
+					await this.apiHandleWallboxControl(parseInt(wallboxMatch[1], 10), wallboxMatch[2], apiWbVal);
 					return;
 				}
-				const wbVal = state.val ?? false;
-				await this.localHandleWallboxControl(id, parseInt(wallboxMatch[1], 10), wallboxMatch[2], wbVal);
+				this.log.warn("Wallbox control command ignored (no connector active)");
 				return;
 			}
 
@@ -2519,7 +2510,7 @@ class Senec extends utils.Adapter {
 		}
 
 		for (let i = 0; i < this.apiWallboxCount; i++) {
-			const pfx = `control.api.Wallbox.${i}`;
+			const pfx = `control.Wallbox.${i}`;
 			await this.setObjectNotExistsAsync(pfx, {
 				type: "channel",
 				common: { name: `API Wallbox ${i} Control` },
@@ -2585,7 +2576,7 @@ class Senec extends utils.Adapter {
 
 		// Apply button — user sets to true to send all pending changes
 		for (let i = 0; i < this.apiWallboxCount; i++) {
-			await this.setObjectNotExistsAsync(`control.api.Wallbox.${i}.Apply`, {
+			await this.setObjectNotExistsAsync(`control.Wallbox.${i}.Apply`, {
 				type: "state",
 				common: {
 					name: "Apply pending changes",
@@ -2599,7 +2590,7 @@ class Senec extends utils.Adapter {
 			});
 		}
 
-		await this.subscribeStatesAsync("control.api.*");
+		await this.subscribeStatesAsync("control.Wallbox.*");
 		this.log.info(`Created API wallbox control datapoints for ${this.apiWallboxCount} wallbox(es)`);
 	}
 
@@ -2616,7 +2607,7 @@ class Senec extends utils.Adapter {
 			if (!wb) {
 				continue;
 			}
-			const pfx = `control.api.Wallbox.${i}`;
+			const pfx = `control.Wallbox.${i}`;
 
 			// Determine combined mode
 			let mode = "LOCKED";
@@ -2706,7 +2697,7 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		const pfx = `control.api.Wallbox.${wbIdx}`;
+		const pfx = `control.Wallbox.${wbIdx}`;
 		const systemId = this.apiWallboxSystemId;
 		const baseUrl = `${API_HOST_WALLBOX}/v1/systems/${systemId}/wallboxes/${encodeURIComponent(uuid)}`;
 

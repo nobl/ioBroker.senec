@@ -272,7 +272,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - API error handling: All mein-senec.de POST handlers check HTTP response status and log error messages from the API.
 - Peak shaving fixes: Capacity limit uses correct field (peakShavingCapacityLimitInPercent), capped at 90%. End time split into EndHour/EndMinute fields. UTC timestamp construction for correct time handling with SENEC API.
 - Debug & Logging tab: Debug settings moved to a dedicated tab applying to all connectors. Request/response logging now includes mein-senec.de traffic.
-- Socket endpoint discovery: GET `/endkunde/api/steckdosen/findByGeraetenummer` and POST `/endkunde/api/steckdosen/save` endpoints discovered and integrated.
 
 ### 2.6.0 (2026-07-06)
 - TOTP/2FA: If your mein-senec.de account requires two-factor authentication, you can now enter your TOTP secret (the base32 key from your authenticator app setup) in the adapter settings. The adapter will automatically generate login codes — no manual interaction needed.
