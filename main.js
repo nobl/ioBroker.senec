@@ -421,10 +421,14 @@ class Senec extends utils.Adapter {
 
 			if (this.config.web_use) {
 				this.log.info("Usage of mein-senec.de configured.");
-				this.webInit().catch((e) => this.logError(e, "❌ mein-senec.de init failed"));
+				try {
+					await this.webInit();
+				} catch (e) {
+					this.logError(e, "❌ mein-senec.de init failed");
+				}
 			}
 
-			if (this.lalaConnected || this.apiConnected || this.connectEnabled || this.config.web_use) {
+			if (this.lalaConnected || this.apiConnected || this.connectEnabled || this.webConnected) {
 				await this.setState("info.connection", true, true);
 				await this.refreshGuiLangCache();
 			} else {
