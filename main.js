@@ -462,12 +462,44 @@ class Senec extends utils.Adapter {
 		if (!state.ack) {
 			this.log.debug(`State changed: ${id} ( ${JSON.stringify(state)} )`);
 
-			if (!this.config.control_active) {
+			const controlId = id.slice(`${this.namespace}.control.`.length);
+
+			// Web controls (mein-senec.de) — independent gate
+			if (
+				controlId.startsWith("EmergencyPower.") ||
+				controlId.startsWith("PeakShaving.") ||
+				controlId.startsWith("SGReady.")
+			) {
+				if (!this.config.web_use || !this.webConnected || this.webMasterPlantNumber === null) {
+					this.log.warn(`Web control command for ${controlId} ignored (mein-senec.de not connected)`);
+					return;
+				}
+				await this.webHandleControl(controlId, state);
 				return;
 			}
 
-			const controlId = id.slice(`${this.namespace}.control.`.length);
+			// API controls — independent gate
+			if (controlId.startsWith("api.")) {
+				if (!this.config.control_api_active) {
+					this.log.warn(`API control command for ${controlId} ignored (API control not enabled)`);
+					return;
+				}
+				const apiWbMatch = controlId.match(/^api\.Wallbox\.(\d+)\.(.+)$/);
+				if (apiWbMatch) {
+					if (!this.config.control_api_wallbox) {
+						this.log.warn("API wallbox control command ignored (not enabled in config)");
+						return;
+					}
+					const apiWbVal = state.val ?? false;
+					await this.apiHandleWallboxControl(parseInt(apiWbMatch[1], 10), apiWbMatch[2], apiWbVal);
+				}
+				return;
+			}
 
+			// Local controls — require control_active + lala.cgi
+			if (!this.config.control_active) {
+				return;
+			}
 			if (!this.lalaConnected) {
 				this.log.warn(`Control command for ${controlId} ignored (not connected via lala.cgi)`);
 				return;
@@ -515,18 +547,6 @@ class Senec extends utils.Adapter {
 				}
 				const wbVal = state.val ?? false;
 				await this.localHandleWallboxControl(id, parseInt(wallboxMatch[1], 10), wallboxMatch[2], wbVal);
-				return;
-			}
-
-			// API Wallbox controls
-			const apiWbMatch = controlId.match(/^api\.Wallbox\.(\d+)\.(.+)$/);
-			if (apiWbMatch) {
-				if (!this.config.control_api_active || !this.config.control_api_wallbox) {
-					this.log.warn("API wallbox control command ignored (not enabled in config)");
-					return;
-				}
-				const apiWbVal = state.val ?? false;
-				await this.apiHandleWallboxControl(parseInt(apiWbMatch[1], 10), apiWbMatch[2], apiWbVal);
 				return;
 			}
 
@@ -3875,6 +3895,7 @@ class Senec extends utils.Adapter {
 					sockets: !!sys.steckdosenVisible,
 					socketsEnabled: !!sys.steckdosenEnabled,
 					sgReady: !!sys.sgReadyVisible,
+					wallbox: !!sys.wallboxVisible,
 					heatingRod: !!sys.heizstaebeVisible,
 					autarky: !!sys.autarkieVisible,
 					battery: !!sys.akkuVisible,
@@ -3898,7 +3919,8 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		// Step 3: Start polling
+		// Step 3: Create controls & start polling
+		await this.webCreateControls();
 		this.webConnected = true;
 		this.webPoll().catch((e) => this.logError(e, "❌ mein-senec.de initial poll failed"));
 	}
@@ -3985,8 +4007,8 @@ class Senec extends utils.Adapter {
 				this.logError(error, "mein-senec.de: Status poll failed");
 			}
 
-			// Spare capacity — every 6h
-			if (!this._webLastSpareCapacityPoll || now - this._webLastSpareCapacityPoll >= this.webMediumIntervalMs) {
+			// Emergency power reserve — every 6h
+			if (!this._webLastEmergencyPowerPoll || now - this._webLastEmergencyPowerPoll >= this.webMediumIntervalMs) {
 				try {
 					const res = await this.webGet(
 						`${WEB_BASE}/endkunde/api/senec/${pn}/emergencypower/reserve-in-percent`,
@@ -3994,19 +4016,30 @@ class Senec extends utils.Adapter {
 					if (res?.data !== undefined) {
 						const val = typeof res.data === "number" ? res.data : parseInt(String(res.data), 10);
 						if (!isNaN(val)) {
-							await this.doState("_meinsenec.SpareCapacity", val, "Spare capacity", "%", false);
-							this._webLastSpareCapacityPoll = now;
 							await this.doState(
-								"_meinsenec.info.lastPoll.SpareCapacity",
+								"_meinsenec.EmergencyPower.ReserveInPercent",
+								val,
+								"Emergency power reserve",
+								"%",
+								false,
+							);
+							this._webLastEmergencyPowerPoll = now;
+							await this.doState(
+								"_meinsenec.info.lastPoll.EmergencyPower",
 								new Date().toISOString(),
-								"Last spare capacity poll",
+								"Last emergency power poll",
 								"",
 								false,
 							);
+							// Sync control datapoint
+							await this.setStateChangedAsync("control.EmergencyPower.ReserveInPercent", {
+								val: val,
+								ack: true,
+							});
 						}
 					}
 				} catch (error) {
-					this.logError(error, "mein-senec.de: Spare capacity poll failed");
+					this.logError(error, "mein-senec.de: Emergency power poll failed");
 				}
 			}
 
@@ -4029,6 +4062,7 @@ class Senec extends utils.Adapter {
 							"",
 							false,
 						);
+						await this.webSyncPeakShavingControls(res.data);
 					}
 				} catch (error) {
 					this.logError(error, "mein-senec.de: Peak shaving poll failed");
@@ -4068,6 +4102,7 @@ class Senec extends utils.Adapter {
 							"",
 							false,
 						);
+						await this.webSyncSGReadyControls(res.data);
 					}
 				} catch (error) {
 					this.logError(error, "mein-senec.de: SG-Ready config poll failed");
@@ -4082,6 +4117,404 @@ class Senec extends utils.Adapter {
 				this.webPoll().catch((e) => this.logError(e, "❌ mein-senec.de scheduled poll failed"));
 			}, this.webStatusIntervalMs);
 			this.log.debug(`⏱ Next mein-senec.de poll in ${(this.webStatusIntervalMs / 1000).toFixed(0)}s`);
+		}
+	}
+
+	/**
+	 * Create control datapoints for mein-senec.de features based on discovered abilities.
+	 * Called once after webInit() discovers the system and its abilities.
+	 */
+	async webCreateControls() {
+		// Emergency power reserve — always available
+		await this.setObjectNotExistsAsync("control.EmergencyPower", {
+			type: "channel",
+			common: { name: "Emergency Power Reserve" },
+			native: {},
+		});
+		await this.setObjectNotExistsAsync("control.EmergencyPower.ReserveInPercent", {
+			type: "state",
+			common: {
+				name: "Reserve in percent",
+				type: "number",
+				role: "level",
+				unit: "%",
+				min: 0,
+				max: 100,
+				read: true,
+				write: true,
+				def: 0,
+			},
+			native: {},
+		});
+
+		// Peak shaving — only if available
+		if (this.webAbilities.peakShaving) {
+			await this.setObjectNotExistsAsync("control.PeakShaving", {
+				type: "channel",
+				common: { name: "Peak Shaving" },
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("control.PeakShaving.Mode", {
+				type: "state",
+				common: {
+					name: "Peak shaving mode",
+					type: "string",
+					role: "text",
+					read: true,
+					write: true,
+					def: "",
+					states: { DEACTIVATED: "Deactivated", MANUAL: "Manual", AUTO: "Auto" },
+				},
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("control.PeakShaving.CapacityLimit", {
+				type: "state",
+				common: {
+					name: "Capacity limit",
+					type: "number",
+					role: "level",
+					unit: "%",
+					min: 0,
+					max: 90,
+					read: true,
+					write: true,
+					def: 0,
+				},
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("control.PeakShaving.Endzeit", {
+				type: "state",
+				common: {
+					name: "End time",
+					type: "string",
+					role: "text",
+					read: true,
+					write: true,
+					def: "",
+				},
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("control.PeakShaving.Apply", {
+				type: "state",
+				common: {
+					name: "Apply pending changes",
+					type: "boolean",
+					role: "button",
+					read: true,
+					write: true,
+					def: false,
+				},
+				native: {},
+			});
+		}
+
+		// SG-Ready — only if available
+		if (this.webAbilities.sgReady) {
+			await this.setObjectNotExistsAsync("control.SGReady", {
+				type: "channel",
+				common: { name: "SG-Ready" },
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("control.SGReady.Enabled", {
+				type: "state",
+				common: {
+					name: "SG-Ready enabled",
+					type: "boolean",
+					role: "switch",
+					read: true,
+					write: true,
+					def: false,
+				},
+				native: {},
+			});
+			const sgReadyNumStates = [
+				{ id: "ModeChangeDelayInMinutes", name: "Mode change delay", unit: "min" },
+				{ id: "PowerOnProposalThresholdInWatt", name: "Power-on proposal threshold", unit: "W" },
+				{ id: "PowerOnCommandThresholdInWatt", name: "Power-on command threshold", unit: "W" },
+				{ id: "ShutdownLevelInWatt", name: "Shutdown level", unit: "W" },
+			];
+			for (const s of sgReadyNumStates) {
+				await this.setObjectNotExistsAsync(`control.SGReady.${s.id}`, {
+					type: "state",
+					common: {
+						name: s.name,
+						type: "number",
+						role: "level",
+						unit: s.unit,
+						read: true,
+						write: true,
+						def: 0,
+					},
+					native: {},
+				});
+			}
+			await this.setObjectNotExistsAsync("control.SGReady.Apply", {
+				type: "state",
+				common: {
+					name: "Apply pending changes",
+					type: "boolean",
+					role: "button",
+					read: true,
+					write: true,
+					def: false,
+				},
+				native: {},
+			});
+		}
+
+		await this.subscribeStatesAsync("control.EmergencyPower.*");
+		if (this.webAbilities.peakShaving) {
+			await this.subscribeStatesAsync("control.PeakShaving.*");
+		}
+		if (this.webAbilities.sgReady) {
+			await this.subscribeStatesAsync("control.SGReady.*");
+		}
+		this.log.info(
+			`mein-senec.de: Created web controls (peakShaving=${this.webAbilities.peakShaving}, sgReady=${this.webAbilities.sgReady})`,
+		);
+	}
+
+	/**
+	 * Handle a mein-senec.de control command.
+	 *
+	 * @param {string} subId - The control ID (e.g. "EmergencyPower.ReserveInPercent")
+	 * @param {object} state - The ioBroker state object
+	 */
+	async webHandleControl(subId, state) {
+		const pn = this.webMasterPlantNumber;
+		if (pn === null || pn === undefined) {
+			this.log.warn("mein-senec.de: No master plant number, cannot send control command");
+			return;
+		}
+
+		// Emergency power — direct send (single field, no Apply needed)
+		if (subId === "EmergencyPower.ReserveInPercent") {
+			const val = Math.round(Math.max(0, Math.min(100, Number(state.val) || 0)));
+			this.log.info(`mein-senec.de: Setting emergency power reserve to ${val}%`);
+			try {
+				const postRes = await this.webPost(
+					`${WEB_HOST}/endkunde/api/senec/${pn}/emergencypower?reserve-in-percent=${val}`,
+				);
+				if (postRes.status >= 400) {
+					const errMsg = postRes.data?.message || postRes.data?.errorCode || JSON.stringify(postRes.data);
+					this.log.error(`mein-senec.de: Emergency power save failed (HTTP ${postRes.status}): ${errMsg}`);
+					return;
+				}
+				// Re-read and sync back
+				const res = await this.webGet(`${WEB_HOST}/endkunde/api/senec/${pn}/emergencypower/reserve-in-percent`);
+				if (res?.data !== undefined) {
+					const confirmed = typeof res.data === "number" ? res.data : parseInt(String(res.data), 10);
+					if (!isNaN(confirmed)) {
+						await this.doState(
+							"_meinsenec.EmergencyPower.ReserveInPercent",
+							confirmed,
+							"Emergency power reserve",
+							"%",
+							false,
+						);
+						await this.setStateAsync("control.EmergencyPower.ReserveInPercent", {
+							val: confirmed,
+							ack: true,
+						});
+					}
+				}
+				this.log.info(`mein-senec.de: Emergency power reserve set to ${val}%`);
+			} catch (error) {
+				this.logError(error, "mein-senec.de: Failed to set emergency power reserve");
+			}
+			return;
+		}
+
+		// Peak shaving — Apply button
+		if (subId === "PeakShaving.Apply" && state.val) {
+			await this.webHandlePeakShavingApply();
+			return;
+		}
+		// Peak shaving field changes — just ack locally, wait for Apply
+		if (subId.startsWith("PeakShaving.")) {
+			return;
+		}
+
+		// SG-Ready — Apply button
+		if (subId === "SGReady.Apply" && state.val) {
+			await this.webHandleSGReadyApply();
+			return;
+		}
+		// SG-Ready field changes — just ack locally, wait for Apply
+		if (subId.startsWith("SGReady.")) {
+			return;
+		}
+
+		this.log.warn(`mein-senec.de: Unknown web control: ${subId}`);
+	}
+
+	/**
+	 * Apply pending peak shaving changes to mein-senec.de.
+	 */
+	async webHandlePeakShavingApply() {
+		const pn = this.webMasterPlantNumber;
+		const pfx = "control.PeakShaving";
+
+		const modeState = await this.getStateAsync(`${this.namespace}.${pfx}.Mode`);
+		const capState = await this.getStateAsync(`${this.namespace}.${pfx}.CapacityLimit`);
+		const endState = await this.getStateAsync(`${this.namespace}.${pfx}.Endzeit`);
+
+		const mode = String(modeState?.val || "").toUpperCase();
+		const capacityLimit = Math.max(0, Math.min(90, Number(capState?.val) || 0));
+		const endzeitStr = String(endState?.val || "");
+
+		if (!mode) {
+			this.log.warn("mein-senec.de: Peak shaving mode is empty, not applying");
+			await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
+			return;
+		}
+
+		// Convert readable date (e.g. "2026-07-05 14:00") back to ms timestamp
+		let endzeitMs = "";
+		if (endzeitStr) {
+			const parsed = new Date(endzeitStr.replace(" ", "T"));
+			if (!isNaN(parsed.getTime())) {
+				endzeitMs = String(parsed.getTime());
+			} else {
+				// If already a number, pass through
+				endzeitMs = endzeitStr;
+			}
+		}
+
+		const params = new URLSearchParams({
+			anlageNummer: String(pn),
+			mode: mode,
+			capacityLimit: String(capacityLimit),
+			endzeit: endzeitMs,
+		});
+
+		this.log.info(
+			`mein-senec.de: Applying peak shaving settings (mode=${mode}, cap=${capacityLimit}%, end=${endzeitStr})`,
+		);
+		try {
+			const postRes = await this.webPost(
+				`${WEB_HOST}/endkunde/api/peakshaving/saveSettings?${params.toString()}`,
+			);
+			if (postRes.status >= 400) {
+				const errMsg = postRes.data?.message || postRes.data?.errorCode || JSON.stringify(postRes.data);
+				this.log.error(`mein-senec.de: Peak shaving save failed (HTTP ${postRes.status}): ${errMsg}`);
+				await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
+				return;
+			}
+
+			// Re-read and sync back
+			const res = await this.webGet(`${WEB_HOST}/endkunde/api/peakshaving/getSettings?anlageNummer=${pn}`);
+			if (res?.data && typeof res.data === "object") {
+				await this.evalPoll(res.data, "_meinsenec.PeakShaving.");
+				await this.webSyncPeakShavingControls(res.data);
+			}
+			this.log.info("mein-senec.de: Peak shaving settings applied");
+		} catch (error) {
+			this.logError(error, "mein-senec.de: Failed to apply peak shaving settings");
+		}
+		await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
+	}
+
+	/**
+	 * Sync peak shaving control datapoints with values read from the portal.
+	 *
+	 * @param {object} data - Peak shaving settings from the API
+	 */
+	async webSyncPeakShavingControls(data) {
+		const pfx = "control.PeakShaving";
+		if (data.peakShavingMode !== undefined) {
+			await this.setStateChangedAsync(`${pfx}.Mode`, { val: String(data.peakShavingMode), ack: true });
+		}
+		if (data.peakShavingCapacityLimitInPercent !== undefined) {
+			await this.setStateChangedAsync(`${pfx}.CapacityLimit`, {
+				val: Number(data.peakShavingCapacityLimitInPercent),
+				ack: true,
+			});
+		}
+		if (data.peakShavingEndDate !== undefined) {
+			const endMs =
+				typeof data.peakShavingEndDate === "number"
+					? data.peakShavingEndDate > 1e12
+						? data.peakShavingEndDate
+						: data.peakShavingEndDate * 1000
+					: Number(data.peakShavingEndDate) || 0;
+			const endStr = endMs ? new Date(endMs).toISOString().slice(0, 16).replace("T", " ") : "";
+			await this.setStateChangedAsync(`${pfx}.Endzeit`, { val: endStr, ack: true });
+		}
+	}
+
+	/**
+	 * Apply pending SG-Ready changes to mein-senec.de.
+	 */
+	async webHandleSGReadyApply() {
+		const pn = this.webMasterPlantNumber;
+		const pfx = "control.SGReady";
+
+		// Build JSON body with only changed (unacked) fields
+		const fieldMap = {
+			Enabled: "enabled",
+			ModeChangeDelayInMinutes: "modeChangeDelayInMinutes",
+			PowerOnProposalThresholdInWatt: "powerOnProposalThresholdInWatt",
+			PowerOnCommandThresholdInWatt: "powerOnCommandThresholdInWatt",
+			ShutdownLevelInWatt: "shutdownLevelInWatt",
+		};
+
+		const body = {};
+		for (const [stateKey, apiKey] of Object.entries(fieldMap)) {
+			const s = await this.getStateAsync(`${this.namespace}.${pfx}.${stateKey}`);
+			if (!s || s.ack) {
+				continue; // Skip unchanged fields
+			}
+			body[apiKey] = s.val;
+		}
+
+		if (Object.keys(body).length === 0) {
+			this.log.debug("mein-senec.de: SG-Ready — no pending changes to apply");
+			await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
+			return;
+		}
+
+		this.log.info(`mein-senec.de: Applying SG-Ready settings: ${JSON.stringify(body)}`);
+		try {
+			const postRes = await this.webPost(`${WEB_HOST}/endkunde/api/senec/${pn}/sgready`, body);
+			if (postRes.status >= 400) {
+				const errMsg = postRes.data?.message || postRes.data?.errorCode || JSON.stringify(postRes.data);
+				this.log.error(`mein-senec.de: SG-Ready save failed (HTTP ${postRes.status}): ${errMsg}`);
+				await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
+				return;
+			}
+
+			// Re-read and sync back
+			const res = await this.webGet(`${WEB_HOST}/endkunde/api/senec/${pn}/sgready/config`);
+			if (res?.data && typeof res.data === "object") {
+				await this.evalPoll(res.data, "_meinsenec.SGReady.Config.");
+				await this.webSyncSGReadyControls(res.data);
+			}
+			this.log.info("mein-senec.de: SG-Ready settings applied");
+		} catch (error) {
+			this.logError(error, "mein-senec.de: Failed to apply SG-Ready settings");
+		}
+		await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
+	}
+
+	/**
+	 * Sync SG-Ready control datapoints with values read from the portal.
+	 *
+	 * @param {object} data - SG-Ready config from the API
+	 */
+	async webSyncSGReadyControls(data) {
+		const pfx = "control.SGReady";
+		const syncMap = {
+			enabled: { field: "Enabled" },
+			modeChangeDelayInMinutes: { field: "ModeChangeDelayInMinutes" },
+			powerOnProposalThresholdInWatt: { field: "PowerOnProposalThresholdInWatt" },
+			powerOnCommandThresholdInWatt: { field: "PowerOnCommandThresholdInWatt" },
+			shutdownLevelInWatt: { field: "ShutdownLevelInWatt" },
+		};
+		for (const [apiKey, mapping] of Object.entries(syncMap)) {
+			if (data[apiKey] !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.${mapping.field}`, { val: data[apiKey], ack: true });
+			}
 		}
 	}
 
