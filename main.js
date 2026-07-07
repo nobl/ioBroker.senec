@@ -2789,6 +2789,26 @@ class Senec extends utils.Adapter {
 				return;
 			}
 			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.DataAvailability.`);
+			// Add human-readable date companions for ms timestamp fields
+			const pfx = `${API_PFX}Anlagen.${anlagenId}.DataAvailability.`;
+			if (res.data.periodStartDateInMilliseconds != null) {
+				await this.doState(
+					`${pfx}periodStartDate`,
+					new Date(res.data.periodStartDateInMilliseconds).toISOString(),
+					"Data available from",
+					"",
+					false,
+				);
+			}
+			if (res.data.periodEndDateInMilliseconds != null) {
+				await this.doState(
+					`${pfx}periodEndDate`,
+					new Date(res.data.periodEndDateInMilliseconds).toISOString(),
+					"Data available until",
+					"",
+					false,
+				);
+			}
 			await this.doState(
 				`${API_PFX}info.lastPoll.DataAvailability`,
 				new Date().toISOString(),
