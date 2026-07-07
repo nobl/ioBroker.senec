@@ -567,109 +567,114 @@
 		"_activeApplianceControl": {
 			"type": "panel",
 			"label": "Active_Appliance_Control",
-			"hidden": "data.lala_use !== true && data.api_use !== true",
+			"hidden": "data.lala_use !== true && data.api_use !== true && data.web_use !== true",
 			"items": {
+				"_consentHeader": {
+					"type": "staticText",
+					"xs": 12,
+					"text": "controlConsentInfo",
+					"newLine": true
+				},
 				"control_active": {
 					"type": "checkbox",
 					"xs": 12,
 					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
 					"label": "activeControl",
 					"help": "activeControlHelp",
 					"default": false,
 					"hidden": "data.lala_use !== true",
 					"newLine": true
 				},
-				"_localControl": {
-					"type": "panel",
-					"collapsable": true,
-					"label": "localControl",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6,
-					"hidden": "data.lala_use !== true || data.control_active !== true",
-					"newLine": true,
-					"items": {
-						"control_reboot": {
-							"type": "checkbox",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "controlReboot",
-							"help": "controlRebootHelp",
-							"default": false,
-							"newLine": true
-						},
-						"control_sockets": {
-							"type": "checkbox",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "controlSockets",
-							"help": "controlSocketsHelp",
-							"default": false,
-							"newLine": true
-						},
-						"control_wallbox": {
-							"type": "checkbox",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "controlWallbox",
-							"help": "controlWallboxHelp",
-							"default": false,
-							"newLine": true
-						}
-					}
-				},
 				"control_api_active": {
 					"type": "checkbox",
 					"xs": 12,
 					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
 					"label": "activeApiControl",
 					"help": "activeApiControlHelp",
 					"default": false,
 					"hidden": "data.api_use !== true",
+					"newLine": false
+				},
+				"control_web_active": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"label": "activeWebControl",
+					"help": "activeWebControlHelp",
+					"default": false,
+					"hidden": "data.web_use !== true",
+					"newLine": false
+				},
+				"_featureHeader": {
+					"type": "staticText",
+					"xs": 12,
+					"text": "controlFeatureInfo",
+					"hidden": "data.control_active !== true && data.control_api_active !== true && data.control_web_active !== true",
 					"newLine": true
 				},
-				"_apiControl": {
-					"type": "panel",
-					"collapsable": true,
-					"label": "apiControl",
+				"control_reboot": {
+					"type": "checkbox",
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
-					"lg": 6,
-					"xl": 6,
-					"hidden": "data.api_use !== true || data.control_api_active !== true",
-					"newLine": true,
-					"items": {
-						"control_api_wallbox": {
-							"type": "checkbox",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "controlApiWallbox",
-							"help": "controlApiWallboxHelp",
-							"default": false,
-							"newLine": true
-						}
-					}
+					"lg": 4,
+					"xl": 4,
+					"label": "controlReboot",
+					"help": "controlRebootHelp",
+					"default": false,
+					"hidden": "data.control_active !== true",
+					"newLine": true
+				},
+				"control_wallbox_connector": {
+					"type": "select",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "controlWallboxConnector",
+					"help": "controlWallboxConnectorHelp",
+					"options": [
+						{ "label": "Off", "value": "off" },
+						{ "label": "Local (lala.cgi)", "value": "local" },
+						{ "label": "API (SENEC App)", "value": "api" }
+					],
+					"default": "off",
+					"hidden": "data.control_active !== true && data.control_api_active !== true",
+					"newLine": true
+				},
+				"control_sockets_connector": {
+					"type": "select",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "controlSocketsConnector",
+					"help": "controlSocketsConnectorHelp",
+					"options": [
+						{ "label": "Off", "value": "off" },
+						{ "label": "Local (lala.cgi)", "value": "local" }
+					],
+					"default": "off",
+					"hidden": "data.control_active !== true",
+					"newLine": false
+				},
+				"_webControlInfo": {
+					"type": "staticText",
+					"xs": 12,
+					"text": "webControlInfo",
+					"hidden": "data.control_web_active !== true",
+					"newLine": true
 				}
 			}
 		},

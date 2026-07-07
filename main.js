@@ -470,8 +470,15 @@ class Senec extends utils.Adapter {
 				controlId.startsWith("PeakShaving.") ||
 				controlId.startsWith("SGReady.")
 			) {
-				if (!this.config.web_use || !this.webConnected || this.webMasterPlantNumber === null) {
-					this.log.warn(`Web control command for ${controlId} ignored (mein-senec.de not connected)`);
+				if (
+					!this.config.web_use ||
+					!this.config.control_web_active ||
+					!this.webConnected ||
+					this.webMasterPlantNumber === null
+				) {
+					this.log.warn(
+						`Web control command for ${controlId} ignored (mein-senec.de control not enabled or not connected)`,
+					);
 					return;
 				}
 				await this.webHandleControl(controlId, state);
@@ -486,7 +493,7 @@ class Senec extends utils.Adapter {
 				}
 				const apiWbMatch = controlId.match(/^api\.Wallbox\.(\d+)\.(.+)$/);
 				if (apiWbMatch) {
-					if (!this.config.control_api_wallbox) {
+					if (this.config.control_wallbox_connector !== "api") {
 						this.log.warn("API wallbox control command ignored (not enabled in config)");
 						return;
 					}
@@ -529,7 +536,7 @@ class Senec extends utils.Adapter {
 			// Socket controls
 			const socketMatch = controlId.match(/^Sockets\.(\d+)\.(.+)$/);
 			if (socketMatch) {
-				if (!this.config.control_sockets) {
+				if (this.config.control_sockets_connector !== "local") {
 					this.log.warn("Socket control command ignored (control_sockets not enabled in config)");
 					return;
 				}
@@ -541,7 +548,7 @@ class Senec extends utils.Adapter {
 			// Wallbox controls
 			const wallboxMatch = controlId.match(/^Wallbox\.(\d+)\.(.+)$/);
 			if (wallboxMatch) {
-				if (!this.config.control_wallbox) {
+				if (this.config.control_wallbox_connector !== "local") {
 					this.log.warn("Wallbox control command ignored (control_wallbox not enabled in config)");
 					return;
 				}
@@ -705,7 +712,7 @@ class Senec extends utils.Adapter {
 		if (this.socketControlsCreated || !this.socketCount || this.socketCount <= 0) {
 			return;
 		}
-		if (!this.config.control_active || !this.config.control_sockets) {
+		if (!this.config.control_active || this.config.control_sockets_connector !== "local") {
 			return;
 		}
 
@@ -817,7 +824,11 @@ class Senec extends utils.Adapter {
 			if (this.socketCount === undefined && typeof obj.SOCKETS.NUMBER_OF_SOCKETS === "number") {
 				this.socketCount = obj.SOCKETS.NUMBER_OF_SOCKETS;
 				this.log.debug(`Detected ${this.socketCount} socket(s)`);
-				if (this.socketCount > 0 && this.config.control_active && this.config.control_sockets) {
+				if (
+					this.socketCount > 0 &&
+					this.config.control_active &&
+					this.config.control_sockets_connector === "local"
+				) {
 					await this.localCreateSocketControls();
 				}
 				if (this.socketCount === 0) {
@@ -832,7 +843,11 @@ class Senec extends utils.Adapter {
 			if (this.wallboxCount === undefined && typeof obj.WIZARD.SETUP_NUMBER_WALLBOXES === "number") {
 				this.wallboxCount = obj.WIZARD.SETUP_NUMBER_WALLBOXES;
 				this.log.debug(`Detected ${this.wallboxCount} wallbox(es)`);
-				if (this.wallboxCount > 0 && this.config.control_active && this.config.control_wallbox) {
+				if (
+					this.wallboxCount > 0 &&
+					this.config.control_active &&
+					this.config.control_wallbox_connector === "local"
+				) {
 					await this.localCreateWallboxControls();
 				}
 				if (this.wallboxCount === 0) {
@@ -981,7 +996,7 @@ class Senec extends utils.Adapter {
 		if (this.wallboxControlsCreated || !this.wallboxCount || this.wallboxCount <= 0) {
 			return;
 		}
-		if (!this.config.control_active || !this.config.control_wallbox) {
+		if (!this.config.control_active || this.config.control_wallbox_connector !== "local") {
 			return;
 		}
 
@@ -2483,7 +2498,7 @@ class Senec extends utils.Adapter {
 	 * Called once after wallbox search discovers wallboxes.
 	 */
 	async apiCreateWallboxControls() {
-		if (!this.config.control_api_active || !this.config.control_api_wallbox) {
+		if (!this.config.control_api_active || this.config.control_wallbox_connector !== "api") {
 			return;
 		}
 		if (this.apiWallboxCount === 0) {
@@ -2579,7 +2594,7 @@ class Senec extends utils.Adapter {
 	 * Sync API wallbox control datapoints with values from the cached wallbox objects.
 	 */
 	async apiSyncWallboxControls() {
-		if (!this.config.control_api_active || !this.config.control_api_wallbox) {
+		if (!this.config.control_api_active || this.config.control_wallbox_connector !== "api") {
 			return;
 		}
 
@@ -3919,8 +3934,10 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		// Step 3: Create controls & start polling
-		await this.webCreateControls();
+		// Step 3: Create controls (if enabled) & start polling
+		if (this.config.control_web_active) {
+			await this.webCreateControls();
+		}
 		this.webConnected = true;
 		this.webPoll().catch((e) => this.logError(e, "❌ mein-senec.de initial poll failed"));
 	}
