@@ -218,6 +218,12 @@ The newest change log is [README.md](README.md)
 
 ### 1.0.0
 * (NoBl) initial release
+## 2.5.2 (2026-03-31)
+- Rewrote AllTime History Rebuild: We should now be able to rebuild AllTime History even if the senec server struggles with timeouts. Warning! Rebuild will take considerable time now depending on the server. Current state of rebuild will be reported to log (info).
+- You will now need to supply the installation year of your appliance upon AllTime History rebuild if you don't want empty yearly folders in the measurements path for yours you don't have data.
+- More comprehensive logging on what is being polled from API.
+- Better debug-logging for polling
+
 ## 2.5.1 (2026-03-31)
 - Increased default API poll interval to 6 minutes. This appears to be causing less issues with the server than 5 minutes.
 - You can now define different polling intervals for dashboard (frequently), details (usually hourly and daily information), heavy (for everything else that usually is done per month or year).<br>Please be careful with high frequency polling as this can and will lead to problems and the senec server will stop responding to your requests. Longer delays between polls are preferred.
