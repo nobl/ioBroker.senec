@@ -503,7 +503,47 @@ class Senec extends utils.Adapter {
 				return;
 			}
 
-			// Local controls — require control_active + lala.cgi
+			// Socket controls — multi-connector, check before local gate
+			const socketMatch = controlId.match(/^Sockets\.(\d+)\.(.+)$/);
+			if (socketMatch) {
+				if (this.config.control_sockets_connector === "local") {
+					if (!this.config.control_active || !this.lalaConnected) {
+						this.log.warn("Local socket control ignored (not connected via lala.cgi)");
+						return;
+					}
+					const socketVal = state.val ?? false;
+					await this.localHandleSocketControl(id, parseInt(socketMatch[1], 10), socketMatch[2], socketVal);
+					return;
+				}
+				if (this.config.control_sockets_connector === "web") {
+					if (!this.webConnected || this.webMasterPlantNumber === null) {
+						this.log.warn("Web socket control ignored (mein-senec.de not connected)");
+						return;
+					}
+					await this.webHandleSocketControl(parseInt(socketMatch[1], 10), socketMatch[2], state);
+					return;
+				}
+				this.log.warn("Socket control command ignored (no connector active)");
+				return;
+			}
+
+			// Wallbox controls — multi-connector, check before local gate
+			const wallboxMatch = controlId.match(/^Wallbox\.(\d+)\.(.+)$/);
+			if (wallboxMatch) {
+				if (this.config.control_wallbox_connector !== "local") {
+					this.log.warn("Wallbox control command ignored (control_wallbox not enabled in config)");
+					return;
+				}
+				if (!this.config.control_active || !this.lalaConnected) {
+					this.log.warn("Local wallbox control ignored (not connected via lala.cgi)");
+					return;
+				}
+				const wbVal = state.val ?? false;
+				await this.localHandleWallboxControl(id, parseInt(wallboxMatch[1], 10), wallboxMatch[2], wbVal);
+				return;
+			}
+
+			// Local-only controls — require control_active + lala.cgi
 			if (!this.config.control_active) {
 				return;
 			}
@@ -530,30 +570,6 @@ class Senec extends utils.Adapter {
 					this.log.info("Rebooting appliance ...");
 					await this.localSendControl(id, rebootAppliance, "rebooting appliance");
 				}
-				return;
-			}
-
-			// Socket controls
-			const socketMatch = controlId.match(/^Sockets\.(\d+)\.(.+)$/);
-			if (socketMatch) {
-				if (this.config.control_sockets_connector !== "local") {
-					this.log.warn("Socket control command ignored (control_sockets not enabled in config)");
-					return;
-				}
-				const socketVal = state.val ?? false;
-				await this.localHandleSocketControl(id, parseInt(socketMatch[1], 10), socketMatch[2], socketVal);
-				return;
-			}
-
-			// Wallbox controls
-			const wallboxMatch = controlId.match(/^Wallbox\.(\d+)\.(.+)$/);
-			if (wallboxMatch) {
-				if (this.config.control_wallbox_connector !== "local") {
-					this.log.warn("Wallbox control command ignored (control_wallbox not enabled in config)");
-					return;
-				}
-				const wbVal = state.val ?? false;
-				await this.localHandleWallboxControl(id, parseInt(wallboxMatch[1], 10), wallboxMatch[2], wbVal);
 				return;
 			}
 
@@ -647,61 +663,101 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		// Apply: read all pending values and send each to device
+		// Apply: read unified controls and translate to local registers
 		if (!value) {
 			return;
 		}
 
-		const fieldMap = {
-			Enable: { key: "ENABLE", type: "u8", bool: true },
-			ForceOn: { key: "FORCE_ON", type: "u8", bool: true },
-			UseTime: { key: "USE_TIME", type: "u8", bool: true },
-			LowerLimit: { key: "LOWER_LIMIT", type: "u1", bool: false },
-			UpperLimit: { key: "UPPER_LIMIT", type: "u1", bool: false },
-			PowerOnTime: { key: "POWER_ON_TIME", type: "u1", bool: false },
-			SwitchOnHour: { key: "SWITCH_ON_HOUR", type: "u8", bool: false },
-			SwitchOnMinute: { key: "SWITCH_ON_MINUTE", type: "u8", bool: false },
-			TimeLimit: { key: "TIME_LIMIT", type: "u1", bool: false },
-		};
-
 		const pfx = `control.Sockets.${socketIdx}`;
-		this.log.info(`Applying socket ${socketIdx} changes...`);
+		this.log.info(`Applying socket ${socketIdx} changes via local...`);
 
-		// Build one combined payload with all changed fields
+		const modeState = await this.getStateAsync(`${this.namespace}.${pfx}.Mode`);
+		const onThreshState = await this.getStateAsync(`${this.namespace}.${pfx}.EinschaltschwelleInWatt`);
+		const offThreshState = await this.getStateAsync(`${this.namespace}.${pfx}.AbschaltschwelleInWatt`);
+		const surplusDurState = await this.getStateAsync(`${this.namespace}.${pfx}.DauerLeistungsueberschussInMin`);
+		const socketDurState = await this.getStateAsync(`${this.namespace}.${pfx}.DauerSteckdoseAnInMin`);
+		const hourState = await this.getStateAsync(`${this.namespace}.${pfx}.EinschaltHour`);
+		const minuteState = await this.getStateAsync(`${this.namespace}.${pfx}.EinschaltMinute`);
+
+		const mode = String(modeState?.val || "OFF");
 		const socketsPayload = {};
-		for (const [fieldName, mapping] of Object.entries(fieldMap)) {
-			const state = await this.getStateAsync(`${pfx}.${fieldName}`);
-			if (!state || state.ack) {
-				continue; // Skip fields that haven't been changed (still acked)
-			}
-			const val = state.val;
+		const arr = () => Array.from({ length: this.socketCount }, () => "");
+		const u8 = (val) => `u8_${val ? "01" : "00"}`;
+		const u1 = (val) =>
+			`u1_${Math.max(0, Number(val) || 0)
+				.toString(16)
+				.toUpperCase()
+				.padStart(4, "0")}`;
+		const u8n = (val) =>
+			`u8_${Math.max(0, Number(val) || 0)
+				.toString(16)
+				.toUpperCase()
+				.padStart(2, "0")}`;
 
-			const arr = Array.from({ length: this.socketCount }, () => "");
-			if (mapping.bool) {
-				arr[socketIdx] = `${mapping.type}_${val ? "01" : "00"}`;
-			} else {
-				const numVal = typeof val === "number" ? val : parseInt(String(val), 10);
-				if (isNaN(numVal) || numVal < 0) {
-					this.log.warn(`Invalid value for socket control ${fieldName}: ${val}`);
-					continue;
-				}
-				const padLen = mapping.type === "u1" ? 4 : 2;
-				arr[socketIdx] = `${mapping.type}_${numVal.toString(16).toUpperCase().padStart(padLen, "0")}`;
-			}
-			socketsPayload[mapping.key] = arr;
-			this.log.info(`Socket ${socketIdx} ${fieldName} = ${val}`);
-		}
+		// Translate Mode → Enable/ForceOn/UseTime
+		const enableArr = arr();
+		const forceOnArr = arr();
+		const useTimeArr = arr();
+		enableArr[socketIdx] = u8(mode !== "OFF");
+		forceOnArr[socketIdx] = u8(mode === "PERMANENT_ON");
+		useTimeArr[socketIdx] = u8(
+			mode === "AUTOMATIC" && (Number(hourState?.val) > 0 || Number(minuteState?.val) > 0),
+		);
+		socketsPayload.ENABLE = enableArr;
+		socketsPayload.FORCE_ON = forceOnArr;
+		socketsPayload.USE_TIME = useTimeArr;
 
-		if (Object.keys(socketsPayload).length > 0) {
-			const payload = JSON.stringify({ SOCKETS: socketsPayload });
-			this.log.debug(`Socket control payload: ${payload}`);
-			await this.localSendControl(stateId, payload, `applying socket ${socketIdx} changes`);
-		} else {
-			this.log.debug(`Socket ${socketIdx}: no pending changes to apply`);
-		}
+		// Translate thresholds and durations
+		const upperArr = arr();
+		upperArr[socketIdx] = u1(onThreshState?.val);
+		socketsPayload.UPPER_LIMIT = upperArr;
 
+		const lowerArr = arr();
+		lowerArr[socketIdx] = u1(offThreshState?.val);
+		socketsPayload.LOWER_LIMIT = lowerArr;
+
+		const powerOnArr = arr();
+		powerOnArr[socketIdx] = u1(surplusDurState?.val);
+		socketsPayload.POWER_ON_TIME = powerOnArr;
+
+		const timeLimitArr = arr();
+		timeLimitArr[socketIdx] = u1(socketDurState?.val);
+		socketsPayload.TIME_LIMIT = timeLimitArr;
+
+		const switchHourArr = arr();
+		switchHourArr[socketIdx] = u8n(hourState?.val);
+		socketsPayload.SWITCH_ON_HOUR = switchHourArr;
+
+		const switchMinArr = arr();
+		switchMinArr[socketIdx] = u8n(minuteState?.val);
+		socketsPayload.SWITCH_ON_MINUTE = switchMinArr;
+
+		const payload = JSON.stringify({ SOCKETS: socketsPayload });
+		this.log.debug(`Socket control payload: ${payload}`);
+		await this.localSendControl(stateId, payload, `applying socket ${socketIdx} changes`);
+
+		// Ack control states with the values we just sent
+		await this.setStateChangedAsync(`${pfx}.Mode`, { val: mode, ack: true });
+		await this.setStateChangedAsync(`${pfx}.EinschaltschwelleInWatt`, {
+			val: Number(onThreshState?.val) || 0,
+			ack: true,
+		});
+		await this.setStateChangedAsync(`${pfx}.AbschaltschwelleInWatt`, {
+			val: Number(offThreshState?.val) || 0,
+			ack: true,
+		});
+		await this.setStateChangedAsync(`${pfx}.DauerLeistungsueberschussInMin`, {
+			val: Number(surplusDurState?.val) || 0,
+			ack: true,
+		});
+		await this.setStateChangedAsync(`${pfx}.DauerSteckdoseAnInMin`, {
+			val: Number(socketDurState?.val) || 0,
+			ack: true,
+		});
+		await this.setStateChangedAsync(`${pfx}.EinschaltHour`, { val: Number(hourState?.val) || 0, ack: true });
+		await this.setStateChangedAsync(`${pfx}.EinschaltMinute`, { val: Number(minuteState?.val) || 0, ack: true });
 		await this.setState(`${pfx}.Apply`, { val: false, ack: true });
-		this.log.info(`Socket ${socketIdx} changes applied`);
+		this.log.info(`Socket ${socketIdx} changes applied via local`);
 	}
 
 	/**
@@ -716,76 +772,10 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		const boolStates = [
-			{ id: "Enable", name: "Enable socket", role: "switch" },
-			{ id: "ForceOn", name: "Force socket on", role: "switch" },
-			{ id: "UseTime", name: "Use time-based switching", role: "switch" },
-		];
-		const numStates = [
-			{ id: "LowerLimit", name: "Lower power limit", unit: "W", role: "level" },
-			{ id: "UpperLimit", name: "Upper power limit", unit: "W", role: "level" },
-			{ id: "PowerOnTime", name: "Power-on time", unit: "min", role: "level" },
-			{ id: "SwitchOnHour", name: "Switch-on hour", unit: "h", role: "level" },
-			{ id: "SwitchOnMinute", name: "Switch-on minute", unit: "min", role: "level" },
-			{ id: "TimeLimit", name: "Time limit", unit: "min", role: "level" },
-		];
-
 		for (let i = 0; i < this.socketCount; i++) {
-			const ch = `control.Sockets.${i}`;
-			await this.setObjectNotExistsAsync(ch, {
-				type: "channel",
-				common: { name: `Socket ${i}` },
-				native: {},
-			});
-
-			for (const s of boolStates) {
-				await this.setObjectNotExistsAsync(`${ch}.${s.id}`, {
-					type: "state",
-					common: {
-						name: s.name,
-						type: "boolean",
-						role: s.role,
-						read: true,
-						write: true,
-						def: false,
-					},
-					native: {},
-				});
-			}
-
-			for (const s of numStates) {
-				await this.setObjectNotExistsAsync(`${ch}.${s.id}`, {
-					type: "state",
-					common: {
-						name: s.name,
-						type: "number",
-						role: s.role,
-						unit: s.unit,
-						read: true,
-						write: true,
-						def: 0,
-					},
-					native: {},
-				});
-			}
+			await this.createSocketControlsForIndex(i);
 		}
-
-		// Apply button per socket
-		for (let i = 0; i < this.socketCount; i++) {
-			await this.setObjectNotExistsAsync(`control.Sockets.${i}.Apply`, {
-				type: "state",
-				common: {
-					name: "Apply pending changes",
-					type: "boolean",
-					role: "button",
-					read: true,
-					write: true,
-					def: false,
-				},
-				native: {},
-			});
-		}
-
+		await this.subscribeStatesAsync("control.Sockets.*");
 		this.socketControlsCreated = true;
 		this.log.info(`Created control datapoints for ${this.socketCount} socket(s)`);
 	}
@@ -835,7 +825,9 @@ class Senec extends utils.Adapter {
 					await this.localCleanupSocketControls();
 				}
 			}
-			await this.localSyncSocketControls(obj.SOCKETS);
+			if (this.config.control_sockets_connector === "local") {
+				await this.localSyncSocketControls(obj.SOCKETS);
+			}
 		}
 
 		// Wallboxes
@@ -854,7 +846,9 @@ class Senec extends utils.Adapter {
 					await this.localCleanupWallboxControls();
 				}
 			}
-			await this.localSyncWallboxControls(obj.WALLBOX);
+			if (this.config.control_wallbox_connector === "local") {
+				await this.localSyncWallboxControls(obj.WALLBOX);
+			}
 		}
 	}
 
@@ -868,32 +862,51 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		const syncMap = {
-			ENABLE: "Enable",
-			FORCE_ON: "ForceOn",
-			USE_TIME: "UseTime",
-			LOWER_LIMIT: "LowerLimit",
-			UPPER_LIMIT: "UpperLimit",
-			POWER_ON_TIME: "PowerOnTime",
-			SWITCH_ON_HOUR: "SwitchOnHour",
-			SWITCH_ON_MINUTE: "SwitchOnMinute",
-			TIME_LIMIT: "TimeLimit",
-		};
-
 		for (let i = 0; i < this.socketCount; i++) {
-			for (const [deviceKey, controlField] of Object.entries(syncMap)) {
-				if (socketsData[deviceKey] !== undefined && Array.isArray(socketsData[deviceKey])) {
-					const rawVal = socketsData[deviceKey][i];
-					if (rawVal === undefined) {
-						continue;
-					}
-					const isBool = ["ENABLE", "FORCE_ON", "USE_TIME"].includes(deviceKey);
-					const val = isBool ? !!rawVal : rawVal;
-					await this.setStateChangedAsync(`control.Sockets.${i}.${controlField}`, {
-						val: val,
-						ack: true,
-					});
+			const pfx = `control.Sockets.${i}`;
+			const getArr = (key) =>
+				Array.isArray(socketsData[key]) && socketsData[key][i] !== undefined ? socketsData[key][i] : undefined;
+
+			// Translate Enable/ForceOn/UseTime → Mode
+			const enable = getArr("ENABLE");
+			const forceOn = getArr("FORCE_ON");
+			if (enable !== undefined || forceOn !== undefined) {
+				let mode = "OFF";
+				if (forceOn) {
+					mode = "PERMANENT_ON";
+				} else if (enable) {
+					mode = "AUTOMATIC";
 				}
+				await this.setStateChangedAsync(`${pfx}.Mode`, { val: mode, ack: true });
+			}
+
+			// Translate thresholds and durations
+			const upper = getArr("UPPER_LIMIT");
+			if (upper !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.EinschaltschwelleInWatt`, { val: upper, ack: true });
+			}
+			const lower = getArr("LOWER_LIMIT");
+			if (lower !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.AbschaltschwelleInWatt`, { val: lower, ack: true });
+			}
+			const powerOnTime = getArr("POWER_ON_TIME");
+			if (powerOnTime !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.DauerLeistungsueberschussInMin`, {
+					val: powerOnTime,
+					ack: true,
+				});
+			}
+			const timeLimit = getArr("TIME_LIMIT");
+			if (timeLimit !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.DauerSteckdoseAnInMin`, { val: timeLimit, ack: true });
+			}
+			const switchHour = getArr("SWITCH_ON_HOUR");
+			if (switchHour !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.EinschaltHour`, { val: switchHour, ack: true });
+			}
+			const switchMin = getArr("SWITCH_ON_MINUTE");
+			if (switchMin !== undefined) {
+				await this.setStateChangedAsync(`${pfx}.EinschaltMinute`, { val: switchMin, ack: true });
 			}
 		}
 	}
@@ -3949,11 +3962,17 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} axios response
 	 */
 	async webGet(url) {
+		this.log.debug(`mein-senec.de GET: ${url}`);
 		const res = await this.authClient.get(url, {
 			jar: this.webJar,
 			maxRedirects: 5,
 			validateStatus: () => true,
 		});
+		if (this.config.api_reqnresp_log) {
+			this.log.debug(`mein-senec.de GET response: HTTP ${res.status} → ${JSON.stringify(res.data)}`);
+		} else {
+			this.log.debug(`mein-senec.de GET response: HTTP ${res.status}`);
+		}
 		if (res.status === 200 && typeof res.data === "string" && res.data.includes("Login - SENEC")) {
 			this.log.debug("mein-senec.de: Session expired, re-authenticating...");
 			this.webAuthenticated = await this.webLogin();
@@ -3973,11 +3992,17 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} axios response
 	 */
 	async webPost(url, data) {
+		this.log.debug(`mein-senec.de POST: ${url}`);
 		const config = { jar: this.webJar, maxRedirects: 5, validateStatus: () => true };
 		if (data !== undefined) {
 			config.headers = { "Content-Type": "application/json" };
 		}
 		const res = await this.authClient.post(url, data, config);
+		if (this.config.api_reqnresp_log) {
+			this.log.debug(`mein-senec.de POST response: HTTP ${res.status} → ${JSON.stringify(res.data)}`);
+		} else {
+			this.log.debug(`mein-senec.de POST response: HTTP ${res.status}`);
+		}
 		if (res.status === 200 && typeof res.data === "string" && res.data.includes("Login - SENEC")) {
 			this.log.debug("mein-senec.de: Session expired, re-authenticating...");
 			this.webAuthenticated = await this.webLogin();
@@ -4127,6 +4152,54 @@ class Senec extends utils.Adapter {
 			}
 		} catch (error) {
 			this.logError(error, "❌ mein-senec.de poll cycle failed");
+		}
+
+		// Sockets via mein-senec.de — every 6h
+		if (
+			(this.webAbilities.sockets || this.config.control_sockets_force) &&
+			(!this._webLastSocketsPoll || now - this._webLastSocketsPoll >= this.webMediumIntervalMs)
+		) {
+			try {
+				const res = await this.webGet(
+					`${WEB_BASE}/endkunde/api/steckdosen/findByGeraetenummer?anlageNummer=${pn}`,
+				);
+				if (res?.data && Array.isArray(res.data)) {
+					this.webSocketData = res.data;
+					if (
+						this.config.control_web_active &&
+						this.config.control_sockets_connector === "web" &&
+						res.data.length > 0
+					) {
+						await this.webCreateSocketControls(res.data.length);
+					}
+					for (const socket of res.data) {
+						const idx = socket.steckdosenummer ?? socket.steckdosennummer;
+						if (idx === undefined) {
+							continue;
+						}
+						// Strip steuereinheit metadata before evalPoll (same for all sockets)
+						const { steuereinheit: _s, state: socketState, ...socketFields } = socket;
+						await this.evalPoll(socketFields, `_meinsenec.Sockets.${idx}.`);
+						if (socketState && typeof socketState === "object") {
+							const { steuereinheit: _ss, ...stateFields } = socketState;
+							await this.evalPoll(stateFields, `_meinsenec.Sockets.${idx}.State.`);
+						}
+						if (this.config.control_sockets_connector === "web") {
+							await this.webSyncSocketControls(idx, socket);
+						}
+					}
+					this._webLastSocketsPoll = now;
+					await this.doState(
+						"_meinsenec.info.lastPoll.Sockets",
+						new Date().toISOString(),
+						"Last sockets poll",
+						"",
+						false,
+					);
+				}
+			} catch (error) {
+				this.logError(error, "mein-senec.de: Sockets poll failed");
+			}
 		}
 
 		if (!this.unloaded) {
@@ -4305,6 +4378,99 @@ class Senec extends utils.Adapter {
 		this.log.info(
 			`mein-senec.de: Created web controls (peakShaving=${this.webAbilities.peakShaving}, sgReady=${this.webAbilities.sgReady})`,
 		);
+	}
+
+	/**
+	 * Create web socket control datapoints after first socket poll.
+	 * Called when sockets are discovered and connector is set to "web".
+	 *
+	 * @param {number} count - Number of sockets
+	 */
+	async webCreateSocketControls(count) {
+		if (this.webSocketControlsCreated) {
+			return;
+		}
+		for (let i = 0; i < count; i++) {
+			await this.createSocketControlsForIndex(i);
+		}
+		await this.subscribeStatesAsync("control.Sockets.*");
+		this.webSocketControlsCreated = true;
+		this.log.info(`mein-senec.de: Created web socket controls for ${count} socket(s)`);
+	}
+
+	/**
+	 * Create unified socket control datapoints for a single socket index.
+	 * Shared by both local and web socket control creation.
+	 *
+	 * @param {number} idx - Socket index
+	 */
+	async createSocketControlsForIndex(idx) {
+		const ch = `control.Sockets.${idx}`;
+		await this.setObjectNotExistsAsync(ch, {
+			type: "channel",
+			common: { name: `Socket ${idx}` },
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(`${ch}.Name`, {
+			type: "state",
+			common: {
+				name: "Socket name",
+				type: "string",
+				role: "text",
+				read: true,
+				write: true,
+				def: "",
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(`${ch}.Mode`, {
+			type: "state",
+			common: {
+				name: "Mode",
+				type: "string",
+				role: "text",
+				read: true,
+				write: true,
+				def: "OFF",
+				states: { OFF: "Off", PERMANENT_ON: "On", AUTOMATIC: "Auto" },
+			},
+			native: {},
+		});
+		const numStates = [
+			{ id: "EinschaltschwelleInWatt", name: "Switch-on threshold", unit: "W" },
+			{ id: "AbschaltschwelleInWatt", name: "Switch-off threshold", unit: "W" },
+			{ id: "DauerLeistungsueberschussInMin", name: "Power surplus duration", unit: "min" },
+			{ id: "DauerSteckdoseAnInMin", name: "Socket on duration", unit: "min" },
+			{ id: "EinschaltHour", name: "Switch-on hour", unit: "" },
+			{ id: "EinschaltMinute", name: "Switch-on minute", unit: "" },
+		];
+		for (const s of numStates) {
+			await this.setObjectNotExistsAsync(`${ch}.${s.id}`, {
+				type: "state",
+				common: {
+					name: s.name,
+					type: "number",
+					role: "level",
+					unit: s.unit,
+					read: true,
+					write: true,
+					def: 0,
+				},
+				native: {},
+			});
+		}
+		await this.setObjectNotExistsAsync(`${ch}.Apply`, {
+			type: "state",
+			common: {
+				name: "Apply pending changes",
+				type: "boolean",
+				role: "button",
+				read: true,
+				write: true,
+				def: false,
+			},
+			native: {},
+		});
 	}
 
 	/**
@@ -4545,6 +4711,147 @@ class Senec extends utils.Adapter {
 				await this.setStateChangedAsync(`${pfx}.${mapping.field}`, { val: data[apiKey], ack: true });
 			}
 		}
+	}
+
+	/**
+	 * Sync web socket control datapoints with values read from the portal.
+	 *
+	 * @param {number} idx - Socket index
+	 * @param {object} data - Socket data from the API
+	 */
+	async webSyncSocketControls(idx, data) {
+		if (!this.webSocketControlsCreated) {
+			return;
+		}
+		const pfx = `control.Sockets.${idx}`;
+		if (data.name !== undefined) {
+			await this.setStateChangedAsync(`${pfx}.Name`, { val: String(data.name), ack: true });
+		}
+		if (data.mode !== undefined) {
+			await this.setStateChangedAsync(`${pfx}.Mode`, { val: String(data.mode), ack: true });
+		}
+		if (data.einschaltschwelleInWatt !== undefined) {
+			await this.setStateChangedAsync(`${pfx}.EinschaltschwelleInWatt`, {
+				val: Number(data.einschaltschwelleInWatt),
+				ack: true,
+			});
+		}
+		if (data.abschaltschwelleInWatt !== undefined) {
+			await this.setStateChangedAsync(`${pfx}.AbschaltschwelleInWatt`, {
+				val: Number(data.abschaltschwelleInWatt),
+				ack: true,
+			});
+		}
+		if (data.dauerLeistungsueberschussInMin !== undefined) {
+			await this.setStateChangedAsync(`${pfx}.DauerLeistungsueberschussInMin`, {
+				val: Number(data.dauerLeistungsueberschussInMin),
+				ack: true,
+			});
+		}
+		if (data.dauerSteckdoseAnInMin !== undefined) {
+			await this.setStateChangedAsync(`${pfx}.DauerSteckdoseAnInMin`, {
+				val: Number(data.dauerSteckdoseAnInMin),
+				ack: true,
+			});
+		}
+		if (Array.isArray(data.einschaltzeit) && data.einschaltzeit.length >= 2) {
+			await this.setStateChangedAsync(`${pfx}.EinschaltHour`, {
+				val: Number(data.einschaltzeit[0]) || 0,
+				ack: true,
+			});
+			await this.setStateChangedAsync(`${pfx}.EinschaltMinute`, {
+				val: Number(data.einschaltzeit[1]) || 0,
+				ack: true,
+			});
+		}
+	}
+
+	/**
+	 * Handle a web socket control command (Apply button).
+	 *
+	 * @param {number} idx - Socket index
+	 * @param {string} field - Field name (e.g. "Apply", "Mode")
+	 * @param {object} state - ioBroker state object
+	 */
+	async webHandleSocketControl(idx, field, state) {
+		// Only act on Apply button
+		if (field !== "Apply" || !state.val) {
+			return;
+		}
+
+		if (!this.webSocketData || !Array.isArray(this.webSocketData)) {
+			this.log.warn("mein-senec.de: No socket data available, cannot apply changes");
+			await this.setStateAsync(`control.Sockets.${idx}.Apply`, { val: false, ack: true });
+			return;
+		}
+
+		const pn = this.webMasterPlantNumber;
+		const pfx = `control.Sockets.${idx}`;
+
+		// Read current control values
+		const nameState = await this.getStateAsync(`${this.namespace}.${pfx}.Name`);
+		const modeState = await this.getStateAsync(`${this.namespace}.${pfx}.Mode`);
+		const onThreshState = await this.getStateAsync(`${this.namespace}.${pfx}.EinschaltschwelleInWatt`);
+		const offThreshState = await this.getStateAsync(`${this.namespace}.${pfx}.AbschaltschwelleInWatt`);
+		const surplusDurState = await this.getStateAsync(`${this.namespace}.${pfx}.DauerLeistungsueberschussInMin`);
+		const socketDurState = await this.getStateAsync(`${this.namespace}.${pfx}.DauerSteckdoseAnInMin`);
+		const hourState = await this.getStateAsync(`${this.namespace}.${pfx}.EinschaltHour`);
+		const minuteState = await this.getStateAsync(`${this.namespace}.${pfx}.EinschaltMinute`);
+
+		// Clone the full socket array and update the target socket
+		const payload = JSON.parse(JSON.stringify(this.webSocketData));
+		const socket = payload.find((s) => (s.steckdosenummer ?? s.steckdosennummer) === idx);
+		if (!socket) {
+			this.log.warn(`mein-senec.de: Socket ${idx} not found in stored data`);
+			await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
+			return;
+		}
+
+		if (nameState?.val !== undefined && nameState.val !== null) {
+			socket.name = String(nameState.val);
+		}
+		socket.mode = String(modeState?.val || socket.mode);
+		socket.einschaltschwelleInWatt = Number(onThreshState?.val) || 0;
+		socket.abschaltschwelleInWatt = Number(offThreshState?.val) || 0;
+		socket.dauerLeistungsueberschussInMin = Number(surplusDurState?.val) || 0;
+		socket.dauerSteckdoseAnInMin = Number(socketDurState?.val) || 0;
+		if (socket.mode === "AUTOMATIC") {
+			socket.einschaltzeit = [Number(hourState?.val) || 0, Number(minuteState?.val) || 0];
+		}
+
+		this.log.info(`mein-senec.de: Applying socket ${idx} settings (mode=${socket.mode})`);
+		try {
+			const postRes = await this.webPost(`${WEB_HOST}/endkunde/api/steckdosen/save`, payload);
+			if (postRes.status >= 400) {
+				const errMsg = postRes.data?.message || postRes.data?.errorCode || JSON.stringify(postRes.data);
+				this.log.error(`mein-senec.de: Socket save failed (HTTP ${postRes.status}): ${errMsg}`);
+				await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
+				return;
+			}
+
+			// Re-read and sync back
+			const res = await this.webGet(`${WEB_HOST}/endkunde/api/steckdosen/findByGeraetenummer?anlageNummer=${pn}`);
+			if (res?.data && Array.isArray(res.data)) {
+				this.webSocketData = res.data;
+				for (const s of res.data) {
+					const sIdx = s.steckdosenummer ?? s.steckdosennummer;
+					if (sIdx === undefined) {
+						continue;
+					}
+					const { steuereinheit: _se, state: sState, ...sFields } = s;
+					await this.evalPoll(sFields, `_meinsenec.Sockets.${sIdx}.`);
+					if (sState && typeof sState === "object") {
+						const { steuereinheit: _sse, ...sStateFields } = sState;
+						await this.evalPoll(sStateFields, `_meinsenec.Sockets.${sIdx}.State.`);
+					}
+					await this.webSyncSocketControls(sIdx, s);
+				}
+			}
+			this.log.info(`mein-senec.de: Socket ${idx} settings applied`);
+		} catch (error) {
+			this.logError(error, "mein-senec.de: Failed to apply socket settings");
+		}
+		await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
 	}
 
 	/**

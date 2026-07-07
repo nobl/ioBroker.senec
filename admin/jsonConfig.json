@@ -226,18 +226,6 @@
 							"min": 720,
 							"max": 2880,
 							"newLine": false
-						},
-						"api_showPolling": {
-							"type": "checkbox",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "apiShowPolling",
-							"help": "apiShowPollingHelp",
-							"default": true,
-							"newLine": true
 						}
 					}
 				},
@@ -365,52 +353,6 @@
 							"default": 2025,
 							"hidden": "data.api_alltimeRebuildMode === 'off'",
 							"newLine": false
-						}
-					}
-				},
-				"_apiDebug": {
-					"type": "panel",
-					"collapsable": true,
-					"label": "apiDebugAndLogging",
-					"xs": 12,
-					"hidden": "data.api_use !== true",
-					"newLine": true,
-					"items": {
-						"api_reqnresp_log": {
-							"type": "checkbox",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "apiReqRespLog",
-							"help": "apiReqRespLogHelp",
-							"default": false,
-							"newLine": true
-						},
-						"api_debug_log": {
-							"type": "checkbox",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "apiDebugLog",
-							"help": "apiDebugLogHelp",
-							"default": false,
-							"newLine": true
-						},
-						"api_debug_states": {
-							"type": "checkbox",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "apiDebugStates",
-							"help": "apiDebugStatesHelp",
-							"default": false,
-							"newLine": true
 						}
 					}
 				}
@@ -652,6 +594,22 @@
 					"hidden": "data.control_active !== true && data.control_api_active !== true",
 					"newLine": true
 				},
+				"_wallboxConnectorWarnLocal": {
+					"type": "staticText",
+					"xs": 12,
+					"text": "connectorWarnLocal",
+					"style": { "color": "red" },
+					"hidden": "data.control_wallbox_connector !== 'local' || data.lala_use === true",
+					"newLine": true
+				},
+				"_wallboxConnectorWarnApi": {
+					"type": "staticText",
+					"xs": 12,
+					"text": "connectorWarnApi",
+					"style": { "color": "red" },
+					"hidden": "data.control_wallbox_connector !== 'api' || data.api_use === true",
+					"newLine": true
+				},
 				"control_sockets_connector": {
 					"type": "select",
 					"xs": 12,
@@ -663,11 +621,41 @@
 					"help": "controlSocketsConnectorHelp",
 					"options": [
 						{ "label": "Off", "value": "off" },
-						{ "label": "Local (lala.cgi)", "value": "local" }
+						{ "label": "Local (lala.cgi)", "value": "local" },
+						{ "label": "Web (mein-senec.de)", "value": "web" }
 					],
 					"default": "off",
-					"hidden": "data.control_active !== true",
-					"newLine": false
+					"hidden": "data.control_active !== true && data.control_web_active !== true",
+					"newLine": true
+				},
+				"_socketsConnectorWarnLocal": {
+					"type": "staticText",
+					"xs": 12,
+					"text": "connectorWarnLocal",
+					"style": { "color": "red" },
+					"hidden": "data.control_sockets_connector !== 'local' || data.lala_use === true",
+					"newLine": true
+				},
+				"_socketsConnectorWarnWeb": {
+					"type": "staticText",
+					"xs": 12,
+					"text": "connectorWarnWeb",
+					"style": { "color": "red" },
+					"hidden": "data.control_sockets_connector !== 'web' || data.web_use === true",
+					"newLine": true
+				},
+				"control_sockets_force": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "controlSocketsForce",
+					"help": "controlSocketsForceHelp",
+					"default": false,
+					"hidden": "data.control_sockets_connector === 'off'",
+					"newLine": true
 				},
 				"_webControlInfo": {
 					"type": "staticText",
@@ -944,6 +932,60 @@
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_TEMPMEASURE === ''",
 					"newLine": false
+				}
+			}
+		},
+		"_debug": {
+			"type": "panel",
+			"label": "debugAndLogging",
+			"items": {
+				"api_showPolling": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiShowPolling",
+					"help": "apiShowPollingHelp",
+					"default": true,
+					"newLine": true
+				},
+				"api_reqnresp_log": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiReqRespLog",
+					"help": "apiReqRespLogHelp",
+					"default": false,
+					"newLine": true
+				},
+				"api_debug_log": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiDebugLog",
+					"help": "apiDebugLogHelp",
+					"default": false,
+					"newLine": true
+				},
+				"api_debug_states": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "apiDebugStates",
+					"help": "apiDebugStatesHelp",
+					"default": false,
+					"newLine": true
 				}
 			}
 		}
