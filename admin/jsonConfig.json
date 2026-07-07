@@ -111,6 +111,56 @@
 				}
 			}
 		},
+		"_senecAccount": {
+			"type": "panel",
+			"label": "SENEC_Account",
+			"items": {
+				"_accountInfo": {
+					"type": "staticText",
+					"xs": 12,
+					"text": "senecAccountInfo",
+					"newLine": true
+				},
+				"api_mail": {
+					"type": "text",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "Email",
+					"help": "Email-Help",
+					"default": "",
+					"newLine": true
+				},
+				"api_pwd": {
+					"type": "password",
+					"visible": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "Password",
+					"help": "Password_Help:",
+					"default": "",
+					"newLine": false
+				},
+				"api_totp_secret": {
+					"type": "password",
+					"visible": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "TOTPSecret",
+					"help": "TOTPSecretHelp",
+					"default": "",
+					"newLine": false
+				}
+			}
+		},
 		"_api": {
 			"type": "panel",
 			"label": "SENEC API",
@@ -126,54 +176,6 @@
 					"help": "USE_SENEC_API_HELP",
 					"default": false,
 					"newLine": true
-				},
-				"_apiCredentials": {
-					"type": "panel",
-					"collapsable": true,
-					"label": "apiCredentials",
-					"xs": 12,
-					"hidden": "data.api_use !== true",
-					"newLine": true,
-					"items": {
-						"api_mail": {
-							"type": "text",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "Email",
-							"help": "Email-Help",
-							"default": "",
-							"newLine": true
-						},
-						"api_pwd": {
-							"type": "password",
-							"visible": true,
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "Password",
-							"help": "Password_Help:",
-							"default": "",
-							"newLine": false
-						},
-						"api_totp_secret": {
-							"type": "password",
-							"visible": true,
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"label": "TOTPSecret",
-							"help": "TOTPSecretHelp",
-							"default": "",
-							"newLine": false
-						}
-					}
 				},
 				"_apiPollIntervals": {
 					"type": "panel",

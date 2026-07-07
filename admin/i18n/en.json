@@ -1,4 +1,6 @@
 {
+    "SENEC_Account": "SENEC Account",
+    "senecAccountInfo": "Enter your mein-senec.de credentials here. These are shared by the SENEC App API and mein-senec.de features.",
     "apiCredentials": "Credentials",
     "apiPollIntervals": "Poll Intervals",
     "apiConcurrencyAndUA": "Concurrency & User-Agent",
