@@ -118,6 +118,7 @@ class Senec extends utils.Adapter {
 
 		this.apiConnected = false;
 		this.lalaConnected = false;
+		this.webConnected = false;
 		this.connectVia = "https://";
 		this.unloaded = false;
 
@@ -3874,6 +3875,7 @@ class Senec extends utils.Adapter {
 		}
 
 		// Step 3: Start polling
+		this.webConnected = true;
 		this.webPoll().catch((e) => this.logError(e, "❌ mein-senec.de initial poll failed"));
 	}
 
@@ -3929,7 +3931,7 @@ class Senec extends utils.Adapter {
 	 * Self-scheduling poll loop.
 	 */
 	async webPoll() {
-		if (this.unloaded || !this.webAuthenticated || this.webMasterPlantNumber === null) {
+		if (this.unloaded || !this.webConnected || this.webMasterPlantNumber === null) {
 			return;
 		}
 
