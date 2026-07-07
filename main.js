@@ -4182,15 +4182,31 @@ class Senec extends utils.Adapter {
 				},
 				native: {},
 			});
-			await this.setObjectNotExistsAsync("control.PeakShaving.Endzeit", {
+			await this.setObjectNotExistsAsync("control.PeakShaving.EndHour", {
 				type: "state",
 				common: {
-					name: "End time",
-					type: "string",
-					role: "text",
+					name: "End hour",
+					type: "number",
+					role: "level",
+					min: 0,
+					max: 23,
 					read: true,
 					write: true,
-					def: "",
+					def: 0,
+				},
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("control.PeakShaving.EndMinute", {
+				type: "state",
+				common: {
+					name: "End minute",
+					type: "number",
+					role: "level",
+					min: 0,
+					max: 59,
+					read: true,
+					write: true,
+					def: 0,
 				},
 				native: {},
 			});
@@ -4357,11 +4373,13 @@ class Senec extends utils.Adapter {
 
 		const modeState = await this.getStateAsync(`${this.namespace}.${pfx}.Mode`);
 		const capState = await this.getStateAsync(`${this.namespace}.${pfx}.CapacityLimit`);
-		const endState = await this.getStateAsync(`${this.namespace}.${pfx}.Endzeit`);
+		const hourState = await this.getStateAsync(`${this.namespace}.${pfx}.EndHour`);
+		const minuteState = await this.getStateAsync(`${this.namespace}.${pfx}.EndMinute`);
 
 		const mode = String(modeState?.val || "").toUpperCase();
 		const capacityLimit = Math.max(0, Math.min(90, Number(capState?.val) || 0));
-		const endzeitStr = String(endState?.val || "");
+		const endHour = Math.max(0, Math.min(23, Number(hourState?.val) || 0));
+		const endMinute = Math.max(0, Math.min(59, Number(minuteState?.val) || 0));
 
 		if (!mode) {
 			this.log.warn("mein-senec.de: Peak shaving mode is empty, not applying");
@@ -4369,17 +4387,11 @@ class Senec extends utils.Adapter {
 			return;
 		}
 
-		// Convert readable date (e.g. "2026-07-05 14:00") back to ms timestamp
-		let endzeitMs = "";
-		if (endzeitStr) {
-			const parsed = new Date(endzeitStr.replace(" ", "T"));
-			if (!isNaN(parsed.getTime())) {
-				endzeitMs = String(parsed.getTime());
-			} else {
-				// If already a number, pass through
-				endzeitMs = endzeitStr;
-			}
-		}
+		// Construct UTC ms timestamp — API extracts hour/minute from UTC
+		const now = new Date();
+		const endzeitMs = String(
+			Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), endHour, endMinute, 0, 0),
+		);
 
 		const params = new URLSearchParams({
 			anlageNummer: String(pn),
@@ -4389,7 +4401,7 @@ class Senec extends utils.Adapter {
 		});
 
 		this.log.info(
-			`mein-senec.de: Applying peak shaving settings (mode=${mode}, cap=${capacityLimit}%, end=${endzeitStr})`,
+			`mein-senec.de: Applying peak shaving settings (mode=${mode}, cap=${capacityLimit}%, end=${endHour}:${String(endMinute).padStart(2, "0")})`,
 		);
 		try {
 			const postRes = await this.webPost(
@@ -4431,15 +4443,15 @@ class Senec extends utils.Adapter {
 				ack: true,
 			});
 		}
-		if (data.peakShavingEndDate !== undefined) {
-			const endMs =
-				typeof data.peakShavingEndDate === "number"
-					? data.peakShavingEndDate > 1e12
-						? data.peakShavingEndDate
-						: data.peakShavingEndDate * 1000
-					: Number(data.peakShavingEndDate) || 0;
-			const endStr = endMs ? new Date(endMs).toISOString().slice(0, 16).replace("T", " ") : "";
-			await this.setStateChangedAsync(`${pfx}.Endzeit`, { val: endStr, ack: true });
+		if (Array.isArray(data.peakShavingLocalEndTime) && data.peakShavingLocalEndTime.length >= 2) {
+			await this.setStateChangedAsync(`${pfx}.EndHour`, {
+				val: Number(data.peakShavingLocalEndTime[0]) || 0,
+				ack: true,
+			});
+			await this.setStateChangedAsync(`${pfx}.EndMinute`, {
+				val: Number(data.peakShavingLocalEndTime[1]) || 0,
+				ack: true,
+			});
 		}
 	}
 
