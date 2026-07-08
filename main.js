@@ -3894,32 +3894,51 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * GET request to mein-senec.de with auto re-auth on session expiry.
+	 * Shared mein-senec.de HTTP request with session-expiry re-auth.
 	 *
+	 * @param {"get" | "post"} method - HTTP method
 	 * @param {string} url - URL to request
+	 * @param {object} [data] - Optional JSON body (POST only)
 	 * @returns {Promise<object>} axios response
 	 */
-	async webGet(url) {
-		this.log.debug(`mein-senec.de GET: ${url}`);
-		const res = await this.authClient.get(url, {
-			jar: this.webJar,
-			maxRedirects: 5,
-			validateStatus: () => true,
-		});
+	async _webRequest(method, url, data) {
+		const label = method.toUpperCase();
+		this.log.debug(`mein-senec.de ${label}: ${url}`);
+
+		const baseConfig = { jar: this.webJar, maxRedirects: 5 };
+		const headers = method === "post" && data !== undefined ? { "Content-Type": "application/json" } : undefined;
+		const config = { ...baseConfig, validateStatus: () => true, ...(headers ? { headers } : {}) };
+
+		const res =
+			method === "get" ? await this.authClient.get(url, config) : await this.authClient.post(url, data, config);
+
 		if (this.config.api_reqnresp_log) {
-			this.log.debug(`mein-senec.de GET response: HTTP ${res.status} → ${JSON.stringify(res.data)}`);
+			this.log.debug(`mein-senec.de ${label} response: HTTP ${res.status} → ${JSON.stringify(res.data)}`);
 		} else {
-			this.log.debug(`mein-senec.de GET response: HTTP ${res.status}`);
+			this.log.debug(`mein-senec.de ${label} response: HTTP ${res.status}`);
 		}
+
 		if (res.status === 200 && typeof res.data === "string" && res.data.includes("Login - SENEC")) {
 			this.log.debug("mein-senec.de: Session expired, re-authenticating...");
 			this.webAuthenticated = await this.webLogin();
 			if (!this.webAuthenticated) {
 				throw new Error("mein-senec.de re-authentication failed");
 			}
-			return this.authClient.get(url, { jar: this.webJar, maxRedirects: 5 });
+			return method === "get"
+				? this.authClient.get(url, baseConfig)
+				: this.authClient.post(url, data, baseConfig);
 		}
 		return res;
+	}
+
+	/**
+	 * GET request to mein-senec.de with auto re-auth on session expiry.
+	 *
+	 * @param {string} url - URL to request
+	 * @returns {Promise<object>} axios response
+	 */
+	async webGet(url) {
+		return this._webRequest("get", url);
 	}
 
 	/**
@@ -3930,26 +3949,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} axios response
 	 */
 	async webPost(url, data) {
-		this.log.debug(`mein-senec.de POST: ${url}`);
-		const config = { jar: this.webJar, maxRedirects: 5, validateStatus: () => true };
-		if (data !== undefined) {
-			config.headers = { "Content-Type": "application/json" };
-		}
-		const res = await this.authClient.post(url, data, config);
-		if (this.config.api_reqnresp_log) {
-			this.log.debug(`mein-senec.de POST response: HTTP ${res.status} → ${JSON.stringify(res.data)}`);
-		} else {
-			this.log.debug(`mein-senec.de POST response: HTTP ${res.status}`);
-		}
-		if (res.status === 200 && typeof res.data === "string" && res.data.includes("Login - SENEC")) {
-			this.log.debug("mein-senec.de: Session expired, re-authenticating...");
-			this.webAuthenticated = await this.webLogin();
-			if (!this.webAuthenticated) {
-				throw new Error("mein-senec.de re-authentication failed");
-			}
-			return this.authClient.post(url, data, { jar: this.webJar, maxRedirects: 5 });
-		}
-		return res;
+		return this._webRequest("post", url, data);
 	}
 
 	/**
