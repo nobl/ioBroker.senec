@@ -11,6 +11,8 @@
 		"node_modules/",
 		"widgets/",
 		"test/",
-		"*.test.js"
+		"*.test.js",
+		"lib/measurements.js",
+		"lib/rebuild.js"
 	]
 }
