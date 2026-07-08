@@ -107,7 +107,7 @@
     "controlSocketsConnector": "套接字控制通过",
     "controlSocketsConnectorHelp": "选择哪个连接器应处理可切换插座控制。仅当您的 SENEC 系统配置了可切换插座时才可用。",
     "controlSocketsForce": "强制套接字控制（覆盖）",
-    "controlSocketsForceHelp": "Enable socket control even if your system does not report socket capability. Use this if you have sockets but the feature is not detected (e.g. missing license). This is untested — use at your own risk and please report your experience to the developer.",
+    "controlSocketsForceHelp": "即使您的系统不报告套接字功能，也启用套接字控制。如果您有套接字但未检测到该功能（例如缺少许可证），请使用此选项。这是未经测试的——使用风险由您自行承担，请向开发人员报告您的体验。",
     "controlSocketsHelp": "需要 lala.cgi 连接！激活后，可通过“control.Sockets”数据点控制可切换插座（schaltbare Kontakte）。仅当您的 SENEC 系统配置了可切换插座时才可用。",
     "controlWallbox": "允许壁箱控制（实验性）",
     "controlWallboxConnector": "墙盒控制通过",
