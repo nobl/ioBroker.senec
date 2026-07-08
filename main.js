@@ -550,7 +550,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} description - Human-readable description for error logging
 	 */
 	async localSendControl(stateId, payload, description) {
-		return localClient.localSendControl.call(this, stateId, payload, description);
+		return localClient.localSendControl(this, stateId, payload, description);
 	}
 
 	/**
@@ -564,7 +564,7 @@ class Senec extends utils.Adapter {
 	 * @param {boolean | number | string} value - The value to set
 	 */
 	async localHandleSocketControl(stateId, socketIdx, field, value) {
-		return localClient.localHandleSocketControl.call(this, stateId, socketIdx, field, value);
+		return localClient.localHandleSocketControl(this, stateId, socketIdx, field, value);
 	}
 
 	/**
@@ -572,7 +572,7 @@ class Senec extends utils.Adapter {
 	 * Called once after the first local poll reveals NUMBER_OF_SOCKETS.
 	 */
 	async localCreateSocketControls() {
-		return localClient.localCreateSocketControls.call(this);
+		return localClient.localCreateSocketControls(this);
 	}
 
 	/**
@@ -585,11 +585,11 @@ class Senec extends utils.Adapter {
 	 * @param {string} label - Human-readable label for log messages
 	 */
 	async cleanupControlChannels(pattern, label) {
-		return localClient.cleanupControlChannels.call(this, pattern, label);
+		return localClient.cleanupControlChannels(this, pattern, label);
 	}
 
 	async localCleanupSocketControls() {
-		return localClient.localCleanupSocketControls.call(this);
+		return localClient.localCleanupSocketControls(this);
 	}
 
 	/**
@@ -599,7 +599,7 @@ class Senec extends utils.Adapter {
 	 * @param {object} obj - The full parsed poll response
 	 */
 	async localDiscoverAndSyncControls(obj) {
-		return localClient.localDiscoverAndSyncControls.call(this, obj);
+		return localClient.localDiscoverAndSyncControls(this, obj);
 	}
 
 	/**
@@ -608,7 +608,7 @@ class Senec extends utils.Adapter {
 	 * @param {object} socketsData - The SOCKETS section from the poll response
 	 */
 	async localSyncSocketControls(socketsData) {
-		return localClient.localSyncSocketControls.call(this, socketsData);
+		return localClient.localSyncSocketControls(this, socketsData);
 	}
 
 	/**
@@ -622,7 +622,7 @@ class Senec extends utils.Adapter {
 	 * @param {boolean | number | string} value - The value to set
 	 */
 	async localHandleWallboxControl(stateId, wbIdx, field, value) {
-		return localClient.localHandleWallboxControl.call(this, stateId, wbIdx, field, value);
+		return localClient.localHandleWallboxControl(this, stateId, wbIdx, field, value);
 	}
 
 	/**
@@ -630,7 +630,7 @@ class Senec extends utils.Adapter {
 	 * Called once after the first local poll reveals wallbox data.
 	 */
 	async localCreateWallboxControls() {
-		return localClient.localCreateWallboxControls.call(this);
+		return localClient.localCreateWallboxControls(this);
 	}
 
 	/**
@@ -639,14 +639,14 @@ class Senec extends utils.Adapter {
 	 * @param {object} wallboxData - The WALLBOX section from the poll response
 	 */
 	async localSyncWallboxControls(wallboxData) {
-		return localClient.localSyncWallboxControls.call(this, wallboxData);
+		return localClient.localSyncWallboxControls(this, wallboxData);
 	}
 
 	/**
 	 * Remove leftover wallbox control datapoints when no wallboxes are available.
 	 */
 	async localCleanupWallboxControls() {
-		return localClient.localCleanupWallboxControls.call(this);
+		return localClient.localCleanupWallboxControls(this);
 	}
 
 	/**
@@ -730,11 +730,11 @@ class Senec extends utils.Adapter {
 	}
 
 	async localInitPollSettings() {
-		return localClient.localInitPollSettings.call(this);
+		return localClient.localInitPollSettings(this);
 	}
 
 	addUserDps(value, objectsSet, dpToAdd) {
-		return localClient.addUserDps.call(this, value, objectsSet, dpToAdd);
+		return localClient.addUserDps(this, value, objectsSet, dpToAdd);
 	}
 
 	/**
@@ -915,7 +915,7 @@ class Senec extends utils.Adapter {
 	 * checks connection to senec service
 	 */
 	async localCheckConnection() {
-		return localClient.localCheckConnection.call(this);
+		return localClient.localCheckConnection(this);
 	}
 
 	/**
@@ -925,7 +925,7 @@ class Senec extends utils.Adapter {
 	 * Results are stored in the info.discoveredSections datapoint.
 	 */
 	async localDiscoverSections() {
-		return localClient.localDiscoverSections.call(this);
+		return localClient.localDiscoverSections(this);
 	}
 
 	/**
@@ -938,7 +938,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<boolean>} A promise resolving to true if a valid token is obtained, false otherwise.
 	 */
 	async apiStartTokenManager() {
-		return apiClient.apiStartTokenManager.call(this);
+		return apiClient.apiStartTokenManager(this);
 	}
 
 	/**
@@ -951,7 +951,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<string|null>} The access token if login is successful, or null if login fails.
 	 */
 	async apiLogin() {
-		return apiClient.apiLogin.call(this);
+		return apiClient.apiLogin(this);
 	}
 
 	/**
@@ -962,11 +962,11 @@ class Senec extends utils.Adapter {
 	 * @returns {void}
 	 */
 	scheduleTokenRefresh() {
-		return apiClient.scheduleTokenRefresh.call(this);
+		return apiClient.scheduleTokenRefresh(this);
 	}
 
 	async apiRefreshToken() {
-		return apiClient.apiRefreshToken.call(this);
+		return apiClient.apiRefreshToken(this);
 	}
 
 	/**
@@ -977,7 +977,7 @@ class Senec extends utils.Adapter {
 	 * @throws {Error} Will throw an error if the API call fails or if all scheduled tasks fail during the poll cycle.
 	 */
 	async apiPoll() {
-		return apiClient.apiPoll.call(this);
+		return apiClient.apiPoll(this);
 	}
 
 	/**
@@ -987,7 +987,7 @@ class Senec extends utils.Adapter {
 	 * @param {number} delay - The delay in milliseconds before the next poll.
 	 */
 	apiScheduleNextPoll(delay) {
-		return apiClient.apiScheduleNextPoll.call(this, delay);
+		return apiClient.apiScheduleNextPoll(this, delay);
 	}
 
 	/**
@@ -998,7 +998,7 @@ class Senec extends utils.Adapter {
 	 * @returns {object} Context object containing flags for which tasks to run and relevant date information for the API calls.
 	 */
 	apiBuildPollContext() {
-		return apiClient.apiBuildPollContext.call(this);
+		return apiClient.apiBuildPollContext(this);
 	}
 
 	/**
@@ -1009,7 +1009,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>}
 	 */
 	async apiEnsureSystemsLoaded() {
-		return apiClient.apiEnsureSystemsLoaded.call(this);
+		return apiClient.apiEnsureSystemsLoaded(this);
 	}
 
 	/**
@@ -1020,7 +1020,7 @@ class Senec extends utils.Adapter {
 	 * @throws {Error} Will throw an error if all scheduled tasks fail during the poll cycle.
 	 */
 	async apiRunPollCycle() {
-		return apiClient.apiRunPollCycle.call(this);
+		return apiClient.apiRunPollCycle(this);
 	}
 
 	/**
@@ -1034,7 +1034,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<{failed: boolean;dashboardScheduled: boolean;detailsScheduled: boolean;heavyScheduled: boolean;dashboardSucceeded: boolean;detailsSucceeded: boolean;heavySucceeded: boolean;rebuildExecuted: boolean;}>} Result of the API poll for the system, including success and failure status for each task type.
 	 */
 	async apiPollSingleSystem(anlagenId, ctx, rebuildAlreadyExecuted) {
-		return apiClient.apiPollSingleSystem.call(this, anlagenId, ctx, rebuildAlreadyExecuted);
+		return apiClient.apiPollSingleSystem(this, anlagenId, ctx, rebuildAlreadyExecuted);
 	}
 
 	/**
@@ -1045,7 +1045,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollDashboard(anlagenId) {
-		return apiClient.apiPollDashboard.call(this, anlagenId);
+		return apiClient.apiPollDashboard(this, anlagenId);
 	}
 
 	/**
@@ -1058,7 +1058,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} pollName - Name for lastPoll state and log messages
 	 */
 	async _apiPollEndpoint(anlagenId, url, evalPrefix, pollName) {
-		return apiClient._apiPollEndpoint.call(this, anlagenId, url, evalPrefix, pollName);
+		return apiClient._apiPollEndpoint(this, anlagenId, url, evalPrefix, pollName);
 	}
 
 	/**
@@ -1068,7 +1068,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollOnlineState(anlagenId) {
-		return apiClient.apiPollOnlineState.call(this, anlagenId);
+		return apiClient.apiPollOnlineState(this, anlagenId);
 	}
 
 	/**
@@ -1078,7 +1078,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollSystemStatus(anlagenId) {
-		return apiClient.apiPollSystemStatus.call(this, anlagenId);
+		return apiClient.apiPollSystemStatus(this, anlagenId);
 	}
 
 	/**
@@ -1088,7 +1088,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollSystemDetails(anlagenId) {
-		return apiClient.apiPollSystemDetails.call(this, anlagenId);
+		return apiClient.apiPollSystemDetails(this, anlagenId);
 	}
 
 	/**
@@ -1098,7 +1098,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollAbilities(anlagenId) {
-		return apiClient.apiPollAbilities.call(this, anlagenId);
+		return apiClient.apiPollAbilities(this, anlagenId);
 	}
 
 	/**
@@ -1108,7 +1108,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollForecastChargingSettings(anlagenId) {
-		return apiClient.apiPollForecastChargingSettings.call(this, anlagenId);
+		return apiClient.apiPollForecastChargingSettings(this, anlagenId);
 	}
 
 	/**
@@ -1118,7 +1118,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to search wallboxes for.
 	 */
 	async apiPollWallboxSearch(anlagenId) {
-		return apiClient.apiPollWallboxSearch.call(this, anlagenId);
+		return apiClient.apiPollWallboxSearch(this, anlagenId);
 	}
 
 	/**
@@ -1126,14 +1126,14 @@ class Senec extends utils.Adapter {
 	 * Called once after wallbox search discovers wallboxes.
 	 */
 	async apiCreateWallboxControls() {
-		return apiClient.apiCreateWallboxControls.call(this);
+		return apiClient.apiCreateWallboxControls(this);
 	}
 
 	/**
 	 * Sync API wallbox control datapoints with values from the cached wallbox objects.
 	 */
 	async apiSyncWallboxControls() {
-		return apiClient.apiSyncWallboxControls.call(this);
+		return apiClient.apiSyncWallboxControls(this);
 	}
 
 	/**
@@ -1146,7 +1146,7 @@ class Senec extends utils.Adapter {
 	 * @param {boolean | number | string} value - The value to set
 	 */
 	async apiHandleWallboxControl(wbIdx, field, value) {
-		return apiClient.apiHandleWallboxControl.call(this, wbIdx, field, value);
+		return apiClient.apiHandleWallboxControl(this, wbIdx, field, value);
 	}
 
 	/**
@@ -1157,7 +1157,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollDataAvailability(anlagenId) {
-		return apiClient.apiPollDataAvailability.call(this, anlagenId);
+		return apiClient.apiPollDataAvailability(this, anlagenId);
 	}
 
 	/**
@@ -1169,7 +1169,7 @@ class Senec extends utils.Adapter {
 	 * @param {(() => Promise<void>)} [beforeLastPoll] - Optional async work to run after tasks but before lastPoll
 	 */
 	async _runMeasurementTasks(anlagenId, tasks, pollName, beforeLastPoll) {
-		return apiClient._runMeasurementTasks.call(this, anlagenId, tasks, pollName, beforeLastPoll);
+		return apiClient._runMeasurementTasks(this, anlagenId, tasks, pollName, beforeLastPoll);
 	}
 
 	/**
@@ -1180,7 +1180,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>}
 	 */
 	async apiPollDetails(anlagenId, ctx) {
-		return apiClient.apiPollDetails.call(this, anlagenId, ctx);
+		return apiClient.apiPollDetails(this, anlagenId, ctx);
 	}
 
 	/**
@@ -1191,7 +1191,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>}
 	 */
 	async apiPollHeavy(anlagenId, ctx) {
-		return apiClient.apiPollHeavy.call(this, anlagenId, ctx);
+		return apiClient.apiPollHeavy(this, anlagenId, ctx);
 	}
 
 	/**
@@ -1214,7 +1214,7 @@ class Senec extends utils.Adapter {
 	 * @param {object} result - The result object of the poll cycle, containing counts of scheduled and succeeded tasks for each task type, as well as the total number of known systems.
 	 */
 	apiFinalizePollTimestamps(result) {
-		return apiClient.apiFinalizePollTimestamps.call(this, result);
+		return apiClient.apiFinalizePollTimestamps(this, result);
 	}
 
 	/**
@@ -1233,7 +1233,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} The axios response
 	 */
 	async _apiRequest(method, url, data, config = {}) {
-		return apiClient._apiRequest.call(this, method, url, data, config);
+		return apiClient._apiRequest(this, method, url, data, config);
 	}
 
 	/**
@@ -1244,7 +1244,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} The axios response
 	 */
 	async apiGet(url, config = {}) {
-		return apiClient.apiGet.call(this, url, config);
+		return apiClient.apiGet(this, url, config);
 	}
 
 	/**
@@ -1256,7 +1256,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} The axios response
 	 */
 	async apiPost(url, data, config = {}) {
-		return apiClient.apiPost.call(this, url, data, config);
+		return apiClient.apiPost(this, url, data, config);
 	}
 
 	/**
@@ -1268,7 +1268,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} The axios response
 	 */
 	async apiPatch(url, data, config = {}) {
-		return apiClient.apiPatch.call(this, url, data, config);
+		return apiClient.apiPatch(this, url, data, config);
 	}
 
 	/**
@@ -1278,7 +1278,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>} Resolves when the current rebuild batch is done
 	 */
 	async doRebuild(anlagenId) {
-		return rebuild.doRebuild.call(this, anlagenId);
+		return rebuild.doRebuild(this, anlagenId);
 	}
 
 	/**
@@ -1306,7 +1306,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<{status: "success" | "no_data" | "skipped_existing"}>} Result of the measurement request indicating success, absence of data, or that the data was already up to date.
 	 */
 	async doMeasurementsYear(anlagenId, year, months, wallbox) {
-		return measurements.doMeasurementsYear.call(this, anlagenId, year, months, wallbox);
+		return measurements.doMeasurementsYear(this, anlagenId, year, months, wallbox);
 	}
 
 	/**
@@ -1319,7 +1319,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<{status: "success" | "no_data" | "skipped_existing"}>} Result of the measurement request indicating success, absence of data, or that the data was already up to date.
 	 */
 	async doMeasurementsMonth(anlagenId, date, period, wallbox) {
-		return measurements.doMeasurementsMonth.call(this, anlagenId, date, period, wallbox);
+		return measurements.doMeasurementsMonth(this, anlagenId, date, period, wallbox);
 	}
 
 	/**
@@ -1332,7 +1332,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<{status: "success" | "no_data" | "skipped_existing"}>} Result of the measurement request indicating success, absence of data, or that the data was already up to date.
 	 */
 	async doMeasurementsDay(anlagenId, date, period, wallbox) {
-		return measurements.doMeasurementsDay.call(this, anlagenId, date, period, wallbox);
+		return measurements.doMeasurementsDay(this, anlagenId, date, period, wallbox);
 	}
 
 	/**
@@ -1347,7 +1347,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<{status: "success" | "no_data"}>} Result of the measurement fetch
 	 */
 	async _fetchAndSumMeasurements(url, anlagenId, pfx, period, logLabel) {
-		return measurements._fetchAndSumMeasurements.call(this, url, anlagenId, pfx, period, logLabel);
+		return measurements._fetchAndSumMeasurements(this, url, anlagenId, pfx, period, logLabel);
 	}
 
 	/**
@@ -1361,7 +1361,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} period period to sum for
 	 */
 	async doSumMeasurements(data, anlagenId, pfx, period) {
-		return measurements.doSumMeasurements.call(this, data, anlagenId, pfx, period);
+		return measurements.doSumMeasurements(this, data, anlagenId, pfx, period);
 	}
 
 	/**
@@ -1416,7 +1416,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<string>} Promise with result
 	 */
 	async localDoGet(pUrl, pForm, pollingTimeout, isPost) {
-		return localClient.localDoGet.call(this, pUrl, pForm, pollingTimeout, isPost);
+		return localClient.localDoGet(this, pUrl, pForm, pollingTimeout, isPost);
 	}
 
 	// ── mein-senec.de Debug Probe ──────────────────────────────────────────
@@ -1425,7 +1425,7 @@ class Senec extends utils.Adapter {
 	 * Initialize mein-senec.de: authenticate, discover system, detect features, start polling.
 	 */
 	async webInit() {
-		return webClient.webInit.call(this);
+		return webClient.webInit(this);
 	}
 
 	/**
@@ -1437,7 +1437,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} axios response
 	 */
 	async _webRequest(method, url, data) {
-		return webClient._webRequest.call(this, method, url, data);
+		return webClient._webRequest(this, method, url, data);
 	}
 
 	/**
@@ -1447,7 +1447,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} axios response
 	 */
 	async webGet(url) {
-		return webClient.webGet.call(this, url);
+		return webClient.webGet(this, url);
 	}
 
 	/**
@@ -1458,7 +1458,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} axios response
 	 */
 	async webPost(url, data) {
-		return webClient.webPost.call(this, url, data);
+		return webClient.webPost(this, url, data);
 	}
 
 	/**
@@ -1466,7 +1466,7 @@ class Senec extends utils.Adapter {
 	 * Self-scheduling poll loop.
 	 */
 	async webPoll() {
-		return webClient.webPoll.call(this);
+		return webClient.webPoll(this);
 	}
 
 	/**
@@ -1474,7 +1474,7 @@ class Senec extends utils.Adapter {
 	 * Called once after webInit() discovers the system and its abilities.
 	 */
 	async webCreateControls() {
-		return webClient.webCreateControls.call(this);
+		return webClient.webCreateControls(this);
 	}
 
 	/**
@@ -1484,7 +1484,7 @@ class Senec extends utils.Adapter {
 	 * @param {number} count - Number of sockets
 	 */
 	async webCreateSocketControls(count) {
-		return webClient.webCreateSocketControls.call(this, count);
+		return webClient.webCreateSocketControls(this, count);
 	}
 
 	/**
@@ -1569,14 +1569,14 @@ class Senec extends utils.Adapter {
 	 * @param {object} state - The ioBroker state object
 	 */
 	async webHandleControl(subId, state) {
-		return webClient.webHandleControl.call(this, subId, state);
+		return webClient.webHandleControl(this, subId, state);
 	}
 
 	/**
 	 * Apply pending peak shaving changes to mein-senec.de.
 	 */
 	async webHandlePeakShavingApply() {
-		return webClient.webHandlePeakShavingApply.call(this);
+		return webClient.webHandlePeakShavingApply(this);
 	}
 
 	/**
@@ -1585,14 +1585,14 @@ class Senec extends utils.Adapter {
 	 * @param {object} data - Peak shaving settings from the API
 	 */
 	async webSyncPeakShavingControls(data) {
-		return webClient.webSyncPeakShavingControls.call(this, data);
+		return webClient.webSyncPeakShavingControls(this, data);
 	}
 
 	/**
 	 * Apply pending SG-Ready changes to mein-senec.de.
 	 */
 	async webHandleSGReadyApply() {
-		return webClient.webHandleSGReadyApply.call(this);
+		return webClient.webHandleSGReadyApply(this);
 	}
 
 	/**
@@ -1601,7 +1601,7 @@ class Senec extends utils.Adapter {
 	 * @param {object} data - SG-Ready config from the API
 	 */
 	async webSyncSGReadyControls(data) {
-		return webClient.webSyncSGReadyControls.call(this, data);
+		return webClient.webSyncSGReadyControls(this, data);
 	}
 
 	/**
@@ -1611,7 +1611,7 @@ class Senec extends utils.Adapter {
 	 * @param {object} data - Socket data from the API
 	 */
 	async webSyncSocketControls(idx, data) {
-		return webClient.webSyncSocketControls.call(this, idx, data);
+		return webClient.webSyncSocketControls(this, idx, data);
 	}
 
 	/**
@@ -1622,7 +1622,7 @@ class Senec extends utils.Adapter {
 	 * @param {object} state - ioBroker state object
 	 */
 	async webHandleSocketControl(idx, field, state) {
-		return webClient.webHandleSocketControl.call(this, idx, field, state);
+		return webClient.webHandleSocketControl(this, idx, field, state);
 	}
 
 	/**
@@ -1632,7 +1632,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<boolean>} true if login succeeded
 	 */
 	async webLogin() {
-		return webClient.webLogin.call(this, {
+		return webClient.webLogin(this, {
 			extractFormAction: apiClient.extractFormAction,
 			hasOtp: apiClient.hasOtp,
 			hasUsername: apiClient.hasUsername,
@@ -1647,9 +1647,11 @@ class Senec extends utils.Adapter {
 	 * Polls the SENEC.Connect API for device data.
 	 * Uses subscription key authentication (Ocp-Apim-Subscription-Key header).
 	 * All requested data sections are fetched in a single request via the include parameter.
+	 *
+	 * @returns {Promise<void>}
 	 */
 	async connectPoll() {
-		return connectClient.connectPoll.call(this);
+		return connectClient.connectPoll(this);
 	}
 
 	// ── Local Polling ──────────────────────────────────────────────────────
@@ -1663,7 +1665,7 @@ class Senec extends utils.Adapter {
 	 * @param {number} retry retry count
 	 */
 	async localPoll(isHighPrio, retry) {
-		return localClient.localPoll.call(this, isHighPrio, retry);
+		return localClient.localPoll(this, isHighPrio, retry);
 	}
 
 	/**
@@ -1677,7 +1679,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<Record<string, number> | object>} AllTimeValueStore as object
 	 */
 	async readAllTimeValueStore(valueStore) {
-		return rebuild.readAllTimeValueStore.call(this, valueStore);
+		return rebuild.readAllTimeValueStore(this, valueStore);
 	}
 
 	/**
@@ -1689,11 +1691,11 @@ class Senec extends utils.Adapter {
 	 * @param {number} year Year to insert for
 	 */
 	async insertIntoAllTimeValueStore(sums, anlagenId, year) {
-		return rebuild.insertIntoAllTimeValueStore.call(this, sums, anlagenId, year);
+		return rebuild.insertIntoAllTimeValueStore(this, sums, anlagenId, year);
 	}
 
 	getRebuildStartYear() {
-		return rebuild.getRebuildStartYear.call(this);
+		return rebuild.getRebuildStartYear(this);
 	}
 
 	/**
@@ -1707,7 +1709,7 @@ class Senec extends utils.Adapter {
 	 * @param {string | number} anlagenId Anlagen ID
 	 */
 	async updateAllTimeHistory(anlagenId) {
-		return rebuild.updateAllTimeHistory.call(this, anlagenId);
+		return rebuild.updateAllTimeHistory(this, anlagenId);
 	}
 
 	/**
@@ -1885,7 +1887,7 @@ class Senec extends utils.Adapter {
 	 * This makes the currently observed / practical concurrency visible in ioBroker.
 	 */
 	async apiUpdateQueueStats() {
-		return apiClient.apiUpdateQueueStats.call(this);
+		return apiClient.apiUpdateQueueStats(this);
 	}
 
 	/**
@@ -1893,7 +1895,7 @@ class Senec extends utils.Adapter {
 	 * Info logging is only emitted when api_debug_log is enabled.
 	 */
 	logApiQueueRecommendationIfChanged() {
-		return apiClient.logApiQueueRecommendationIfChanged.call(this);
+		return apiClient.logApiQueueRecommendationIfChanged(this);
 	}
 
 	/**
@@ -1901,7 +1903,7 @@ class Senec extends utils.Adapter {
 	 * Info logging is only emitted when api_debug_log is enabled.
 	 */
 	logApiQueueStatsIfChanged() {
-		return apiClient.logApiQueueStatsIfChanged.call(this);
+		return apiClient.logApiQueueStatsIfChanged(this);
 	}
 
 	/**
@@ -1948,7 +1950,7 @@ class Senec extends utils.Adapter {
 	 * @param {"dashboard" | "details" | "heavy"} type - The type of poll to mark the timestamp for (e.g., "dashboard", "details", "heavy").
 	 */
 	apiMarkPollTimestamp(type) {
-		return apiClient.apiMarkPollTimestamp.call(this, type);
+		return apiClient.apiMarkPollTimestamp(this, type);
 	}
 
 	/**
@@ -2001,11 +2003,11 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - System id
 	 */
 	getAllRebuildStepsForSystem(anlagenId) {
-		return rebuild.getAllRebuildStepsForSystem.call(this, anlagenId);
+		return rebuild.getAllRebuildStepsForSystem(this, anlagenId);
 	}
 
 	getTotalRebuildStepsPerSystem() {
-		return rebuild.getTotalRebuildStepsPerSystem.call(this);
+		return rebuild.getTotalRebuildStepsPerSystem(this);
 	}
 
 	/**
@@ -2019,7 +2021,7 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - System id
 	 */
 	async getPendingRebuildSteps(anlagenId) {
-		return rebuild.getPendingRebuildSteps.call(this, anlagenId);
+		return rebuild.getPendingRebuildSteps(this, anlagenId);
 	}
 
 	/**
@@ -2036,7 +2038,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<boolean>} True if the step is already complete
 	 */
 	async isRebuildStepDone(anlagenId, year, monthly) {
-		return rebuild.isRebuildStepDone.call(this, anlagenId, year, monthly);
+		return rebuild.isRebuildStepDone(this, anlagenId, year, monthly);
 	}
 
 	/**
@@ -2046,7 +2048,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<boolean>} True if the rebuild is finished for the specified system, false otherwise.
 	 */
 	async isRebuildFinishedForSystem(anlagenId) {
-		return rebuild.isRebuildFinishedForSystem.call(this, anlagenId);
+		return rebuild.isRebuildFinishedForSystem(this, anlagenId);
 	}
 
 	/**
@@ -2055,7 +2057,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<boolean>} True if the rebuild is finished for all systems, false otherwise.
 	 */
 	async isRebuildFinishedGlobally() {
-		return rebuild.isRebuildFinishedGlobally.call(this);
+		return rebuild.isRebuildFinishedGlobally(this);
 	}
 
 	/**
@@ -2064,7 +2066,7 @@ class Senec extends utils.Adapter {
 	 * If there are no pending failures, the method simply returns without logging anything.
 	 */
 	logRebuildPendingFailuresIfChanged() {
-		return rebuild.logRebuildPendingFailuresIfChanged.call(this);
+		return rebuild.logRebuildPendingFailuresIfChanged(this);
 	}
 
 	/**
@@ -2075,7 +2077,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<boolean>} True if step finished successfully, otherwise false
 	 */
 	async runSingleRebuildStep(anlagenId, step) {
-		return rebuild.runSingleRebuildStep.call(this, anlagenId, step);
+		return rebuild.runSingleRebuildStep(this, anlagenId, step);
 	}
 
 	/**
@@ -2102,7 +2104,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>} Resolves when marker was written
 	 */
 	async persistRebuildDone(anlagenId, year, monthly) {
-		return rebuild.persistRebuildDone.call(this, anlagenId, year, monthly);
+		return rebuild.persistRebuildDone(this, anlagenId, year, monthly);
 	}
 
 	/**
@@ -2119,28 +2121,28 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>} Resolves when initialization is complete
 	 */
 	async initializeForcedRebuildIfNeeded() {
-		return rebuild.initializeForcedRebuildIfNeeded.call(this);
+		return rebuild.initializeForcedRebuildIfNeeded(this);
 	}
 
 	/**
 	 * @returns {string} normalized rebuild mode
 	 */
 	getRebuildMode() {
-		return rebuild.getRebuildMode.call(this);
+		return rebuild.getRebuildMode(this);
 	}
 
 	/**
 	 * @returns {boolean} true if any rebuild mode is active
 	 */
 	isRebuildEnabled() {
-		return rebuild.isRebuildEnabled.call(this);
+		return rebuild.isRebuildEnabled(this);
 	}
 
 	/**
 	 * @returns {boolean} true if current rebuild mode requests a forced full rebuild
 	 */
 	isForceFullRebuildRequested() {
-		return rebuild.isForceFullRebuildRequested.call(this);
+		return rebuild.isForceFullRebuildRequested(this);
 	}
 
 	/**
