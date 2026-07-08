@@ -774,13 +774,19 @@ class Senec extends utils.Adapter {
 	/**
 	 * Remove leftover socket control datapoints when sockets are unavailable or disabled.
 	 */
-	async localCleanupSocketControls() {
+	/**
+	 * Remove all control channels matching a pattern (e.g. "Sockets" or "Wallbox").
+	 *
+	 * @param {string} pattern - Substring to match in channel IDs (e.g. ".control.Sockets.")
+	 * @param {string} label - Human-readable label for log messages
+	 */
+	async cleanupControlChannels(pattern, label) {
 		const channels = await this.getChannelsOfAsync("control");
 		if (!channels) {
 			return;
 		}
 		for (const ch of channels) {
-			if (ch._id && ch._id.includes(".control.Sockets.")) {
+			if (ch._id && ch._id.includes(pattern)) {
 				const states = await this.getStatesOfAsync(ch._id.replace(`${this.namespace}.`, ""));
 				if (states) {
 					for (const state of states) {
@@ -788,9 +794,13 @@ class Senec extends utils.Adapter {
 					}
 				}
 				await this.delObjectAsync(ch._id);
-				this.log.debug(`Cleaned up socket control channel: ${ch._id}`);
+				this.log.debug(`Cleaned up ${label} control channel: ${ch._id}`);
 			}
 		}
+	}
+
+	async localCleanupSocketControls() {
+		await this.cleanupControlChannels(".control.Sockets.", "socket");
 	}
 
 	/**
@@ -1120,22 +1130,7 @@ class Senec extends utils.Adapter {
 	 * Remove leftover wallbox control datapoints when no wallboxes are available.
 	 */
 	async localCleanupWallboxControls() {
-		const channels = await this.getChannelsOfAsync("control");
-		if (!channels) {
-			return;
-		}
-		for (const ch of channels) {
-			if (ch._id && ch._id.includes(".control.Wallbox.")) {
-				const states = await this.getStatesOfAsync(ch._id.replace(`${this.namespace}.`, ""));
-				if (states) {
-					for (const state of states) {
-						await this.delObjectAsync(state._id);
-					}
-				}
-				await this.delObjectAsync(ch._id);
-				this.log.debug(`Cleaned up wallbox control channel: ${ch._id}`);
-			}
-		}
+		await this.cleanupControlChannels(".control.Wallbox.", "wallbox");
 	}
 
 	/**
