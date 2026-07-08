@@ -17,86 +17,88 @@ const mainExport = proxyquire("../main", {
 });
 
 const t = mainExport._testing;
+const authHelpers = require("../lib/auth-helpers");
 const AdaptiveRequestQueue = require("../lib/AdaptiveRequestQueue");
+const webClient = require("../lib/web-client");
 
 describe("extractFormAction", () => {
 	it("extracts action URL from a form tag", () => {
 		const html = '<form id="login" action="https://sso.senec.com/auth/login" method="POST">';
-		assert.equal(t.extractFormAction(html), "https://sso.senec.com/auth/login");
+		assert.equal(authHelpers.extractFormAction(html), "https://sso.senec.com/auth/login");
 	});
 
 	it("decodes &amp; in action URLs", () => {
 		const html = '<form action="https://sso.senec.com/auth?a=1&amp;b=2" method="POST">';
-		assert.equal(t.extractFormAction(html), "https://sso.senec.com/auth?a=1&b=2");
+		assert.equal(authHelpers.extractFormAction(html), "https://sso.senec.com/auth?a=1&b=2");
 	});
 
 	it("returns null when no form is present", () => {
-		assert.equal(t.extractFormAction("<div>no form here</div>"), null);
+		assert.equal(authHelpers.extractFormAction("<div>no form here</div>"), null);
 	});
 
 	it("returns null when form has no action", () => {
-		assert.equal(t.extractFormAction('<form method="POST"><input name="user"></form>'), null);
+		assert.equal(authHelpers.extractFormAction('<form method="POST"><input name="user"></form>'), null);
 	});
 });
 
 describe("hasUsername", () => {
 	it("detects username input", () => {
-		assert.ok(t.hasUsername('<input type="text" name="username" />'));
+		assert.ok(authHelpers.hasUsername('<input type="text" name="username" />'));
 	});
 
 	it("detects email input", () => {
-		assert.ok(t.hasUsername('<input type="text" name="email" />'));
+		assert.ok(authHelpers.hasUsername('<input type="text" name="email" />'));
 	});
 
 	it("detects user input by id", () => {
-		assert.ok(t.hasUsername('<input type="text" id="username" />'));
+		assert.ok(authHelpers.hasUsername('<input type="text" id="username" />'));
 	});
 
 	it("returns falsy for password-only form", () => {
-		assert.ok(!t.hasUsername('<input type="password" name="password" />'));
+		assert.ok(!authHelpers.hasUsername('<input type="password" name="password" />'));
 	});
 
 	it("returns falsy for empty HTML", () => {
-		assert.ok(!t.hasUsername(""));
+		assert.ok(!authHelpers.hasUsername(""));
 	});
 });
 
 describe("hasPassword", () => {
 	it("detects password input", () => {
-		assert.ok(t.hasPassword('<input type="password" name="password" />'));
+		assert.ok(authHelpers.hasPassword('<input type="password" name="password" />'));
 	});
 
 	it("returns falsy for username-only form", () => {
-		assert.ok(!t.hasPassword('<input type="text" name="username" />'));
+		assert.ok(!authHelpers.hasPassword('<input type="text" name="username" />'));
 	});
 });
 
 describe("hasUsernameAndPassword", () => {
 	it("returns truthy when both are present", () => {
 		const html = '<input name="username" /><input type="password" name="password" />';
-		assert.ok(t.hasUsernameAndPassword(html));
+		assert.ok(authHelpers.hasUsernameAndPassword(html));
 	});
 
 	it("returns falsy when only username is present", () => {
-		assert.ok(!t.hasUsernameAndPassword('<input name="username" />'));
+		assert.ok(!authHelpers.hasUsernameAndPassword('<input name="username" />'));
 	});
 });
 
 describe("hasOtp", () => {
 	it("detects OTP input by name", () => {
-		assert.ok(t.hasOtp('<input type="text" name="otp" />'));
+		assert.ok(authHelpers.hasOtp('<input type="text" name="otp" />'));
 	});
 
 	it("detects OTP input by id", () => {
-		assert.ok(t.hasOtp('<input type="text" id="otp" />'));
+		assert.ok(authHelpers.hasOtp('<input type="text" id="otp" />'));
 	});
 
 	it("returns false for username form", () => {
-		assert.ok(!t.hasOtp('<input type="text" name="username" />'));
+		assert.ok(!authHelpers.hasOtp('<input type="text" name="username" />'));
 	});
 
 	it("returns false for empty HTML", () => {
-		assert.ok(!t.hasOtp(""));
+		assert.ok(!authHelpers.hasOtp(""));
 	});
 
 	it("detects OTP in a full Keycloak-style form", () => {
@@ -105,49 +107,49 @@ describe("hasOtp", () => {
 				<input type="text" name="otp" autocomplete="one-time-code" />
 				<button type="submit">Submit</button>
 			</form>`;
-		assert.ok(t.hasOtp(html));
+		assert.ok(authHelpers.hasOtp(html));
 	});
 });
 
 describe("generateTOTP", () => {
 	it("generates a 6-digit code", () => {
-		const code = t.generateTOTP("JBSWY3DPEHPK3PXP");
+		const code = authHelpers.generateTOTP("JBSWY3DPEHPK3PXP");
 		assert.match(code, /^\d{6}$/);
 	});
 
 	it("generates consistent codes within the same 30s window", () => {
-		const code1 = t.generateTOTP("JBSWY3DPEHPK3PXP");
-		const code2 = t.generateTOTP("JBSWY3DPEHPK3PXP");
+		const code1 = authHelpers.generateTOTP("JBSWY3DPEHPK3PXP");
+		const code2 = authHelpers.generateTOTP("JBSWY3DPEHPK3PXP");
 		assert.equal(code1, code2);
 	});
 
 	it("handles secrets with spaces", () => {
-		const code = t.generateTOTP("JBSW Y3DP EHPK 3PXP");
+		const code = authHelpers.generateTOTP("JBSW Y3DP EHPK 3PXP");
 		assert.match(code, /^\d{6}$/);
 	});
 
 	it("handles lowercase secrets", () => {
-		const upper = t.generateTOTP("JBSWY3DPEHPK3PXP");
-		const lower = t.generateTOTP("jbswy3dpehpk3pxp");
+		const upper = authHelpers.generateTOTP("JBSWY3DPEHPK3PXP");
+		const lower = authHelpers.generateTOTP("jbswy3dpehpk3pxp");
 		assert.equal(upper, lower);
 	});
 
 	it("handles secrets with padding characters", () => {
-		const code = t.generateTOTP("JBSWY3DPEHPK3PXP====");
+		const code = authHelpers.generateTOTP("JBSWY3DPEHPK3PXP====");
 		assert.match(code, /^\d{6}$/);
 	});
 
 	it("throws on invalid base32 characters", () => {
-		assert.throws(() => t.generateTOTP("INVALID!SECRET"), /Invalid base32 character/);
+		assert.throws(() => authHelpers.generateTOTP("INVALID!SECRET"), /Invalid base32 character/);
 	});
 
 	it("throws on secret that is too short", () => {
-		assert.throws(() => t.generateTOTP("A"), /TOTP secret too short/);
+		assert.throws(() => authHelpers.generateTOTP("A"), /TOTP secret too short/);
 	});
 
 	it("different secrets produce different codes", () => {
-		const code1 = t.generateTOTP("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ");
-		const code2 = t.generateTOTP("JBSWY3DPEHPK3PXP");
+		const code1 = authHelpers.generateTOTP("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ");
+		const code2 = authHelpers.generateTOTP("JBSWY3DPEHPK3PXP");
 		assert.match(code1, /^\d{6}$/);
 		assert.match(code2, /^\d{6}$/);
 	});
@@ -155,21 +157,21 @@ describe("generateTOTP", () => {
 
 describe("computeBackoffDelay", () => {
 	it("returns a number >= 0", () => {
-		const delay = t.computeBackoffDelay(1000, 0);
+		const delay = authHelpers.computeBackoffDelay(1000, 0);
 		assert.equal(typeof delay, "number");
 		assert.ok(delay >= 0);
 	});
 
 	it("stays within expected bounds for attempt 0", () => {
 		for (let i = 0; i < 100; i++) {
-			const delay = t.computeBackoffDelay(1000, 0);
+			const delay = authHelpers.computeBackoffDelay(1000, 0);
 			assert.ok(delay >= 0 && delay < 1000, `delay ${delay} out of bounds`);
 		}
 	});
 
 	it("caps at maxMultiplier", () => {
 		for (let i = 0; i < 100; i++) {
-			const delay = t.computeBackoffDelay(1000, 100, 8);
+			const delay = authHelpers.computeBackoffDelay(1000, 100, 8);
 			assert.ok(delay >= 0 && delay < 8000, `delay ${delay} out of bounds`);
 		}
 	});
@@ -179,8 +181,8 @@ describe("computeBackoffDelay", () => {
 		let sum3 = 0;
 		const runs = 1000;
 		for (let i = 0; i < runs; i++) {
-			sum0 += t.computeBackoffDelay(1000, 0);
-			sum3 += t.computeBackoffDelay(1000, 3);
+			sum0 += authHelpers.computeBackoffDelay(1000, 0);
+			sum3 += authHelpers.computeBackoffDelay(1000, 3);
 		}
 		assert.ok(sum3 / runs > sum0 / runs, "higher attempt should produce higher average delay");
 	});
@@ -316,20 +318,20 @@ describe("reviverNumParse", () => {
 
 describe("PKCE helpers", () => {
 	it("generateCodeVerifier returns a non-empty string", () => {
-		const verifier = t.generateCodeVerifier();
+		const verifier = authHelpers.generateCodeVerifier();
 		assert.equal(typeof verifier, "string");
 		assert.ok(verifier.length > 0);
 	});
 
 	it("generateCodeVerifier produces unique values", () => {
-		const v1 = t.generateCodeVerifier();
-		const v2 = t.generateCodeVerifier();
+		const v1 = authHelpers.generateCodeVerifier();
+		const v2 = authHelpers.generateCodeVerifier();
 		assert.notEqual(v1, v2);
 	});
 
 	it("generateCodeChallenge returns a base64url string", () => {
-		const verifier = t.generateCodeVerifier();
-		const challenge = t.generateCodeChallenge(verifier);
+		const verifier = authHelpers.generateCodeVerifier();
+		const challenge = authHelpers.generateCodeChallenge(verifier);
 		assert.equal(typeof challenge, "string");
 		assert.ok(challenge.length > 0);
 		// base64url: no +, /, or =
@@ -337,14 +339,14 @@ describe("PKCE helpers", () => {
 	});
 
 	it("generateCodeChallenge is deterministic for same input", () => {
-		const verifier = t.generateCodeVerifier();
-		const c1 = t.generateCodeChallenge(verifier);
-		const c2 = t.generateCodeChallenge(verifier);
+		const verifier = authHelpers.generateCodeVerifier();
+		const c1 = authHelpers.generateCodeChallenge(verifier);
+		const c2 = authHelpers.generateCodeChallenge(verifier);
 		assert.equal(c1, c2);
 	});
 
 	it("base64UrlEncode produces no padding or special chars", () => {
-		const encoded = t.base64UrlEncode(Buffer.from("hello world"));
+		const encoded = authHelpers.base64UrlEncode(Buffer.from("hello world"));
 		assert.ok(!/[+/=]/.test(encoded));
 	});
 });
@@ -474,22 +476,22 @@ describe("resolveStateAttrKey", () => {
 
 describe("webApiErrorMsg", () => {
 	it("returns message when present", () => {
-		assert.equal(t.webApiErrorMsg({ data: { message: "Not found" } }), "Not found");
+		assert.equal(webClient.webApiErrorMsg({ data: { message: "Not found" } }), "Not found");
 	});
 
 	it("falls back to errorCode when no message", () => {
-		assert.equal(t.webApiErrorMsg({ data: { errorCode: "ERR_001" } }), "ERR_001");
+		assert.equal(webClient.webApiErrorMsg({ data: { errorCode: "ERR_001" } }), "ERR_001");
 	});
 
 	it("falls back to JSON.stringify when neither message nor errorCode", () => {
-		assert.equal(t.webApiErrorMsg({ data: { foo: "bar" } }), '{"foo":"bar"}');
+		assert.equal(webClient.webApiErrorMsg({ data: { foo: "bar" } }), '{"foo":"bar"}');
 	});
 
 	it("prefers message over errorCode", () => {
-		assert.equal(t.webApiErrorMsg({ data: { message: "msg", errorCode: "code" } }), "msg");
+		assert.equal(webClient.webApiErrorMsg({ data: { message: "msg", errorCode: "code" } }), "msg");
 	});
 
 	it("handles null data", () => {
-		assert.equal(t.webApiErrorMsg({ data: null }), "null");
+		assert.equal(webClient.webApiErrorMsg({ data: null }), "null");
 	});
 });
