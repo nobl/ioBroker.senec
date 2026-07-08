@@ -2819,45 +2819,15 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * Polls the API for the details data of a single system.
+	 * Run an array of measurement tasks, summarize results, and update lastPoll.
 	 *
-	 * @param {string} anlagenId anlagen id
-	 * @param {object} ctx context
-	 * @returns {Promise<void>}
+	 * @param {string} anlagenId - System ID
+	 * @param {Array<{fn: () => Promise<{status: string}>, label: string}>} tasks - Measurement tasks
+	 * @param {string} pollName - Name for log messages and lastPoll state
+	 * @param {(() => Promise<void>)} [beforeLastPoll] - Optional async work to run after tasks but before lastPoll
 	 */
-	async apiPollDetails(anlagenId, ctx) {
+	async _runMeasurementTasks(anlagenId, tasks, pollName, beforeLastPoll) {
 		try {
-			const tasks = [
-				{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today"), label: "today" },
-				{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly"), label: "today.hourly" },
-				{ fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday"), label: "yesterday" },
-				{
-					fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly"),
-					label: "yesterday.hourly",
-				},
-			];
-
-			// Add wallbox measurement tasks
-			for (let i = 0; i < this.apiWallboxUuids.length; i++) {
-				const wb = { uuid: this.apiWallboxUuids[i], index: i };
-				tasks.push({
-					fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today", wb),
-					label: `wb${i}.today`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly", wb),
-					label: `wb${i}.today.hourly`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday", wb),
-					label: `wb${i}.yesterday`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly", wb),
-					label: `wb${i}.yesterday.hourly`,
-				});
-			}
-
 			const results = await Promise.all(
 				tasks.map(async (task) => {
 					const res = await task.fn();
@@ -2867,20 +2837,67 @@ class Senec extends utils.Adapter {
 
 			if (this.config.api_debug_log) {
 				for (const r of results) {
-					this.log.debug(`Details ${anlagenId} / ${r.label}: ${r.status}`);
+					this.log.debug(`${pollName} ${anlagenId} / ${r.label}: ${r.status}`);
 				}
 			}
+
 			const summary = this.summarizeMeasurementResults(results);
 			const classification = this.classifyMeasurementSummary(summary);
 
 			this.log.debug(
-				`Details summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
+				`${pollName} summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
 			);
-			await this.updateLastPoll(`${API_PFX}info.lastPoll.Details`, "Last successful Details poll");
+
+			if (beforeLastPoll) {
+				await beforeLastPoll();
+			}
+			await this.updateLastPoll(`${API_PFX}info.lastPoll.${pollName}`, `Last successful ${pollName} poll`);
 		} catch (error) {
-			this.logError(error, `❌ Details poll failed for ${anlagenId}`);
+			this.logError(error, `❌ ${pollName} poll failed for ${anlagenId}`);
 			throw error;
 		}
+	}
+
+	/**
+	 * Polls the API for the details data of a single system.
+	 *
+	 * @param {string} anlagenId anlagen id
+	 * @param {object} ctx context
+	 * @returns {Promise<void>}
+	 */
+	async apiPollDetails(anlagenId, ctx) {
+		const tasks = [
+			{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today"), label: "today" },
+			{ fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly"), label: "today.hourly" },
+			{ fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday"), label: "yesterday" },
+			{
+				fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly"),
+				label: "yesterday.hourly",
+			},
+		];
+
+		// Add wallbox measurement tasks
+		for (let i = 0; i < this.apiWallboxUuids.length; i++) {
+			const wb = { uuid: this.apiWallboxUuids[i], index: i };
+			tasks.push({
+				fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today", wb),
+				label: `wb${i}.today`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsDay(anlagenId, ctx.today, "today.hourly", wb),
+				label: `wb${i}.today.hourly`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday", wb),
+				label: `wb${i}.yesterday`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsDay(anlagenId, ctx.yesterday, "yesterday.hourly", wb),
+				label: `wb${i}.yesterday.hourly`,
+			});
+		}
+
+		await this._runMeasurementTasks(anlagenId, tasks, "Details");
 	}
 
 	/**
@@ -2891,94 +2908,68 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<void>}
 	 */
 	async apiPollHeavy(anlagenId, ctx) {
-		try {
-			const tasks = [
-				{
-					fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month"),
-					label: "current_month",
-				},
-				{
-					fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily"),
-					label: "current_month.daily",
-				},
-				{
-					fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month"),
-					label: "previous_month",
-				},
-				{
-					fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily"),
-					label: "previous_month.daily",
-				},
+		const tasks = [
+			{
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month"),
+				label: "current_month",
+			},
+			{
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily"),
+				label: "current_month.daily",
+			},
+			{
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month"),
+				label: "previous_month",
+			},
+			{
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily"),
+				label: "previous_month.daily",
+			},
 
-				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, false), label: "year" },
-				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, true), label: "year.monthly" },
-				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false), label: "prev_year" },
-				{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true), label: "prev_year.monthly" },
-			];
+			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, false), label: "year" },
+			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, true), label: "year.monthly" },
+			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false), label: "prev_year" },
+			{ fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true), label: "prev_year.monthly" },
+		];
 
-			// Add wallbox measurement tasks
-			for (let i = 0; i < this.apiWallboxUuids.length; i++) {
-				const wb = { uuid: this.apiWallboxUuids[i], index: i };
-				tasks.push({
-					fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month", wb),
-					label: `wb${i}.current_month`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily", wb),
-					label: `wb${i}.current_month.daily`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month", wb),
-					label: `wb${i}.previous_month`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily", wb),
-					label: `wb${i}.previous_month.daily`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, false, wb),
-					label: `wb${i}.year`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, true, wb),
-					label: `wb${i}.year.monthly`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false, wb),
-					label: `wb${i}.prev_year`,
-				});
-				tasks.push({
-					fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true, wb),
-					label: `wb${i}.prev_year.monthly`,
-				});
-			}
-
-			const results = await Promise.all(
-				tasks.map(async (task) => {
-					const res = await task.fn();
-					return { label: task.label, ...res };
-				}),
-			);
-
-			if (this.config.api_debug_log) {
-				for (const r of results) {
-					this.log.debug(`Heavy ${anlagenId} / ${r.label}: ${r.status}`);
-				}
-			}
-
-			const summary = this.summarizeMeasurementResults(results);
-			const classification = this.classifyMeasurementSummary(summary);
-
-			this.log.debug(
-				`Heavy summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
-			);
-
-			await this.updateAllTimeHistory(anlagenId);
-			await this.updateLastPoll(`${API_PFX}info.lastPoll.Heavy`, "Last successful Heavy poll");
-		} catch (error) {
-			this.logError(error, `❌ Heavy poll failed for ${anlagenId}`);
-			throw error;
+		// Add wallbox measurement tasks
+		for (let i = 0; i < this.apiWallboxUuids.length; i++) {
+			const wb = { uuid: this.apiWallboxUuids[i], index: i };
+			tasks.push({
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month", wb),
+				label: `wb${i}.current_month`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.currentMonth, "current_month.daily", wb),
+				label: `wb${i}.current_month.daily`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month", wb),
+				label: `wb${i}.previous_month`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsMonth(anlagenId, ctx.lastMonth, "previous_month.daily", wb),
+				label: `wb${i}.previous_month.daily`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, false, wb),
+				label: `wb${i}.year`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear, true, wb),
+				label: `wb${i}.year.monthly`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, false, wb),
+				label: `wb${i}.prev_year`,
+			});
+			tasks.push({
+				fn: () => this.doMeasurementsYear(anlagenId, ctx.utcYear - 1, true, wb),
+				label: `wb${i}.prev_year.monthly`,
+			});
 		}
+
+		await this._runMeasurementTasks(anlagenId, tasks, "Heavy", () => this.updateAllTimeHistory(anlagenId));
 	}
 
 	/**
@@ -3648,7 +3639,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Builds a compact summary of measurement result statuses.
 	 *
-	 * @param {Array<{label: string; status: "success" | "no_data" | "skipped_existing"}>} results - kind of status
+	 * @param {Array<{label: string; status: string}>} results - kind of status
 	 * @returns {{success: number; no_data: number; skipped_existing: number; total: number}}
 	 * Aggregated count of result statuses.
 	 */
