@@ -118,6 +118,10 @@
 				"_accountInfo": {
 					"type": "staticText",
 					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
 					"text": "senecAccountInfo",
 					"newLine": true
 				},
@@ -461,6 +465,10 @@
 						"_connectSubscriptionInfo": {
 							"type": "staticText",
 							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12,
 							"text": "connectSubscriptionInfo",
 							"hidden": "data.connect_use !== true",
 							"newLine": true
@@ -514,6 +522,10 @@
 				"_consentHeader": {
 					"type": "staticText",
 					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
 					"text": "controlConsentInfo",
 					"newLine": true
 				},
@@ -559,6 +571,10 @@
 				"_featureHeader": {
 					"type": "staticText",
 					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
 					"text": "controlFeatureInfo",
 					"hidden": "data.control_active !== true && data.control_api_active !== true && data.control_web_active !== true",
 					"newLine": true
@@ -597,6 +613,10 @@
 				"_wallboxConnectorWarnLocal": {
 					"type": "staticText",
 					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
 					"text": "connectorWarnLocal",
 					"style": { "color": "red" },
 					"hidden": "data.control_wallbox_connector !== 'local' || data.lala_use === true",
@@ -605,6 +625,10 @@
 				"_wallboxConnectorWarnApi": {
 					"type": "staticText",
 					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
 					"text": "connectorWarnApi",
 					"style": { "color": "red" },
 					"hidden": "data.control_wallbox_connector !== 'api' || data.api_use === true",
@@ -631,6 +655,10 @@
 				"_socketsConnectorWarnLocal": {
 					"type": "staticText",
 					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
 					"text": "connectorWarnLocal",
 					"style": { "color": "red" },
 					"hidden": "data.control_sockets_connector !== 'local' || data.lala_use === true",
@@ -639,6 +667,10 @@
 				"_socketsConnectorWarnWeb": {
 					"type": "staticText",
 					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
 					"text": "connectorWarnWeb",
 					"style": { "color": "red" },
 					"hidden": "data.control_sockets_connector !== 'web' || data.web_use === true",
@@ -660,6 +692,10 @@
 				"_webControlInfo": {
 					"type": "staticText",
 					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
 					"text": "webControlInfo",
 					"hidden": "data.control_web_active !== true",
 					"newLine": true
