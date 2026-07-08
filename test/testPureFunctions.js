@@ -471,3 +471,25 @@ describe("resolveStateAttrKey", () => {
 		assert.equal(resolve("MISSING.KEY", attrs), null);
 	});
 });
+
+describe("webApiErrorMsg", () => {
+	it("returns message when present", () => {
+		assert.equal(t.webApiErrorMsg({ data: { message: "Not found" } }), "Not found");
+	});
+
+	it("falls back to errorCode when no message", () => {
+		assert.equal(t.webApiErrorMsg({ data: { errorCode: "ERR_001" } }), "ERR_001");
+	});
+
+	it("falls back to JSON.stringify when neither message nor errorCode", () => {
+		assert.equal(t.webApiErrorMsg({ data: { foo: "bar" } }), '{"foo":"bar"}');
+	});
+
+	it("prefers message over errorCode", () => {
+		assert.equal(t.webApiErrorMsg({ data: { message: "msg", errorCode: "code" } }), "msg");
+	});
+
+	it("handles null data", () => {
+		assert.equal(t.webApiErrorMsg({ data: null }), "null");
+	});
+});

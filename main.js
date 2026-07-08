@@ -2286,13 +2286,7 @@ class Senec extends utils.Adapter {
 			const dashRes = await this.apiGet(`${API_HOST_MEASUREMENTS}/v1/systems/${anlagenId}/dashboard`);
 			this.log.silly(`DashRes keys: ${Object.keys(dashRes.data).join(", ")}`);
 			await this.evalPoll(dashRes.data, `${API_PFX}Anlagen.${anlagenId}.Dashboard.`);
-			await this.doState(
-				`${API_PFX}info.lastPoll.Dashboard`,
-				new Date().toISOString(),
-				"Last successful Dashboard poll",
-				"",
-				false,
-			);
+			await this.updateLastPoll(`${API_PFX}info.lastPoll.Dashboard`, "Last successful Dashboard poll");
 		} catch (error) {
 			this.logError(error, `❌ Dashboard poll failed for ${anlagenId}`);
 			throw error;
@@ -2312,13 +2306,7 @@ class Senec extends utils.Adapter {
 				return;
 			}
 			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.OnlineState.`);
-			await this.doState(
-				`${API_PFX}info.lastPoll.OnlineState`,
-				new Date().toISOString(),
-				"Last successful OnlineState poll",
-				"",
-				false,
-			);
+			await this.updateLastPoll(`${API_PFX}info.lastPoll.OnlineState`, "Last successful OnlineState poll");
 			this.log.debug(`Online state polled for ${anlagenId}`);
 		} catch (error) {
 			this.logError(error, `❌ Online state poll failed for ${anlagenId}`);
@@ -2339,13 +2327,7 @@ class Senec extends utils.Adapter {
 				return;
 			}
 			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.SystemStatus.`);
-			await this.doState(
-				`${API_PFX}info.lastPoll.SystemStatus`,
-				new Date().toISOString(),
-				"Last successful SystemStatus poll",
-				"",
-				false,
-			);
+			await this.updateLastPoll(`${API_PFX}info.lastPoll.SystemStatus`, "Last successful SystemStatus poll");
 			this.log.debug(`System status polled for ${anlagenId}`);
 		} catch (error) {
 			this.logError(error, `❌ System status poll failed for ${anlagenId}`);
@@ -2366,13 +2348,7 @@ class Senec extends utils.Adapter {
 				return;
 			}
 			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.SystemDetails.`);
-			await this.doState(
-				`${API_PFX}info.lastPoll.SystemDetails`,
-				new Date().toISOString(),
-				"Last successful SystemDetails poll",
-				"",
-				false,
-			);
+			await this.updateLastPoll(`${API_PFX}info.lastPoll.SystemDetails`, "Last successful SystemDetails poll");
 			this.log.debug(`System details polled for ${anlagenId}`);
 		} catch (error) {
 			this.logError(error, `❌ System details poll failed for ${anlagenId}`);
@@ -2439,12 +2415,9 @@ class Senec extends utils.Adapter {
 				return;
 			}
 			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.ForecastChargingSettings.`);
-			await this.doState(
+			await this.updateLastPoll(
 				`${API_PFX}info.lastPoll.ForecastChargingSettings`,
-				new Date().toISOString(),
 				"Last successful ForecastChargingSettings poll",
-				"",
-				false,
 			);
 			this.log.debug(`Forecast charging settings polled for ${anlagenId}`);
 		} catch (error) {
@@ -2483,13 +2456,7 @@ class Senec extends utils.Adapter {
 			for (let i = 0; i < res.data.length; i++) {
 				await this.evalPoll(res.data[i], `${API_PFX}Anlagen.${anlagenId}.Wallboxes.${i}.`);
 			}
-			await this.doState(
-				`${API_PFX}info.lastPoll.WallboxSearch`,
-				new Date().toISOString(),
-				"Last successful WallboxSearch poll",
-				"",
-				false,
-			);
+			await this.updateLastPoll(`${API_PFX}info.lastPoll.WallboxSearch`, "Last successful WallboxSearch poll");
 			await this.apiSyncWallboxControls();
 		} catch (error) {
 			this.logError(error, `❌ Wallbox search failed for ${anlagenId}`);
@@ -2848,12 +2815,9 @@ class Senec extends utils.Adapter {
 					false,
 				);
 			}
-			await this.doState(
+			await this.updateLastPoll(
 				`${API_PFX}info.lastPoll.DataAvailability`,
-				new Date().toISOString(),
 				"Last successful DataAvailability poll",
-				"",
-				false,
 			);
 			this.log.debug(`Data availability polled for ${anlagenId}`);
 		} catch (error) {
@@ -2920,13 +2884,7 @@ class Senec extends utils.Adapter {
 			this.log.debug(
 				`Details summary ${anlagenId}: ${this.formatMeasurementSummary(summary)} | ${this.formatMeasurementClassification(classification)}`,
 			);
-			await this.doState(
-				`${API_PFX}info.lastPoll.Details`,
-				new Date().toISOString(),
-				"Last successful Details poll",
-				"",
-				false,
-			);
+			await this.updateLastPoll(`${API_PFX}info.lastPoll.Details`, "Last successful Details poll");
 		} catch (error) {
 			this.logError(error, `❌ Details poll failed for ${anlagenId}`);
 			throw error;
@@ -3024,13 +2982,7 @@ class Senec extends utils.Adapter {
 			);
 
 			await this.updateAllTimeHistory(anlagenId);
-			await this.doState(
-				`${API_PFX}info.lastPoll.Heavy`,
-				new Date().toISOString(),
-				"Last successful Heavy poll",
-				"",
-				false,
-			);
+			await this.updateLastPoll(`${API_PFX}info.lastPoll.Heavy`, "Last successful Heavy poll");
 		} catch (error) {
 			this.logError(error, `❌ Heavy poll failed for ${anlagenId}`);
 			throw error;
@@ -4028,13 +3980,7 @@ class Senec extends utils.Adapter {
 				);
 				if (res?.data && typeof res.data === "object") {
 					await this.evalPoll(res.data, "_meinsenec.Status.");
-					await this.doState(
-						"_meinsenec.info.lastPoll.Status",
-						new Date().toISOString(),
-						"Last status poll",
-						"",
-						false,
-					);
+					await this.updateLastPoll("_meinsenec.info.lastPoll.Status", "Last status poll");
 				}
 			} catch (error) {
 				this.logError(error, "mein-senec.de: Status poll failed");
@@ -4057,12 +4003,9 @@ class Senec extends utils.Adapter {
 								false,
 							);
 							this._webLastEmergencyPowerPoll = now;
-							await this.doState(
+							await this.updateLastPoll(
 								"_meinsenec.info.lastPoll.EmergencyPower",
-								new Date().toISOString(),
 								"Last emergency power poll",
-								"",
-								false,
 							);
 							// Sync control datapoint
 							await this.setStateChangedAsync("control.EmergencyPower.ReserveInPercent", {
@@ -4088,13 +4031,7 @@ class Senec extends utils.Adapter {
 					if (res?.data && typeof res.data === "object") {
 						await this.evalPoll(res.data, "_meinsenec.PeakShaving.");
 						this._webLastPeakShavingPoll = now;
-						await this.doState(
-							"_meinsenec.info.lastPoll.PeakShaving",
-							new Date().toISOString(),
-							"Last peak shaving poll",
-							"",
-							false,
-						);
+						await this.updateLastPoll("_meinsenec.info.lastPoll.PeakShaving", "Last peak shaving poll");
 						await this.webSyncPeakShavingControls(res.data);
 					}
 				} catch (error) {
@@ -4128,12 +4065,9 @@ class Senec extends utils.Adapter {
 					if (res?.data && typeof res.data === "object") {
 						await this.evalPoll(res.data, "_meinsenec.SGReady.Config.");
 						this._webLastSgReadyConfPoll = now;
-						await this.doState(
+						await this.updateLastPoll(
 							"_meinsenec.info.lastPoll.SGReadyConfig",
-							new Date().toISOString(),
 							"Last SG-Ready config poll",
-							"",
-							false,
 						);
 						await this.webSyncSGReadyControls(res.data);
 					}
@@ -4180,13 +4114,7 @@ class Senec extends utils.Adapter {
 						}
 					}
 					this._webLastSocketsPoll = now;
-					await this.doState(
-						"_meinsenec.info.lastPoll.Sockets",
-						new Date().toISOString(),
-						"Last sockets poll",
-						"",
-						false,
-					);
+					await this.updateLastPoll("_meinsenec.info.lastPoll.Sockets", "Last sockets poll");
 				}
 			} catch (error) {
 				this.logError(error, "mein-senec.de: Sockets poll failed");
@@ -4486,7 +4414,7 @@ class Senec extends utils.Adapter {
 					`${WEB_HOST}/endkunde/api/senec/${pn}/emergencypower?reserve-in-percent=${val}`,
 				);
 				if (postRes.status >= 400) {
-					const errMsg = postRes.data?.message || postRes.data?.errorCode || JSON.stringify(postRes.data);
+					const errMsg = webApiErrorMsg(postRes);
 					this.log.error(`mein-senec.de: Emergency power save failed (HTTP ${postRes.status}): ${errMsg}`);
 					return;
 				}
@@ -4582,7 +4510,7 @@ class Senec extends utils.Adapter {
 				`${WEB_HOST}/endkunde/api/peakshaving/saveSettings?${params.toString()}`,
 			);
 			if (postRes.status >= 400) {
-				const errMsg = postRes.data?.message || postRes.data?.errorCode || JSON.stringify(postRes.data);
+				const errMsg = webApiErrorMsg(postRes);
 				this.log.error(`mein-senec.de: Peak shaving save failed (HTTP ${postRes.status}): ${errMsg}`);
 				await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
 				return;
@@ -4664,7 +4592,7 @@ class Senec extends utils.Adapter {
 		try {
 			const postRes = await this.webPost(`${WEB_HOST}/endkunde/api/senec/${pn}/sgready`, body);
 			if (postRes.status >= 400) {
-				const errMsg = postRes.data?.message || postRes.data?.errorCode || JSON.stringify(postRes.data);
+				const errMsg = webApiErrorMsg(postRes);
 				this.log.error(`mein-senec.de: SG-Ready save failed (HTTP ${postRes.status}): ${errMsg}`);
 				await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
 				return;
@@ -4814,7 +4742,7 @@ class Senec extends utils.Adapter {
 		try {
 			const postRes = await this.webPost(`${WEB_HOST}/endkunde/api/steckdosen/save`, payload);
 			if (postRes.status >= 400) {
-				const errMsg = postRes.data?.message || postRes.data?.errorCode || JSON.stringify(postRes.data);
+				const errMsg = webApiErrorMsg(postRes);
 				this.log.error(`mein-senec.de: Socket save failed (HTTP ${postRes.status}): ${errMsg}`);
 				await this.setStateAsync(`${pfx}.Apply`, { val: false, ack: true });
 				return;
@@ -5619,6 +5547,16 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Update a lastPoll timestamp state.
+	 *
+	 * @param {string} stateId - Full state path (e.g. "_api.info.lastPoll.Dashboard")
+	 * @param {string} description - Human-readable description
+	 */
+	async updateLastPoll(stateId, description) {
+		await this.doState(stateId, new Date().toISOString(), description, "", false);
+	}
+
+	/**
 	 * @param {number} lastRunTs timestamp of last run
 	 * @param {number} intervalMs interval in milliseconds
 	 * @returns {boolean} true if the interval has passed since lastRunTs, false otherwise
@@ -6276,6 +6214,7 @@ if (require.main !== module) {
 		generateCodeChallenge,
 		base64UrlEncode,
 		resolveStateAttrKey,
+		webApiErrorMsg,
 	};
 } else {
 	// otherwise start the instance directly
@@ -6380,6 +6319,16 @@ function computeBackoffDelay(baseInterval, attempt, maxMultiplier = 8) {
 
 	// Full jitter
 	return Math.floor(Math.random() * expDelay);
+}
+
+/**
+ * Extract a human-readable error message from a mein-senec.de API response.
+ *
+ * @param {object} res - axios response object
+ * @returns {string} error message
+ */
+function webApiErrorMsg(res) {
+	return res.data?.message || res.data?.errorCode || JSON.stringify(res.data);
 }
 
 function normalizeRebuildMode(value) {
