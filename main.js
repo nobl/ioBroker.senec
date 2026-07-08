@@ -2289,24 +2289,42 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Generic API poll: GET → evalPoll → update lastPoll → log.
+	 * For simple endpoints that follow the standard pattern.
+	 *
+	 * @param {string} anlagenId - System ID
+	 * @param {string} url - Full API URL
+	 * @param {string} evalPrefix - Prefix for evalPoll (e.g. "_api.Anlagen.{id}.OnlineState.")
+	 * @param {string} pollName - Name for lastPoll state and log messages
+	 */
+	async _apiPollEndpoint(anlagenId, url, evalPrefix, pollName) {
+		try {
+			const res = await this.apiGet(url);
+			if (!res?.data) {
+				return;
+			}
+			await this.evalPoll(res.data, evalPrefix);
+			await this.updateLastPoll(`${API_PFX}info.lastPoll.${pollName}`, `Last successful ${pollName} poll`);
+			this.log.debug(`${pollName} polled for ${anlagenId}`);
+		} catch (error) {
+			this.logError(error, `❌ ${pollName} poll failed for ${anlagenId}`);
+			throw error;
+		}
+	}
+
+	/**
 	 * Polls the API for online state (online/offline, since when).
 	 * Called on the dashboard tier.
 	 *
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollOnlineState(anlagenId) {
-		try {
-			const res = await this.apiGet(`${API_HOST_SYSTEMS}/v1/${anlagenId}/online-state`);
-			if (!res?.data) {
-				return;
-			}
-			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.OnlineState.`);
-			await this.updateLastPoll(`${API_PFX}info.lastPoll.OnlineState`, "Last successful OnlineState poll");
-			this.log.debug(`Online state polled for ${anlagenId}`);
-		} catch (error) {
-			this.logError(error, `❌ Online state poll failed for ${anlagenId}`);
-			throw error;
-		}
+		await this._apiPollEndpoint(
+			anlagenId,
+			`${API_HOST_SYSTEMS}/v1/${anlagenId}/online-state`,
+			`${API_PFX}Anlagen.${anlagenId}.OnlineState.`,
+			"OnlineState",
+		);
 	}
 
 	/**
@@ -2316,18 +2334,12 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollSystemStatus(anlagenId) {
-		try {
-			const res = await this.apiGet(`${API_HOST_SYSTEMS}/v1/status/${anlagenId}`);
-			if (!res?.data) {
-				return;
-			}
-			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.SystemStatus.`);
-			await this.updateLastPoll(`${API_PFX}info.lastPoll.SystemStatus`, "Last successful SystemStatus poll");
-			this.log.debug(`System status polled for ${anlagenId}`);
-		} catch (error) {
-			this.logError(error, `❌ System status poll failed for ${anlagenId}`);
-			throw error;
-		}
+		await this._apiPollEndpoint(
+			anlagenId,
+			`${API_HOST_SYSTEMS}/v1/status/${anlagenId}`,
+			`${API_PFX}Anlagen.${anlagenId}.SystemStatus.`,
+			"SystemStatus",
+		);
 	}
 
 	/**
@@ -2337,18 +2349,12 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollSystemDetails(anlagenId) {
-		try {
-			const res = await this.apiGet(`${API_HOST_SYSTEMS}/v1/${anlagenId}/details`);
-			if (!res?.data) {
-				return;
-			}
-			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.SystemDetails.`);
-			await this.updateLastPoll(`${API_PFX}info.lastPoll.SystemDetails`, "Last successful SystemDetails poll");
-			this.log.debug(`System details polled for ${anlagenId}`);
-		} catch (error) {
-			this.logError(error, `❌ System details poll failed for ${anlagenId}`);
-			throw error;
-		}
+		await this._apiPollEndpoint(
+			anlagenId,
+			`${API_HOST_SYSTEMS}/v1/${anlagenId}/details`,
+			`${API_PFX}Anlagen.${anlagenId}.SystemDetails.`,
+			"SystemDetails",
+		);
 	}
 
 	/**
@@ -2404,21 +2410,12 @@ class Senec extends utils.Adapter {
 	 * @param {string} anlagenId - The ID of the system to poll.
 	 */
 	async apiPollForecastChargingSettings(anlagenId) {
-		try {
-			const res = await this.apiGet(`${API_HOST_SYSTEMS}/v1/settings/forecast-charging-settings/${anlagenId}`);
-			if (!res?.data) {
-				return;
-			}
-			await this.evalPoll(res.data, `${API_PFX}Anlagen.${anlagenId}.ForecastChargingSettings.`);
-			await this.updateLastPoll(
-				`${API_PFX}info.lastPoll.ForecastChargingSettings`,
-				"Last successful ForecastChargingSettings poll",
-			);
-			this.log.debug(`Forecast charging settings polled for ${anlagenId}`);
-		} catch (error) {
-			this.logError(error, `❌ Forecast charging settings poll failed for ${anlagenId}`);
-			throw error;
-		}
+		await this._apiPollEndpoint(
+			anlagenId,
+			`${API_HOST_SYSTEMS}/v1/settings/forecast-charging-settings/${anlagenId}`,
+			`${API_PFX}Anlagen.${anlagenId}.ForecastChargingSettings.`,
+			"ForecastChargingSettings",
+		);
 	}
 
 	/**
