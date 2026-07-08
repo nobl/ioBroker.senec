@@ -3445,25 +3445,13 @@ class Senec extends utils.Adapter {
 			}
 		}
 
+		const label = `${year}${months ? ".monthly" : ""}`;
 		this.log.debug(
-			`Measurement window YEAR (${year}${months ? ".monthly" : ""}): from=${startDate.toISOString()} to=${endDate.toISOString()}`,
+			`Measurement window YEAR (${label}): from=${startDate.toISOString()} to=${endDate.toISOString()}`,
 		);
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 
-		const measurements = await this.apiGet(url);
-
-		const ts = measurements?.data?.timeSeries || measurements?.data?.timeseries;
-		if (!measurements?.data || !Array.isArray(ts)) {
-			throw new Error(`Malformed measurement response for ${url}`);
-		}
-
-		if (ts.length === 0) {
-			this.log.debug(`No measurements found for ${year}${months ? ".monthly" : ""}.`);
-			return { status: "no_data" };
-		}
-
-		await this.doSumMeasurements(measurements.data, anlagenId, pfx, `year${months ? ".monthly" : ""}`);
-		return { status: "success" };
+		return this._fetchAndSumMeasurements(url, anlagenId, pfx, `year${months ? ".monthly" : ""}`, label);
 	}
 
 	/**
@@ -3514,20 +3502,7 @@ class Senec extends utils.Adapter {
 		);
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 
-		const measurements = await this.apiGet(url);
-
-		const ts = measurements?.data?.timeSeries || measurements?.data?.timeseries;
-		if (!measurements?.data || !Array.isArray(ts)) {
-			throw new Error(`Malformed measurement response for ${url}`);
-		}
-
-		if (ts.length === 0) {
-			this.log.debug(`No measurements found for ${period}.`);
-			return { status: "no_data" };
-		}
-
-		await this.doSumMeasurements(measurements.data, anlagenId, pfx, period);
-		return { status: "success" };
+		return this._fetchAndSumMeasurements(url, anlagenId, pfx, period, period);
 	}
 
 	/**
@@ -3579,6 +3554,21 @@ class Senec extends utils.Adapter {
 		);
 		this.log.debug(`🔄 Polling measurements for ${url}`);
 
+		return this._fetchAndSumMeasurements(url, anlagenId, pfx, period, period);
+	}
+
+	/**
+	 * Fetch measurements from API, validate, and sum.
+	 * Shared tail for doMeasurementsYear/Month/Day.
+	 *
+	 * @param {string} url - API URL to fetch
+	 * @param {string | number} anlagenId - System ID
+	 * @param {string} pfx - State prefix
+	 * @param {string} period - Period label for doSumMeasurements
+	 * @param {string} logLabel - Human-readable label for log messages
+	 * @returns {Promise<{status: "success" | "no_data"}>} Result of the measurement fetch
+	 */
+	async _fetchAndSumMeasurements(url, anlagenId, pfx, period, logLabel) {
 		const measurements = await this.apiGet(url);
 
 		const ts = measurements?.data?.timeSeries || measurements?.data?.timeseries;
@@ -3587,7 +3577,7 @@ class Senec extends utils.Adapter {
 		}
 
 		if (ts.length === 0) {
-			this.log.debug(`No measurements found for ${period}.`);
+			this.log.debug(`No measurements found for ${logLabel}.`);
 			return { status: "no_data" };
 		}
 
