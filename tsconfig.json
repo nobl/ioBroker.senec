@@ -18,6 +18,7 @@
         // "strictPropertyInitialization": true,
         // "strictBindCallApply": true,
         "noImplicitAny": false,
+        "noImplicitThis": false, // Delegate modules use .call(this) — TS's standalone-function this-check is wrong for them
         // "noUnusedLocals": true,
         // "noUnusedParameters": true,
         "useUnknownInCatchVariables": false,
