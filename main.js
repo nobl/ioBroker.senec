@@ -3036,10 +3036,13 @@ class Senec extends utils.Adapter {
 	 *   AdaptiveRequestQueue. This function only logs and propagates signals.
 	 * - Token refresh (401) is handled here.
 	 *
-	 * @param {string} url url to call
-	 * @param config config for API call - will be extended by auth header - can be used to pass additional headers or other axios config parameters
+	 * @param {"get" | "post" | "patch"} method - HTTP method
+	 * @param {string} url - URL to call
+	 * @param {object} [data] - Request body (post/patch only)
+	 * @param {object} [config] - Axios config overrides
+	 * @returns {Promise<object>} The axios response
 	 */
-	async apiGet(url, config = {}) {
+	async _apiRequest(method, url, data, config = {}) {
 		if (this.unloaded) {
 			return;
 		}
@@ -3052,16 +3055,15 @@ class Senec extends utils.Adapter {
 		}
 
 		const client = this.apiClient;
+		const label = method.toUpperCase();
+
 		return this.apiQueue.add(async () => {
-			// Proactive expiry check - if token is close to expiry, refresh before making the call
-			// to avoid edge cases with token expiry during the call
+			// Proactive expiry check — refresh before the call to avoid edge cases
 			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
-				// 60s before expiry to avoid keycloak-server timedrift issues (usually 5-10 sec)
 				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
 				await this.apiRefreshToken();
 			}
 
-			// Ensure we have a valid token at all
 			if (!this.currentToken) {
 				this.log.debug("🔐 No current token. Refreshing before request...");
 				await this.apiRefreshToken();
@@ -3071,17 +3073,27 @@ class Senec extends utils.Adapter {
 
 			for (let attempt = 0; attempt < maxAttempts; attempt++) {
 				try {
-					return await client.get(url, {
-						...config,
-						headers: {
-							Authorization: `Bearer ${this.currentToken}`,
-							...(config.headers || {}),
-						},
-					});
+					// Build headers: always include auth, add Content-Type per method
+					const headers = {
+						Authorization: `Bearer ${this.currentToken}`,
+						...(config.headers || {}),
+					};
+					if (method === "post") {
+						headers["Content-Type"] = "application/json";
+					} else if (method === "patch" && data !== undefined && data !== null) {
+						headers["Content-Type"] = "application/json";
+					}
+
+					const reqConfig = { ...config, headers };
+
+					// GET has no data argument in axios
+					if (method === "get") {
+						return await client.get(url, reqConfig);
+					}
+					return await client[method](url, method === "patch" ? data || undefined : data, reqConfig);
 				} catch (e) {
 					const status = e.response?.status;
 
-					// Detect timeout / silent overload situations
 					const isTimeout =
 						e.code === "ECONNABORTED" ||
 						e.code === "ETIMEDOUT" ||
@@ -3089,32 +3101,25 @@ class Senec extends utils.Adapter {
 						e.name === "CanceledError" ||
 						/timeout/i.test(e.message || "");
 
-					// 🔐 Token expired → refresh and retry
 					if (status === 401 && attempt < maxAttempts - 1) {
 						this.log.debug("🔐 401 received. Refreshing token...");
 						await this.apiRefreshToken();
 						continue;
 					}
 
-					// 🚦 Explicit rate limit from API
 					if (status === 429) {
 						this.log.warn("🚦 API returned 429 (rate limited). Backoff handled by AdaptiveRequestQueue.");
 					}
 
-					// ⏱ Timeout or implicit overload
-					// Many APIs (likely SENEC) do not properly return 429 but instead stall or drop requests
 					if (isTimeout) {
 						this.log.warn("⏱ API request timed out - likely server overload or implicit rate limiting.");
 					}
 
-					// ℹ️ Additional debug information for troubleshooting
 					this.log.debug(
-						`API request failed (attempt ${attempt + 1}/${maxAttempts}) ` +
+						`API ${label} request failed (attempt ${attempt + 1}/${maxAttempts}) ` +
 							`for ${url} - status=${status || "none"} - code=${e.code || "n/a"}`,
 					);
 
-					// Retry only for auth errors (handled above)
-					// For rate limiting / timeouts we let AdaptiveRequestQueue decide pacing
 					throw e;
 				}
 			}
@@ -3122,7 +3127,18 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
-	 * API Post with the same token management and retry logic as apiGet.
+	 * API GET with token management and retry logic.
+	 *
+	 * @param {string} url - URL to call
+	 * @param {object} [config] - Axios config overrides
+	 * @returns {Promise<object>} The axios response
+	 */
+	async apiGet(url, config = {}) {
+		return this._apiRequest("get", url, undefined, config);
+	}
+
+	/**
+	 * API POST with token management and retry logic.
 	 *
 	 * @param {string} url - The URL to post to
 	 * @param {object} data - The JSON body to send
@@ -3130,78 +3146,11 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} The axios response
 	 */
 	async apiPost(url, data, config = {}) {
-		if (this.unloaded) {
-			return;
-		}
-
-		if (!this.apiClient) {
-			throw new Error("API client not initialized");
-		}
-		if (!this.apiQueue) {
-			throw new Error("API queue not initialized");
-		}
-
-		const client = this.apiClient;
-		return this.apiQueue.add(async () => {
-			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
-				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
-				await this.apiRefreshToken();
-			}
-
-			if (!this.currentToken) {
-				this.log.debug("🔐 No current token. Refreshing before request...");
-				await this.apiRefreshToken();
-			}
-
-			const maxAttempts = 3;
-
-			for (let attempt = 0; attempt < maxAttempts; attempt++) {
-				try {
-					return await client.post(url, data, {
-						...config,
-						headers: {
-							Authorization: `Bearer ${this.currentToken}`,
-							"Content-Type": "application/json",
-							...(config.headers || {}),
-						},
-					});
-				} catch (e) {
-					const status = e.response?.status;
-
-					const isTimeout =
-						e.code === "ECONNABORTED" ||
-						e.code === "ETIMEDOUT" ||
-						e.name === "AbortError" ||
-						e.name === "CanceledError" ||
-						/timeout/i.test(e.message || "");
-
-					if (status === 401 && attempt < maxAttempts - 1) {
-						this.log.debug("🔐 401 received. Refreshing token...");
-						await this.apiRefreshToken();
-						continue;
-					}
-
-					if (status === 429) {
-						this.log.warn("🚦 API returned 429 (rate limited). Backoff handled by AdaptiveRequestQueue.");
-					}
-
-					if (isTimeout) {
-						this.log.warn("⏱ API request timed out - likely server overload or implicit rate limiting.");
-					}
-
-					this.log.debug(
-						`API POST request failed (attempt ${attempt + 1}/${maxAttempts}) ` +
-							`for ${url} - status=${status || "none"} - code=${e.code || "n/a"}`,
-					);
-
-					throw e;
-				}
-			}
-		});
+		return this._apiRequest("post", url, data, config);
 	}
 
 	/**
-	 * API Patch with the same token management and retry logic as apiGet.
+	 * API PATCH with token management and retry logic.
 	 *
 	 * @param {string} url - The URL to patch
 	 * @param {object} [data] - Optional JSON body to send
@@ -3209,77 +3158,7 @@ class Senec extends utils.Adapter {
 	 * @returns {Promise<object>} The axios response
 	 */
 	async apiPatch(url, data, config = {}) {
-		if (this.unloaded) {
-			return;
-		}
-
-		if (!this.apiClient) {
-			throw new Error("API client not initialized");
-		}
-		if (!this.apiQueue) {
-			throw new Error("API queue not initialized");
-		}
-
-		const client = this.apiClient;
-		return this.apiQueue.add(async () => {
-			if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt - this.baseTime) {
-				this.log.debug("🔐 Token close to expiry. Refreshing before request...");
-				await this.apiRefreshToken();
-			}
-
-			if (!this.currentToken) {
-				this.log.debug("🔐 No current token. Refreshing before request...");
-				await this.apiRefreshToken();
-			}
-
-			const maxAttempts = 3;
-
-			for (let attempt = 0; attempt < maxAttempts; attempt++) {
-				try {
-					const headers = {
-						Authorization: `Bearer ${this.currentToken}`,
-						...(config.headers || {}),
-					};
-					if (data !== undefined && data !== null) {
-						headers["Content-Type"] = "application/json";
-					}
-					return await client.patch(url, data || undefined, {
-						...config,
-						headers,
-					});
-				} catch (e) {
-					const status = e.response?.status;
-
-					const isTimeout =
-						e.code === "ECONNABORTED" ||
-						e.code === "ETIMEDOUT" ||
-						e.name === "AbortError" ||
-						e.name === "CanceledError" ||
-						/timeout/i.test(e.message || "");
-
-					if (status === 401 && attempt < maxAttempts - 1) {
-						this.log.debug("🔐 401 received. Refreshing token...");
-						await this.apiRefreshToken();
-						continue;
-					}
-
-					if (status === 429) {
-						this.log.warn("🚦 API returned 429 (rate limited). Backoff handled by AdaptiveRequestQueue.");
-					}
-
-					if (isTimeout) {
-						this.log.warn("⏱ API request timed out - likely server overload or implicit rate limiting.");
-					}
-
-					this.log.debug(
-						`API PATCH request failed (attempt ${attempt + 1}/${maxAttempts}) ` +
-							`for ${url} - status=${status || "none"} - code=${e.code || "n/a"}`,
-					);
-
-					throw e;
-				}
-			}
-		});
+		return this._apiRequest("patch", url, data, config);
 	}
 
 	/**
