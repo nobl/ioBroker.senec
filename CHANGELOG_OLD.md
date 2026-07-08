@@ -218,6 +218,11 @@ The newest change log is [README.md](README.md)
 
 ### 1.0.0
 * (NoBl) initial release
+## 2.5.3 (2026-04-13)
+- Clamping end-dates to current time if they are in the future to avoid issues with API
+- Dependency updates
+- Updated iobroker\testing-action-* versions
+
 ## 2.5.2 (2026-03-31)
 - Rewrote AllTime History Rebuild: We should now be able to rebuild AllTime History even if the senec server struggles with timeouts. Warning! Rebuild will take considerable time now depending on the server. Current state of rebuild will be reported to log (info).
 - You will now need to supply the installation year of your appliance upon AllTime History rebuild if you don't want empty yearly folders in the measurements path for yours you don't have data.

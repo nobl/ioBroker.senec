@@ -67,7 +67,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.8.0 (2026-07-08)
 - Code optimizations
 - Log messages now include connector prefix ([API], [Local], [Web], [Connect]) for easier filtering and debugging
 
@@ -104,11 +104,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Adapter requires node.js >= 22 now
 - Minor fixes
 - Dependency updates
-
-### 2.5.3 (2026-04-13)
-- Clamping end-dates to current time if they are in the future to avoid issues with API
-- Dependency updates
-- Updated iobroker\testing-action-* versions
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
