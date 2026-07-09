@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.8.1",
+    "version": "2.8.2",
     "news": {
+      "2.8.2": {
+        "en": "removed v2.8.0 from documentation - it never was released",
+        "de": "Version 2.8.0 wurde aus der Dokumentation entfernt – sie wurde nie veröffentlicht.",
+        "ru": "Версия 2.8.0 удалена из документации — она так и не была выпущена.",
+        "pt": "A versão 2.8.0 foi removida da documentação - ela nunca foi lançada.",
+        "nl": "Versie 2.8.0 is verwijderd uit de documentatie - deze is nooit uitgebracht.",
+        "fr": "La version 2.8.0 a été retirée de la documentation car elle n'a jamais été publiée.",
+        "it": "La versione 2.8.0 è stata rimossa dalla documentazione: non è mai stata rilasciata.",
+        "es": "Se eliminó la versión 2.8.0 de la documentación; nunca se publicó.",
+        "pl": "usunięto wersję 2.8.0 z dokumentacji – nigdy nie została wydana",
+        "uk": "видалено з документації версію 2.8.0 — вона так і не була випущена",
+        "zh-cn": "从文档中移除了 v2.8.0 版本——该版本从未正式发布。"
+      },
       "2.8.1": {
         "en": "Housekeeping",
         "de": "Hauswirtschaft",
