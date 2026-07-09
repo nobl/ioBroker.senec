@@ -67,7 +67,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.8.1 (2026-07-09)
 - Housekeeping
 
 ### 2.8.0 (2026-07-08)
@@ -101,11 +101,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 ### 2.5.5 (2026-07-06)
 - Add TOTP/2FA support for SENEC API login (configure TOTP secret in adapter settings)
 - Replace plain setTimeout/clearTimeout with adapter-managed timers
-- Dependency updates
-
-### 2.5.4 (2026-05-27)
-- Adapter requires node.js >= 22 now
-- Minor fixes
 - Dependency updates
 
 ### [Former Updates](CHANGELOG_OLD.md)

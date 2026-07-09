@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.8.0",
+    "version": "2.8.1",
     "news": {
+      "2.8.1": {
+        "en": "Housekeeping",
+        "de": "Hauswirtschaft",
+        "ru": "Уборка номеров",
+        "pt": "Serviços de limpeza",
+        "nl": "Huishoudelijke taken",
+        "fr": "Service ménager",
+        "it": "Servizio di pulizia",
+        "es": "Gestión interna",
+        "pl": "Gospodarowanie",
+        "uk": "Прибирання",
+        "zh-cn": "家政"
+      },
       "2.8.0": {
         "en": "Code optimizations\nLog messages now include connector prefix ([API], [Local], [Web], [Connect]) for easier filtering and debugging",
         "de": "Codeoptimierungen\nDie Protokollmeldungen enthalten nun das Konnektorpräfix ([API], [Local], [Web], [Connect]) zur einfacheren Filterung und Fehlersuche.",
@@ -80,19 +93,6 @@
         "pl": "Zaciśnięcie daty zakończenia do bieżącego czasu, jeśli są w przyszłości, aby uniknąć problemów z API\nAktualizacje zależności\nAktualizacja iobroker\\ testing- action- * wersje",
         "uk": "Затискання кінцевих оновлень до поточного часу, якщо вони в майбутньому, щоб уникнути проблем з API\nОновлення залежності\nОновлено iobroker\\testing-action-* версії",
         "zh-cn": "如果最终日期是为了避免与API发生问题,则将最终日期压缩到当前时间\n依赖性更新\n更新的 iobroker\\ testing- action- * 版本"
-      },
-      "2.5.2": {
-        "en": "Rewrote AllTime History Rebuild: We should now be able to rebuild AllTime History even if the senec server struggles with timeouts. Warning! Rebuild will take considerable time now depending on the server. Current state of rebuild will be reported to log (info).\nYou will now need to supply the installation year of your appliance upon AllTime History rebuild if you don't want empty yearly folders in the measurements path for yours you don't have data.\nMore comprehensive logging on what is being polled from API.\nBetter debug-logging for polling",
-        "de": "Rewrote AllTime History Rebuild: Wir sollten jetzt in der Lage sein, AllTime History wieder aufzubauen, auch wenn der senec Server mit Timeouts kämpft. Warnung! Rebuild wird jetzt - abhängig vom Server - deutlich mehr Zeit in Anspruch nehmen. Aktueller Zustand des Wiederaufbaus wird im log gemeldet (info).\nSie müssen jetzt das Installationsjahr Ihres Geräts für den Aufbau der AllTime History angeben, um leere Ordner für Jahre ohne Daten zu vermeiden.\nUmfassendere Protokollierung der API Abfragen.\nBesseres Debug-Logging für die Abfragen.",
-        "ru": "Переписывайте AllTime History Rebuild: теперь мы сможем восстановить AllTime History, даже если сервер senec борется с тайм-аутами. Предупреждение! Восстановление займет много времени в зависимости от сервера. Текущее состояние восстановления будет сообщено в журнал (инфо).\nТеперь вам нужно будет предоставить год установки вашего устройства при реконструкции AllTime History, если вам не нужны пустые годовые папки в пути измерений для ваших данных.\nБолее полная регистрация того, что опрашивается из API.\nЛучшая отладка для голосования",
-        "pt": "Reescreva o histórico de todos os tempos Reconstruir: Agora devemos ser capazes de reconstruir o histórico de todos os tempos, mesmo que o servidor senec lute com timeouts. Aviso! Reconstruir vai levar muito tempo agora, dependendo do servidor. O estado atual da reconstrução será relatado no log (info).\nAgora você precisará fornecer o ano de instalação do seu aparelho no AllTime History reconstruir se você não quiser pastas anuais vazias no caminho de medição para o seu que você não tem dados.\nRegistro mais abrangente no que está sendo pesquisado da API.\nMelhor registro de depuração para votação",
-        "nl": "Herschreven AllTime History Rebuild: We zouden nu in staat moeten zijn om AllTime History opnieuw op te bouwen, zelfs als de senec server worstelt met timeouts. Waarschuwing. Herbouwen zal veel tijd vergen, afhankelijk van de server. De huidige staat van heropbouw zal worden gerapporteerd aan log (info).\nU moet nu het installatiejaar van uw apparaat leveren op AllTime History herbouwen als u geen lege jaarlijkse mappen wilt in het meetpad voor uw apparaat hebt u geen gegevens.\nMeer uitgebreide logging op wat er wordt ondervraagd van API.\nBeter debug-loggen voor polling",
-        "fr": "Réécrire l'histoire de AllTime Reconstruire: Nous devrions maintenant être en mesure de reconstruire l'histoire de AllTime même si le serveur senec se débat avec les timeouts. Avertissement ! La reconstruction prendra beaucoup de temps maintenant selon le serveur. L'état actuel de la reconstruction sera signalé au journal (info).\nVous devrez maintenant fournir l'année d'installation de votre appareil lors de la reconstruction de l'historique AllTime si vous ne voulez pas de dossiers annuels vides dans le chemin de mesure pour le vôtre, vous n'avez pas de données.\nConnexion plus complète sur ce qui est interrogé à partir de l'API.\nMieux déboguer le scrutin",
-        "it": "Rewrote AllTime History Rebuild: Dovremmo ora essere in grado di ricostruire la storia di AllTime anche se il server senec lotta con timeout. Attenzione! La ricostruzione richiederà molto tempo a seconda del server. Lo stato attuale della ricostruzione sarà segnalato per registrare (info).\nOra è necessario fornire l'anno di installazione del vostro apparecchio su AllTime History ricostruire se non si desidera vuoto cartelle annuali nel percorso di misura per il vostro non avete dati.\nRegistrazione più completa su ciò che è inquinato da API.\nMeglio debug-logging per polling",
-        "es": "Recuperar Historia de todo el tiempo Reconstruir: Ahora debemos ser capaces de reconstruir Historia de todo el tiempo, incluso si el servidor senéfico lucha con los timeouts. ¡Atención! Rebuild tomará mucho tiempo ahora dependiendo del servidor. El estado actual de reconstrucción será reportado a log (info).\nAhora necesitarás suministrar el año de instalación de tu appliance sobre AllTime History reconstruir si no quieres carpetas vacías anuales en la ruta de medición para la tuya no tienes datos.\nRegistro más completo sobre lo que está siendo encuestado de API.\nMejor depuración para la encuesta",
-        "pl": "Przepisz AllTime History Rebuild: Powinniśmy teraz być w stanie odbudować AllTime History nawet jeśli serwer senec walczy z timeout. Uwaga! Przebudowa zajmie dużo czasu, w zależności od serwera. Obecny stan odbudowy zostanie zgłoszony do dziennika (info).\nTeraz trzeba będzie dostarczyć rok instalacji urządzenia na AllTime Historia odbudowy, jeśli nie chcesz puste coroczne foldery w ścieżce pomiarów dla Twojego nie masz danych.\nBardziej obszerne logowanie tego, co jest sondowane z API.\nLepsza debug- logowanie do ankiety",
-        "uk": "Rewrote AllTime History Rebuild: Тепер ми можемо перебудувати історію AllTime навіть якщо сервер senec бореться з таймерами. Про нас Перебудувати буде значно часу в залежності від сервера. Поточний стан перебудови буде повідомлено в журналі (info).\nЯкщо ви не хочете порожньої папки в вимірюванні шляху до ваших даних, вам не доведеться даних.\nБільш комплексний журнал про те, що відбувається з API.\nКращий дебюг-реєстратор для опитування",
-        "zh-cn": "重写全时历史重建:我们现在应该能够重建全时历史,即使场景服务器有超时状态。 警告你们! 重建需要相当长的时间 现在取决于服务器。 目前的重建状态将报告为日志 (info) .\n您现在需要提供您在全时历史重建上的应用程序的安装年 。 如果您不希望您在测量路径中出现空年文件夹, 您没有数据 .\n更全面地记录从API那里得到的信息.\n更好的投票调试日志"
       }
     },
     "docs": {

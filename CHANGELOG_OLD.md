@@ -218,6 +218,11 @@ The newest change log is [README.md](README.md)
 
 ### 1.0.0
 * (NoBl) initial release
+## 2.5.4 (2026-05-27)
+- Adapter requires node.js >= 22 now
+- Minor fixes
+- Dependency updates
+
 ## 2.5.3 (2026-04-13)
 - Clamping end-dates to current time if they are in the future to avoid issues with API
 - Dependency updates
