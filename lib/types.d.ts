@@ -45,7 +45,7 @@ export interface SenecAdapter extends AdapterClass {
 
     // ── API clients & infrastructure ──────────────────────────────────
     apiQueue: AdaptiveRequestQueue | null;
-    apiAgent: import("https").Agent | null;
+    apiAgent: import("node:https").Agent | null;
     apiClient: AxiosInstance | null;
     authClient: AxiosInstance | null;
     jar: any; // CookieJar — typed as any to avoid CJS/ESM type mismatch
@@ -73,7 +73,7 @@ export interface SenecAdapter extends AdapterClass {
     lastLoggedQueueSnapshot: string | null;
 
     // ── Local (lala.cgi) state ────────────────────────────────────────
-    localAgent: import("https").Agent | null;
+    localAgent: import("node:https").Agent | null;
     localClient: AxiosInstance | null;
     socketCount: number | undefined;
     socketControlsCreated: boolean;
