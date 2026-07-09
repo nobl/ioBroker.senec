@@ -67,6 +67,8 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
 ### 2.8.2 (2026-07-09)
 - removed v2.8.0 from documentation - it never was released
 
