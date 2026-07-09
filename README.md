@@ -67,10 +67,11 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- removed v2.8.0 from documentation - it never was released
+
 ### 2.8.1 (2026-07-09)
 - Housekeeping
-
-### 2.8.0 (2026-07-08)
 - Code optimizations
 - Log messages now include connector prefix ([API], [Local], [Web], [Connect]) for easier filtering and debugging
 
