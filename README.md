@@ -68,6 +68,8 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- Active measurement periods (current year, current month, today) no longer skip re-fetch — frequency is now fully controlled by the configured tier intervals
+- AllTime history now tracks a `last updated` timestamp
 
 ### 2.8.2 (2026-07-09)
 - removed v2.8.0 from documentation - it never was released
