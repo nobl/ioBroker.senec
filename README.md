@@ -67,7 +67,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.8.3 (2026-07-12)
 - Active measurement periods (current year, current month, today) no longer skip re-fetch — frequency is now fully controlled by the configured tier intervals
 - AllTime history now tracks a `last updated` timestamp
 
@@ -102,11 +102,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - API polling resilience: Each API endpoint is now polled independently via `Promise.allSettled` — one failing endpoint no longer blocks others in the same tier. Per-endpoint last-poll timestamps visible under `_api.info.lastPoll.*`.
 - SENEC.Connect: Support for the official SENEC.Connect API (paid subscription). Provides battery, meter, and wallbox data via a simple subscription key. Configure in the new SENEC.Connect tab in adapter settings. Note: At this point SENEC.Connect appears to only be available for V4/E4 systems. Older systems (V2/V3) may return empty data.
 - API paths updated to June 2026 format for future compatibility.
-
-### 2.5.5 (2026-07-06)
-- Add TOTP/2FA support for SENEC API login (configure TOTP secret in adapter settings)
-- Replace plain setTimeout/clearTimeout with adapter-managed timers
-- Dependency updates
 
 ### [Former Updates](CHANGELOG_OLD.md)
 

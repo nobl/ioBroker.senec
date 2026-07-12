@@ -218,6 +218,11 @@ The newest change log is [README.md](README.md)
 
 ### 1.0.0
 * (NoBl) initial release
+## 2.5.5 (2026-07-06)
+- Add TOTP/2FA support for SENEC API login (configure TOTP secret in adapter settings)
+- Replace plain setTimeout/clearTimeout with adapter-managed timers
+- Dependency updates
+
 ## 2.5.4 (2026-05-27)
 - Adapter requires node.js >= 22 now
 - Minor fixes
