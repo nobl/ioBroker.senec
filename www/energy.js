@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app */
+/* global app, t */
 /* exported energyFlow */
 
 /**
@@ -422,28 +422,28 @@ var energyFlow = {
 			var remainKwh = (cap * d.soc) / 100;
 			var hours = remainKwh / (absW / 1000);
 			var formatted = this.formatTime(hours);
-			return formatted ? `${formatted} until empty` : null;
+			return formatted ? t("battery_until_empty", { time: formatted }) : null;
 		}
 		// Charging — time until full
 		var neededKwh = (cap * (100 - d.soc)) / 100;
 		var hoursToFull = neededKwh / (absW / 1000);
 		var fmtd = this.formatTime(hoursToFull);
-		return fmtd ? `${fmtd} until full` : null;
+		return fmtd ? t("battery_until_full", { time: fmtd }) : null;
 	},
 
 	/** Render the energy flow SVG + today's summary */
 	render: function () {
 		if (!this.hasData) {
 			return (
-				'<div class="card"><h2>Energy Flow</h2>' +
-				'<div class="stat-label">No energy data available. Check connector configuration.</div></div>'
+				`<div class="card"><h2>${t("energy_flow")}</h2>` +
+				`<div class="stat-label">${t("energy_no_data")}</div></div>`
 			);
 		}
 
 		var d = this.data;
 		var html = '<div class="card">';
 		html += '<div class="energy-header">';
-		html += "<h2>Energy Flow</h2>";
+		html += `<h2>${t("energy_flow")}</h2>`;
 		html += '<div class="energy-source">';
 		html += '<select id="energy-source" onchange="energyFlow.onSourceChange(this.value)">';
 		html += `<option value="auto"${this.source === "auto" ? " selected" : ""}>Auto</option>`;
@@ -451,7 +451,9 @@ var energyFlow = {
 		html += `<option value="api"${this.source === "api" ? " selected" : ""}>API</option>`;
 		html += `<option value="web"${this.source === "web" ? " selected" : ""}>Web</option>`;
 		html += "</select>";
-		html += `<span class="energy-source-label">via ${this.activeSource || "none"}</span>`;
+		html += `<span class="energy-source-label">${t(this.activeSource ? "energy_source_via" : "energy_source_none", {
+			source: this.activeSource || "",
+		})}</span>`;
 		html += "</div></div>";
 
 		// SVG energy flow diagram
@@ -529,13 +531,13 @@ var energyFlow = {
 		}
 
 		// Node circles with icons
-		svg += this.renderNode(nodes.pv, "sun", "PV", this.formatPower(d.pv), "#f9a825", d.pv > 10);
-		svg += this.renderNode(nodes.house, "house", "House", this.formatPower(d.house), "#ff7043", true);
+		svg += this.renderNode(nodes.pv, "sun", t("energy_pv"), this.formatPower(d.pv), "#f9a825", d.pv > 10);
+		svg += this.renderNode(nodes.house, "house", t("energy_house"), this.formatPower(d.house), "#ff7043", true);
 		svg += this.renderBatteryNode(nodes.battery, d.soc, d.battery);
 		svg += this.renderNode(
 			nodes.grid,
 			"grid",
-			"Grid",
+			t("energy_grid"),
 			this.formatPower(d.grid),
 			d.grid > 0 ? "#ef5350" : d.grid < -10 ? "#42a5f5" : "#90a4ae",
 			Math.abs(d.grid) > 10,
@@ -545,7 +547,7 @@ var energyFlow = {
 			svg += this.renderNode(
 				nodes.wallbox,
 				"wallbox",
-				"Wallbox",
+				t("energy_wallbox"),
 				this.formatPower(d.wallbox),
 				"#ab47bc",
 				d.wallbox > 10,
@@ -624,7 +626,7 @@ var energyFlow = {
 		svg += `<text x="${pos.x}" y="${pos.y + 10}" text-anchor="middle" fill="var(--color-text)" font-size="13" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${this.formatPower(power)}</text>`;
 
 		// Label below: "Battery · 86%"  + optional time estimate
-		var label = "Battery";
+		var label = t("energy_battery");
 		if (socRounded !== null) {
 			label += ` \u00b7 ${socRounded}%`;
 		}
@@ -690,46 +692,48 @@ var energyFlow = {
 		return svg;
 	},
 
-	periodLabels: { today: "Today", month: "This Month", year: "This Year" },
+	periodLabel: function (p) {
+		return t(`period_${p}`);
+	},
 
 	renderDayTotals: function (d) {
 		var html = '<div class="day-totals">';
 		html += '<div class="day-totals-header">';
-		html += `<div class="day-totals-title">${this.periodLabels[this.period]}</div>`;
+		html += `<div class="day-totals-title">${this.periodLabel(this.period)}</div>`;
 		html += '<div class="day-totals-tabs">';
 		var periods = ["today", "month", "year"];
 		for (var i = 0; i < periods.length; i++) {
 			var p = periods[i];
 			var cls = this.period === p ? "period-tab active" : "period-tab";
-			html += `<button class="${cls}" onclick="energyFlow.onPeriodChange('${p}')">${
-				this.periodLabels[p]
-			}</button>`;
+			html += `<button class="${cls}" onclick="energyFlow.onPeriodChange('${p}')">${this.periodLabel(
+				p,
+			)}</button>`;
 		}
 		html += "</div></div>";
 
 		if (d.todayPv === null && d.todayConsumption === null) {
-			html += `<div class="stat-label">No ${this.periodLabels[
-				this.period
-			].toLowerCase()} data available. Requires API or Web connector with measurements enabled.</div>`;
+			html += `<div class="stat-label">${t("period_no_data", {
+				period: this.periodLabel(this.period).toLowerCase(),
+			})}</div>`;
 			html += "</div>";
 			return html;
 		}
 
 		html += '<div class="day-totals-grid">';
 
-		html += this.renderTotalItem("PV Generation", d.todayPv, "#f9a825");
-		html += this.renderTotalItem("Consumption", d.todayConsumption, "#ff7043");
-		html += this.renderTotalItem("Grid Import", d.todayGridImport, "#f44336");
-		html += this.renderTotalItem("Grid Export", d.todayGridExport, "#2196f3");
-		html += this.renderTotalItem("Battery Charge", d.todayBatteryCharge, "#4caf50");
-		html += this.renderTotalItem("Battery Discharge", d.todayBatteryDischarge, "#66bb6a");
+		html += this.renderTotalItem(t("total_pv"), d.todayPv, "#f9a825");
+		html += this.renderTotalItem(t("total_consumption"), d.todayConsumption, "#ff7043");
+		html += this.renderTotalItem(t("total_grid_import"), d.todayGridImport, "#f44336");
+		html += this.renderTotalItem(t("total_grid_export"), d.todayGridExport, "#2196f3");
+		html += this.renderTotalItem(t("total_battery_charge"), d.todayBatteryCharge, "#4caf50");
+		html += this.renderTotalItem(t("total_battery_discharge"), d.todayBatteryDischarge, "#66bb6a");
 
 		if (d.todayWallbox !== null && d.todayWallbox > 0) {
-			html += this.renderTotalItem("Wallbox", d.todayWallbox, "#9c27b0");
+			html += this.renderTotalItem(t("total_wallbox"), d.todayWallbox, "#9c27b0");
 		}
 
 		if (d.autarky !== null) {
-			html += this.renderTotalItem("Self-sufficiency", null, "#157c00", `${Math.round(d.autarky)}%`);
+			html += this.renderTotalItem(t("total_self_sufficiency"), null, "#157c00", `${Math.round(d.autarky)}%`);
 		}
 
 		html += "</div></div>";

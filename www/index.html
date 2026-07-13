@@ -532,13 +532,13 @@
 
 	<div class="header">
 		<img src="../adapter/senec/senec.png" alt="SENEC">
-		<h1>SENEC Dashboard</h1>
+		<h1 data-i18n="dashboard_title">SENEC Dashboard</h1>
 		<span class="version" id="version"></span>
 	</div>
 
 	<div class="nav">
-		<div class="nav-tab active" data-tab="overview">Overview</div>
-		<div class="nav-tab" data-tab="logs">Appliance Logs</div>
+		<div class="nav-tab active" data-tab="overview" data-i18n="tab_overview">Overview</div>
+		<div class="nav-tab" data-tab="logs" data-i18n="tab_logs">Appliance Logs</div>
 	</div>
 
 	<div class="container">
@@ -546,7 +546,7 @@
 
 		<div class="loading" id="loading">
 			<div class="spinner"></div>
-			<div>Connecting to ioBroker...</div>
+			<div data-i18n="connecting">Connecting to ioBroker...</div>
 		</div>
 
 		<div id="content" style="display: none;">
@@ -560,6 +560,7 @@
 		</div>
 	</div>
 
+	<script src="i18n.js"></script>
 	<script src="energy.js"></script>
 	<script>
 		"use strict";
@@ -601,7 +602,7 @@
 				var script = document.createElement("script");
 				script.src = "../socket.io/socket.io.js";
 				script.onload = function () { app.onSocketLoaded(); };
-				script.onerror = function () { app.showError("Could not load socket.io client library. Is ioBroker.web running?"); };
+				script.onerror = function () { app.showError(t("socket_error")); };
 				document.head.appendChild(script);
 			},
 
@@ -610,12 +611,16 @@
 
 				this.conn.on("connect", function () {
 					document.getElementById("error-banner").style.display = "none";
-					app.loadConfig();
-					app.subscribe();
+					// Load i18n, config, and states — render once all are ready
+					i18n.init(app.conn).then(function () {
+						i18n.applyAll();
+						app.loadConfig();
+						app.subscribe();
+					});
 				});
 
 				this.conn.on("disconnect", function () {
-					app.showError("Disconnected from ioBroker. Reconnecting...");
+					app.showError(t("disconnected"));
 				});
 
 				this.conn.on("stateChange", function (id, state) {
@@ -641,7 +646,7 @@
 
 				this.conn.emit("getStates", NAMESPACE + ".*", function (err, states) {
 					if (err) {
-						app.showError("Error loading states: " + err);
+						app.showError(t("error_loading_states", { error: err }));
 						return;
 					}
 
@@ -710,7 +715,7 @@
 			renderDashboard: function () {
 				var el = document.getElementById("dashboard");
 				energyFlow.update(this.states, this.connectors);
-				el.innerHTML = energyFlow.render() + this.makeCard("Overview", this.renderOverview());
+				el.innerHTML = energyFlow.render() + this.makeCard(t("tab_overview"), this.renderOverview());
 			},
 
 			renderOverview: function () {
@@ -720,10 +725,10 @@
 				}
 
 				if (activeList.length === 0) {
-					return '<div class="stat-label">No connectors are currently connected.</div>';
+					return '<div class="stat-label">' + t("no_connectors") + "</div>";
 				}
 
-				return '<div class="stat-label">Connected: ' + activeList.join(", ") + "</div>";
+				return '<div class="stat-label">' + t("connected_label", { list: activeList.join(", ") }) + "</div>";
 			},
 
 			makeCard: function (title, content) {
@@ -766,10 +771,8 @@
 				if (!this.deviceConfigured) {
 					el.innerHTML =
 						'<div class="warning-box">' +
-						"<strong>Device IP not configured.</strong> " +
-						"The log viewer requires a SENEC device IP address to be configured in the adapter settings, " +
-						"even if the local (lala.cgi) connector is not enabled. " +
-						"Set the device IP in the adapter configuration to use this feature." +
+						"<strong>" + t("log_no_device") + "</strong> " +
+						t("log_no_device_detail") +
 						"</div>";
 					return;
 				}
@@ -779,23 +782,23 @@
 
 				var html =
 					'<div class="card">' +
-					"<h2>Appliance Logs</h2>" +
+					"<h2>" + t("log_title") + "</h2>" +
 					'<div class="log-toolbar">' +
 					'<input type="date" id="log-date" value="' + dateVal + '" max="' + today + '">' +
-					'<button id="log-load" onclick="logViewer.loadLog()">Load</button>' +
-				'<button class="toggle-btn' + (this.liveMode ? " active" : "") +
-				'" onclick="logViewer.toggleLive()" title="Auto-refresh today\'s log every 30s">Live</button>' +
-					'<input type="text" id="log-filter" placeholder="Filter messages..." value="' +
+					'<button id="log-load" onclick="logViewer.loadLog()">' + t("log_load") + "</button>" +
+					'<button class="toggle-btn' + (this.liveMode ? " active" : "") +
+					'" onclick="logViewer.toggleLive()" title="' + t("log_live") + '">' + t("log_live") + "</button>" +
+					'<input type="text" id="log-filter" placeholder="' + t("log_filter_placeholder") + '" value="' +
 					this.escapeHtml(this.filterText) + '" oninput="logViewer.onFilterChange()">' +
 					'<select id="log-level-filter" onchange="logViewer.onFilterChange()">' +
-					'<option value="">All levels</option>' +
-					'<option value="I"' + (this.filterLevel === "I" ? " selected" : "") + '>Info</option>' +
-					'<option value="W"' + (this.filterLevel === "W" ? " selected" : "") + '>Warning</option>' +
-					'<option value="E"' + (this.filterLevel === "E" ? " selected" : "") + '>Error</option>' +
-				'<option value="P"' + (this.filterLevel === "P" ? " selected" : "") + '>Panic</option>' +
+					'<option value="">' + t("log_level_all") + "</option>" +
+					'<option value="I"' + (this.filterLevel === "I" ? " selected" : "") + ">" + t("log_level_info") + "</option>" +
+					'<option value="W"' + (this.filterLevel === "W" ? " selected" : "") + ">" + t("log_level_warning") + "</option>" +
+					'<option value="E"' + (this.filterLevel === "E" ? " selected" : "") + ">" + t("log_level_error") + "</option>" +
+					'<option value="P"' + (this.filterLevel === "P" ? " selected" : "") + ">" + t("log_level_panic") + "</option>" +
 					"</select>" +
 					'<select id="log-cat-filter" onchange="logViewer.onFilterChange()">' +
-					'<option value="">All categories</option>';
+					'<option value="">' + t("log_category_all") + "</option>";
 
 				for (var i = 0; i < this.categories.length; i++) {
 					var sel = this.filterCategory === this.categories[i] ? " selected" : "";
@@ -806,24 +809,23 @@
 				html +=
 					"</select>" +
 					'<button class="toggle-btn' + (this.highlightRows ? " active" : "") +
-					'" onclick="logViewer.toggleHighlight()" title="Highlight warnings and errors">Highlight</button>' +
+					'" onclick="logViewer.toggleHighlight()" title="' + t("log_highlight") + '">' + t("log_highlight") + "</button>" +
 					'<button class="toggle-btn" onclick="logViewer.downloadLog()"' +
 					(this.entries.length === 0 ? " disabled" : "") +
-					' title="Download raw log file">Download</button>' +
+					' title="' + t("log_download") + '">' + t("log_download") + "</button>" +
 					'<span class="spacer"></span>' +
 					'<span class="log-count" id="log-count"></span>' +
 					"</div>";
 
 				if (this.loading) {
 					html +=
-						'<div class="loading"><div class="spinner"></div><div>Loading log...</div></div>';
+						'<div class="loading"><div class="spinner"></div><div>' + t("log_loading") + "</div></div>";
 				} else if (this.noLog) {
-					html += '<div class="stat-label">No log available for ' +
-						this.escapeHtml(this.currentDate) + '. The device may not have logs for this date.</div>';
+					html += '<div class="stat-label">' + t("log_no_log", { date: this.escapeHtml(this.currentDate) }) + "</div>";
 				} else if (this.entries.length > 0) {
 					html += this.renderTable();
 				} else {
-					html += '<div class="stat-label">Select a date and click Load to view appliance logs.</div>';
+					html += '<div class="stat-label">' + t("log_select_date") + "</div>";
 				}
 
 				html += "</div>";
@@ -898,9 +900,9 @@
 					} else {
 						try {
 							var err = JSON.parse(xhr.responseText);
-							app.showError("Log load failed: " + (err.error || "Unknown error"));
+							app.showError(t("log_load_failed", { error: err.error || "Unknown error" }));
 						} catch (e) {
-							app.showError("Log load failed: HTTP " + xhr.status);
+							app.showError(t("log_load_failed", { error: "HTTP " + xhr.status }));
 						}
 					}
 					logViewer.renderLogViewer();
@@ -910,7 +912,7 @@
 				};
 				xhr.onerror = function () {
 					logViewer.loading = false;
-					app.showError("Network error loading log.");
+					app.showError(t("log_network_error"));
 					logViewer.renderLogViewer();
 				};
 				xhr.send();
@@ -1072,7 +1074,7 @@
 						parent.removeChild(wrap);
 						var noMatch = document.createElement("div");
 						noMatch.className = "stat-label";
-						noMatch.textContent = "No log entries match the current filters.";
+						noMatch.textContent = t("log_no_match");
 						parent.appendChild(noMatch);
 					}
 				} else if (!wrap && this.filtered.length > 0) {
@@ -1104,9 +1106,9 @@
 				if (this.entries.length === 0) {
 					el.textContent = "";
 				} else if (this.filtered.length === this.entries.length) {
-					el.textContent = this.entries.length + " entries";
+					el.textContent = t("log_entries", { count: this.entries.length });
 				} else {
-					el.textContent = this.filtered.length + " / " + this.entries.length + " entries";
+					el.textContent = t("log_entries_filtered", { filtered: this.filtered.length, total: this.entries.length });
 				}
 			},
 
