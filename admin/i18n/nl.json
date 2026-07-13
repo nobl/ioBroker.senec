@@ -87,6 +87,8 @@
     "apiReqRespLogHelp": "Registreert API-verzoeken en -antwoorden in 'debug'. Alleen aanbevolen voor foutopsporingsdoeleinden, omdat het veel loguitvoer en mogelijk gevoelige informatie kan opleveren. Kan het gebruik van authenticatie-eindpunten blootleggen in logboeken. Laat het niet permanent ingeschakeld.",
     "apiShowPolling": "Toon API-polling in logboek",
     "apiShowPollingHelp": "Toont dat de adapter de API pollt of probeert het accesstoken in log 'info' te vernieuwen. Schakel uit als de spam u irriteert.",
+    "batteryCapacity": "Batterijcapaciteit (kWh)",
+    "batteryCapacityHelp": "Totale batterijcapaciteit in kWh. Wordt gebruikt voor tijdschattingen in het webdashboard. Stel in op 0 voor automatische detectie van API (vereist SENEC App API-connector). Handmatig instellen als u alleen een lokale of webconnector gebruikt.",
     "connectInclude": "Voeg secties toe",
     "connectIncludeHelp": "Door komma's gescheiden lijst met gegevenssecties die moeten worden opgenomen: batterij, meter, evse, bessNameplate. Laat dit standaard staan ​​om alle beschikbare gegevens op te halen.",
     "connectPollInterval": "Polling-interval (seconden)",

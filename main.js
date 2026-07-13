@@ -143,8 +143,61 @@ class Senec extends utils.Adapter {
 			wrapper = mod.wrapper;
 		}
 
-		// Reset the connection indicator during startup
+		// Reset the connection indicators during startup
 		await this.setState("info.connection", false, true);
+		await this.setState("info.extension", false, true);
+		await this.setObjectNotExistsAsync("info.localConnected", {
+			type: "state",
+			common: {
+				role: "indicator.connected",
+				name: "Local (lala.cgi) connected",
+				type: "boolean",
+				read: true,
+				write: false,
+				def: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync("info.apiConnected", {
+			type: "state",
+			common: {
+				role: "indicator.connected",
+				name: "SENEC App API connected",
+				type: "boolean",
+				read: true,
+				write: false,
+				def: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync("info.webConnected", {
+			type: "state",
+			common: {
+				role: "indicator.connected",
+				name: "mein-senec.de connected",
+				type: "boolean",
+				read: true,
+				write: false,
+				def: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync("info.connectConnected", {
+			type: "state",
+			common: {
+				role: "indicator.connected",
+				name: "SENEC.Connect connected",
+				type: "boolean",
+				read: true,
+				write: false,
+				def: false,
+			},
+			native: {},
+		});
+		await this.setState("info.localConnected", false, true);
+		await this.setState("info.apiConnected", false, true);
+		await this.setState("info.webConnected", false, true);
+		await this.setState("info.connectConnected", false, true);
 
 		try {
 			this.checkConfig();
@@ -333,6 +386,7 @@ class Senec extends utils.Adapter {
 				this.log.info("[API] Usage of SENEC App API configured.");
 				this.apiConnected = await apiClient.apiStartTokenManager(this);
 				if (this.apiConnected) {
+					await this.setState("info.apiConnected", true, true);
 					apiClient.apiPoll(this).catch((e) => this.logError(e, "[API] ❌ Initial API poll failed"));
 				} else {
 					this.log.warn(
@@ -347,6 +401,7 @@ class Senec extends utils.Adapter {
 				this.log.info("[Connect] Usage of SENEC.Connect API configured.");
 				connectClient.connectPoll(this).catch((e) => this.logError(e, "[Connect] ❌ Initial poll failed"));
 				this.connectEnabled = true;
+				await this.setState("info.connectConnected", true, true);
 			}
 
 			// Web cleanup runs regardless of web_use — cleans up states from when features were enabled

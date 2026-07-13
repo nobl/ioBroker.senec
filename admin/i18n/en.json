@@ -59,6 +59,8 @@
     "activeControlHelp": "lala.cgi connection required! When activated it is possible to control SENEC appliance via local 'control' datapoints. You accept any potential risks incurred by activating this option possibly including loss of warranty.",
     "IP": "IP / FQDN of SENEC System",
     "IPHelp": "Here you enter the IP or FQDN of your SENEC System",
+    "batteryCapacity": "Battery capacity (kWh)",
+    "batteryCapacityHelp": "Total battery capacity in kWh. Used for time estimates in the web dashboard. Set to 0 for auto-detect from API (requires SENEC App API connector). Set manually if only using local or web connector.",
     "PollInterval": "Polling Interval (seconds) High Priority Data",
     "PollIntervalHelp": "Here you can define the polling interval for high priority data [min 1, max 3600 seconds]. Default = 10.",
     "PollIntervalLow": "Polling Interval (minutes) Low Priority Data",

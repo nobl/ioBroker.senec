@@ -34,6 +34,20 @@
 					"hidden": "data.lala_use !== true",
 					"newLine": true
 				},
+				"battery_capacity": {
+					"type": "number",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "batteryCapacity",
+					"help": "batteryCapacityHelp",
+					"default": 0,
+					"min": 0,
+					"step": 0.1,
+					"newLine": true
+				},
 				"interval": {
 					"type": "number",
 					"xs": 12,

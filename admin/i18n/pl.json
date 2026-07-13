@@ -87,6 +87,8 @@
     "apiReqRespLogHelp": "Rejestruje żądania i odpowiedzi API w trybie „debugowania”. Zalecane tylko do celów debugowania, ponieważ może generować wiele wyników dziennika i potencjalnie wrażliwe informacje. Może ujawnić w dziennikach użycie punktu końcowego uwierzytelniania. Nie pozostawiaj włączonej na stałe.",
     "apiShowPolling": "Pokaż odpytywanie API w dzienniku",
     "apiShowPollingHelp": "Pokazuje, że adapter odpytuje interfejs API lub próbuje odświeżyć token dostępu w dzienniku „info”. Wyłącz, jeśli denerwuje Cię spam.",
+    "batteryCapacity": "Pojemność baterii (kWh)",
+    "batteryCapacityHelp": "Całkowita pojemność akumulatora w kWh. Używany do szacowania czasu w panelu internetowym. Ustaw na 0, aby automatycznie wykryć z API (wymaga łącznika API aplikacji SENEC). Ustaw ręcznie, jeśli używasz tylko łącznika lokalnego lub internetowego.",
     "connectInclude": "Uwzględnij sekcje",
     "connectIncludeHelp": "Rozdzielana przecinkami lista sekcji danych obejmująca: baterię, licznik, evse, bessNameplate. Pozostaw ustawienie domyślne, aby uzyskać wszystkie dostępne dane.",
     "connectPollInterval": "Interwał odpytywania (sekundy)",

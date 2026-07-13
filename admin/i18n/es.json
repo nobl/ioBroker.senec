@@ -87,6 +87,8 @@
     "apiReqRespLogHelp": "Registra solicitudes y respuestas de API en 'depuración'. Solo se recomienda para fines de depuración, ya que puede producir una gran cantidad de resultados de registro y potencialmente registrar información confidencial. Puede exponer el uso del punto final de autenticación en los registros. No dejar habilitado permanentemente.",
     "apiShowPolling": "Mostrar sondeo API en el registro",
     "apiShowPollingHelp": "Muestra que el adaptador está sondeando la API o intentando actualizar el token de acceso en el registro 'información'. Desactívalo si el spam te molesta.",
+    "batteryCapacity": "Capacidad de la batería (kWh)",
+    "batteryCapacityHelp": "Capacidad total de la batería en kWh. Se utiliza para estimaciones de tiempo en el panel web. Establezca en 0 para la detección automática de la API (requiere el conector API de la aplicación SENEC). Configure manualmente si solo utiliza el conector local o web.",
     "connectInclude": "Incluir secciones",
     "connectIncludeHelp": "Lista separada por comas de secciones de datos que incluyen: batería, medidor, evse, bessNameplate. Déjelo como predeterminado para obtener todos los datos disponibles.",
     "connectPollInterval": "Intervalo de sondeo (segundos)",

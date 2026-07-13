@@ -151,6 +151,15 @@
     "adminUI": {
       "config": "json"
     },
+    "webExtension": "lib/web.js",
+    "welcomeScreen": {
+      "link": "senec/",
+      "name": "SENEC Dashboard",
+      "img": "senec.png",
+      "color": "#157c00",
+      "localLink": true,
+      "order": 10
+    },
     "dependencies": [
       {
         "js-controller": ">=6.0.11"
@@ -225,10 +234,12 @@
     "web_concurrency_start": 1,
     "web_concurrency_max": 2,
     "web_min_request_interval": 500,
+    "battery_capacity": 0,
     "connect_use": false,
     "connect_subscription_key": "",
     "connect_interval": 300,
-    "connect_include": "battery,meter,evse,bessNameplate"
+    "connect_include": "battery,meter,evse,bessNameplate",
+    "webInstance": "*"
   },
   "encryptedNative": [
     "api_mail",
@@ -295,6 +306,19 @@
         "type": "boolean",
         "read": true,
         "write": true,
+        "def": false
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.extension",
+      "type": "state",
+      "common": {
+        "role": "indicator",
+        "name": "Web extension loaded",
+        "type": "boolean",
+        "read": true,
+        "write": false,
         "def": false
       },
       "native": {}

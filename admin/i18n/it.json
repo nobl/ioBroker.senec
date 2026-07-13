@@ -87,6 +87,8 @@
     "apiReqRespLogHelp": "Registra le richieste e le risposte API in \"debug\". Consigliato solo a scopo di debug in quanto può produrre molti output di registro e registrare informazioni potenzialmente riservate. Può esporre l'utilizzo dell'endpoint di autenticazione nei log. Non lasciare abilitato permanentemente.",
     "apiShowPolling": "Mostra il polling API nel registro",
     "apiShowPollingHelp": "Mostra che l'adattatore sta eseguendo il polling dell'API o tentando di aggiornare il token di accesso nel registro \"info\". Disattiva se lo spam ti infastidisce.",
+    "batteryCapacity": "Capacità della batteria (kWh)",
+    "batteryCapacityHelp": "Capacità totale della batteria in kWh. Utilizzato per le stime temporali nel dashboard Web. Impostato su 0 per il rilevamento automatico dall'API (richiede il connettore API dell'app SENEC). Impostato manualmente se si utilizza solo il connettore locale o Web.",
     "connectInclude": "Includi sezioni",
     "connectIncludeHelp": "Elenco separato da virgole delle sezioni dati da includere: batteria, contatore, evse, bessNameplate. Lascia come predefinito per ottenere tutti i dati disponibili.",
     "connectPollInterval": "Intervallo di polling (secondi)",

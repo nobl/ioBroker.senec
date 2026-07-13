@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>SENEC Dashboard</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		:root {
+			--color-primary: #157c00;
+			--color-primary-light: #1a9600;
+			--color-bg: #f5f5f5;
+			--color-card: #ffffff;
+			--color-text: #333333;
+			--color-text-secondary: #666666;
+			--color-border: #e0e0e0;
+			--color-success: #4caf50;
+			--color-warning: #ff9800;
+			--color-error: #f44336;
+			--color-info: #2196f3;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			:root {
+				--color-bg: #1a1a1a;
+				--color-card: #2d2d2d;
+				--color-text: #e0e0e0;
+				--color-text-secondary: #999999;
+				--color-border: #404040;
+			}
+		}
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+			background: var(--color-bg);
+			color: var(--color-text);
+			line-height: 1.5;
+		}
+
+		.header {
+			background: var(--color-primary);
+			color: white;
+			padding: 16px 24px;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		}
+
+		.header img {
+			height: 32px;
+			width: 32px;
+		}
+
+		.header h1 {
+			font-size: 20px;
+			font-weight: 500;
+		}
+
+		.header .version {
+			font-size: 12px;
+			opacity: 0.8;
+			margin-left: auto;
+		}
+
+		.nav {
+			display: flex;
+			gap: 0;
+			background: var(--color-card);
+			border-bottom: 1px solid var(--color-border);
+			padding: 0 24px;
+		}
+
+		.nav-tab {
+			padding: 12px 20px;
+			cursor: pointer;
+			font-size: 14px;
+			font-weight: 500;
+			color: var(--color-text-secondary);
+			border-bottom: 2px solid transparent;
+			transition: color 0.2s, border-color 0.2s;
+		}
+
+		.nav-tab:hover {
+			color: var(--color-text);
+		}
+
+		.nav-tab.active {
+			color: var(--color-primary);
+			border-bottom-color: var(--color-primary);
+		}
+
+		.container {
+			max-width: 1200px;
+			margin: 24px auto;
+			padding: 0 24px;
+		}
+
+		.status-bar {
+			display: flex;
+			gap: 8px;
+			flex-wrap: wrap;
+			margin-bottom: 24px;
+		}
+
+		.connector-badge {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 6px 12px;
+			border-radius: 16px;
+			font-size: 13px;
+			font-weight: 500;
+			background: var(--color-card);
+			border: 1px solid var(--color-border);
+		}
+
+		.connector-badge .dot {
+			width: 8px;
+			height: 8px;
+			border-radius: 50%;
+			background: var(--color-border);
+		}
+
+		.connector-badge.active .dot {
+			background: var(--color-success);
+		}
+
+		.connector-badge.inactive .dot {
+			background: var(--color-error);
+		}
+
+		.card {
+			background: var(--color-card);
+			border: 1px solid var(--color-border);
+			border-radius: 8px;
+			padding: 20px;
+			margin-bottom: 16px;
+		}
+
+		.card h2 {
+			font-size: 16px;
+			font-weight: 600;
+			margin-bottom: 12px;
+			color: var(--color-text);
+		}
+
+		.loading {
+			text-align: center;
+			padding: 40px;
+			color: var(--color-text-secondary);
+		}
+
+		.loading .spinner {
+			display: inline-block;
+			width: 24px;
+			height: 24px;
+			border: 3px solid var(--color-border);
+			border-top-color: var(--color-primary);
+			border-radius: 50%;
+			animation: spin 0.8s linear infinite;
+			margin-bottom: 12px;
+		}
+
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+
+		#error-banner {
+			display: none;
+			background: var(--color-error);
+			color: white;
+			padding: 12px 24px;
+			font-size: 14px;
+		}
+
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+			gap: 16px;
+		}
+
+		.stat-value {
+			font-size: 28px;
+			font-weight: 600;
+			color: var(--color-primary);
+		}
+
+		.stat-unit {
+			font-size: 14px;
+			font-weight: 400;
+			color: var(--color-text-secondary);
+		}
+
+		.stat-label {
+			font-size: 13px;
+			color: var(--color-text-secondary);
+			margin-top: 4px;
+		}
+
+		.tab-content {
+			display: none;
+		}
+
+		.tab-content.active {
+			display: block;
+		}
+
+		/* Log viewer */
+		.log-toolbar {
+			display: flex;
+			gap: 12px;
+			align-items: center;
+			flex-wrap: wrap;
+			margin-bottom: 16px;
+		}
+
+		.log-toolbar input[type="date"],
+		.log-toolbar input[type="text"],
+		.log-toolbar select {
+			padding: 6px 10px;
+			border: 1px solid var(--color-border);
+			border-radius: 4px;
+			font-size: 14px;
+			background: var(--color-card);
+			color: var(--color-text);
+		}
+
+		.log-toolbar input[type="text"] {
+			min-width: 200px;
+		}
+
+		.log-toolbar button {
+			padding: 6px 16px;
+			border: 1px solid var(--color-primary);
+			border-radius: 4px;
+			background: var(--color-primary);
+			color: white;
+			font-size: 14px;
+			cursor: pointer;
+		}
+
+		.log-toolbar button:hover {
+			background: var(--color-primary-light);
+		}
+
+		.log-toolbar button:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
+		.log-toolbar .spacer {
+			flex: 1;
+		}
+
+		.log-count {
+			font-size: 13px;
+			color: var(--color-text-secondary);
+		}
+
+		.log-table-wrap {
+			overflow-x: auto;
+			max-height: 70vh;
+			overflow-y: auto;
+			border: 1px solid var(--color-border);
+			border-radius: 4px;
+		}
+
+		.log-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 13px;
+			font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+		}
+
+		.log-table thead {
+			position: sticky;
+			top: 0;
+			z-index: 1;
+		}
+
+		.log-table th {
+			background: var(--color-primary);
+			color: white;
+			padding: 8px 12px;
+			text-align: left;
+			font-weight: 500;
+			white-space: nowrap;
+		}
+
+		.log-table td {
+			padding: 4px 12px;
+			border-bottom: 1px solid var(--color-border);
+			vertical-align: top;
+		}
+
+		.log-table tr:hover td {
+			background: rgba(21, 124, 0, 0.05);
+		}
+
+		.log-level {
+			font-weight: 600;
+			padding: 1px 6px;
+			border-radius: 3px;
+			font-size: 11px;
+			text-transform: uppercase;
+		}
+
+		.log-level-i { color: var(--color-info); }
+		.log-level-w { color: var(--color-warning); }
+		.log-level-e { color: var(--color-error); }
+		.log-level-p { color: #d50000; font-weight: 700; }
+
+		.log-table.highlight-rows tr.log-row-w td {
+			background: rgba(255, 152, 0, 0.1);
+		}
+
+		.log-table.highlight-rows tr.log-row-e td {
+			background: rgba(244, 67, 54, 0.12);
+		}
+
+		.log-table.highlight-rows tr.log-row-p td {
+			background: rgba(213, 0, 0, 0.15);
+		}
+
+		@media (prefers-color-scheme: dark) {
+			.log-table.highlight-rows tr.log-row-w td {
+				background: rgba(255, 152, 0, 0.15);
+			}
+			.log-table.highlight-rows tr.log-row-e td {
+				background: rgba(244, 67, 54, 0.18);
+			}
+			.log-table.highlight-rows tr.log-row-p td {
+				background: rgba(213, 0, 0, 0.22);
+			}
+		}
+
+		.toggle-btn {
+			padding: 6px 16px;
+			border: 1px solid var(--color-border);
+			border-radius: 4px;
+			background: var(--color-card);
+			color: var(--color-text);
+			font-size: 14px;
+			cursor: pointer;
+		}
+
+		.toggle-btn.active {
+			border-color: var(--color-primary);
+			background: rgba(21, 124, 0, 0.1);
+			color: var(--color-primary);
+		}
+
+		.log-category {
+			color: var(--color-text-secondary);
+			white-space: nowrap;
+		}
+
+		.log-message {
+			word-break: break-word;
+			max-width: 600px;
+		}
+
+		.log-time {
+			white-space: nowrap;
+			color: var(--color-text-secondary);
+		}
+
+		.warning-box {
+			background: #fff3e0;
+			border: 1px solid var(--color-warning);
+			border-radius: 8px;
+			padding: 16px 20px;
+			color: #e65100;
+			font-size: 14px;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			.warning-box {
+				background: #3e2723;
+				color: #ffb74d;
+			}
+		}
+
+		/* Energy flow */
+		.energy-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 12px;
+		}
+
+		.energy-header h2 {
+			margin-bottom: 0;
+		}
+
+		.energy-source {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.energy-source select {
+			padding: 4px 8px;
+			border: 1px solid var(--color-border);
+			border-radius: 4px;
+			font-size: 13px;
+			background: var(--color-card);
+			color: var(--color-text);
+		}
+
+		.energy-source-label {
+			font-size: 12px;
+			color: var(--color-text-secondary);
+		}
+
+		.energy-flow-wrap {
+			display: flex;
+			justify-content: center;
+			padding: 8px 0;
+		}
+
+		.energy-flow-svg {
+			width: 100%;
+			max-width: 520px;
+			height: auto;
+		}
+
+		.flow-arrow {
+			animation: flowDash 1s linear infinite;
+		}
+
+		@keyframes flowDash {
+			to { stroke-dashoffset: -14; }
+		}
+
+		.day-totals {
+			margin-top: 16px;
+			padding-top: 16px;
+			border-top: 1px solid var(--color-border);
+		}
+
+		.day-totals-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 8px;
+		}
+
+		.day-totals-title {
+			font-size: 14px;
+			font-weight: 600;
+			color: var(--color-text);
+		}
+
+		.day-totals-tabs {
+			display: flex;
+			background: var(--color-bg);
+			border-radius: 6px;
+			padding: 2px;
+		}
+
+		.period-tab {
+			padding: 4px 12px;
+			border: none;
+			border-radius: 4px;
+			background: transparent;
+			color: var(--color-text-secondary);
+			font-size: 12px;
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.period-tab:hover {
+			color: var(--color-text);
+		}
+
+		.period-tab.active {
+			background: var(--color-card);
+			color: var(--color-primary);
+			font-weight: 600;
+			box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		}
+
+		.day-totals-grid {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 4px 16px;
+		}
+
+		@media (min-width: 600px) {
+			.day-totals-grid {
+				grid-template-columns: repeat(3, 1fr);
+			}
+		}
+
+		.day-total-item {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 6px 0;
+		}
+
+		.day-total-color {
+			width: 10px;
+			height: 10px;
+			border-radius: 2px;
+			flex-shrink: 0;
+		}
+
+		.day-total-label {
+			font-size: 13px;
+			color: var(--color-text-secondary);
+			flex: 1;
+		}
+
+		.day-total-value {
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--color-text);
+			white-space: nowrap;
+		}
+	</style>
+</head>
+<body>
+	<div id="error-banner"></div>
+
+	<div class="header">
+		<img src="../adapter/senec/senec.png" alt="SENEC">
+		<h1>SENEC Dashboard</h1>
+		<span class="version" id="version"></span>
+	</div>
+
+	<div class="nav">
+		<div class="nav-tab active" data-tab="overview">Overview</div>
+		<div class="nav-tab" data-tab="logs">Appliance Logs</div>
+	</div>
+
+	<div class="container">
+		<div class="status-bar" id="connectors"></div>
+
+		<div class="loading" id="loading">
+			<div class="spinner"></div>
+			<div>Connecting to ioBroker...</div>
+		</div>
+
+		<div id="content" style="display: none;">
+			<div class="tab-content active" id="tab-overview">
+				<div class="grid" id="dashboard"></div>
+			</div>
+
+			<div class="tab-content" id="tab-logs">
+				<div id="log-viewer"></div>
+			</div>
+		</div>
+	</div>
+
+	<script src="energy.js"></script>
+	<script>
+		"use strict";
+
+		const NAMESPACE = "senec.0";
+
+		const app = {
+			conn: null,
+			states: {},
+			config: {},
+			connected: false,
+			activeTab: "overview",
+			connectors: {
+				local: { label: "Local (lala.cgi)", stateId: "info.localConnected", active: false },
+				api: { label: "SENEC App API", stateId: "info.apiConnected", active: false },
+				web: { label: "mein-senec.de", stateId: "info.webConnected", active: false },
+				connect: { label: "SENEC.Connect", stateId: "info.connectConnected", active: false },
+			},
+
+			init: function () {
+				this.initTabs();
+				this.connectSocket();
+			},
+
+			initTabs: function () {
+				document.querySelectorAll(".nav-tab").forEach(function (tab) {
+					tab.addEventListener("click", function () {
+						document.querySelectorAll(".nav-tab").forEach(function (t) { t.classList.remove("active"); });
+						document.querySelectorAll(".tab-content").forEach(function (c) { c.classList.remove("active"); });
+						tab.classList.add("active");
+						var target = document.getElementById("tab-" + tab.dataset.tab);
+						if (target) target.classList.add("active");
+						app.activeTab = tab.dataset.tab;
+					});
+				});
+			},
+
+			connectSocket: function () {
+				var script = document.createElement("script");
+				script.src = "../socket.io/socket.io.js";
+				script.onload = function () { app.onSocketLoaded(); };
+				script.onerror = function () { app.showError("Could not load socket.io client library. Is ioBroker.web running?"); };
+				document.head.appendChild(script);
+			},
+
+			onSocketLoaded: function () {
+				this.conn = io.connect("", { path: "/socket.io" });
+
+				this.conn.on("connect", function () {
+					document.getElementById("error-banner").style.display = "none";
+					app.loadConfig();
+					app.subscribe();
+				});
+
+				this.conn.on("disconnect", function () {
+					app.showError("Disconnected from ioBroker. Reconnecting...");
+				});
+
+				this.conn.on("stateChange", function (id, state) {
+					if (state && id.startsWith(NAMESPACE + ".")) {
+						var shortId = id.substring(NAMESPACE.length + 1);
+						app.states[shortId] = state.val;
+						app.onStateUpdate(shortId, state.val);
+					}
+				});
+			},
+
+			loadConfig: function () {
+				this.conn.emit("getObject", "system.adapter." + NAMESPACE, function (err, obj) {
+					if (!err && obj && obj.native) {
+						app.config = obj.native;
+						logViewer.onConfigLoaded();
+					}
+				});
+			},
+
+			subscribe: function () {
+				this.conn.emit("subscribe", NAMESPACE + ".*");
+
+				this.conn.emit("getStates", NAMESPACE + ".*", function (err, states) {
+					if (err) {
+						app.showError("Error loading states: " + err);
+						return;
+					}
+
+					if (states) {
+						for (var id in states) {
+							if (states[id] && id.startsWith(NAMESPACE + ".")) {
+								var shortId = id.substring(NAMESPACE.length + 1);
+								app.states[shortId] = states[id].val;
+							}
+						}
+					}
+
+					app.connected = !!app.states["info.connection"];
+					app.render();
+				});
+			},
+
+			onStateUpdate: function (shortId, val) {
+				if (shortId === "info.connection") {
+					this.connected = !!val;
+				}
+				for (var key in this.connectors) {
+					if (shortId === this.connectors[key].stateId) {
+						this.connectors[key].active = !!val;
+						break;
+					}
+				}
+				this.renderConnectors();
+
+				// Re-render dashboard on energy-relevant state changes
+				if (this.activeTab === "overview" && (
+					shortId.startsWith("ENERGY.GUI_") ||
+					shortId.indexOf("currently.") !== -1 ||
+					shortId.indexOf("today.") !== -1 ||
+					shortId.indexOf("Status.") !== -1 ||
+					shortId.indexOf("WALLBOX.") !== -1
+				)) {
+					this.renderDashboard();
+				}
+			},
+
+			render: function () {
+				document.getElementById("loading").style.display = "none";
+				document.getElementById("content").style.display = "block";
+
+				this.connected = !!this.states["info.connection"];
+				for (var key in this.connectors) {
+					this.connectors[key].active = !!this.states[this.connectors[key].stateId];
+				}
+
+				this.renderConnectors();
+				this.renderDashboard();
+			},
+
+			renderConnectors: function () {
+				var el = document.getElementById("connectors");
+				var html = "";
+				for (var key in this.connectors) {
+					var c = this.connectors[key];
+					var cls = c.active ? "active" : "inactive";
+					html += '<span class="connector-badge ' + cls + '"><span class="dot"></span>' + c.label + "</span>";
+				}
+				el.innerHTML = html;
+			},
+
+			renderDashboard: function () {
+				var el = document.getElementById("dashboard");
+				energyFlow.update(this.states, this.connectors);
+				el.innerHTML = energyFlow.render() + this.makeCard("Overview", this.renderOverview());
+			},
+
+			renderOverview: function () {
+				var activeList = [];
+				for (var key in this.connectors) {
+					if (this.connectors[key].active) activeList.push(this.connectors[key].label);
+				}
+
+				if (activeList.length === 0) {
+					return '<div class="stat-label">No connectors are currently connected.</div>';
+				}
+
+				return '<div class="stat-label">Connected: ' + activeList.join(", ") + "</div>";
+			},
+
+			makeCard: function (title, content) {
+				return '<div class="card"><h2>' + title + "</h2>" + content + "</div>";
+			},
+
+			showError: function (msg) {
+				var el = document.getElementById("error-banner");
+				el.textContent = msg;
+				el.style.display = "block";
+			},
+		};
+
+		// --- Log Viewer ---
+		var logViewer = {
+			entries: [],
+			filtered: [],
+			rawText: "",
+			filterText: "",
+			filterLevel: "",
+			filterCategory: "",
+			categories: [],
+			loading: false,
+			deviceConfigured: false,
+			highlightRows: true,
+			currentDate: "",
+			liveMode: false,
+			liveTimer: null,
+			liveIntervalMs: 30000,
+
+			onConfigLoaded: function () {
+				var ip = app.config.senecip;
+				this.deviceConfigured = !!(ip && ip !== "0.0.0.0");
+				this.renderLogViewer();
+			},
+
+			renderLogViewer: function () {
+				var el = document.getElementById("log-viewer");
+
+				if (!this.deviceConfigured) {
+					el.innerHTML =
+						'<div class="warning-box">' +
+						"<strong>Device IP not configured.</strong> " +
+						"The log viewer requires a SENEC device IP address to be configured in the adapter settings, " +
+						"even if the local (lala.cgi) connector is not enabled. " +
+						"Set the device IP in the adapter configuration to use this feature." +
+						"</div>";
+					return;
+				}
+
+				var today = new Date().toISOString().slice(0, 10);
+				var dateVal = document.getElementById("log-date") ? document.getElementById("log-date").value : today;
+
+				var html =
+					'<div class="card">' +
+					"<h2>Appliance Logs</h2>" +
+					'<div class="log-toolbar">' +
+					'<input type="date" id="log-date" value="' + dateVal + '" max="' + today + '">' +
+					'<button id="log-load" onclick="logViewer.loadLog()">Load</button>' +
+				'<button class="toggle-btn' + (this.liveMode ? " active" : "") +
+				'" onclick="logViewer.toggleLive()" title="Auto-refresh today\'s log every 30s">Live</button>' +
+					'<input type="text" id="log-filter" placeholder="Filter messages..." value="' +
+					this.escapeHtml(this.filterText) + '" oninput="logViewer.onFilterChange()">' +
+					'<select id="log-level-filter" onchange="logViewer.onFilterChange()">' +
+					'<option value="">All levels</option>' +
+					'<option value="I"' + (this.filterLevel === "I" ? " selected" : "") + '>Info</option>' +
+					'<option value="W"' + (this.filterLevel === "W" ? " selected" : "") + '>Warning</option>' +
+					'<option value="E"' + (this.filterLevel === "E" ? " selected" : "") + '>Error</option>' +
+				'<option value="P"' + (this.filterLevel === "P" ? " selected" : "") + '>Panic</option>' +
+					"</select>" +
+					'<select id="log-cat-filter" onchange="logViewer.onFilterChange()">' +
+					'<option value="">All categories</option>';
+
+				for (var i = 0; i < this.categories.length; i++) {
+					var sel = this.filterCategory === this.categories[i] ? " selected" : "";
+					html += '<option value="' + this.escapeHtml(this.categories[i]) + '"' + sel + ">" +
+						this.escapeHtml(this.categories[i]) + "</option>";
+				}
+
+				html +=
+					"</select>" +
+					'<button class="toggle-btn' + (this.highlightRows ? " active" : "") +
+					'" onclick="logViewer.toggleHighlight()" title="Highlight warnings and errors">Highlight</button>' +
+					'<button class="toggle-btn" onclick="logViewer.downloadLog()"' +
+					(this.entries.length === 0 ? " disabled" : "") +
+					' title="Download raw log file">Download</button>' +
+					'<span class="spacer"></span>' +
+					'<span class="log-count" id="log-count"></span>' +
+					"</div>";
+
+				if (this.loading) {
+					html +=
+						'<div class="loading"><div class="spinner"></div><div>Loading log...</div></div>';
+				} else if (this.noLog) {
+					html += '<div class="stat-label">No log available for ' +
+						this.escapeHtml(this.currentDate) + '. The device may not have logs for this date.</div>';
+				} else if (this.entries.length > 0) {
+					html += this.renderTable();
+				} else {
+					html += '<div class="stat-label">Select a date and click Load to view appliance logs.</div>';
+				}
+
+				html += "</div>";
+				el.innerHTML = html;
+				this.updateCount();
+			},
+
+			renderTable: function () {
+				var rows = this.filtered;
+				var hlClass = this.highlightRows ? " highlight-rows" : "";
+				var html =
+					'<div class="log-table-wrap">' +
+					'<table class="log-table' + hlClass + '">' +
+					"<thead><tr>" +
+					"<th>Time</th><th>Level</th><th>Category</th><th>Message</th>" +
+					"</tr></thead><tbody>";
+
+				for (var i = 0; i < rows.length; i++) {
+					var r = rows[i];
+					var levelCls = "log-level-" + r.level.toLowerCase();
+					var rowCls = (r.level === "W" || r.level === "E" || r.level === "P") ? " log-row-" + r.level.toLowerCase() : "";
+					html +=
+						'<tr class="' + rowCls + '">' +
+						'<td class="log-time">' + this.escapeHtml(r.time) + "</td>" +
+						'<td><span class="log-level ' + levelCls + '">' + this.escapeHtml(r.level) + "</span></td>" +
+						'<td class="log-category">' + this.escapeHtml(r.category) + "</td>" +
+						'<td class="log-message">' + this.escapeHtml(r.message) + "</td>" +
+						"</tr>";
+				}
+
+				html += "</tbody></table></div>";
+				return html;
+			},
+
+			loadLog: function (isLiveRefresh) {
+				var dateEl = document.getElementById("log-date");
+				if (!dateEl || !dateEl.value) return;
+
+				// Turn off live mode if user manually loads a different date
+				if (!isLiveRefresh && this.liveMode) {
+					if (dateEl.value !== this.getUtcDate()) {
+						this.liveMode = false;
+						if (this.liveTimer) {
+							clearInterval(this.liveTimer);
+							this.liveTimer = null;
+						}
+					}
+				}
+
+				if (!isLiveRefresh) {
+					this.loading = true;
+				}
+				this.currentDate = dateEl.value;
+				this.noLog = false;
+				if (!isLiveRefresh) {
+					this.entries = [];
+					this.filtered = [];
+					this.categories = [];
+					this.rawText = "";
+					this.renderLogViewer();
+				}
+
+				var xhr = new XMLHttpRequest();
+				xhr.open("GET", "api/log?date=" + encodeURIComponent(dateEl.value));
+				xhr.onload = function () {
+					logViewer.loading = false;
+					if (xhr.status === 200) {
+						logViewer.rawText = xhr.responseText;
+						logViewer.parseLog(xhr.responseText);
+					} else if (xhr.status === 404) {
+						logViewer.noLog = true;
+					} else {
+						try {
+							var err = JSON.parse(xhr.responseText);
+							app.showError("Log load failed: " + (err.error || "Unknown error"));
+						} catch (e) {
+							app.showError("Log load failed: HTTP " + xhr.status);
+						}
+					}
+					logViewer.renderLogViewer();
+					if (isLiveRefresh || logViewer.liveMode) {
+						logViewer.scrollToBottom();
+					}
+				};
+				xhr.onerror = function () {
+					logViewer.loading = false;
+					app.showError("Network error loading log.");
+					logViewer.renderLogViewer();
+				};
+				xhr.send();
+			},
+
+			toggleHighlight: function () {
+				this.highlightRows = !this.highlightRows;
+				var table = document.querySelector(".log-table");
+				if (table) {
+					if (this.highlightRows) {
+						table.classList.add("highlight-rows");
+					} else {
+						table.classList.remove("highlight-rows");
+					}
+				}
+				var btn = document.querySelector(".toggle-btn");
+				if (btn) {
+					if (this.highlightRows) {
+						btn.classList.add("active");
+					} else {
+						btn.classList.remove("active");
+					}
+				}
+			},
+
+			getUtcDate: function () {
+				var d = new Date();
+				var y = d.getUTCFullYear();
+				var m = String(d.getUTCMonth() + 1).padStart(2, "0");
+				var day = String(d.getUTCDate()).padStart(2, "0");
+				return y + "-" + m + "-" + day;
+			},
+
+			toggleLive: function () {
+				this.liveMode = !this.liveMode;
+				if (this.liveMode) {
+					// SENEC logs use UTC — use UTC date
+					var utcToday = this.getUtcDate();
+					var dateEl = document.getElementById("log-date");
+					if (dateEl) dateEl.value = utcToday;
+					this.loadLog();
+					this.liveTimer = setInterval(function () {
+						// Auto-switch date on UTC day rollover
+						var utcNow = logViewer.getUtcDate();
+						var dateInput = document.getElementById("log-date");
+						if (dateInput) dateInput.value = utcNow;
+						logViewer.loadLog(true);
+					}, this.liveIntervalMs);
+				} else {
+					if (this.liveTimer) {
+						clearInterval(this.liveTimer);
+						this.liveTimer = null;
+					}
+				}
+				this.renderLogViewer();
+			},
+
+			scrollToBottom: function () {
+				var wrap = document.querySelector(".log-table-wrap");
+				if (wrap) {
+					wrap.scrollTop = wrap.scrollHeight;
+				}
+			},
+
+			downloadLog: function () {
+				if (!this.rawText) return;
+				var blob = new Blob([this.rawText], { type: "text/plain" });
+				var url = URL.createObjectURL(blob);
+				var a = document.createElement("a");
+				a.href = url;
+				a.download = "senec-log-" + this.currentDate + ".log";
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				URL.revokeObjectURL(url);
+			},
+
+			parseLog: function (raw) {
+				var lines = raw.split("\n");
+				var entries = [];
+				var catSet = {};
+
+				for (var i = 0; i < lines.length; i++) {
+					var line = lines[i].trim();
+					if (!line) continue;
+
+					var entry = this.parseLine(line);
+					entries.push(entry);
+					if (entry.category) catSet[entry.category] = true;
+				}
+
+				this.entries = entries;
+				this.categories = Object.keys(catSet).sort();
+				this.applyFilters();
+			},
+
+			parseLine: function (line) {
+				// Format: "2026-07-11 00:00:15 [I|Energy Management] some message"
+				// Or raw lines without brackets
+				var match = line.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+\[(\w)\|([^\]]+)\]\s*(.*)$/);
+				if (match) {
+					return {
+						date: match[1],
+						time: match[2],
+						level: match[3],
+						category: match[4],
+						message: match[5],
+					};
+				}
+
+				// Try format without brackets: "2026-07-11 00:00:15 some message"
+				var match2 = line.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+(.*)$/);
+				if (match2) {
+					return {
+						date: match2[1],
+						time: match2[2],
+						level: "-",
+						category: "",
+						message: match2[3],
+					};
+				}
+
+				// Fallback: unparseable line
+				return { date: "", time: "", level: "-", category: "", message: line };
+			},
+
+			onFilterChange: function () {
+				var filterEl = document.getElementById("log-filter");
+				var levelEl = document.getElementById("log-level-filter");
+				var catEl = document.getElementById("log-cat-filter");
+
+				this.filterText = filterEl ? filterEl.value : "";
+				this.filterLevel = levelEl ? levelEl.value : "";
+				this.filterCategory = catEl ? catEl.value : "";
+
+				this.applyFilters();
+
+				// Re-render just the table body and count
+				var wrap = document.querySelector(".log-table-wrap");
+				if (wrap && this.filtered.length > 0) {
+					var html = "";
+					for (var i = 0; i < this.filtered.length; i++) {
+						var r = this.filtered[i];
+						var levelCls = "log-level-" + r.level.toLowerCase();
+						var rowCls = (r.level === "W" || r.level === "E" || r.level === "P") ? " log-row-" + r.level.toLowerCase() : "";
+						html +=
+							'<tr class="' + rowCls + '">' +
+							'<td class="log-time">' + this.escapeHtml(r.time) + "</td>" +
+							'<td><span class="log-level ' + levelCls + '">' + this.escapeHtml(r.level) + "</span></td>" +
+							'<td class="log-category">' + this.escapeHtml(r.category) + "</td>" +
+							'<td class="log-message">' + this.escapeHtml(r.message) + "</td>" +
+							"</tr>";
+					}
+					var tbody = document.querySelector(".log-table tbody");
+					if (tbody) tbody.innerHTML = html;
+				} else if (wrap && this.filtered.length === 0 && this.entries.length > 0) {
+					var parent = wrap.parentNode;
+					if (parent) {
+						parent.removeChild(wrap);
+						var noMatch = document.createElement("div");
+						noMatch.className = "stat-label";
+						noMatch.textContent = "No log entries match the current filters.";
+						parent.appendChild(noMatch);
+					}
+				} else if (!wrap && this.filtered.length > 0) {
+					this.renderLogViewer();
+				}
+
+				this.updateCount();
+			},
+
+			applyFilters: function () {
+				var text = this.filterText.toLowerCase();
+				var level = this.filterLevel;
+				var cat = this.filterCategory;
+
+				this.filtered = [];
+				for (var i = 0; i < this.entries.length; i++) {
+					var e = this.entries[i];
+					if (level && e.level !== level) continue;
+					if (cat && e.category !== cat) continue;
+					if (text && e.message.toLowerCase().indexOf(text) === -1 &&
+						e.category.toLowerCase().indexOf(text) === -1) continue;
+					this.filtered.push(e);
+				}
+			},
+
+			updateCount: function () {
+				var el = document.getElementById("log-count");
+				if (!el) return;
+				if (this.entries.length === 0) {
+					el.textContent = "";
+				} else if (this.filtered.length === this.entries.length) {
+					el.textContent = this.entries.length + " entries";
+				} else {
+					el.textContent = this.filtered.length + " / " + this.entries.length + " entries";
+				}
+			},
+
+			escapeHtml: function (str) {
+				if (!str) return "";
+				return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+			},
+		};
+
+		document.addEventListener("DOMContentLoaded", function () { app.init(); });
+	</script>
+</body>
+</html>
