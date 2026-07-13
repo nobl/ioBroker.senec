@@ -67,9 +67,9 @@
     "activeControlHelp": "Conexão lala.cgi necessária! Quando ativado, é possível controlar o aparelho SENEC através de pontos de dados de 'controle' locais. Você aceita quaisquer riscos potenciais incorridos ao ativar esta opção, possivelmente incluindo perda de garantia.",
     "activeWebControl": "Ative o controle mein-senec.de",
     "activeWebControlHelp": "Quando ativado, é possível controlar seu sistema SENEC via mein-senec.de (reserva de energia de emergência, redução de pico, SG-Ready). Os controles disponíveis dependem dos recursos do seu sistema. Você aceita quaisquer riscos potenciais incorridos ao ativar esta opção.",
-    "apiConcurrencyAndUA": "Simultaneidade e agente do usuário",
     "apiConcurrencyMax": "Simultaneidade máxima de API",
     "apiConcurrencyMaxHelp": "Aqui você pode definir quantas solicitações de API o adaptador pode enviar ao mesmo tempo, no máximo. [mínimo 1, máximo 6]. Padrão = 1. Valores mais altos podem acelerar a recuperação de dados, mas também aumentar o risco de erros de API. Se você encontrar erros de API, tente diminuir esse valor.",
+    "apiConcurrencyPanel": "Simultaneidade e limitação de taxa",
     "apiConcurrencyStart": "Simultaneidade de API",
     "apiConcurrencyStartHelp": "Aqui você pode definir quantas solicitações de API o adaptador deve enviar ao mesmo tempo ao inicializar. [mínimo 1, máximo 4]. Padrão = 1. Valores mais altos podem acelerar a recuperação de dados, mas também aumentar o risco de erros de API. Se você encontrar erros de API, tente diminuir esse valor.",
     "apiControl": "Controle de API (API do aplicativo SENEC)",
@@ -125,6 +125,7 @@
     "useLalaHelp": "Conecte-se ao aparelho SENEC via rede local. Isto requer acesso ao monitoramento local.",
     "userAgentMode": "Modo User-Agent",
     "userAgentModeHelp": "Escolha qual User-Agent deve ser enviado para solicitações HTTP de saída.<br>Navegador = use um User-Agent de navegador comum.<br>Personalizado = use o User-Agent definido no campo à direita.<br>Integração = O agente do usuário revela a integração via ioBroker, incluindo a versão do adaptador.<br>Reverta para 'Navegador' se tiver problemas com o User-Agent.",
+    "userAgentPanel": "Agente do usuário",
     "webConcurrencyMax": "Simultaneidade máxima da Web",
     "webConcurrencyMaxHelp": "Número máximo de solicitações paralelas para mein-senec.de. [mínimo 1, máximo 4]. Padrão = 2. A fila se ajusta automaticamente com base na taxa de sucesso.",
     "webConcurrencyPanel": "Simultaneidade e limitação de taxa",
@@ -139,9 +140,9 @@
     "webMinRequestInterval": "Intervalo mínimo de solicitação (ms)",
     "webMinRequestIntervalHelp": "Tempo mínimo entre solicitações consecutivas para mein-senec.de. [mín. 400, máximo 5.000 ms]. Padrão = 500. Aumente se houver limitação de taxa.",
     "webPollIntervalMedium": "Intervalo médio de pesquisa (minutos)",
-    "webPollIntervalMediumHelp": "Intervalo de pesquisa para capacidade ociosa, estado SG-Ready, soquetes e medições de nível médio (ontem, resumo de 7 dias, autarquia). [mínimo 60, máximo 1440 minutos]. Padrão = 360 (6 horas).",
+    "webPollIntervalMediumHelp": "Intervalo de pesquisa para capacidade ociosa, estado SG-Ready, soquetes e medições (hoje, ontem, autarquia). [mínimo 60, máximo 1440 minutos]. Padrão = 360 (6 horas).",
     "webPollIntervalSlow": "Intervalo de pesquisa lento (minutos)",
     "webPollIntervalSlowHelp": "Intervalo de pesquisa para configurações de redução de pico, configuração SG-Ready e medições pesadas (mensais, anuais, totais AllTime). [mínimo 360, máximo 2.880 minutos]. Padrão = 1440 (diariamente).",
     "webPollIntervalStatus": "Intervalo de pesquisa de status (minutos)",
-    "webPollIntervalStatusHelp": "Intervalo de pesquisa para visão geral do status e dados de medição de hoje (quando as medições estão habilitadas). [mínimo 3, máximo 60 minutos]. Padrão = 6."
+    "webPollIntervalStatusHelp": "Intervalo de pesquisa para visão geral do status (dados de energia em tempo real). [mínimo 3, máximo 60 minutos]. Padrão = 6."
 }

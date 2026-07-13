@@ -67,9 +67,9 @@
     "activeControlHelp": "Connexion lala.cgi requise ! Lorsqu'il est activé, il est possible de contrôler l'appareil SENEC via des points de données de « contrôle » locaux. Vous acceptez tous les risques potentiels encourus en activant cette option, y compris éventuellement la perte de garantie.",
     "activeWebControl": "Activer le contrôle mein-senec.de",
     "activeWebControlHelp": "Lorsqu'il est activé, il est possible de contrôler votre système SENEC via mein-senec.de (réserve de marche d'urgence, écrêtage de pointe, SG-Ready). Les commandes disponibles dépendent des capacités de votre système. Vous acceptez tous les risques potentiels encourus en activant cette option.",
-    "apiConcurrencyAndUA": "Concurrence et agent utilisateur",
     "apiConcurrencyMax": "Concurrence maximale des API",
     "apiConcurrencyMaxHelp": "Ici, vous pouvez définir le nombre maximum de requêtes API que l'adaptateur peut envoyer en même temps. [min 1, max 6]. Par défaut = 1. Des valeurs plus élevées peuvent accélérer la récupération des données mais également augmenter le risque d'erreurs API. Si vous rencontrez des erreurs API, essayez de réduire cette valeur.",
+    "apiConcurrencyPanel": "Concurrence et limitation de débit",
     "apiConcurrencyStart": "Concurrence des API",
     "apiConcurrencyStartHelp": "Ici, vous pouvez définir le nombre de requêtes API que l'adaptateur doit envoyer en même temps lors du démarrage. [min 1, max 4]. Par défaut = 1. Des valeurs plus élevées peuvent accélérer la récupération des données mais également augmenter le risque d'erreurs API. Si vous rencontrez des erreurs API, essayez de réduire cette valeur.",
     "apiControl": "Contrôle API (API de l'application SENEC)",
@@ -125,6 +125,7 @@
     "useLalaHelp": "Connectez-vous à l'appareil SENEC via le réseau local. Cela nécessite l’accès à une surveillance locale.",
     "userAgentMode": "Mode agent utilisateur",
     "userAgentModeHelp": "Choisissez quel agent utilisateur doit être envoyé pour les requêtes HTTP sortantes.<br>Navigateur = utiliser un agent utilisateur de navigateur commun.<br>Personnalisé = utiliser l'agent utilisateur défini dans le champ de droite.<br>Intégration = L'agent utilisateur révèle l'intégration via ioBroker, y compris la version de l'adaptateur.<br>Revenez au « Navigateur » si vous rencontrez des problèmes avec l'agent utilisateur.",
+    "userAgentPanel": "Agent utilisateur",
     "webConcurrencyMax": "Concurrence Web maximale",
     "webConcurrencyMaxHelp": "Nombre maximum de requêtes parallèles vers mein-senec.de. [min 1, max 4]. Par défaut = 2. La file d'attente s'ajuste automatiquement en fonction du taux de réussite.",
     "webConcurrencyPanel": "Concurrence et limitation de débit",
@@ -139,9 +140,9 @@
     "webMinRequestInterval": "Intervalle minimum de demande (ms)",
     "webMinRequestIntervalHelp": "Temps minimum entre les demandes consécutives à mein-senec.de. [min 400, max 5000 ms]. Par défaut = 500. Augmentez si vous rencontrez une limitation de débit.",
     "webPollIntervalMedium": "Intervalle d'interrogation moyen (minutes)",
-    "webPollIntervalMediumHelp": "Intervalle d'interrogation pour la capacité disponible, l'état SG-Ready, les sockets et les mesures de niveau moyen (hier, résumé sur 7 jours, autarcie). [min 60, max 1440 minutes]. Par défaut = 360 (6 heures).",
+    "webPollIntervalMediumHelp": "Intervalle d'interrogation pour la capacité disponible, l'état SG-Ready, les sockets et les mesures (aujourd'hui, hier, autarcie). [min 60, max 1440 minutes]. Par défaut = 360 (6 heures).",
     "webPollIntervalSlow": "Intervalle d'interrogation lent (minutes)",
     "webPollIntervalSlowHelp": "Intervalle d'interrogation pour les paramètres d'écrêtement de pointe, la configuration SG-Ready et les mesures importantes (totaux mensuels, annuels et AllTime). [min 360, max 2880 minutes]. Par défaut = 1 440 (quotidiennement).",
     "webPollIntervalStatus": "Intervalle d'interrogation d'état (minutes)",
-    "webPollIntervalStatusHelp": "Intervalle d'interrogation pour l'aperçu de l'état et les données de mesure du jour (lorsque les mesures sont activées). [min 3, max 60 minutes]. Par défaut = 6."
+    "webPollIntervalStatusHelp": "Intervalle d'interrogation pour un aperçu de l'état (données d'alimentation en direct). [min 3, max 60 minutes]. Par défaut = 6."
 }

@@ -67,9 +67,9 @@
     "activeControlHelp": "wymagane połączenie lala.cgi! Po aktywacji możliwe jest sterowanie urządzeniem SENEC za pośrednictwem lokalnych punktów danych „sterujących”. Akceptujesz wszelkie potencjalne ryzyko wynikające z aktywacji tej opcji, łącznie z utratą gwarancji.",
     "activeWebControl": "Aktywuj kontrolę mein-senec.de",
     "activeWebControlHelp": "Po aktywacji możliwe jest sterowanie systemem SENEC za pośrednictwem strony mein-senec.de (awaryjna rezerwa mocy, eliminowanie wartości szczytowych, SG-Ready). Dostępne elementy sterujące zależą od możliwości systemu. Akceptujesz wszelkie potencjalne ryzyko wynikające z aktywacji tej opcji.",
-    "apiConcurrencyAndUA": "Współbieżność i agent użytkownika",
     "apiConcurrencyMax": "Maksymalna współbieżność interfejsu API",
     "apiConcurrencyMaxHelp": "Tutaj możesz zdefiniować, ile żądań API może jednocześnie wysłać adapter, maks. [min. 1, maks. 6]. Domyślnie = 1. Wyższe wartości mogą przyspieszyć pobieranie danych, ale także zwiększyć ryzyko błędów API. Jeśli wystąpią błędy API, spróbuj obniżyć tę wartość.",
+    "apiConcurrencyPanel": "Ograniczanie współbieżności i szybkości",
     "apiConcurrencyStart": "Współbieżność API",
     "apiConcurrencyStartHelp": "Tutaj możesz zdefiniować, ile żądań API adapter powinien wysłać jednocześnie podczas uruchamiania. [min. 1, maks. 4]. Domyślnie = 1. Wyższe wartości mogą przyspieszyć pobieranie danych, ale także zwiększyć ryzyko błędów API. Jeśli wystąpią błędy API, spróbuj obniżyć tę wartość.",
     "apiControl": "Kontrola API (API aplikacji SENEC)",
@@ -125,6 +125,7 @@
     "useLalaHelp": "Połącz się z urządzeniem SENEC poprzez sieć lokalną. Wymaga to dostępu do lokalnego monitoringu.",
     "userAgentMode": "Tryb agenta użytkownika",
     "userAgentModeHelp": "Wybierz, który klient użytkownika powinien być wysyłany w przypadku wychodzących żądań HTTP.<br>Przeglądarka = użyj zwykłego agenta użytkownika przeglądarki.<br>Niestandardowy = użyj agenta użytkownika zdefiniowanego w polu po prawej stronie.<br>Integracja = agent użytkownika ujawnia integrację za pośrednictwem ioBroker, łącznie z wersją adaptera.<br>W przypadku problemów z agentem użytkownika wróć do „Przeglądarki”.",
+    "userAgentPanel": "Agent użytkownika",
     "webConcurrencyMax": "Maksymalna współbieżność sieci",
     "webConcurrencyMaxHelp": "Maksymalna liczba równoległych żądań do mein-senec.de. [min. 1, maks. 4]. Wartość domyślna = 2. Kolejka dostosowuje się automatycznie w oparciu o wskaźnik powodzenia.",
     "webConcurrencyPanel": "Ograniczanie współbieżności i szybkości",
@@ -139,9 +140,9 @@
     "webMinRequestInterval": "Minimalny interwał żądania (ms)",
     "webMinRequestIntervalHelp": "Minimalny czas pomiędzy kolejnymi żądaniami do mein-senec.de. [min. 400, maks. 5000 ms]. Wartość domyślna = 500. Zwiększ, jeśli występują ograniczenia szybkości.",
     "webPollIntervalMedium": "Średni interwał odpytywania (minuty)",
-    "webPollIntervalMediumHelp": "Interwał sondowania dla wolnych mocy, stanu SG-Ready, gniazd i pomiarów średniego poziomu (wczoraj, podsumowanie 7 dni, autarkia). [min. 60, maks. 1440 minut]. Domyślnie = 360 (6 godzin).",
+    "webPollIntervalMediumHelp": "Interwał odpytywania o wolne moce, stan SG-Ready, gniazda i pomiary (dziś, wczoraj, autarkia). [min. 60, maks. 1440 minut]. Domyślnie = 360 (6 godzin).",
     "webPollIntervalSlow": "Interwał wolnego odpytywania (minuty)",
     "webPollIntervalSlowHelp": "Interwał sondowania dla ustawień golenia szczytowego, konfiguracji SG-Ready i intensywnych pomiarów (miesięczne, roczne, sumy AllTime). [min. 360, maks. 2880 minut]. Domyślnie = 1440 (codziennie).",
     "webPollIntervalStatus": "Interwał odpytywania stanu (minuty)",
-    "webPollIntervalStatusHelp": "Interwał odpytywania dla przeglądu stanu i dzisiejszych danych pomiarowych (jeśli pomiary są włączone). [min 3, maks. 60 minut]. Wartość domyślna = 6."
+    "webPollIntervalStatusHelp": "Interwał odpytywania w celu przeglądu stanu (dane mocy na żywo). [min 3, maks. 60 minut]. Wartość domyślna = 6."
 }

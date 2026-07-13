@@ -162,6 +162,54 @@
 					"help": "TOTPSecretHelp",
 					"default": "",
 					"newLine": false
+				},
+				"_userAgent": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "userAgentPanel",
+					"xs": 12,
+					"newLine": true,
+					"items": {
+						"api_userAgentMode": {
+							"type": "select",
+							"label": "userAgentMode",
+							"help": "userAgentModeHelp",
+							"options": [
+								{
+									"label": "Integration",
+									"value": "integration"
+								},
+								{
+									"label": "Browser",
+									"value": "browser"
+								},
+								{
+									"label": "Custom",
+									"value": "custom"
+								}
+							],
+							"default": "integration",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"newLine": true
+						},
+						"api_customUserAgent": {
+							"type": "text",
+							"label": "customUserAgent",
+							"help": "customUserAgentHelp",
+							"default": "",
+							"hidden": "data.api_userAgentMode !== 'custom'",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"newLine": false
+						}
+					}
 				}
 			}
 		},
@@ -236,7 +284,7 @@
 				"_apiConcurrency": {
 					"type": "panel",
 					"collapsable": true,
-					"label": "apiConcurrencyAndUA",
+					"label": "apiConcurrencyPanel",
 					"xs": 12,
 					"hidden": "data.api_use !== true",
 					"newLine": true,
@@ -281,45 +329,6 @@
 							"default": 400,
 							"min": 400,
 							"max": 5000,
-							"newLine": false
-						},
-						"api_userAgentMode": {
-							"type": "select",
-							"label": "userAgentMode",
-							"help": "userAgentModeHelp",
-							"options": [
-								{
-									"label": "Integration",
-									"value": "integration"
-								},
-								{
-									"label": "Browser",
-									"value": "browser"
-								},
-								{
-									"label": "Custom",
-									"value": "custom"
-								}
-							],
-							"default": "integration",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
-							"newLine": true
-						},
-						"api_customUserAgent": {
-							"type": "text",
-							"label": "customUserAgent",
-							"help": "customUserAgentHelp",
-							"default": "",
-							"hidden": "data.api_userAgentMode !== 'custom'",
-							"xs": 12,
-							"sm": 12,
-							"md": 6,
-							"lg": 4,
-							"xl": 4,
 							"newLine": false
 						}
 					}

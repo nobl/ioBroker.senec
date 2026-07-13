@@ -67,9 +67,9 @@
     "activeControlHelp": "È richiesta la connessione a lala.cgi! Quando attivato, è possibile controllare l'apparecchio SENEC tramite punti dati di \"controllo\" locali. L'utente accetta tutti i rischi potenziali sostenuti attivando questa opzione, inclusa la perdita della garanzia.",
     "activeWebControl": "Attiva il controllo mein-senec.de",
     "activeWebControlHelp": "Una volta attivato, è possibile controllare il sistema SENEC tramite mein-senec.de (riserva di carica di emergenza, peak shaving, SG-Ready). I controlli disponibili dipendono dalle capacità del sistema. Accetti tutti i rischi potenziali incorsi attivando questa opzione.",
-    "apiConcurrencyAndUA": "Concorrenza e agente utente",
     "apiConcurrencyMax": "Concorrenza API massima",
     "apiConcurrencyMaxHelp": "Qui puoi definire quante richieste API l'adattatore può inviare contemporaneamente max. [minimo 1, massimo 6]. Impostazione predefinita = 1. Valori più alti possono accelerare il recupero dei dati ma aumentano anche il rischio di errori API. Se riscontri errori API, prova ad abbassare questo valore.",
+    "apiConcurrencyPanel": "Concorrenza e limitazione della velocità",
     "apiConcurrencyStart": "Concorrenza API",
     "apiConcurrencyStartHelp": "Qui puoi definire quante richieste API l'adattatore deve inviare contemporaneamente all'avvio. [minimo 1, massimo 4]. Impostazione predefinita = 1. Valori più alti possono accelerare il recupero dei dati ma aumentano anche il rischio di errori API. Se riscontri errori API, prova ad abbassare questo valore.",
     "apiControl": "Controllo API (API dell'app SENEC)",
@@ -125,6 +125,7 @@
     "useLalaHelp": "Connettersi all'apparecchio SENEC tramite rete locale. Ciò richiede l'accesso al monitoraggio locale.",
     "userAgentMode": "Modalità agente utente",
     "userAgentModeHelp": "Scegli quale User-Agent deve essere inviato per le richieste HTTP in uscita.<br>Browser = utilizza un browser User-Agent comune.<br>Personalizzato = utilizza lo User-Agent definito nel campo a destra.<br>Integrazione = Lo user-agent rivela l'integrazione tramite ioBroker, inclusa la versione dell'adattatore.<br>Ripristina \"Browser\" se riscontri problemi con lo User-Agent.",
+    "userAgentPanel": "Agente utente",
     "webConcurrencyMax": "Concorrenza Web massima",
     "webConcurrencyMaxHelp": "Numero massimo di richieste parallele a mein-senec.de. [minimo 1, massimo 4]. Impostazione predefinita = 2. La coda si regola automaticamente in base alla percentuale di successo.",
     "webConcurrencyPanel": "Concorrenza e limitazione della velocità",
@@ -139,9 +140,9 @@
     "webMinRequestInterval": "Intervallo minimo di richiesta (ms)",
     "webMinRequestIntervalHelp": "Tempo minimo tra richieste consecutive a mein-senec.de. [min 400, max 5000 ms]. Impostazione predefinita = 500. Aumenta se si verificano limitazioni della velocità.",
     "webPollIntervalMedium": "Intervallo di polling medio (minuti)",
-    "webPollIntervalMediumHelp": "Intervallo di polling per capacità inutilizzata, stato SG-Ready, socket e misurazioni di livello medio (ieri, riepilogo di 7 giorni, autarchia). [min 60, max 1440 minuti]. Valore predefinito = 360 (6 ore).",
+    "webPollIntervalMediumHelp": "Intervallo di polling per capacità inutilizzata, stato SG-Ready, socket e misurazioni (oggi, ieri, autarchia). [min 60, max 1440 minuti]. Valore predefinito = 360 (6 ore).",
     "webPollIntervalSlow": "Intervallo di polling lento (minuti)",
     "webPollIntervalSlowHelp": "Intervallo di polling per le impostazioni di peak shaving, configurazione SG-Ready e misurazioni pesanti (mensili, annuali, totali AllTime). [min 360, max 2880 minuti]. Impostazione predefinita = 1440 (giornaliera).",
     "webPollIntervalStatus": "Intervallo di polling dello stato (minuti)",
-    "webPollIntervalStatusHelp": "Intervallo di polling per la panoramica dello stato e i dati di misurazione odierni (quando le misurazioni sono abilitate). [min 3, max 60 minuti]. Predefinito = 6."
+    "webPollIntervalStatusHelp": "Intervallo di polling per la panoramica dello stato (dati di potenza in tempo reale). [min 3, max 60 minuti]. Predefinito = 6."
 }

@@ -67,9 +67,9 @@
     "activeControlHelp": "需要 lala.cgi 连接！激活后，可以通过本地“控制”数据点控制 SENEC 设备。您接受因激活此选项而产生的任何潜在风险，可能包括失去保修。",
     "activeWebControl": "激活 mein-senec.de 控制",
     "activeWebControlHelp": "激活后，可以通过 mein-senec.de（紧急电源储备、调峰、SG-Ready）控制您的 SENEC 系统。可用的控件取决于您的系统的功能。您接受激活此选项所带来的任何潜在风险。",
-    "apiConcurrencyAndUA": "并发和用户代理",
     "apiConcurrencyMax": "最大 API 并发数",
     "apiConcurrencyMaxHelp": "您可以在此处定义适配器最多可以同时发送多少个 API 请求。 [最小 1，最大 6]。默认值 = 1。较高的值可以加快数据检索速度，但也会增加 API 错误的风险。如果您遇到 API 错误，请尝试降低该值。",
+    "apiConcurrencyPanel": "并发和速率限制",
     "apiConcurrencyStart": "API并发",
     "apiConcurrencyStartHelp": "您可以在此处定义适配器在启动时应同时发送多少个 API 请求。 [最小 1，最大 4]。默认值 = 1。较高的值可以加快数据检索速度，但也会增加 API 错误的风险。如果您遇到 API 错误，请尝试降低该值。",
     "apiControl": "API 控制（SENEC 应用程序 API）",
@@ -125,6 +125,7 @@
     "useLalaHelp": "通过本地网络连接到 SENEC 设备。这需要访问本地监控。",
     "userAgentMode": "用户代理模式",
     "userAgentModeHelp": "选择应为出站 HTTP 请求发送哪个用户代理。<br>浏览器 = 使用通用浏览器用户代理。<br>自定义 = 使用右侧字段中定义的用户代理。<br>集成 = 用户代理通过 ioBroker 显示集成，包括适配器版本。<br>如果用户代理遇到问题，请恢复到“浏览器”。",
+    "userAgentPanel": "用户代理",
     "webConcurrencyMax": "最大网络并发数",
     "webConcurrencyMaxHelp": "mein-senec.de 的最大并行请求数。 [最小 1，最大 4]。默认 = 2。队列根据成功率自动调整。",
     "webConcurrencyPanel": "并发和速率限制",
@@ -139,9 +140,9 @@
     "webMinRequestInterval": "最小请求间隔（毫秒）",
     "webMinRequestIntervalHelp": "对 mein-senec.de 的连续请求之间的最短时间。 [最短 400 毫秒，最长 5000 毫秒]。默认值 = 500。如果遇到速率限制，请增加。",
     "webPollIntervalMedium": "中等轮询间隔（分钟）",
-    "webPollIntervalMediumHelp": "备用容量、SG-Ready 状态、套接字和中等层测量的轮询间隔（昨天、7 天摘要、自给自足）。 [最短 60 分钟，最长 1440 分钟]。默认 = 360（6 小时）。",
+    "webPollIntervalMediumHelp": "备用容量、SG-Ready 状态、套接字和测量的轮询间隔（今天、昨天、自给自足）。 [最短 60 分钟，最长 1440 分钟]。默认 = 360（6 小时）。",
     "webPollIntervalSlow": "慢速轮询间隔（分钟）",
     "webPollIntervalSlowHelp": "调峰设置、SG-Ready 配置和大量测量的轮询间隔（每月、每年、所有时间总计）。 [最短 360 分钟，最长 2880 分钟]。默认 = 1440（每日）。",
     "webPollIntervalStatus": "状态轮询间隔（分钟）",
-    "webPollIntervalStatusHelp": "状态概览和今日测量数据的轮询间隔（启用测量时）。 [最短 3 分钟，最长 60 分钟]。默认 = 6。"
+    "webPollIntervalStatusHelp": "状态概览（实时功率数据）的轮询间隔。 [最短 3 分钟，最长 60 分钟]。默认 = 6。"
 }

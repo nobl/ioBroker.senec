@@ -67,9 +67,9 @@
     "activeControlHelp": "lala.cgi-verbinding vereist! Indien geactiveerd is het mogelijk om het SENEC-apparaat te besturen via lokale 'controle'-datapunten. U aanvaardt alle potentiële risico's die u loopt door het activeren van deze optie, mogelijk inclusief verlies van garantie.",
     "activeWebControl": "Activeer de controle van mein-senec.de",
     "activeWebControlHelp": "Indien geactiveerd is het mogelijk om uw SENEC-systeem te bedienen via mein-senec.de (noodstroomreserve, peak shaving, SG-Ready). Beschikbare bedieningselementen zijn afhankelijk van de mogelijkheden van uw systeem. U aanvaardt alle mogelijke risico's die u loopt als u deze optie activeert.",
-    "apiConcurrencyAndUA": "Gelijktijdigheid en gebruikersagent",
     "apiConcurrencyMax": "Maximale API-gelijktijdigheid",
     "apiConcurrencyMaxHelp": "Hier kunt u definiëren hoeveel API-verzoeken de adapter maximaal tegelijkertijd kan verzenden. [min. 1, max. 6]. Standaard = 1. Hogere waarden kunnen het ophalen van gegevens versnellen, maar vergroten ook het risico op API-fouten. Als u API-fouten ervaart, probeer dan deze waarde te verlagen.",
+    "apiConcurrencyPanel": "Gelijktijdigheid en snelheidsbeperking",
     "apiConcurrencyStart": "API-gelijktijdigheid",
     "apiConcurrencyStartHelp": "Hier kunt u definiëren hoeveel API-verzoeken de adapter bij het opstarten tegelijkertijd moet verzenden. [min. 1, max. 4]. Standaard = 1. Hogere waarden kunnen het ophalen van gegevens versnellen, maar vergroten ook het risico op API-fouten. Als u API-fouten ervaart, probeer dan deze waarde te verlagen.",
     "apiControl": "API-controle (SENEC App API)",
@@ -125,6 +125,7 @@
     "useLalaHelp": "Maak verbinding met het SENEC-apparaat via een lokaal netwerk. Hiervoor is toegang tot lokale monitoring vereist.",
     "userAgentMode": "User-Agent-modus",
     "userAgentModeHelp": "Kies welke User-Agent moet worden verzonden voor uitgaande HTTP-verzoeken.<br>Browser = gebruik een gewone browser User-Agent.<br>Aangepast = gebruik de User-Agent die in het veld aan de rechterkant is gedefinieerd.<br>Integratie = De user-agent onthult de integratie via ioBroker, inclusief de adapterversie.<br>Keer terug naar 'Browser' als u problemen ondervindt met de User-Agent.",
+    "userAgentPanel": "Gebruiker-agent",
     "webConcurrencyMax": "Maximale webconcurrentie",
     "webConcurrencyMaxHelp": "Maximaal aantal parallelle verzoeken aan mein-senec.de. [min. 1, max. 4]. Standaard = 2. De wachtrij wordt automatisch aangepast op basis van het succespercentage.",
     "webConcurrencyPanel": "Gelijktijdigheid en snelheidsbeperking",
@@ -139,9 +140,9 @@
     "webMinRequestInterval": "Min. verzoekinterval (ms)",
     "webMinRequestIntervalHelp": "Minimale tijd tussen opeenvolgende verzoeken aan mein-senec.de. [min. 400, max. 5000 ms]. Standaard = 500. Verhoog als u snelheidsbeperking ervaart.",
     "webPollIntervalMedium": "Gemiddeld pollinginterval (minuten)",
-    "webPollIntervalMediumHelp": "Polling-interval voor reservecapaciteit, SG-Ready-status, sockets en metingen op middellange niveaus (gisteren, samenvatting van 7 dagen, autarkie). [min. 60, max. 1440 minuten]. Standaard = 360 (6 uur).",
+    "webPollIntervalMediumHelp": "Polling-interval voor reservecapaciteit, SG-Ready-status, sockets en metingen (vandaag, gisteren, autarkie). [min. 60, max. 1440 minuten]. Standaard = 360 (6 uur).",
     "webPollIntervalSlow": "Langzaam pollinginterval (minuten)",
     "webPollIntervalSlowHelp": "Polling-interval voor peak-shaving-instellingen, SG-Ready-configuratie en zware metingen (maandelijks, jaarlijks, AllTime-totalen). [min. 360, max. 2880 minuten]. Standaard = 1440 (dagelijks).",
     "webPollIntervalStatus": "Status Polling-interval (minuten)",
-    "webPollIntervalStatusHelp": "Polling-interval voor statusoverzicht en de meetgegevens van vandaag (wanneer metingen zijn ingeschakeld). [min. 3, max. 60 minuten]. Standaard = 6."
+    "webPollIntervalStatusHelp": "Polling-interval voor statusoverzicht (live vermogensgegevens). [min. 3, max. 60 minuten]. Standaard = 6."
 }

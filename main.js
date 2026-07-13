@@ -326,9 +326,7 @@ class Senec extends utils.Adapter {
 						.catch((e) => this.logError(e, "[Local] ❌ Initial local lowPrio poll failed"));
 				}
 			} else {
-				this.log.warn(
-					"[Local] Usage of lala.cgi (local) not configured. Only polling SENEC App API if configured.",
-				);
+				this.log.warn("[Local] Usage of lala.cgi (local) not configured.");
 			}
 
 			if (this.config.api_use) {
@@ -342,9 +340,7 @@ class Senec extends utils.Adapter {
 					);
 				}
 			} else {
-				this.log.warn(
-					"[API] Usage of SENEC App API not configured. Only polling appliance via local network if configured.",
-				);
+				this.log.warn("[API] Usage of SENEC App API not configured.");
 			}
 
 			if (this.config.connect_use) {

@@ -497,15 +497,17 @@ describe("webApiErrorMsg", () => {
 });
 
 describe("aggregateToHourly", () => {
-	it("sums values into hourly buckets", () => {
+	it("converts kW to kWh using interval duration", () => {
+		// 3 readings, each 5 min apart
 		const val = [
-			[new Date(2026, 6, 13, 10, 0).getTime(), 1.5],
-			[new Date(2026, 6, 13, 10, 5).getTime(), 0.5],
-			[new Date(2026, 6, 13, 11, 0).getTime(), 2.0],
+			[new Date(2026, 6, 13, 10, 0).getTime(), 6.0], // 6 kW × 5/60 h = 0.5 kWh
+			[new Date(2026, 6, 13, 10, 5).getTime(), 6.0], // 6 kW × 5/60 h = 0.5 kWh
+			[new Date(2026, 6, 13, 10, 10).getTime(), 12.0], // 12 kW × 5/60 h = 1.0 kWh (last uses prev interval)
 		];
 		const result = webClient.aggregateToHourly(val);
-		assert.equal(result[10], 2.0);
-		assert.equal(result[11], 2.0);
+		// All in hour 10: 0.5 + 0.5 + 1.0 = 2.0 kWh
+		assert.ok(Math.abs(result[10] - 2.0) < 0.001);
+		assert.equal(result[11], 0);
 		assert.equal(result[0], 0);
 	});
 

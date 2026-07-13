@@ -67,9 +67,9 @@
     "activeControlHelp": "¡Se requiere conexión lala.cgi! Cuando se activa, es posible controlar el aparato SENEC a través de puntos de datos de \"control\" locales. Usted acepta cualquier riesgo potencial incurrido al activar esta opción, incluida posiblemente la pérdida de garantía.",
     "activeWebControl": "Activar el control de mein-senec.de",
     "activeWebControlHelp": "Cuando está activado, es posible controlar su sistema SENEC a través de mein-senec.de (reserva de energía de emergencia, reducción de picos, SG-Ready). Los controles disponibles dependen de las capacidades de su sistema. Aceptas cualquier riesgo potencial incurrido al activar esta opción.",
-    "apiConcurrencyAndUA": "Concurrencia y agente de usuario",
     "apiConcurrencyMax": "Simultaneidad API máxima",
     "apiConcurrencyMaxHelp": "Aquí puede definir cuántas solicitudes de API puede enviar el adaptador al mismo tiempo como máximo. [mínimo 1, máximo 6]. Valor predeterminado = 1. Los valores más altos pueden acelerar la recuperación de datos pero también aumentar el riesgo de errores de API. Si experimenta errores de API, intente reducir este valor.",
+    "apiConcurrencyPanel": "Simultaneidad y limitación de tasas",
     "apiConcurrencyStart": "Simultaneidad de API",
     "apiConcurrencyStartHelp": "Aquí puede definir cuántas solicitudes de API debe enviar el adaptador al mismo tiempo al iniciarse. [mínimo 1, máximo 4]. Valor predeterminado = 1. Los valores más altos pueden acelerar la recuperación de datos pero también aumentar el riesgo de errores de API. Si experimenta errores de API, intente reducir este valor.",
     "apiControl": "Control API (API de la aplicación SENEC)",
@@ -125,6 +125,7 @@
     "useLalaHelp": "Conéctese al dispositivo SENEC a través de la red local. Esto requiere acceso a monitoreo local.",
     "userAgentMode": "Modo usuario-agente",
     "userAgentModeHelp": "Elija qué agente de usuario debe enviarse para las solicitudes HTTP salientes.<br>Navegador = use un agente de usuario de navegador común.<br>Personalizado = use el agente de usuario definido en el campo a la derecha.<br>Integración = el agente de usuario revela la integración a través de ioBroker, incluida la versión del adaptador.<br>Vuelva a 'Navegador' si tiene problemas con el agente de usuario.",
+    "userAgentPanel": "Agente de usuario",
     "webConcurrencyMax": "Máxima simultaneidad web",
     "webConcurrencyMaxHelp": "Número máximo de solicitudes paralelas a mein-senec.de. [mínimo 1, máximo 4]. Predeterminado = 2. La cola se ajusta automáticamente según la tasa de éxito.",
     "webConcurrencyPanel": "Simultaneidad y limitación de tasas",
@@ -139,9 +140,9 @@
     "webMinRequestInterval": "Intervalo mínimo de solicitud (ms)",
     "webMinRequestIntervalHelp": "Tiempo mínimo entre solicitudes consecutivas a mein-senec.de. [mínimo 400, máximo 5000 ms]. Predeterminado = 500. Aumente si experimenta una limitación de velocidad.",
     "webPollIntervalMedium": "Intervalo de sondeo medio (minutos)",
-    "webPollIntervalMediumHelp": "Intervalo de sondeo para capacidad sobrante, estado SG-Ready, sockets y mediciones de nivel medio (ayer, resumen de 7 días, autarquía). [mínimo 60, máximo 1440 minutos]. Predeterminado = 360 (6 horas).",
+    "webPollIntervalMediumHelp": "Intervalo de sondeo para capacidad excedente, estado SG-Ready, sockets y mediciones (hoy, ayer, autarquía). [mínimo 60, máximo 1440 minutos]. Predeterminado = 360 (6 horas).",
     "webPollIntervalSlow": "Intervalo de sondeo lento (minutos)",
     "webPollIntervalSlowHelp": "Intervalo de sondeo para configuraciones de reducción de picos, configuración SG-Ready y mediciones intensas (totales mensuales, anuales y de todos los tiempos). [mínimo 360, máximo 2880 minutos]. Predeterminado = 1440 (diario).",
     "webPollIntervalStatus": "Intervalo de sondeo de estado (minutos)",
-    "webPollIntervalStatusHelp": "Intervalo de sondeo para obtener una descripción general del estado y los datos de medición de hoy (cuando las mediciones están habilitadas). [mínimo 3, máximo 60 minutos]. Predeterminado = 6."
+    "webPollIntervalStatusHelp": "Intervalo de sondeo para descripción general del estado (datos de energía en vivo). [mínimo 3, máximo 60 minutos]. Predeterminado = 6."
 }

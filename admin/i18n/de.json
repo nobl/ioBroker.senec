@@ -67,9 +67,9 @@
     "activeControlHelp": "lala.cgi Verbindung erforderlich! Mit Aktivierung ist es möglich, das SENEC Gerät über die 'control' Datenpunkte zu steuern. Sie akzeptieren potenzielle Risiken, die durch die Aktivierung dieser Option entstehen, einschließlich eines möglichen Garantieverlusts.",
     "activeWebControl": "mein-senec.de Steuerung aktivieren",
     "activeWebControlHelp": "Bei Aktivierung ist es möglich, Ihr SENEC-System über mein-senec.de zu steuern (Notstromreserve, Peak Shaving, SG-Ready). Verfügbare Steuerungen hängen von den Fähigkeiten Ihres Systems ab. Sie akzeptieren potenzielle Risiken, die durch die Aktivierung dieser Option entstehen.",
-    "apiConcurrencyAndUA": "Parallelität und Benutzeragent",
     "apiConcurrencyMax": "Maximale API-Parallelität",
     "apiConcurrencyMaxHelp": "Hier können Sie festlegen, wie viele API-Anfragen der Adapter gleichzeitig senden kann. [min. 1, max. 6]. Standard = 1. Höhere Werte können den Datenabruf beschleunigen, erhöhen aber auch das Risiko von API-Fehlern. Sollten API-Fehler auftreten, versuchen Sie bitte, diesen Wert zu senken.",
+    "apiConcurrencyPanel": "Parallelität und Rate-Limiting",
     "apiConcurrencyStart": "API-Parallelität",
     "apiConcurrencyStartHelp": "Hier können Sie festlegen, wie viele API-Anfragen der Adapter beim Start gleichzeitig senden soll. [min. 1, max. 4]. Standard = 1. Höhere Werte können den Datenabruf beschleunigen, erhöhen aber auch das Risiko von API-Fehlern. Sollten API-Fehler auftreten, versuchen Sie bitte, diesen Wert zu senken.",
     "apiControl": "API-Steuerung (SENEC App API)",
@@ -125,6 +125,7 @@
     "useLalaHelp": "Verbindung zum SENEC Gerät wird über lokales Netzwerk hergestellt. Dies erfordert den Zugang zur lokalen Überwachung.",
     "userAgentMode": "User-Agent-Modus",
     "userAgentModeHelp": "Wählen Sie aus, welcher User-Agent für ausgehende HTTP-Anfragen gesendet werden soll.<br>Browser = einen allgemeinen Browser-User-Agent verwenden.<br>Benutzerdefiniert = den im Feld rechts definierten User-Agent verwenden.<br>Integration = Der User-Agent zeigt die Integration über ioBroker an, einschließlich der Adapterversion.<br>Kehren Sie zu „Browser“ zurück, wenn Sie Probleme mit dem User-Agent haben.",
+    "userAgentPanel": "User-Agent",
     "webConcurrencyMax": "Maximale Web-Parallelität",
     "webConcurrencyMaxHelp": "Maximale Anzahl paralleler Anfragen an mein-senec.de. [min. 1, max. 4]. Standard = 2. Die Warteschlange passt sich automatisch an die Erfolgsquote an.",
     "webConcurrencyPanel": "Parallelität und Rate-Limiting",
@@ -139,9 +140,9 @@
     "webMinRequestInterval": "Min. Anfrageintervall (ms)",
     "webMinRequestIntervalHelp": "Mindestzeit zwischen aufeinanderfolgenden Anfragen an mein-senec.de. [min. 400, max. 5000 ms]. Standard = 500. Erhöhen Sie den Wert, wenn Rate-Limiting auftritt.",
     "webPollIntervalMedium": "Mittleres Abfrageintervall (Minuten)",
-    "webPollIntervalMediumHelp": "Abfrageintervall für freie Kapazität, SG-Ready-Status, Steckdosen und mittlere Messungen (gestern, 7-Tage-Zusammenfassung, Autarkie). [min. 60, max. 1440 Minuten]. Standard = 360 (6 Stunden).",
+    "webPollIntervalMediumHelp": "Abfrageintervall für freie Kapazität, SG-Ready-Status, Steckdosen und Messungen (heute, gestern, Autarkie). [min. 60, max. 1440 Minuten]. Standard = 360 (6 Stunden).",
     "webPollIntervalSlow": "Langsames Abfrageintervall (Minuten)",
     "webPollIntervalSlowHelp": "Abfrageintervall für Peak-Shaving-Einstellungen, SG-Ready-Konfiguration und umfangreiche Messungen (monatlich, jährlich, AllTime-Gesamtwerte). [min. 360, max. 2880 Minuten]. Standard = 1440 (täglich).",
     "webPollIntervalStatus": "Statusabfrageintervall (Minuten)",
-    "webPollIntervalStatusHelp": "Abfrageintervall für Statusübersicht und aktuelle Messdaten (bei aktivierten Messungen). [min. 3, max. 60 Minuten]. Standard = 6."
+    "webPollIntervalStatusHelp": "Abfrageintervall für Statusübersicht (Live-Leistungsdaten). [min. 3, max. 60 Minuten]. Standard = 6."
 }
