@@ -269,6 +269,20 @@
 							"max": 6,
 							"newLine": false
 						},
+						"api_min_request_interval": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "apiMinRequestInterval",
+							"help": "apiMinRequestIntervalHelp",
+							"default": 400,
+							"min": 400,
+							"max": 5000,
+							"newLine": false
+						},
 						"api_userAgentMode": {
 							"type": "select",
 							"label": "userAgentMode",
@@ -422,6 +436,84 @@
 					"max": 2880,
 					"hidden": "data.web_use !== true",
 					"newLine": false
+				},
+				"web_measurements": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "webMeasurements",
+					"help": "webMeasurementsHelp",
+					"default": false,
+					"hidden": "data.web_use !== true",
+					"newLine": true
+				},
+				"web_measurements_detail": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "webMeasurementsDetail",
+					"help": "webMeasurementsDetailHelp",
+					"default": false,
+					"hidden": "data.web_use !== true || data.web_measurements !== true",
+					"newLine": false
+				},
+				"_webConcurrency": {
+					"type": "panel",
+					"collapsable": true,
+					"label": "webConcurrencyPanel",
+					"xs": 12,
+					"hidden": "data.web_use !== true",
+					"newLine": true,
+					"items": {
+						"web_concurrency_start": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "webConcurrencyStart",
+							"help": "webConcurrencyStartHelp",
+							"default": 1,
+							"min": 1,
+							"max": 3,
+							"newLine": true
+						},
+						"web_concurrency_max": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "webConcurrencyMax",
+							"help": "webConcurrencyMaxHelp",
+							"default": 2,
+							"min": 1,
+							"max": 4,
+							"newLine": false
+						},
+						"web_min_request_interval": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "webMinRequestInterval",
+							"help": "webMinRequestIntervalHelp",
+							"default": 500,
+							"min": 400,
+							"max": 5000,
+							"newLine": false
+						}
+					}
 				}
 			}
 		},

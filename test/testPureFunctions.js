@@ -495,3 +495,65 @@ describe("webApiErrorMsg", () => {
 		assert.equal(webClient.webApiErrorMsg({ data: null }), "null");
 	});
 });
+
+describe("aggregateToHourly", () => {
+	it("sums values into hourly buckets", () => {
+		const val = [
+			[new Date(2026, 6, 13, 10, 0).getTime(), 1.5],
+			[new Date(2026, 6, 13, 10, 5).getTime(), 0.5],
+			[new Date(2026, 6, 13, 11, 0).getTime(), 2.0],
+		];
+		const result = webClient.aggregateToHourly(val);
+		assert.equal(result[10], 2.0);
+		assert.equal(result[11], 2.0);
+		assert.equal(result[0], 0);
+	});
+
+	it("returns 24 hours initialized to zero", () => {
+		const result = webClient.aggregateToHourly([]);
+		assert.equal(Object.keys(result).length, 24);
+		for (let h = 0; h < 24; h++) {
+			assert.equal(result[h], 0);
+		}
+	});
+});
+
+describe("aggregateToDaily", () => {
+	it("sums values by day of month", () => {
+		const val = [
+			[new Date(2026, 6, 1).getTime(), 10],
+			[new Date(2026, 6, 1).getTime(), 5],
+			[new Date(2026, 6, 15).getTime(), 20],
+		];
+		const result = webClient.aggregateToDaily(val);
+		assert.equal(result[1], 15);
+		assert.equal(result[15], 20);
+	});
+
+	it("returns empty object for empty input", () => {
+		const result = webClient.aggregateToDaily([]);
+		assert.equal(Object.keys(result).length, 0);
+	});
+});
+
+describe("aggregateToMonthly", () => {
+	it("sums values by month", () => {
+		const val = [
+			[new Date(2026, 0, 15).getTime(), 100],
+			[new Date(2026, 0, 20).getTime(), 50],
+			[new Date(2026, 5, 1).getTime(), 200],
+		];
+		const result = webClient.aggregateToMonthly(val);
+		assert.equal(result[1], 150);
+		assert.equal(result[6], 200);
+		assert.equal(result[12], 0);
+	});
+
+	it("returns 12 months initialized to zero", () => {
+		const result = webClient.aggregateToMonthly([]);
+		assert.equal(Object.keys(result).length, 12);
+		for (let m = 1; m <= 12; m++) {
+			assert.equal(result[m], 0);
+		}
+	});
+});

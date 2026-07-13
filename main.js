@@ -119,6 +119,7 @@ class Senec extends utils.Adapter {
 		this.webStatusIntervalMs = 360000; // default 6 min, overwritten by checkConfig
 		this.webMediumIntervalMs = 21600000; // default 6h
 		this.webSlowIntervalMs = 86400000; // default 24h
+		this.webQueue = null; // created in onReady when web_use is true
 
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
@@ -172,11 +173,27 @@ class Senec extends utils.Adapter {
 				timeout: 60000,
 			});
 
+			const apiMinRequestInterval = Math.max(400, Number(this.config.api_min_request_interval) || 400);
 			this.apiQueue = new AdaptiveRequestQueue({
 				concurrency: apiConcurrencyStart,
 				minConcurrency: 1,
 				maxConcurrency: apiConcurrencyMax,
-				minTimeBetweenStartsMs: 400,
+				minTimeBetweenStartsMs: apiMinRequestInterval,
+				successThreshold: 8,
+				cooldownMs: 8000,
+				setTimeout: (fn, ms) => this.setTimeout(fn, ms),
+				clearTimeout: (id) => this.clearTimeout(id),
+			});
+
+			// Web queue — created unconditionally; only used when web_use is true
+			const webConcurrencyStart = Math.max(1, Number(this.config.web_concurrency_start) || 1);
+			const webConcurrencyMax = Math.max(webConcurrencyStart, Number(this.config.web_concurrency_max) || 2);
+			const webMinRequestInterval = Math.max(400, Number(this.config.web_min_request_interval) || 500);
+			this.webQueue = new AdaptiveRequestQueue({
+				concurrency: webConcurrencyStart,
+				minConcurrency: 1,
+				maxConcurrency: webConcurrencyMax,
+				minTimeBetweenStartsMs: webMinRequestInterval,
 				successThreshold: 8,
 				cooldownMs: 8000,
 				setTimeout: (fn, ms) => this.setTimeout(fn, ms),
@@ -334,6 +351,13 @@ class Senec extends utils.Adapter {
 				this.log.info("[Connect] Usage of SENEC.Connect API configured.");
 				connectClient.connectPoll(this).catch((e) => this.logError(e, "[Connect] ❌ Initial poll failed"));
 				this.connectEnabled = true;
+			}
+
+			// Web cleanup runs regardless of web_use — cleans up states from when features were enabled
+			try {
+				await webClient.webStartupCleanup(this);
+			} catch (e) {
+				this.logError(e, "[Web] ❌ startup cleanup failed");
 			}
 
 			if (this.config.web_use) {
