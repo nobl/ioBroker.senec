@@ -187,8 +187,9 @@ var energyFlow = {
 		// Web connector stores power values in kW — multiply by 1000 to normalize to W
 		var pfx = "_meinsenec.Status.";
 		this.data.pv = this.getState(states, `${pfx}powergenerated.now`) * 1000;
-		var charge = this.getState(states, `${pfx}accuimport.now`) * 1000;
-		var discharge = this.getState(states, `${pfx}accuexport.now`) * 1000;
+		// accuexport = export power to battery (charge), accuimport = import power from battery (discharge)
+		var charge = this.getState(states, `${pfx}accuexport.now`) * 1000;
+		var discharge = this.getState(states, `${pfx}accuimport.now`) * 1000;
 		this.data.battery = charge - discharge;
 		var gridImport = this.getState(states, `${pfx}gridimport.now`) * 1000;
 		var gridExport = this.getState(states, `${pfx}gridexport.now`) * 1000;
@@ -231,8 +232,8 @@ var energyFlow = {
 			this.data.todayConsumption = this.getStateOrNull(states, `${wpfx}consumption.today`);
 			this.data.todayGridImport = this.getStateOrNull(states, `${wpfx}gridimport.today`);
 			this.data.todayGridExport = this.getStateOrNull(states, `${wpfx}gridexport.today`);
-			this.data.todayBatteryCharge = this.getStateOrNull(states, `${wpfx}accuimport.today`);
-			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuexport.today`);
+			this.data.todayBatteryCharge = this.getStateOrNull(states, `${wpfx}accuexport.today`);
+			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuimport.today`);
 			this.data.todayWallbox = null;
 			this.data.autarky = this.getStateOrNull(states, "_meinsenec.Autarky.day");
 		}
@@ -246,8 +247,8 @@ var energyFlow = {
 			this.data.todayConsumption = this.getStateOrNull(states, `${wpfx}consumption`);
 			this.data.todayGridImport = this.getStateOrNull(states, `${wpfx}gridimport`);
 			this.data.todayGridExport = this.getStateOrNull(states, `${wpfx}gridexport`);
-			this.data.todayBatteryCharge = this.getStateOrNull(states, `${wpfx}accuimport`);
-			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuexport`);
+			this.data.todayBatteryCharge = this.getStateOrNull(states, `${wpfx}accuexport`);
+			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuimport`);
 			this.data.todayWallbox = null;
 			this.data.autarky = this.getStateOrNull(states, "_meinsenec.Autarky.month");
 			return;
@@ -286,8 +287,8 @@ var energyFlow = {
 			this.data.todayConsumption = this.getStateOrNull(states, `${wpfx}consumption`);
 			this.data.todayGridImport = this.getStateOrNull(states, `${wpfx}gridimport`);
 			this.data.todayGridExport = this.getStateOrNull(states, `${wpfx}gridexport`);
-			this.data.todayBatteryCharge = this.getStateOrNull(states, `${wpfx}accuimport`);
-			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuexport`);
+			this.data.todayBatteryCharge = this.getStateOrNull(states, `${wpfx}accuexport`);
+			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuimport`);
 			this.data.todayWallbox = null;
 			this.data.autarky = this.getStateOrNull(states, "_meinsenec.Autarky.year");
 			return;

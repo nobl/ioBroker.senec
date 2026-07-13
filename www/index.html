@@ -525,6 +525,70 @@
 			color: var(--color-text);
 			white-space: nowrap;
 		}
+
+		/* Charts */
+		.chart-toggles {
+			display: flex;
+			gap: 6px;
+			flex-wrap: wrap;
+			margin-bottom: 12px;
+		}
+
+		.chart-toggle {
+			display: inline-flex;
+			align-items: center;
+			gap: 5px;
+			padding: 3px 10px;
+			border: 1px solid var(--color-border);
+			border-radius: 12px;
+			background: var(--color-card);
+			color: var(--color-text-secondary);
+			font-size: 12px;
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.chart-toggle:hover {
+			color: var(--color-text);
+		}
+
+		.chart-toggle.active {
+			border-color: var(--toggle-color, var(--color-primary));
+			background: color-mix(in srgb, var(--toggle-color, var(--color-primary)) 10%, transparent);
+			color: var(--color-text);
+		}
+
+		.chart-toggle-dot {
+			width: 8px;
+			height: 8px;
+			border-radius: 50%;
+			opacity: 0.4;
+		}
+
+		.chart-toggle.active .chart-toggle-dot {
+			opacity: 1;
+		}
+
+		.chart-compare-select {
+			padding: 3px 8px;
+			border: 1px solid var(--color-border);
+			border-radius: 4px;
+			font-size: 12px;
+			background: var(--color-card);
+			color: var(--color-text);
+		}
+
+		.chart-scroll {
+			overflow-x: auto;
+			margin: 0 -4px;
+			padding: 0 4px;
+		}
+
+		.chart-svg {
+			width: 100%;
+			height: auto;
+			min-height: 250px;
+		}
 	</style>
 </head>
 <body>
@@ -538,6 +602,7 @@
 
 	<div class="nav">
 		<div class="nav-tab active" data-tab="overview" data-i18n="tab_overview">Overview</div>
+		<div class="nav-tab" data-tab="charts" data-i18n="chart_title">Measurement History</div>
 		<div class="nav-tab" data-tab="logs" data-i18n="tab_logs">Appliance Logs</div>
 	</div>
 
@@ -554,6 +619,10 @@
 				<div class="grid" id="dashboard"></div>
 			</div>
 
+			<div class="tab-content" id="tab-charts">
+				<div id="charts-container"></div>
+			</div>
+
 			<div class="tab-content" id="tab-logs">
 				<div id="log-viewer"></div>
 			</div>
@@ -562,6 +631,7 @@
 
 	<script src="i18n.js"></script>
 	<script src="energy.js"></script>
+	<script src="charts.js"></script>
 	<script>
 		"use strict";
 
@@ -716,6 +786,9 @@
 				var el = document.getElementById("dashboard");
 				energyFlow.update(this.states, this.connectors);
 				el.innerHTML = energyFlow.render() + this.makeCard(t("tab_overview"), this.renderOverview());
+
+				var chartsEl = document.getElementById("charts-container");
+				if (chartsEl) chartsEl.innerHTML = charts.render(this.states);
 			},
 
 			renderOverview: function () {

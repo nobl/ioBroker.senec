@@ -73,6 +73,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Multi-source support: Energy flow auto-selects the best available data source (Local > API > Web) with manual override. Normalizes data from all connectors into a unified format.
 - Today's energy totals: PV generation, consumption, grid import/export, battery charge/discharge, and wallbox energy displayed below the flow diagram (kWh).
 - Per-connector connection states: New `info.localConnected`, `info.apiConnected`, `info.webConnected`, `info.connectConnected` states for individual connector status monitoring.
+- Measurement charts: Bar charts for hourly (today), daily (month), and monthly (year) energy data. Toggle individual measurement types (PV, consumption, grid, battery). Data sourced from Web or API measurements.
 - Appliance log viewer: Browse SENEC device logs by date with filterable table (Time, Level, Category, Message). Supports Info/Warning/Error/Panic levels with color-coded row highlighting. Live mode auto-refreshes today's log (UTC-aware). Download raw log files.
 
 ### 2.8.4 (2026-07-13)

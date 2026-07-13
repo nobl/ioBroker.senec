@@ -52,5 +52,13 @@
     "log_load_failed": "Log load failed: {error}",
     "log_network_error": "Network error loading log.",
     "log_no_device": "Device IP not configured.",
-    "log_no_device_detail": "The log viewer requires a SENEC device IP address to be configured in the adapter settings, even if the local (lala.cgi) connector is not enabled. Set the device IP in the adapter configuration to use this feature."
+    "log_no_device_detail": "The log viewer requires a SENEC device IP address to be configured in the adapter settings, even if the local (lala.cgi) connector is not enabled. Set the device IP in the adapter configuration to use this feature.",
+    "chart_title": "Measurement History",
+    "chart_no_data": "No measurement data available. Enable measurement polling in the API or Web connector settings.",
+    "chart_select_type": "Select at least one measurement type to display.",
+    "chart_stacked": "Stacked",
+    "chart_compare": "Compare",
+    "period_yesterday": "Yesterday",
+    "period_prev_month": "Previous Month",
+    "period_prev_year": "Previous Year"
 }
