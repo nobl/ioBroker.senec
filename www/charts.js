@@ -41,14 +41,9 @@ var charts = {
 	lastSource: "",
 
 	/**
-	 * Read chart data from states for the selected period
-	 *
-	 * @param states
-	 */
-	/**
 	 * Find which years have measurement data in the states
 	 *
-	 * @param states
+	 * @param {object} states - ioBroker state values
 	 */
 	findAvailableYears: function (states) {
 		var years = {};
@@ -257,8 +252,8 @@ var charts = {
 	/**
 	 * Get the API measurement state prefix
 	 *
-	 * @param states
-	 * @param suffix
+	 * @param {object} states - ioBroker state values
+	 * @param {string} suffix - State path suffix
 	 */
 	getApiMeasurementPrefix: function (states, suffix) {
 		var id = energyFlow.apiAnlagenId;
@@ -315,7 +310,7 @@ var charts = {
 	/**
 	 * Render the chart card
 	 *
-	 * @param states
+	 * @param {object} states - ioBroker state values
 	 */
 	render: function (states) {
 		var result = this.getData(states);
@@ -658,7 +653,7 @@ var charts = {
 	/**
 	 * Round up to a "nice" axis maximum
 	 *
-	 * @param val
+	 * @param {number} val - Numeric value
 	 */
 	niceMax: function (val) {
 		if (val <= 0) {

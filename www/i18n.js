@@ -127,7 +127,7 @@ var i18n = {
 	 * Translate a key with optional placeholder substitution.
 	 *
 	 * @param {string} key - Translation key
-	 * @param {Object<string, string|number>} [params] - Placeholder values
+	 * @param {{[key: string]: string|number}} [params] - Placeholder values
 	 * @returns {string} Translated string
 	 */
 	translate: function (key, params) {
@@ -179,7 +179,7 @@ var i18n = {
  * Shorthand translation function.
  *
  * @param {string} key - Translation key
- * @param {Object<string, string|number>} [params] - Placeholder values
+ * @param {{[key: string]: string|number}} [params] - Placeholder values
  * @returns {string} Translated string
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

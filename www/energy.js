@@ -54,7 +54,7 @@ var energyFlow = {
 	/**
 	 * Discover API system ID from loaded states
 	 *
-	 * @param states
+	 * @param {object} states - ioBroker state values
 	 */
 	discoverApiId: function (states) {
 		for (var key in states) {
@@ -74,7 +74,7 @@ var energyFlow = {
 	/**
 	 * Determine which source to use based on priority and connectivity
 	 *
-	 * @param connectors
+	 * @param {object} connectors - Connector status objects
 	 */
 	resolveSource: function (connectors) {
 		if (this.source !== "auto") {
@@ -96,8 +96,8 @@ var energyFlow = {
 	/**
 	 * Read a state value, returning 0 if missing
 	 *
-	 * @param states
-	 * @param key
+	 * @param {object} states - ioBroker state values
+	 * @param {string} key - State ID
 	 */
 	getState: function (states, key) {
 		var val = states[key];
@@ -107,8 +107,8 @@ var energyFlow = {
 	/**
 	 * Read a state value, returning null if missing
 	 *
-	 * @param states
-	 * @param key
+	 * @param {object} states - ioBroker state values
+	 * @param {string} key - State ID
 	 */
 	getStateOrNull: function (states, key) {
 		var val = states[key];
@@ -118,8 +118,8 @@ var energyFlow = {
 	/**
 	 * Update energy data from states
 	 *
-	 * @param states
-	 * @param connectors
+	 * @param {object} states - ioBroker state values
+	 * @param {object} connectors - Connector status objects
 	 */
 	update: function (states, connectors) {
 		this.discoverApiId(states);
@@ -331,7 +331,7 @@ var energyFlow = {
 	/**
 	 * Format watts for display
 	 *
-	 * @param w
+	 * @param {number} w - Power in watts
 	 */
 	formatPower: function (w) {
 		var abs = Math.abs(w);
@@ -344,7 +344,7 @@ var energyFlow = {
 	/**
 	 * Format kWh for display
 	 *
-	 * @param v
+	 * @param {number} v - Value in kWh
 	 */
 	formatKwh: function (v) {
 		if (v === null || v === undefined) {
@@ -356,7 +356,7 @@ var energyFlow = {
 	/**
 	 * Resolve battery capacity: config > API SystemDetails > null
 	 *
-	 * @param states
+	 * @param {object} states - ioBroker state values
 	 */
 	resolveBatteryCapacity: function (states) {
 		// User-configured value takes priority (0 = auto-detect)
@@ -381,7 +381,7 @@ var energyFlow = {
 	/**
 	 * Format hours as "Xh Ym"
 	 *
-	 * @param hours
+	 * @param {number} hours - Duration in hours
 	 */
 	formatTime: function (hours) {
 		if (hours <= 0 || !isFinite(hours)) {
