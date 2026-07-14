@@ -2,6 +2,7 @@
     "battery_until_empty": "{time} até esvaziar",
     "battery_until_full": "{time} até completar",
     "chart_compare": "Comparar",
+    "chart_data_table": "Dados",
     "chart_no_data": "Não há dados de medição disponíveis. Ative a pesquisa de medição nas configurações da API ou do conector da Web.",
     "chart_select_type": "Selecione pelo menos um tipo de medição para exibir.",
     "chart_stacked": "Empilhado",

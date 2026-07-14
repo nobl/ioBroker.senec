@@ -2,6 +2,7 @@
     "battery_until_empty": "{time} bis leer",
     "battery_until_full": "{time} bis voll",
     "chart_compare": "Vergleichen",
+    "chart_data_table": "Daten",
     "chart_no_data": "Keine Messdaten verfügbar. Aktivieren Sie die Messabfrage in den API- oder Web-Connector-Einstellungen.",
     "chart_select_type": "Wählen Sie mindestens einen Messtyp zur Anzeige aus.",
     "chart_stacked": "Gestapelt",

@@ -578,16 +578,69 @@
 			color: var(--color-text);
 		}
 
+		#charts-container {
+			width: 100vw;
+			margin-left: calc(-50vw + 50%);
+			padding: 0 24px;
+		}
+
 		.chart-scroll {
 			overflow-x: auto;
-			margin: 0 -4px;
-			padding: 0 4px;
 		}
 
 		.chart-svg {
 			width: 100%;
-			height: auto;
-			min-height: 250px;
+			min-height: 350px;
+			display: block;
+		}
+
+		.chart-table-toggle {
+			margin-top: 12px;
+		}
+
+		.chart-table-wrap {
+			overflow-x: auto;
+			margin-top: 8px;
+			border: 1px solid var(--color-border);
+			border-radius: 4px;
+		}
+
+		.chart-data-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 12px;
+			white-space: nowrap;
+		}
+
+		.chart-data-table th,
+		.chart-data-table td {
+			padding: 4px 8px;
+			border-bottom: 1px solid var(--color-border);
+			text-align: right;
+		}
+
+		.chart-data-table th {
+			background: var(--color-bg);
+			font-weight: 500;
+			color: var(--color-text-secondary);
+			position: sticky;
+			top: 0;
+		}
+
+		.chart-data-table td:first-child,
+		.chart-data-table th:first-child {
+			text-align: left;
+			position: sticky;
+			left: 0;
+			background: var(--color-card);
+			z-index: 1;
+		}
+
+		.chart-table-label {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			font-weight: 500;
 		}
 	</style>
 </head>
@@ -746,15 +799,23 @@
 				}
 				this.renderConnectors();
 
-				// Re-render dashboard on energy-relevant state changes
-				if (this.activeTab === "overview" && (
+				// Re-render on energy-relevant state changes
+				var isEnergyState =
 					shortId.startsWith("ENERGY.GUI_") ||
 					shortId.indexOf("currently.") !== -1 ||
 					shortId.indexOf("today.") !== -1 ||
 					shortId.indexOf("Status.") !== -1 ||
-					shortId.indexOf("WALLBOX.") !== -1
-				)) {
+					shortId.indexOf("WALLBOX.") !== -1;
+				var isMeasurementState =
+					shortId.indexOf("Measurements.") !== -1 ||
+					shortId.indexOf("hourly.") !== -1;
+
+				if (this.activeTab === "overview" && isEnergyState) {
 					this.renderDashboard();
+				}
+				if (this.activeTab === "charts" && charts.autoUpdate && (isEnergyState || isMeasurementState)) {
+					this.renderDashboard();
+					if (charts.period === "today") charts.scrollToLatest();
 				}
 			},
 

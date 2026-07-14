@@ -2,6 +2,7 @@
     "battery_until_empty": "{time} tot leeg",
     "battery_until_full": "{time} tot vol",
     "chart_compare": "Vergelijken",
+    "chart_data_table": "Gegevens",
     "chart_no_data": "Geen meetgegevens beschikbaar. Schakel metingpolling in de API- of webconnectorinstellingen in.",
     "chart_select_type": "Selecteer ten minste één meettype om weer te geven.",
     "chart_stacked": "Gestapeld",

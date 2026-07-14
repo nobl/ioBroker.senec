@@ -2,6 +2,7 @@
     "battery_until_empty": "{time}, пока не опустеет",
     "battery_until_full": "{time} до заполнения",
     "chart_compare": "Сравнивать",
+    "chart_data_table": "Данные",
     "chart_no_data": "Данные измерений отсутствуют. Включите опрос измерений в настройках API или веб-коннектора.",
     "chart_select_type": "Выберите хотя бы один тип измерения для отображения.",
     "chart_stacked": "Сложенный",

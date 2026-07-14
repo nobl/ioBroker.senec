@@ -57,6 +57,7 @@
     "chart_no_data": "No measurement data available. Enable measurement polling in the API or Web connector settings.",
     "chart_select_type": "Select at least one measurement type to display.",
     "chart_stacked": "Stacked",
+    "chart_data_table": "Data",
     "chart_compare": "Compare",
     "period_yesterday": "Yesterday",
     "period_prev_month": "Previous Month",

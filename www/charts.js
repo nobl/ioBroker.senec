@@ -1,13 +1,13 @@
 "use strict";
 
-/* global app, t, energyFlow */
+/* global app, t, energyFlow, document, getComputedStyle, XMLSerializer, Image */
 /* exported charts */
 
 /**
  * Measurement bar charts for the SENEC web dashboard.
  * Renders SVG bar charts from hourly/daily/monthly measurement data.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 var charts = {
 	period: "today", // "today", "month", "year"
 	webTypes: ["powergenerated", "consumption", "gridimport", "gridexport", "accuimport", "accuexport"],
@@ -36,6 +36,7 @@ var charts = {
 	compareDay: "", // YYYY-MM-DD for custom day comparison
 	compareMonth: "", // YYYY-MM for custom month comparison
 	compareYear: 0, // year number for custom year comparison
+	autoUpdate: false,
 	hasData: false,
 	lastSource: "",
 
@@ -121,21 +122,53 @@ var charts = {
 			return null;
 		}
 
-		for (var h = 0; h < 24; h++) {
-			data.labels.push(`${h}:00`);
-		}
-
+		// Load all 24 hours first
+		var fullSeries = {};
 		if (hasWeb) {
 			for (var i = 0; i < this.webTypes.length; i++) {
 				var type = this.webTypes[i];
-				data.series[type] = [];
+				fullSeries[type] = [];
 				for (var hh = 0; hh < 24; hh++) {
 					var val = states[`${wpfx + type}.hourly.${hh}`];
-					data.series[type].push(val !== undefined && val !== null ? Number(val) : 0);
+					fullSeries[type].push(val !== undefined && val !== null ? Number(val) : 0);
 				}
 			}
 		} else if (hasApi) {
-			this.loadApiHourly(states, apiPfx, data);
+			for (var apiKey in this.apiTypeMap) {
+				var webKey = this.apiTypeMap[apiKey];
+				fullSeries[webKey] = [];
+				for (var ah = 0; ah < 24; ah++) {
+					var aVal = states[`${apiPfx + apiKey}.${ah}`];
+					fullSeries[webKey].push(aVal !== undefined && aVal !== null ? Number(aVal) / 1000 : 0);
+				}
+			}
+		}
+
+		// Find last hour with any data across all types
+		var lastHour = 0;
+		for (var sType in fullSeries) {
+			for (var sh = 23; sh >= 0; sh--) {
+				if (fullSeries[sType][sh] > 0 && sh > lastHour) {
+					lastHour = sh;
+					break;
+				}
+			}
+		}
+		// Show at least up to current hour +1, or last data hour +1
+		var showHours = Math.max(lastHour + 2, 1);
+		if (showHours > 24) {
+			showHours = 24;
+		}
+		// For yesterday, always show all 24
+		if (dayKey === "yesterday") {
+			showHours = 24;
+		}
+
+		for (var lh = 0; lh < showHours; lh++) {
+			data.labels.push(`${lh}:00`);
+		}
+		for (var tKey in fullSeries) {
+			data.series[tKey] = fullSeries[tKey].slice(0, showHours);
 		}
 
 		this.hasData = true;
@@ -342,12 +375,20 @@ var charts = {
 			var compLabels = { today: "period_yesterday", month: "period_prev_month" };
 			html += ` <span class="energy-source-label">${t(compLabels[this.period])}</span>`;
 		}
+		html +=
+			`<button class="chart-toggle" style="--toggle-color:#757575" onclick="charts.exportImage()">` +
+			`<span class="chart-toggle-dot" style="background:#757575"></span>${t("log_download")}</button>`;
+		var autoUpdateCls = this.autoUpdate ? " active" : "";
+		html +=
+			`<button class="chart-toggle${autoUpdateCls}" style="--toggle-color:#757575" onclick="charts.toggleAutoUpdate()">` +
+			`<span class="chart-toggle-dot" style="background:#757575"></span>${t("log_live")}</button>`;
 		html += "</div>";
 
 		if (!result.current) {
 			html += `<div class="stat-label">${t("chart_no_data")}</div>`;
 		} else {
 			html += this.renderBarChart(result);
+			html += this.renderDataTable(result);
 		}
 
 		html += "</div>";
@@ -379,16 +420,15 @@ var charts = {
 		var maxVal = this.calcMaxVal(data, compData, visibleTypes, labelCount);
 		maxVal = this.niceMax(maxVal);
 
-		// Layout — use wider viewBox, SVG scales to container via CSS
+		// Layout — fill available container width, fixed height
 		var padL = 50,
 			padR = 15,
 			padT = 15,
 			padB = 40;
-		var barsPerGroup = this.stacked ? 2 : visibleTypes.length;
-		var compMul = compData ? 2 : 1;
-		var minBarW = this.stacked ? 28 * compMul + 8 : barsPerGroup * 14 * compMul + 8;
-		var chartW = Math.max(600, labelCount * minBarW + padL + padR);
-		var chartH = 280;
+
+		// Wide viewBox — CSS width:100% scales to fill container
+		var chartW = 1400;
+		var chartH = 400;
 		var plotW = chartW - padL - padR;
 		var plotH = chartH - padT - padB;
 		var groupW = plotW / labelCount;
@@ -638,6 +678,68 @@ var charts = {
 		return 10 * magnitude;
 	},
 
+	showTable: false,
+
+	renderDataTable: function (result) {
+		var data = result.current;
+		var visibleTypes = [];
+		for (var i = 0; i < this.webTypes.length; i++) {
+			if (this.visible[this.webTypes[i]] && data.series[this.webTypes[i]]) {
+				visibleTypes.push(this.webTypes[i]);
+			}
+		}
+		if (visibleTypes.length === 0) {
+			return "";
+		}
+
+		var html = '<div class="chart-table-toggle">';
+		html += `<button class="chart-toggle" style="--toggle-color:#757575" onclick="charts.toggleTable()">`;
+		html += `<span class="chart-toggle-dot" style="background:#757575"></span>${t("chart_data_table")} ${this.showTable ? "▲" : "▼"}</button>`;
+		html += "</div>";
+
+		if (!this.showTable) {
+			return html;
+		}
+
+		html += '<div class="chart-table-wrap"><table class="chart-data-table">';
+		html += "<thead><tr><th></th>";
+		for (var li = 0; li < data.labels.length; li++) {
+			html += `<th>${data.labels[li]}</th>`;
+		}
+		html += "</tr></thead><tbody>";
+
+		for (var ti = 0; ti < visibleTypes.length; ti++) {
+			var type = visibleTypes[ti];
+			var cfg = this.typeConfig[type];
+			html += `<tr><td class="chart-table-label"><span class="chart-toggle-dot" style="background:${cfg.color}"></span> ${t(cfg.labelKey)}</td>`;
+			for (var vi = 0; vi < data.series[type].length; vi++) {
+				var val = data.series[type][vi];
+				html += `<td>${val > 0 ? val.toFixed(2) : ""}</td>`;
+			}
+			html += "</tr>";
+		}
+
+		html += "</tbody></table></div>";
+		return html;
+	},
+
+	toggleTable: function () {
+		this.showTable = !this.showTable;
+		app.renderDashboard();
+	},
+
+	toggleAutoUpdate: function () {
+		this.autoUpdate = !this.autoUpdate;
+		app.renderDashboard();
+	},
+
+	scrollToLatest: function () {
+		var scroll = document.querySelector("#charts-container .chart-scroll");
+		if (scroll) {
+			scroll.scrollLeft = scroll.scrollWidth;
+		}
+	},
+
 	onPeriodChange: function (val) {
 		this.period = val;
 		app.renderDashboard();
@@ -667,5 +769,61 @@ var charts = {
 	onCompareYearChange: function (val) {
 		this.compareYear = Number(val);
 		app.renderDashboard();
+	},
+
+	exportImage: function () {
+		var svgEl = document.querySelector("#charts-container .chart-svg");
+		if (!svgEl) {
+			return;
+		}
+
+		// Clone SVG and inline computed styles for background
+		var clone = svgEl.cloneNode(true);
+		var bg = getComputedStyle(document.body).backgroundColor || "#ffffff";
+		var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+		rect.setAttribute("width", "100%");
+		rect.setAttribute("height", "100%");
+		rect.setAttribute("fill", bg);
+		clone.insertBefore(rect, clone.firstChild);
+
+		// Resolve CSS variables in the clone for grid lines
+		var lines = clone.querySelectorAll("line");
+		var borderColor =
+			getComputedStyle(document.documentElement).getPropertyValue("--color-border").trim() || "#e0e0e0";
+		for (var i = 0; i < lines.length; i++) {
+			var stroke = lines[i].getAttribute("stroke");
+			if (stroke && stroke.indexOf("var(") !== -1) {
+				lines[i].setAttribute("stroke", borderColor);
+			}
+		}
+
+		var svgData = new XMLSerializer().serializeToString(clone);
+		var svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+		var url = URL.createObjectURL(svgBlob);
+
+		var img = new Image();
+		img.onload = function () {
+			var scale = 2; // retina quality
+			var canvas = document.createElement("canvas");
+			canvas.width = img.width * scale;
+			canvas.height = img.height * scale;
+			var ctx = canvas.getContext("2d");
+			ctx.scale(scale, scale);
+			ctx.drawImage(img, 0, 0);
+			URL.revokeObjectURL(url);
+
+			canvas.toBlob(function (blob) {
+				var pngUrl = URL.createObjectURL(blob);
+				var a = document.createElement("a");
+				a.href = pngUrl;
+				var periodNames = { today: "today", month: "month", year: "year" };
+				a.download = `senec-chart-${periodNames[charts.period] || "chart"}.png`;
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				URL.revokeObjectURL(pngUrl);
+			}, "image/png");
+		};
+		img.src = url;
 	},
 };

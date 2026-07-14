@@ -2,6 +2,7 @@
     "battery_until_empty": "{time} jusqu'à ce qu'il soit vide",
     "battery_until_full": "{time} jusqu'à ce qu'il soit plein",
     "chart_compare": "Comparer",
+    "chart_data_table": "Données",
     "chart_no_data": "Aucune donnée de mesure disponible. Activez l'interrogation de mesure dans les paramètres de l'API ou du connecteur Web.",
     "chart_select_type": "Sélectionnez au moins un type de mesure à afficher.",
     "chart_stacked": "Empilé",
