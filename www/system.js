@@ -91,11 +91,11 @@ var systemInfo = {
 	 * @returns {string} HTML string
 	 */
 	renderOperatingMode: function (states) {
-		var ap = this.apiDetailsPfx();
+		var as = this.apiStatusPfx();
 		var mode = this.getFirst(states, [
 			"ENERGY.STAT_STATE_Text",
+			as ? `${as}name` : "",
 			"_meinsenec.Status.steuereinheitState",
-			ap ? `${ap}mcu.mainControllerUnitState.name` : "",
 		]);
 		if (!mode) {
 			return "";
@@ -133,37 +133,56 @@ var systemInfo = {
 	renderBatteryHealth: function (states) {
 		var ap = this.apiDetailsPfx();
 
-		var sohKeys = ["BMS.SYSTEM_SOH", "BMS.SOH", ap ? `${ap}batteryPack.remainingCapacityInPercent` : ""];
-		var soh = this.getFirst(states, sohKeys);
+		// System SOH (multiply 0.1 already applied by adapter)
+		var sysSohKeys = ["BMS.SYSTEM_SOH", ap ? `${ap}batteryPack.remainingCapacityInPercent` : ""];
+		var sysSoh = this.getFirst(states, sysSohKeys);
 		var cyclesKeys = ["BMS.CYCLES"];
 		var cycles = this.getFirst(states, cyclesKeys);
-		var minV = this.getFirst(states, ["BMS.MIN_CELL_VOLTAGE"]);
-		var maxV = this.getFirst(states, ["BMS.MAX_CELL_VOLTAGE"]);
-		var minT = this.getFirst(states, ["BMS.MIN_TEMP"]);
-		var maxT = this.getFirst(states, ["BMS.MAX_TEMP"]);
 		var modKeys = ["BMS.MODULE_COUNT", ap ? `${ap}batteryPack.numberOfBatteryModules` : ""];
 		var modules = this.getFirst(states, modKeys);
-		var apiTKeys = ap ? [`${ap}batteryModules.minTemperature`] : [];
-		var apiMinT = ap ? this.getFirst(states, apiTKeys) : null;
+
+		// Overall min/max cell voltage (multiply 0.01 already applied → V)
+		var minV = this.getFirst(states, ["BMS.MIN_CELL_VOLTAGE"]);
+		var maxV = this.getFirst(states, ["BMS.MAX_CELL_VOLTAGE"]);
+
+		// Overall min/max temp (multiply 0.1 already applied → °C)
+		var minT = this.getFirst(states, ["BMS.MIN_TEMP"]);
+		var maxT = this.getFirst(states, ["BMS.MAX_TEMP"]);
+
+		// API temps as fallback
+		var apiMinT = ap ? this.getFirst(states, [`${ap}batteryModules.minTemperature`]) : null;
 		var apiMaxT = ap ? this.getFirst(states, [`${ap}batteryModules.maxTemperature`]) : null;
 
-		if (soh === null && cycles === null && minV === null && minT === null && apiMinT === null) {
+		if (sysSoh === null && cycles === null && minV === null && minT === null && apiMinT === null) {
 			return "";
 		}
 
 		var html = `<div class="card"><h2>${t("battery_health")}</h2>`;
 		html += '<div class="system-grid">';
 
-		if (soh !== null) {
-			var sohVal = Number(soh);
+		// System SOH
+		if (sysSoh !== null) {
+			var sohVal = Number(sysSoh);
 			var sohColor = sohVal > 80 ? "#4caf50" : sohVal > 60 ? "#ff9800" : "#f44336";
 			html += this.renderMetric(
 				t("battery_soh"),
 				`${Math.round(sohVal)}%`,
 				sohColor,
-				this.sourceTag(states, sohKeys),
+				this.sourceTag(states, sysSohKeys),
 			);
 		}
+
+		// Per-pack SOH (BMS.SOH.0, .1, ...)
+		var moduleCount = modules ? Number(modules) : 4;
+		for (var p = 0; p < moduleCount; p++) {
+			var packSoh = this.getFirst(states, [`BMS.SOH.${p}`]);
+			if (packSoh !== null) {
+				var pVal = Number(packSoh);
+				var pColor = pVal > 80 ? "#4caf50" : pVal > 60 ? "#ff9800" : "#f44336";
+				html += this.renderMetric(`SOH Pack ${p + 1}`, `${Math.round(pVal)}%`, pColor, "L");
+			}
+		}
+
 		if (cycles !== null) {
 			html += this.renderMetric(
 				t("battery_cycles"),
@@ -180,18 +199,28 @@ var systemInfo = {
 				this.sourceTag(states, modKeys),
 			);
 		}
+
+		// Overall cell voltage range (values already in V from multiply 0.01)
 		if (minV !== null && maxV !== null) {
-			var minVv = (Number(minV) * 0.01).toFixed(2);
-			var maxVv = (Number(maxV) * 0.01).toFixed(2);
-			var delta = ((Number(maxV) - Number(minV)) * 0.01 * 1000).toFixed(0);
-			html += this.renderMetric(t("battery_cell_voltage"), `${minVv} - ${maxVv} V`, "#757575", "L");
-			var deltaColor = Number(delta) < 50 ? "#4caf50" : Number(delta) < 100 ? "#ff9800" : "#f44336";
-			html += this.renderMetric(t("battery_cell_delta"), `${delta} mV`, deltaColor, "L");
+			html += this.renderMetric(
+				t("battery_cell_voltage"),
+				`${Number(minV).toFixed(2)} - ${Number(maxV).toFixed(2)} V`,
+				"#757575",
+				"L",
+			);
+			var deltaMv = ((Number(maxV) - Number(minV)) * 1000).toFixed(0);
+			var deltaColor = Number(deltaMv) < 50 ? "#4caf50" : Number(deltaMv) < 100 ? "#ff9800" : "#f44336";
+			html += this.renderMetric(t("battery_cell_delta"), `${deltaMv} mV`, deltaColor, "L");
 		}
+
+		// Overall temp range (values already in °C from multiply 0.1)
 		if (minT !== null && maxT !== null) {
-			var minTv = (Number(minT) * 0.1).toFixed(1);
-			var maxTv = (Number(maxT) * 0.1).toFixed(1);
-			html += this.renderMetric(t("battery_temp"), `${minTv} - ${maxTv} °C`, "#757575", "L");
+			html += this.renderMetric(
+				t("battery_temp"),
+				`${Number(minT).toFixed(1)} - ${Number(maxT).toFixed(1)} °C`,
+				"#757575",
+				"L",
+			);
 		} else if (apiMinT !== null && apiMaxT !== null) {
 			html += this.renderMetric(
 				t("battery_temp"),
@@ -199,6 +228,44 @@ var systemInfo = {
 				"#757575",
 				"A",
 			);
+		}
+
+		// Per-module temps (BMS.TEMP_MAX.0, TEMP_MIN.0, ...)
+		for (var mt = 0; mt < moduleCount; mt++) {
+			var modMinT = this.getFirst(states, [`BMS.TEMP_MIN.${mt}`]);
+			var modMaxT = this.getFirst(states, [`BMS.TEMP_MAX.${mt}`]);
+			if (modMinT !== null && modMaxT !== null) {
+				html += this.renderMetric(
+					`${t("battery_temp")} M${mt + 1}`,
+					`${Number(modMinT).toFixed(1)} - ${Number(modMaxT).toFixed(1)} °C`,
+					"#757575",
+					"L",
+				);
+			}
+		}
+
+		// Per-module cell voltages (BMS.CELL_VOLTAGES_MODULE_A.0, ...)
+		var modLetters = ["A", "B", "C", "D"];
+		for (var mv = 0; mv < Math.min(moduleCount, 4); mv++) {
+			var cellVoltages = [];
+			for (var cv = 0; cv < 20; cv++) {
+				var cvVal = this.getFirst(states, [`BMS.CELL_VOLTAGES_MODULE_${modLetters[mv]}.${cv}`]);
+				if (cvVal !== null && Number(cvVal) > 0) {
+					cellVoltages.push(Number(cvVal));
+				}
+			}
+			if (cellVoltages.length > 0) {
+				var cvMin = Math.min.apply(null, cellVoltages);
+				var cvMax = Math.max.apply(null, cellVoltages);
+				var cvDelta = cvMax - cvMin;
+				var cvColor = cvDelta < 50 ? "#4caf50" : cvDelta < 100 ? "#ff9800" : "#f44336";
+				html += this.renderMetric(
+					`${t("battery_cell_voltage")} M${mv + 1}`,
+					`${cvMin} - ${cvMax} mV (\u0394${cvDelta.toFixed(0)})`,
+					cvColor,
+					"L",
+				);
+			}
 		}
 
 		html += "</div></div>";
