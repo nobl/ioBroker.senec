@@ -67,7 +67,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.9.0 (2026-07-15)
 - Web dashboard: Built-in dashboard accessible at `http://<iobroker>:8082/senec/` via ioBroker.web extension. Shows on the ioBroker.web welcome page. Dark/light theme toggle. Internationalization with 11 languages.
 - Energy flow diagram: Live SVG visualization of power flow between PV, battery, grid, house, and wallbox. Animated curved flow paths with power-proportional thickness. Battery SOC gauge with fill level indicator. Operating mode badge (color-coded). Battery time estimates (until empty/full). Multi-source support with manual override (Local > API > Web). Period totals (today/month/year) with self-sufficiency display. Last update timestamp from active connector.
 - Measurement charts: Bar charts for hourly (today), daily (month), and monthly (year) energy data. Toggle individual measurement types. Stacked production/consumption view. Period comparison (yesterday, previous month, selectable year). Data source selector (Auto/API/Web). Auto-update mode. Data table view. PNG image export. Today view trims to hours with data.
@@ -98,16 +98,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Housekeeping
 - Code optimizations
 - Log messages now include connector prefix ([API], [Local], [Web], [Connect]) for easier filtering and debugging
-
-### 2.7.0 (2026-07-07)
-- SENEC Account tab: Shared credentials (email, password, TOTP) moved to a dedicated tab, always visible regardless of which cloud features are enabled.
-- mein-senec.de controls: Emergency power reserve, peak shaving (mode, capacity limit, end time), and SG-Ready settings can now be controlled via mein-senec.de. Controls appear under `control.EmergencyPower`, `control.PeakShaving`, and `control.SGReady`. Enable in adapter settings under Appliance Control.
-- Switchable socket control via mein-senec.de: Sockets can now be controlled via mein-senec.de web portal in addition to local lala.cgi. Unified control datapoints (Mode: Off/On/Auto, thresholds, durations, switch-on time) work with both connectors. A force override option is available for systems where socket capability is not detected.
-- Connector-based control routing: Appliance Control tab restructured with per-connector consent checkboxes and per-feature connector dropdowns (Off/Local/API/Web). Only one connector per feature to avoid conflicts. Warning messages shown when a selected connector is not enabled.
-- Independent control gates: Web, API, and local controls each have independent gates in state change handling. API controls no longer require local lala.cgi connection. Fixed plant number 0 falsy bug.
-- API error handling: All mein-senec.de POST handlers check HTTP response status and log error messages from the API.
-- Peak shaving fixes: Capacity limit uses correct field (peakShavingCapacityLimitInPercent), capped at 90%. End time split into EndHour/EndMinute fields. UTC timestamp construction for correct time handling with SENEC API.
-- Debug & Logging tab: Debug settings moved to a dedicated tab applying to all connectors. Request/response logging now includes mein-senec.de traffic.
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
