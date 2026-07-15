@@ -432,13 +432,16 @@ var energyFlow = {
 		return fmtd ? t("battery_until_full", { time: fmtd }) : null;
 	},
 
-	/** Render the energy flow SVG + today's summary */
-	render: function () {
+	/**
+	 * Render the energy flow SVG + today's summary
+	 *
+	 * @param {string} [modeBadge] - HTML for operating mode badge
+	 */
+	render: function (modeBadge) {
 		if (!this.hasData) {
-			return (
-				`<div class="card"><h2>${t("energy_flow")}</h2>` +
-				`<div class="stat-label">${t("energy_no_data")}</div></div>`
-			);
+			return `<div class="card"><h2>${t("energy_flow")}</h2>${
+				modeBadge || ""
+			}<div class="stat-label">${t("energy_no_data")}</div></div>`;
 		}
 
 		var d = this.data;
@@ -464,6 +467,11 @@ var energyFlow = {
 			)}`,
 		})}</span>`;
 		html += "</div></div>";
+
+		// Operating mode badge
+		if (modeBadge) {
+			html += modeBadge;
+		}
 
 		// SVG energy flow diagram
 		html += this.renderFlowDiagram(d);

@@ -922,7 +922,7 @@
 			renderDashboard: function () {
 				var el = document.getElementById("dashboard");
 				energyFlow.update(this.states, this.connectors);
-				el.innerHTML = systemInfo.renderOperatingMode(this.states) + energyFlow.render();
+				el.innerHTML = energyFlow.render(systemInfo.renderOperatingMode(this.states));
 
 				var batteryEl = document.getElementById("battery-container");
 				if (batteryEl) batteryEl.innerHTML = systemInfo.renderBatteryHealth(this.states);
