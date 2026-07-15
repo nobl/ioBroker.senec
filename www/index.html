@@ -705,9 +705,10 @@
 	</div>
 
 	<div class="nav">
-		<div class="nav-tab active" data-tab="overview" data-i18n="tab_overview">Overview</div>
+		<div class="nav-tab active" data-tab="overview" data-i18n="energy_flow">Energy Flow</div>
 		<div class="nav-tab" data-tab="battery" data-i18n="battery_health">Battery</div>
 		<div class="nav-tab" data-tab="charts" data-i18n="chart_title">Measurement History</div>
+		<div class="nav-tab" data-tab="system" data-i18n="system_details">System</div>
 		<div class="nav-tab" data-tab="logs" data-i18n="tab_logs">Appliance Logs</div>
 	</div>
 
@@ -730,6 +731,10 @@
 
 			<div class="tab-content" id="tab-charts">
 				<div id="charts-container"></div>
+			</div>
+
+			<div class="tab-content" id="tab-system">
+				<div id="system-container"></div>
 			</div>
 
 			<div class="tab-content" id="tab-logs">
@@ -881,6 +886,9 @@
 				if (this.activeTab === "battery" && (isEnergyState || isSystemState)) {
 					this.renderDashboard();
 				}
+				if (this.activeTab === "system" && isSystemState) {
+					this.renderDashboard();
+				}
 				if (this.activeTab === "charts" && charts.autoUpdate && (isEnergyState || isMeasurementState)) {
 					this.renderDashboard();
 					if (charts.period === "today") charts.scrollToLatest();
@@ -914,35 +922,21 @@
 			renderDashboard: function () {
 				var el = document.getElementById("dashboard");
 				energyFlow.update(this.states, this.connectors);
-				var modeHtml = systemInfo.renderOperatingMode(this.states);
-				el.innerHTML = energyFlow.render() + modeHtml +
-					systemInfo.renderGridQuality(this.states) +
-					systemInfo.renderFeatureStatus(this.states) +
-					systemInfo.renderSystemDetails(this.states) +
-					this.makeCard(t("tab_overview"), this.renderOverview());
+				el.innerHTML = systemInfo.renderOperatingMode(this.states) + energyFlow.render();
 
 				var batteryEl = document.getElementById("battery-container");
 				if (batteryEl) batteryEl.innerHTML = systemInfo.renderBatteryHealth(this.states);
 
 				var chartsEl = document.getElementById("charts-container");
 				if (chartsEl) chartsEl.innerHTML = charts.render(this.states);
-			},
 
-			renderOverview: function () {
-				var activeList = [];
-				for (var key in this.connectors) {
-					if (this.connectors[key].active) activeList.push(this.connectors[key].label);
+				var systemEl = document.getElementById("system-container");
+				if (systemEl) {
+					systemEl.innerHTML =
+						systemInfo.renderGridQuality(this.states) +
+						systemInfo.renderFeatureStatus(this.states) +
+						systemInfo.renderSystemDetails(this.states);
 				}
-
-				if (activeList.length === 0) {
-					return '<div class="stat-label">' + t("no_connectors") + "</div>";
-				}
-
-				return '<div class="stat-label">' + t("connected_label", { list: activeList.join(", ") }) + "</div>";
-			},
-
-			makeCard: function (title, content) {
-				return '<div class="card"><h2>' + title + "</h2>" + content + "</div>";
 			},
 
 			showError: function (msg) {
