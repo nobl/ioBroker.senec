@@ -108,5 +108,7 @@
     "control_enabled": "Enabled",
     "control_sockets": "Sockets",
     "control_wallbox": "Wallbox",
-    "control_no_controls": "No controls available. Enable appliance control in the adapter settings."
+    "control_no_controls": "No controls available. Enable appliance control in the adapter settings.",
+    "control_sent": "Sent",
+    "control_no_connector": "{connector} connector not connected"
 }

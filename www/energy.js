@@ -390,10 +390,7 @@ var energyFlow = {
 		if (this.activeSource === "local") {
 			isoStr = states["info.lastPoll.HighPrio"] || null;
 		} else if (this.activeSource === "api") {
-			var pfx = this.apiPrefix();
-			if (pfx) {
-				isoStr = states[pfx.replace("Dashboard.", "info.lastPoll.Dashboard")] || null;
-			}
+			isoStr = states["_api.info.lastPoll.Dashboard"] || null;
 		} else if (this.activeSource === "web") {
 			isoStr = states["_meinsenec.info.lastPoll.Status"] || null;
 		}

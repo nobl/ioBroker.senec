@@ -634,6 +634,40 @@
 			"label": "Active_Appliance_Control",
 			"hidden": "data.lala_use !== true && data.api_use !== true && data.web_use !== true",
 			"items": {
+				"_controlOverview": {
+					"type": "panel",
+					"xs": 12,
+					"label": "controlOverviewLabel",
+					"collapsable": true,
+					"collapsed": true,
+					"newLine": true,
+					"items": {
+						"_ctrlLocal": {
+							"type": "staticText",
+							"xs": 12,
+							"text": "controlOverviewLocal",
+							"style": { "fontWeight": "500", "marginBottom": "4px" }
+						},
+						"_ctrlApi": {
+							"type": "staticText",
+							"xs": 12,
+							"text": "controlOverviewApi",
+							"style": { "fontWeight": "500", "marginBottom": "4px" }
+						},
+						"_ctrlWeb": {
+							"type": "staticText",
+							"xs": 12,
+							"text": "controlOverviewWeb",
+							"style": { "fontWeight": "500", "marginBottom": "8px" }
+						},
+						"_ctrlNote": {
+							"type": "staticText",
+							"xs": 12,
+							"text": "controlOverviewNote",
+							"style": { "fontStyle": "italic", "fontSize": "12px" }
+						}
+					}
+				},
 				"_consentHeader": {
 					"type": "staticText",
 					"xs": 12,

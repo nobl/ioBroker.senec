@@ -26,13 +26,41 @@
 		}
 
 		@media (prefers-color-scheme: dark) {
-			:root {
+			:root:not(.light) {
 				--color-bg: #1a1a1a;
 				--color-card: #2d2d2d;
 				--color-text: #e0e0e0;
 				--color-text-secondary: #999999;
 				--color-border: #404040;
 			}
+		}
+
+		:root.dark {
+			--color-bg: #1a1a1a;
+			--color-card: #2d2d2d;
+			--color-text: #e0e0e0;
+			--color-text-secondary: #999999;
+			--color-border: #404040;
+		}
+
+		.theme-toggle {
+			background: none;
+			border: none;
+			color: white;
+			cursor: pointer;
+			font-size: 18px;
+			padding: 4px 8px;
+			opacity: 0.8;
+			margin-left: auto;
+		}
+
+		.theme-toggle:hover {
+			opacity: 1;
+		}
+
+		*:focus-visible {
+			outline: 2px solid var(--color-primary);
+			outline-offset: 2px;
 		}
 
 		body {
@@ -82,12 +110,20 @@
 			font-size: 14px;
 			font-weight: 500;
 			color: var(--color-text-secondary);
+			border: none;
 			border-bottom: 2px solid transparent;
+			background: none;
+			font-family: inherit;
 			transition: color 0.2s, border-color 0.2s;
 		}
 
 		.nav-tab:hover {
 			color: var(--color-text);
+		}
+
+		.nav-tab:focus-visible {
+			outline: 2px solid var(--color-primary);
+			outline-offset: -2px;
 		}
 
 		.nav-tab.active {
@@ -677,6 +713,11 @@
 			opacity: 0.9;
 		}
 
+		.control-btn-sent {
+			background: var(--color-success);
+			border-color: var(--color-success);
+		}
+
 		.control-btn-danger {
 			border-color: var(--color-error);
 			background: var(--color-error);
@@ -703,6 +744,15 @@
 			font-weight: 600;
 			margin-bottom: 8px;
 			color: var(--color-text);
+		}
+
+		.control-disabled {
+			background: rgba(255, 152, 0, 0.08);
+			padding: 8px 12px;
+			border-radius: 4px;
+			color: var(--color-warning);
+			font-size: 13px;
+			margin-bottom: 8px;
 		}
 
 		.control-warning {
@@ -826,57 +876,58 @@
 	</style>
 </head>
 <body>
-	<div id="error-banner"></div>
+	<div id="error-banner" role="alert" aria-live="assertive"></div>
 
-	<div class="header">
+	<header class="header">
 		<img src="../adapter/senec/senec.png" alt="SENEC">
 		<h1 data-i18n="dashboard_title">SENEC Dashboard</h1>
+		<button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark/light mode"><svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"></svg></button>
 		<span class="version" id="version"></span>
-	</div>
+	</header>
 
-	<div class="nav">
-		<div class="nav-tab active" data-tab="overview" data-i18n="energy_flow">Energy Flow</div>
-		<div class="nav-tab" data-tab="battery" data-i18n="battery_health">Battery</div>
-		<div class="nav-tab" data-tab="charts" data-i18n="chart_title">Measurement History</div>
-		<div class="nav-tab" data-tab="system" data-i18n="system_details">System</div>
-		<div class="nav-tab" data-tab="control" data-i18n="control_title">Control</div>
-		<div class="nav-tab" data-tab="logs" data-i18n="tab_logs">Appliance Logs</div>
-	</div>
+	<nav class="nav" role="tablist" aria-label="Dashboard navigation">
+		<button class="nav-tab active" data-tab="overview" data-i18n="energy_flow" role="tab" aria-selected="true" aria-controls="tab-overview" tabindex="0">Energy Flow</button>
+		<button class="nav-tab" data-tab="battery" data-i18n="battery_health" role="tab" aria-selected="false" aria-controls="tab-battery" tabindex="-1">Battery</button>
+		<button class="nav-tab" data-tab="charts" data-i18n="chart_title" role="tab" aria-selected="false" aria-controls="tab-charts" tabindex="-1">Measurement History</button>
+		<button class="nav-tab" data-tab="system" data-i18n="system_details" role="tab" aria-selected="false" aria-controls="tab-system" tabindex="-1">System</button>
+		<button class="nav-tab" data-tab="control" data-i18n="control_title" role="tab" aria-selected="false" aria-controls="tab-control" tabindex="-1">Control</button>
+		<button class="nav-tab" data-tab="logs" data-i18n="tab_logs" role="tab" aria-selected="false" aria-controls="tab-logs" tabindex="-1">Appliance Logs</button>
+	</nav>
 
-	<div class="container">
-		<div class="status-bar" id="connectors"></div>
+	<main class="container">
+		<div class="status-bar" id="connectors" aria-label="Connector status"></div>
 
-		<div class="loading" id="loading">
-			<div class="spinner"></div>
+		<div class="loading" id="loading" role="status" aria-live="polite">
+			<div class="spinner" aria-hidden="true"></div>
 			<div data-i18n="connecting">Connecting to ioBroker...</div>
 		</div>
 
 		<div id="content" style="display: none;">
-			<div class="tab-content active" id="tab-overview">
+			<div class="tab-content active" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview">
 				<div class="grid" id="dashboard"></div>
 			</div>
 
-			<div class="tab-content" id="tab-battery">
+			<div class="tab-content" id="tab-battery" role="tabpanel" aria-labelledby="tab-battery" hidden>
 				<div id="battery-container"></div>
 			</div>
 
-			<div class="tab-content" id="tab-charts">
+			<div class="tab-content" id="tab-charts" role="tabpanel" aria-labelledby="tab-charts" hidden>
 				<div id="charts-container"></div>
 			</div>
 
-			<div class="tab-content" id="tab-system">
+			<div class="tab-content" id="tab-system" role="tabpanel" aria-labelledby="tab-system" hidden>
 				<div id="system-container"></div>
 			</div>
 
-			<div class="tab-content" id="tab-control">
+			<div class="tab-content" id="tab-control" role="tabpanel" aria-labelledby="tab-control" hidden>
 				<div id="control-container"></div>
 			</div>
 
-			<div class="tab-content" id="tab-logs">
+			<div class="tab-content" id="tab-logs" role="tabpanel" aria-labelledby="tab-logs" hidden>
 				<div id="log-viewer"></div>
 			</div>
 		</div>
-	</div>
+	</main>
 
 	<script src="i18n.js"></script>
 	<script src="energy.js"></script>
@@ -906,15 +957,55 @@
 				this.connectSocket();
 			},
 
+			switchTab: function (tab) {
+				var tabs = document.querySelectorAll(".nav-tab");
+				var panels = document.querySelectorAll(".tab-content");
+				tabs.forEach(function (t) {
+					t.classList.remove("active");
+					t.setAttribute("aria-selected", "false");
+					t.setAttribute("tabindex", "-1");
+				});
+				panels.forEach(function (c) {
+					c.classList.remove("active");
+					c.hidden = true;
+				});
+				tab.classList.add("active");
+				tab.setAttribute("aria-selected", "true");
+				tab.setAttribute("tabindex", "0");
+				var target = document.getElementById("tab-" + tab.dataset.tab);
+				if (target) {
+					target.classList.add("active");
+					target.hidden = false;
+				}
+				app.activeTab = tab.dataset.tab;
+			},
+
 			initTabs: function () {
-				document.querySelectorAll(".nav-tab").forEach(function (tab) {
-					tab.addEventListener("click", function () {
-						document.querySelectorAll(".nav-tab").forEach(function (t) { t.classList.remove("active"); });
-						document.querySelectorAll(".tab-content").forEach(function (c) { c.classList.remove("active"); });
-						tab.classList.add("active");
-						var target = document.getElementById("tab-" + tab.dataset.tab);
-						if (target) target.classList.add("active");
-						app.activeTab = tab.dataset.tab;
+				var tabList = document.querySelectorAll(".nav-tab");
+				tabList.forEach(function (tab) {
+					tab.addEventListener("click", function () { app.switchTab(tab); });
+					tab.addEventListener("keydown", function (e) {
+						var tabs = Array.from(tabList);
+						var idx = tabs.indexOf(tab);
+						if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+							e.preventDefault();
+							var next = tabs[(idx + 1) % tabs.length];
+							next.focus();
+							app.switchTab(next);
+						} else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+							e.preventDefault();
+							var prev = tabs[(idx - 1 + tabs.length) % tabs.length];
+							prev.focus();
+							app.switchTab(prev);
+						} else if (e.key === "Home") {
+							e.preventDefault();
+							tabs[0].focus();
+							app.switchTab(tabs[0]);
+						} else if (e.key === "End") {
+							e.preventDefault();
+							tabs[tabs.length - 1].focus();
+							app.switchTab(tabs[tabs.length - 1]);
+						}
 					});
 				});
 			},
@@ -943,6 +1034,15 @@
 				this.conn.on("disconnect", function () {
 					app.showError(t("disconnected"));
 				});
+
+				// Re-read config when adapter object changes (user changed settings)
+				this.conn.on("objectChange", function (id, obj) {
+					if (id === "system.adapter." + NAMESPACE && obj && obj.native) {
+						app.config = obj.native;
+						app.renderDashboard();
+					}
+				});
+				this.conn.emit("subscribeObjects", "system.adapter." + NAMESPACE);
 
 				this.conn.on("stateChange", function (id, state) {
 					if (state && id.startsWith(NAMESPACE + ".")) {
@@ -1025,7 +1125,7 @@
 				if (this.activeTab === "system" && isSystemState) {
 					this.renderDashboard();
 				}
-				if (this.activeTab === "control" && shortId.startsWith("control.")) {
+				if (this.activeTab === "control" && shortId.startsWith("control.") && !controls.isLocked()) {
 					this.renderDashboard();
 				}
 				if (this.activeTab === "charts" && charts.autoUpdate && (isEnergyState || isMeasurementState)) {
@@ -1257,9 +1357,6 @@
 						}
 					}
 					logViewer.renderLogViewer();
-					if (isLiveRefresh || logViewer.liveMode) {
-						logViewer.scrollToBottom();
-					}
 				};
 				xhr.onerror = function () {
 					logViewer.loading = false;
@@ -1355,7 +1452,7 @@
 					if (entry.category) catSet[entry.category] = true;
 				}
 
-				this.entries = entries;
+				this.entries = entries.reverse();
 				this.categories = Object.keys(catSet).sort();
 				this.applyFilters();
 			},
@@ -1468,6 +1565,42 @@
 				return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 			},
 		};
+
+		// Dark/light theme toggle
+		// Brightness4 = half-moon (shown in light mode), Brightness7 = full sun (shown in dark mode)
+		var ICON_DARK = '<path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zM12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6c3.31 0 6 2.69 6 6s-2.69 6-6 6"/>';
+		var ICON_LIGHT = '<path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6m0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4"/>';
+
+		function updateThemeIcon() {
+			var icon = document.getElementById("theme-icon");
+			if (!icon) return;
+			var isDark = document.documentElement.classList.contains("dark") ||
+				(!document.documentElement.classList.contains("light") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+			icon.innerHTML = isDark ? ICON_DARK : ICON_LIGHT;
+		}
+
+		function toggleTheme() {
+			var root = document.documentElement;
+			var isDark = root.classList.contains("dark") ||
+				(!root.classList.contains("light") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+			root.classList.remove("dark", "light");
+			if (isDark) {
+				root.classList.add("light");
+				localStorage.setItem("senec-theme", "light");
+			} else {
+				root.classList.add("dark");
+				localStorage.setItem("senec-theme", "dark");
+			}
+			updateThemeIcon();
+		}
+
+		(function () {
+			var saved = localStorage.getItem("senec-theme");
+			if (saved === "dark") document.documentElement.classList.add("dark");
+			else if (saved === "light") document.documentElement.classList.add("light");
+			updateThemeIcon();
+		})();
 
 		document.addEventListener("DOMContentLoaded", function () { app.init(); });
 	</script>
