@@ -61,7 +61,17 @@ var systemInfo = {
 		}
 		var colors = { L: "#4caf50", A: "#2196f3", W: "#ff9800" };
 		var labels = { L: "Local", A: "API", W: "Web" };
-		return ` <span class="src-badge" title="${labels[tag] || tag}" style="color:${colors[tag] || "#999"}">${tag}</span>`;
+		var hasMismatch = tag.indexOf("!") !== -1;
+		var clean = tag.replace(/[! ]/g, "");
+		var html = " ";
+		for (var ci = 0; ci < clean.length; ci++) {
+			var ch = clean[ci];
+			html += `<span class="src-badge" title="${labels[ch] || ch}" style="color:${colors[ch] || "#999"}">${ch}</span>`;
+		}
+		if (hasMismatch) {
+			html += '<span class="src-badge" style="color:#f44336" title="Mismatch">!</span>';
+		}
+		return html;
 	},
 
 	/**
@@ -613,21 +623,23 @@ var systemInfo = {
 			});
 
 			if (allSame) {
-				// All agree — show single status with combined source tags
 				html += this.renderStatus(feat.label, vals[0], sources.join(""));
 			} else {
-				// Mismatch — show each source separately with warning color
+				// Group sources by value — show agreeing connectors together
+				var trueGroup = [];
+				var falseGroup = [];
 				for (var si = 0; si < vals.length; si++) {
-					var color = vals[si] ? "#4caf50" : "#90a4ae";
-					var text = vals[si] ? t("feature_active") : t("feature_inactive");
-					html +=
-						`<div class="system-metric">` +
-						`<div class="system-metric-label">${feat.label}${this.srcBadge(
-							sources[si],
-						)} <span style="color:#f44336;font-size:9px">!</span></div>` +
-						`<div class="system-metric-value"><span class="status-dot" style="background:${color}"></span>${
-							text
-						}</div></div>`;
+					if (vals[si]) {
+						trueGroup.push(sources[si]);
+					} else {
+						falseGroup.push(sources[si]);
+					}
+				}
+				if (trueGroup.length > 0) {
+					html += this.renderStatus(feat.label, true, `${trueGroup.join("")} !`);
+				}
+				if (falseGroup.length > 0) {
+					html += this.renderStatus(feat.label, false, `${falseGroup.join("")} !`);
 				}
 			}
 		}
