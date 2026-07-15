@@ -12,8 +12,8 @@
 		}
 
 		:root {
-			--color-primary: #157c00;
-			--color-primary-light: #1a9600;
+			--color-primary: #00529c;
+			--color-primary-light: #0066bf;
 			--color-bg: #f5f5f5;
 			--color-card: #ffffff;
 			--color-text: #333333;
@@ -578,6 +578,57 @@
 			color: var(--color-text);
 		}
 
+		/* System info cards */
+		.system-mode-badge {
+			text-align: center;
+			padding: 6px 16px;
+			margin-bottom: 16px;
+			border: 2px solid;
+			border-radius: 20px;
+			font-size: 14px;
+			font-weight: 600;
+			display: inline-block;
+		}
+
+		.system-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+			gap: 12px;
+		}
+
+		.system-metric {
+			padding: 8px 0;
+		}
+
+		.system-metric-label {
+			font-size: 12px;
+			color: var(--color-text-secondary);
+			margin-bottom: 2px;
+		}
+
+		.system-metric-value {
+			font-size: 15px;
+			font-weight: 600;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+
+		.status-dot {
+			width: 8px;
+			height: 8px;
+			border-radius: 50%;
+			display: inline-block;
+		}
+
+		.src-badge {
+			font-size: 9px;
+			font-weight: 700;
+			opacity: 0.6;
+			margin-left: 2px;
+			vertical-align: super;
+		}
+
 		#charts-container {
 			width: 100vw;
 			margin-left: calc(-50vw + 50%);
@@ -655,6 +706,7 @@
 
 	<div class="nav">
 		<div class="nav-tab active" data-tab="overview" data-i18n="tab_overview">Overview</div>
+		<div class="nav-tab" data-tab="battery" data-i18n="battery_health">Battery</div>
 		<div class="nav-tab" data-tab="charts" data-i18n="chart_title">Measurement History</div>
 		<div class="nav-tab" data-tab="logs" data-i18n="tab_logs">Appliance Logs</div>
 	</div>
@@ -672,6 +724,10 @@
 				<div class="grid" id="dashboard"></div>
 			</div>
 
+			<div class="tab-content" id="tab-battery">
+				<div id="battery-container"></div>
+			</div>
+
 			<div class="tab-content" id="tab-charts">
 				<div id="charts-container"></div>
 			</div>
@@ -685,6 +741,7 @@
 	<script src="i18n.js"></script>
 	<script src="energy.js"></script>
 	<script src="charts.js"></script>
+	<script src="system.js"></script>
 	<script>
 		"use strict";
 
@@ -809,8 +866,19 @@
 				var isMeasurementState =
 					shortId.indexOf("Measurements.") !== -1 ||
 					shortId.indexOf("hourly.") !== -1;
+				var isSystemState =
+					shortId.startsWith("BMS.") ||
+					shortId.startsWith("PM1OBJ1.") ||
+					shortId.startsWith("TEMPMEASURE.") ||
+					shortId.startsWith("PV1.") ||
+					shortId.startsWith("WIZARD.") ||
+					shortId.indexOf("SystemDetails.") !== -1 ||
+					shortId.indexOf("SystemStatus.") !== -1;
 
-				if (this.activeTab === "overview" && isEnergyState) {
+				if (this.activeTab === "overview" && (isEnergyState || isSystemState)) {
+					this.renderDashboard();
+				}
+				if (this.activeTab === "battery" && (isEnergyState || isSystemState)) {
 					this.renderDashboard();
 				}
 				if (this.activeTab === "charts" && charts.autoUpdate && (isEnergyState || isMeasurementState)) {
@@ -846,7 +914,15 @@
 			renderDashboard: function () {
 				var el = document.getElementById("dashboard");
 				energyFlow.update(this.states, this.connectors);
-				el.innerHTML = energyFlow.render() + this.makeCard(t("tab_overview"), this.renderOverview());
+				var modeHtml = systemInfo.renderOperatingMode(this.states);
+				el.innerHTML = energyFlow.render() + modeHtml +
+					systemInfo.renderGridQuality(this.states) +
+					systemInfo.renderFeatureStatus(this.states) +
+					systemInfo.renderSystemDetails(this.states) +
+					this.makeCard(t("tab_overview"), this.renderOverview());
+
+				var batteryEl = document.getElementById("battery-container");
+				if (batteryEl) batteryEl.innerHTML = systemInfo.renderBatteryHealth(this.states);
 
 				var chartsEl = document.getElementById("charts-container");
 				if (chartsEl) chartsEl.innerHTML = charts.render(this.states);
