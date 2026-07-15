@@ -93,5 +93,20 @@
     "feature_inactive": "Inactive",
     "feature_sg_mode": "SG-Ready Mode",
     "feature_ps_limit": "Peak Shaving Limit",
-    "energy_last_update": "Last update: {time}"
+    "energy_last_update": "Last update: {time}",
+    "control_title": "Control",
+    "control_force_charge": "Force Battery Charging",
+    "control_reboot": "Reboot Appliance",
+    "control_reboot_confirm": "Are you sure you want to reboot the appliance?",
+    "control_reboot_yes": "Yes, reboot",
+    "control_reboot_no": "Cancel",
+    "control_emergency": "Emergency Power",
+    "control_reserve": "Reserve",
+    "control_apply": "Apply",
+    "control_mode": "Mode",
+    "control_end_time": "End time",
+    "control_enabled": "Enabled",
+    "control_sockets": "Sockets",
+    "control_wallbox": "Wallbox",
+    "control_no_controls": "No controls available. Enable appliance control in the adapter settings."
 }

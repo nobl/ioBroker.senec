@@ -629,6 +629,136 @@
 			vertical-align: super;
 		}
 
+		/* Controls */
+		.control-row {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 8px;
+			flex-wrap: wrap;
+		}
+
+		.control-label {
+			font-size: 13px;
+			min-width: 120px;
+			color: var(--color-text);
+		}
+
+		.control-input {
+			padding: 5px 8px;
+			border: 1px solid var(--color-border);
+			border-radius: 4px;
+			font-size: 14px;
+			background: var(--color-card);
+			color: var(--color-text);
+			width: 100px;
+		}
+
+		.control-input-sm {
+			width: 50px;
+		}
+
+		.control-unit {
+			font-size: 13px;
+			color: var(--color-text-secondary);
+		}
+
+		.control-btn {
+			padding: 6px 16px;
+			border: 1px solid var(--color-primary);
+			border-radius: 4px;
+			background: var(--color-primary);
+			color: white;
+			font-size: 13px;
+			cursor: pointer;
+		}
+
+		.control-btn:hover {
+			opacity: 0.9;
+		}
+
+		.control-btn-danger {
+			border-color: var(--color-error);
+			background: var(--color-error);
+		}
+
+		.control-form {
+			margin-top: 8px;
+		}
+
+		.control-section {
+			margin-bottom: 16px;
+			padding-bottom: 12px;
+			border-bottom: 1px solid var(--color-border);
+		}
+
+		.control-section:last-child {
+			border-bottom: none;
+			margin-bottom: 0;
+			padding-bottom: 0;
+		}
+
+		.control-section h3 {
+			font-size: 14px;
+			font-weight: 600;
+			margin-bottom: 8px;
+			color: var(--color-text);
+		}
+
+		.control-warning {
+			background: rgba(244, 67, 54, 0.08);
+			padding: 12px;
+			border-radius: 4px;
+			color: var(--color-error);
+			font-weight: 500;
+		}
+
+		.control-toggle {
+			position: relative;
+			display: inline-block;
+			width: 42px;
+			height: 22px;
+			flex-shrink: 0;
+		}
+
+		.control-toggle input {
+			opacity: 0;
+			width: 0;
+			height: 0;
+		}
+
+		.control-slider {
+			position: absolute;
+			cursor: pointer;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: var(--color-border);
+			border-radius: 22px;
+			transition: 0.2s;
+		}
+
+		.control-slider::before {
+			content: "";
+			position: absolute;
+			height: 16px;
+			width: 16px;
+			left: 3px;
+			bottom: 3px;
+			background: white;
+			border-radius: 50%;
+			transition: 0.2s;
+		}
+
+		.control-toggle input:checked + .control-slider {
+			background: var(--color-primary);
+		}
+
+		.control-toggle input:checked + .control-slider::before {
+			transform: translateX(20px);
+		}
+
 		#charts-container {
 			width: 100vw;
 			margin-left: calc(-50vw + 50%);
@@ -709,6 +839,7 @@
 		<div class="nav-tab" data-tab="battery" data-i18n="battery_health">Battery</div>
 		<div class="nav-tab" data-tab="charts" data-i18n="chart_title">Measurement History</div>
 		<div class="nav-tab" data-tab="system" data-i18n="system_details">System</div>
+		<div class="nav-tab" data-tab="control" data-i18n="control_title">Control</div>
 		<div class="nav-tab" data-tab="logs" data-i18n="tab_logs">Appliance Logs</div>
 	</div>
 
@@ -737,6 +868,10 @@
 				<div id="system-container"></div>
 			</div>
 
+			<div class="tab-content" id="tab-control">
+				<div id="control-container"></div>
+			</div>
+
 			<div class="tab-content" id="tab-logs">
 				<div id="log-viewer"></div>
 			</div>
@@ -747,6 +882,7 @@
 	<script src="energy.js"></script>
 	<script src="charts.js"></script>
 	<script src="system.js"></script>
+	<script src="control.js"></script>
 	<script>
 		"use strict";
 
@@ -889,6 +1025,9 @@
 				if (this.activeTab === "system" && isSystemState) {
 					this.renderDashboard();
 				}
+				if (this.activeTab === "control" && shortId.startsWith("control.")) {
+					this.renderDashboard();
+				}
 				if (this.activeTab === "charts" && charts.autoUpdate && (isEnergyState || isMeasurementState)) {
 					this.renderDashboard();
 					if (charts.period === "today") charts.scrollToLatest();
@@ -942,6 +1081,9 @@
 						systemInfo.renderFeatureStatus(this.states) +
 						systemInfo.renderSystemDetails(this.states);
 				}
+
+				var controlEl = document.getElementById("control-container");
+				if (controlEl) controlEl.innerHTML = controls.render(this.states);
 			},
 
 			showError: function (msg) {
