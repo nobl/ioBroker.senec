@@ -37,6 +37,7 @@ var charts = {
 	compareMonth: "", // YYYY-MM for custom month comparison
 	compareYear: 0, // year number for custom year comparison
 	autoUpdate: false,
+	source: "auto", // "auto", "api", "web"
 	hasData: false,
 	lastSource: "",
 
@@ -46,15 +47,26 @@ var charts = {
 	 * @param {object} states - ioBroker state values
 	 */
 	findAvailableYears: function (states) {
+		// Find years with actual monthly data (value > 0) for the active source
 		var years = {};
+		var src = this.source;
+
 		for (var key in states) {
-			var m = key.match(/_meinsenec\.Measurements\.Yearly\.(\d{4})\./);
-			if (m) {
-				years[m[1]] = true;
+			if (src !== "web") {
+				// Check API source
+				var m2 = key.match(
+					/_api\.Anlagen\.[^.]+\.Measurements\.Yearly\.(\d{4})\.monthly\.POWER_CONSUMPTION\.(\d+)$/,
+				);
+				if (m2 && states[key] > 0) {
+					years[m2[1]] = true;
+				}
 			}
-			var m2 = key.match(/_api\.Anlagen\.[^.]+\.Measurements\.Yearly\.(\d{4})\./);
-			if (m2) {
-				years[m2[1]] = true;
+			if (src !== "api") {
+				// Check Web source
+				var m = key.match(/_meinsenec\.Measurements\.Yearly\.(\d{4})\.monthly\.consumption\.(\d+)$/);
+				if (m && states[key] > 0) {
+					years[m[1]] = true;
+				}
 			}
 		}
 		return Object.keys(years).map(Number).sort();
@@ -88,13 +100,30 @@ var charts = {
 	},
 
 	detectSource: function (states, webTestKey, apiTestKey) {
-		if (states[webTestKey] !== undefined) {
-			this.lastSource = "Web";
-			return "web";
+		if (this.source === "api") {
+			if (apiTestKey && states[apiTestKey] !== undefined) {
+				this.lastSource = "API";
+				return "api";
+			}
+			this.lastSource = "";
+			return null;
 		}
+		if (this.source === "web") {
+			if (states[webTestKey] !== undefined) {
+				this.lastSource = "Web";
+				return "web";
+			}
+			this.lastSource = "";
+			return null;
+		}
+		// Auto: API > Web
 		if (apiTestKey && states[apiTestKey] !== undefined) {
 			this.lastSource = "API";
 			return "api";
+		}
+		if (states[webTestKey] !== undefined) {
+			this.lastSource = "Web";
+			return "web";
 		}
 		this.lastSource = "";
 		return null;
@@ -108,7 +137,7 @@ var charts = {
 		var src = this.detectSource(
 			states,
 			`${wpfx}consumption.hourly.0`,
-			apiPfx ? `${apiPfx}powerConsumptionInWh.0` : null,
+			apiPfx ? `${apiPfx}POWER_CONSUMPTION.0` : null,
 		);
 		var hasWeb = src === "web";
 		var hasApi = src === "api";
@@ -134,7 +163,7 @@ var charts = {
 				fullSeries[webKey] = [];
 				for (var ah = 0; ah < 24; ah++) {
 					var aVal = states[`${apiPfx + apiKey}.${ah}`];
-					fullSeries[webKey].push(aVal !== undefined && aVal !== null ? Number(aVal) / 1000 : 0);
+					fullSeries[webKey].push(aVal !== undefined && aVal !== null ? Number(aVal) : 0);
 				}
 			}
 		}
@@ -178,7 +207,7 @@ var charts = {
 		var src = this.detectSource(
 			states,
 			`${wpfx}consumption.daily.1`,
-			apiPfx ? `${apiPfx}powerConsumptionInWh.1` : null,
+			apiPfx ? `${apiPfx}POWER_CONSUMPTION.1` : null,
 		);
 		var hasWeb = src === "web";
 		var hasApi = src === "api";
@@ -218,7 +247,7 @@ var charts = {
 		var src = this.detectSource(
 			states,
 			`${wpfx}monthly.consumption.1`,
-			apiPfx ? `${apiPfx}powerConsumptionInWh.1` : null,
+			apiPfx ? `${apiPfx}POWER_CONSUMPTION.1` : null,
 		);
 		var hasWeb = src === "web";
 		var hasApi = src === "api";
@@ -263,14 +292,14 @@ var charts = {
 		return `_api.Anlagen.${id}.Measurements.${suffix}`;
 	},
 
-	/** API type name mapping to web types */
+	/** API Measurements type name mapping to web types (UPPERCASE keys from measurements endpoint) */
 	apiTypeMap: {
-		powerGenerationInWh: "powergenerated",
-		powerConsumptionInWh: "consumption",
-		gridDrawInWh: "gridimport",
-		gridFeedInInWh: "gridexport",
-		batteryChargeInWh: "accuexport",
-		batteryDischargeInWh: "accuimport",
+		POWER_GENERATION: "powergenerated",
+		POWER_CONSUMPTION: "consumption",
+		GRID_IMPORT: "gridimport",
+		GRID_EXPORT: "gridexport",
+		BATTERY_IMPORT: "accuexport",
+		BATTERY_EXPORT: "accuimport",
 	},
 
 	loadApiHourly: function (states, pfx, data) {
@@ -279,8 +308,8 @@ var charts = {
 			data.series[webKey] = [];
 			for (var h = 0; h < 24; h++) {
 				var val = states[`${pfx + apiKey}.${h}`];
-				// API values are in Wh, convert to kWh
-				data.series[webKey].push(val !== undefined && val !== null ? Number(val) / 1000 : 0);
+				// API measurement values are already in kWh
+				data.series[webKey].push(val !== undefined && val !== null ? Number(val) : 0);
 			}
 		}
 	},
@@ -291,7 +320,7 @@ var charts = {
 			data.series[webKey] = [];
 			for (var d = 1; d <= days; d++) {
 				var val = states[`${pfx + apiKey}.${d}`];
-				data.series[webKey].push(val !== undefined && val !== null ? Number(val) / 1000 : 0);
+				data.series[webKey].push(val !== undefined && val !== null ? Number(val) : 0);
 			}
 		}
 	},
@@ -302,7 +331,7 @@ var charts = {
 			data.series[webKey] = [];
 			for (var m = 1; m <= 12; m++) {
 				var val = states[`${pfx + apiKey}.${m}`];
-				data.series[webKey].push(val !== undefined && val !== null ? Number(val) / 1000 : 0);
+				data.series[webKey].push(val !== undefined && val !== null ? Number(val) : 0);
 			}
 		}
 	},
@@ -326,11 +355,18 @@ var charts = {
 			var cls = this.period === p ? "period-tab active" : "period-tab";
 			html += `<button class="${cls}" onclick="charts.onPeriodChange('${p}')">${t(periodKeys[p])}</button>`;
 		}
-		// Data source indicator
+		// Data source selector
+		html += '<div class="energy-source">';
+		html += '<select class="chart-compare-select" onchange="charts.onSourceChange(this.value)">';
+		html += `<option value="auto"${this.source === "auto" ? " selected" : ""}>Auto</option>`;
+		html += `<option value="api"${this.source === "api" ? " selected" : ""}>API</option>`;
+		html += `<option value="web"${this.source === "web" ? " selected" : ""}>Web</option>`;
+		html += "</select>";
 		var chartSource = this.lastSource || "";
 		if (chartSource) {
 			html += `<span class="energy-source-label">${t("energy_source_via", { source: chartSource })}</span>`;
 		}
+		html += "</div>";
 		html += "</div></div>";
 
 		// Type toggles
@@ -737,6 +773,11 @@ var charts = {
 
 	onPeriodChange: function (val) {
 		this.period = val;
+		app.renderDashboard();
+	},
+
+	onSourceChange: function (val) {
+		this.source = val;
 		app.renderDashboard();
 	},
 
