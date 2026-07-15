@@ -925,7 +925,12 @@
 				el.innerHTML = energyFlow.render(systemInfo.renderOperatingMode(this.states));
 
 				var batteryEl = document.getElementById("battery-container");
-				if (batteryEl) batteryEl.innerHTML = systemInfo.renderBatteryHealth(this.states);
+				if (batteryEl) {
+					batteryEl.innerHTML =
+						systemInfo.renderBatteryHealth(this.states) +
+						systemInfo.renderBatteryTemps(this.states) +
+						systemInfo.renderBatteryVoltages(this.states);
+				}
 
 				var chartsEl = document.getElementById("charts-container");
 				if (chartsEl) chartsEl.innerHTML = charts.render(this.states);
