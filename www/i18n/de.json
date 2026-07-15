@@ -35,7 +35,7 @@
     "feature_ps_limit": "Peak-Shaving-Grenze",
     "feature_sg_mode": "SG-Ready-Modus",
     "feature_status": "Funktionen",
-    "grid_current": "Aktuell",
+    "grid_current": "Strom",
     "grid_frequency": "Frequenz",
     "grid_power": "Leistung",
     "grid_quality": "Netz",

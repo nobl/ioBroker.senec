@@ -72,6 +72,7 @@
     "battery_cells": "Cells",
     "grid_quality": "Grid",
     "grid_frequency": "Frequency",
+    "grid_voltage": "Voltage",
     "grid_power": "Power",
     "grid_current": "Current",
     "grid_skew": "Phase Skew",

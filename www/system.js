@@ -375,10 +375,7 @@ var systemInfo = {
 	 */
 	renderGridQuality: function (states) {
 		var freq = this.getFirst(states, ["PM1OBJ1.FREQ"]);
-		// Phase voltages/currents are arrays stored as .0, .1, .2
 		var u0 = this.getFirst(states, ["PM1OBJ1.U_AC.0"]);
-		var u1 = this.getFirst(states, ["PM1OBJ1.U_AC.1"]);
-		var u2 = this.getFirst(states, ["PM1OBJ1.U_AC.2"]);
 		var skew = this.getFirst(states, ["ENERGY.STAT_LIMITED_NET_SKEW"]);
 
 		if (freq === null && u0 === null) {
@@ -388,73 +385,53 @@ var systemInfo = {
 		var html = `<div class="card"><h2>${t("grid_quality")}</h2>`;
 		html += '<div class="system-grid">';
 
+		// Frequency
 		if (freq !== null) {
 			var freqVal = Number(freq).toFixed(2);
 			var freqColor = Math.abs(Number(freq) - 50) < 0.1 ? "#4caf50" : "#ff9800";
 			html += this.renderMetric(t("grid_frequency"), `${freqVal} Hz`, freqColor, "L");
 		}
 
-		if (u0 !== null) {
-			var phases = [u0];
-			if (u1 !== null) {
-				phases.push(u1);
-			}
-			if (u2 !== null) {
-				phases.push(u2);
-			}
-			for (var p = 0; p < phases.length; p++) {
-				var vVal = Number(phases[p]).toFixed(1);
-				var vColor = Math.abs(Number(phases[p]) - 230) < 15 ? "#4caf50" : "#ff9800";
-				html += this.renderMetric(`L${p + 1}`, `${vVal} V`, vColor, "L");
-			}
-		}
-
-		// Per-phase power (PM1OBJ1.P_AC.{0,1,2})
-		var pw0 = this.getFirst(states, ["PM1OBJ1.P_AC.0"]);
-		if (pw0 !== null) {
-			var pwPhases = [pw0];
-			var pw1 = this.getFirst(states, ["PM1OBJ1.P_AC.1"]);
-			var pw2 = this.getFirst(states, ["PM1OBJ1.P_AC.2"]);
-			if (pw1 !== null) {
-				pwPhases.push(pw1);
-			}
-			if (pw2 !== null) {
-				pwPhases.push(pw2);
-			}
-			for (var pp = 0; pp < pwPhases.length; pp++) {
-				html += this.renderMetric(
-					`${t("grid_power")} L${pp + 1}`,
-					`${Math.round(Number(pwPhases[pp]))} W`,
-					"#757575",
-					"L",
-				);
-			}
-		}
-
-		// Per-phase current (PM1OBJ1.I_AC.{0,1,2})
-		var i0 = this.getFirst(states, ["PM1OBJ1.I_AC.0"]);
-		if (i0 !== null) {
-			var iPhases = [i0];
-			var i1 = this.getFirst(states, ["PM1OBJ1.I_AC.1"]);
-			var i2 = this.getFirst(states, ["PM1OBJ1.I_AC.2"]);
-			if (i1 !== null) {
-				iPhases.push(i1);
-			}
-			if (i2 !== null) {
-				iPhases.push(i2);
-			}
-			for (var ip = 0; ip < iPhases.length; ip++) {
-				html += this.renderMetric(
-					`${t("grid_current")} L${ip + 1}`,
-					`${Number(iPhases[ip]).toFixed(2)} A`,
-					"#757575",
-					"L",
-				);
-			}
-		}
-
+		// Phase skew warning
 		if (skew !== null && Number(skew) !== 0) {
 			html += this.renderMetric(t("grid_skew"), t("grid_skew_active"), "#f44336", "L");
+		}
+
+		// Per-phase: voltage, power, current — each on its own line
+		for (var p = 0; p < 3; p++) {
+			var uVal = this.getFirst(states, [`PM1OBJ1.U_AC.${p}`]);
+			var pVal = this.getFirst(states, [`PM1OBJ1.P_AC.${p}`]);
+			var iVal = this.getFirst(states, [`PM1OBJ1.I_AC.${p}`]);
+
+			if (uVal === null && pVal === null && iVal === null) {
+				continue;
+			}
+
+			if (uVal !== null) {
+				var vColor = Math.abs(Number(uVal) - 230) < 15 ? "#4caf50" : "#ff9800";
+				html += this.renderMetric(
+					`${t("grid_voltage")} L${p + 1}`,
+					`${Number(uVal).toFixed(1)} V`,
+					vColor,
+					"L",
+				);
+			}
+			if (pVal !== null) {
+				html += this.renderMetric(
+					`${t("grid_power")} L${p + 1}`,
+					`${Math.round(Number(pVal))} W`,
+					"#757575",
+					"L",
+				);
+			}
+			if (iVal !== null) {
+				html += this.renderMetric(
+					`${t("grid_current")} L${p + 1}`,
+					`${Number(iVal).toFixed(2)} A`,
+					"#757575",
+					"L",
+				);
+			}
 		}
 
 		html += "</div></div>";
