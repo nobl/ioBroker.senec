@@ -31,7 +31,7 @@
     "@iobroker/adapter-core": "^3.4.1",
     "axios": "^1.18.1",
     "axios-cookiejar-support": "^7.0.0",
-    "tough-cookie": "^6.0.1"
+    "tough-cookie": "^6.0.2"
   },
   "devDependencies": {
     "@alcalzone/release-script": "^5.2.1",
