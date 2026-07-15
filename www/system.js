@@ -536,42 +536,117 @@ var systemInfo = {
 	 * @param {object} states - ioBroker state values
 	 * @returns {string} HTML string
 	 */
-	renderFeatureStatus: function (states) {
-		var sgKeys = ["WIZARD.SG_READY_ENABLED", "_meinsenec.Status.sgReadyVisible"];
-		var sgEnabled = this.getFirst(states, sgKeys);
-		var sgModeKeys = ["WIZARD.SG_READY_CURR_MODE"];
-		var sgMode = this.getFirst(states, sgModeKeys);
-		var psVisible = this.getFirst(states, ["_meinsenec.Status.peakShavingVisible"]);
-		var psMode = this.getFirst(states, ["_meinsenec.Status.peakShavingMode"]);
-		var psLimitKeys = ["_meinsenec.Status.peakShavingCapacityLimitInPercent"];
-		var psLimit = this.getFirst(states, psLimitKeys);
+	/** Feature definitions: label, keys per connector [local, api, web] */
+	featureDefs: [
+		{ label: "SG-Ready", local: "FEATURES.SGREADY", api: "Abilities.SG_READY", web: "info.abilities.sgReady" },
+		{ label: "Peak Shaving", local: "FEATURES.PEAKSHAVING", api: null, web: "info.abilities.peakShaving" },
+		{ label: "Sockets", local: "FEATURES.SOCKETS", api: "Abilities.SOCKETS", web: "info.abilities.sockets" },
+		{ label: "Wallbox", local: "FEATURES.CAR", api: "Abilities.MOBILITY", web: "info.abilities.wallbox" },
+		{
+			label: "Heating Rod",
+			local: "FEATURES.HEAT",
+			api: "Abilities.HEATING_ROD",
+			web: "info.abilities.heatingRod",
+		},
+		{ label: "Island", local: "FEATURES.ISLAND", api: null, web: "info.abilities.autarky" },
+		{ label: "Island Pro", local: "FEATURES.ISLAND_PRO", api: null, web: null },
+		{ label: "Cloud Ready", local: "FEATURES.CLOUDREADY", api: null, web: null },
+		{ label: "SHKW", local: "FEATURES.SHKW", api: null, web: null },
+		{ label: "Battery", local: null, api: null, web: "info.abilities.battery" },
+	],
 
-		if (sgEnabled === null && psVisible === null) {
-			return "";
+	toBool: function (val) {
+		if (val === null || val === undefined) {
+			return null;
 		}
+		if (val === true || val === 1 || val === "true") {
+			return true;
+		}
+		if (val === false || val === 0 || val === "false") {
+			return false;
+		}
+		return Number(val) > 0;
+	},
+
+	renderFeatureStatus: function (states) {
+		var ap = this.apiDetailsPfx();
+		var apAbilities = ap ? ap.replace("SystemDetails.", "") : null;
+		var hasAny = false;
 
 		var html = `<div class="card"><h2>${t("feature_status")}</h2>`;
 		html += '<div class="system-grid">';
 
-		if (sgEnabled !== null) {
-			var sgActive = Number(sgEnabled) > 0 || sgEnabled === true;
-			html += this.renderStatus("SG-Ready", sgActive, this.sourceTag(states, sgKeys));
-			if (sgMode !== null && sgActive) {
-				html += this.renderMetric(
-					t("feature_sg_mode"),
-					String(sgMode),
-					"#757575",
-					this.sourceTag(states, sgModeKeys),
-				);
+		for (var fi = 0; fi < this.featureDefs.length; fi++) {
+			var feat = this.featureDefs[fi];
+			var lKey = feat.local;
+			var aKey = apAbilities && feat.api ? apAbilities + feat.api : null;
+			var wKey = feat.web ? `_meinsenec.${feat.web}` : null;
+
+			var lVal = lKey ? this.toBool(this.getFirst(states, [lKey])) : null;
+			var aVal = aKey ? this.toBool(this.getFirst(states, [aKey])) : null;
+			var wVal = wKey ? this.toBool(this.getFirst(states, [wKey])) : null;
+
+			// Skip if no connector has this feature info
+			if (lVal === null && aVal === null && wVal === null) {
+				continue;
+			}
+			hasAny = true;
+
+			// Check for mismatch between connectors
+			var vals = [];
+			var sources = [];
+			if (lVal !== null) {
+				vals.push(lVal);
+				sources.push("L");
+			}
+			if (aVal !== null) {
+				vals.push(aVal);
+				sources.push("A");
+			}
+			if (wVal !== null) {
+				vals.push(wVal);
+				sources.push("W");
+			}
+
+			var allSame = vals.every(function (v) {
+				return v === vals[0];
+			});
+
+			if (allSame) {
+				// All agree — show single status with combined source tags
+				html += this.renderStatus(feat.label, vals[0], sources.join(""));
+			} else {
+				// Mismatch — show each source separately with warning color
+				for (var si = 0; si < vals.length; si++) {
+					var color = vals[si] ? "#4caf50" : "#90a4ae";
+					var text = vals[si] ? t("feature_active") : t("feature_inactive");
+					html +=
+						`<div class="system-metric">` +
+						`<div class="system-metric-label">${feat.label}${this.srcBadge(
+							sources[si],
+						)} <span style="color:#f44336;font-size:9px">!</span></div>` +
+						`<div class="system-metric-value"><span class="status-dot" style="background:${color}"></span>${
+							text
+						}</div></div>`;
+				}
 			}
 		}
 
-		if (psVisible !== null && (psVisible === true || Number(psVisible) > 0)) {
-			var psActive = psMode !== null && Number(psMode) > 0;
-			html += this.renderStatus("Peak Shaving", psActive, "W");
-			if (psLimit !== null && psActive) {
-				html += this.renderMetric(t("feature_ps_limit"), `${Math.round(Number(psLimit))}%`, "#757575", "W");
-			}
+		// SG-Ready mode (if active)
+		var sgMode = this.getFirst(states, ["WIZARD.SG_READY_CURR_MODE"]);
+		if (sgMode !== null) {
+			html += this.renderMetric(t("feature_sg_mode"), String(sgMode), "#757575", "L");
+		}
+
+		// Peak shaving details
+		var psMode = this.getFirst(states, ["_meinsenec.Status.peakShavingMode"]);
+		var psLimit = this.getFirst(states, ["_meinsenec.Status.peakShavingCapacityLimitInPercent"]);
+		if (psMode !== null && Number(psMode) > 0 && psLimit !== null) {
+			html += this.renderMetric(t("feature_ps_limit"), `${Math.round(Number(psLimit))}%`, "#757575", "W");
+		}
+
+		if (!hasAny) {
+			return "";
 		}
 
 		html += "</div></div>";

@@ -458,14 +458,10 @@ var energyFlow = {
 		html += `<span class="energy-source-label">${t(this.activeSource ? "energy_source_via" : "energy_source_none", {
 			source: this.activeSource || "",
 		})}</span>`;
-		// Last update timestamp
+		// Last update timestamp (shows when the dashboard last received data from the active connector)
 		var now = new Date();
-		html += `<span class="energy-source-label">${t("energy_last_update", {
-			time: `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(
-				2,
-				"0",
-			)}`,
-		})}</span>`;
+		var timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+		html += `<span class="energy-source-label">${t("energy_last_update", { time: timeStr })}</span>`;
 		html += "</div></div>";
 
 		// Operating mode badge
