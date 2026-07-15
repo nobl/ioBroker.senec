@@ -379,6 +379,38 @@ var energyFlow = {
 	},
 
 	/**
+	 * Get the last update time for the active energy flow source
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {string|null} Formatted time or null
+	 */
+	getLastUpdateTime: function (states) {
+		var isoStr = null;
+
+		if (this.activeSource === "local") {
+			isoStr = states["info.lastPoll.HighPrio"] || null;
+		} else if (this.activeSource === "api") {
+			var pfx = this.apiPrefix();
+			if (pfx) {
+				isoStr = states[pfx.replace("Dashboard.", "info.lastPoll.Dashboard")] || null;
+			}
+		} else if (this.activeSource === "web") {
+			isoStr = states["_meinsenec.info.lastPoll.Status"] || null;
+		}
+
+		if (!isoStr) {
+			return null;
+		}
+
+		var d = new Date(isoStr);
+		if (isNaN(d.getTime())) {
+			return null;
+		}
+
+		return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+	},
+
+	/**
 	 * Format hours as "Xh Ym"
 	 *
 	 * @param {number} hours - Duration in hours
@@ -458,10 +490,11 @@ var energyFlow = {
 		html += `<span class="energy-source-label">${t(this.activeSource ? "energy_source_via" : "energy_source_none", {
 			source: this.activeSource || "",
 		})}</span>`;
-		// Last update timestamp (shows when the dashboard last received data from the active connector)
-		var now = new Date();
-		var timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
-		html += `<span class="energy-source-label">${t("energy_last_update", { time: timeStr })}</span>`;
+		// Last update from the active connector
+		var lastUpdate = this.getLastUpdateTime(app.states);
+		if (lastUpdate) {
+			html += `<span class="energy-source-label">${t("energy_last_update", { time: lastUpdate })}</span>`;
+		}
 		html += "</div></div>";
 
 		// Operating mode badge
