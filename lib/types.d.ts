@@ -89,6 +89,7 @@ export interface SenecAdapter extends AdapterClass {
     webJar: any;
     webAuthenticated: boolean;
     webMasterPlantNumber: number | null;
+    webSecondaryPlants: Map<string, { anlageNummer: number; produktName: string }>;
     webAbilities: Record<string, boolean>;
     webStatusIntervalMs: number;
     webMediumIntervalMs: number;
