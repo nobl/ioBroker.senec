@@ -79,7 +79,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Dashboard: Grid quality card redesigned as table layout (Frequency, Total Power, per-phase Voltage/Power/Current). Support for EnFluRi 2 with automatic detection (non-zero voltage).
 - Dashboard: Battery tab — module status counts (active/charging/discharging), cycles & lifetime energy table per pack, per-pack voltage and current.
 - Dashboard: System tab — PV string details (MPP power/voltage/current), wallbox info (EV connected, smart charge, per-phase current), operating hours, installation date, installer contact.
-- Dashboard: Energy flow — live autarky badge (API native or calculated), week + lifetime autarky in period totals. Battery capacity auto-detected from API or Web (config as fallback).
+- Dashboard: Energy flow — live autarky badge (API native or calculated), week + lifetime autarky in period totals. Battery capacity auto-detected from API or Web (config as fallback). Fixed flow paths to show actual source/destination (e.g. battery→grid instead of PV→grid when PV is idle). Power labels on all flow paths. Tab switch now re-renders with latest state values.
 - Dashboard: Measurement charts — battery level (%) line overlay with comparison support and data table.
 - Web: Poll battery state (`getaccustate.php`) on medium tier — voltage, current, capacity, type, history.
 - Web: Secondary plant discovery and measurement polling. Control via `control.Plants.{id}.poll`.
