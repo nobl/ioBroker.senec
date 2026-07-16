@@ -615,10 +615,17 @@
 		}
 
 		/* System info cards */
+		.energy-status-row {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+			margin-bottom: 12px;
+		}
+
 		.system-mode-badge {
 			text-align: center;
 			padding: 6px 16px;
-			margin-bottom: 16px;
+			margin-bottom: 4px;
 			border: 2px solid;
 			border-radius: 20px;
 			font-size: 14px;
@@ -1214,6 +1221,7 @@
 				if (batteryEl) {
 					batteryEl.innerHTML =
 						systemInfo.renderBatteryHealth(this.states) +
+						systemInfo.renderBatteryCycles(this.states) +
 						systemInfo.renderBatteryTemps(this.states) +
 						systemInfo.renderBatteryVoltages(this.states);
 				}
@@ -1225,6 +1233,8 @@
 				if (systemEl) {
 					systemEl.innerHTML =
 						systemInfo.renderGridQuality(this.states) +
+						systemInfo.renderPvStrings(this.states) +
+						systemInfo.renderWallboxInfo(this.states) +
 						systemInfo.renderFeatureStatus(this.states) +
 						systemInfo.renderSystemDetails(this.states);
 				}

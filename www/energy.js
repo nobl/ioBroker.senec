@@ -27,7 +27,10 @@ var energyFlow = {
 		todayBatteryDischarge: null,
 		wallbox: 0,
 		todayWallbox: null,
-		autarky: null, // % self-sufficiency today
+		autarkyCurrent: null, // % self-sufficiency right now (live)
+		autarky: null, // % self-sufficiency for current period
+		autarkyWeek: null, // % self-sufficiency this week (web only)
+		autarkyAll: null, // % self-sufficiency lifetime (web only)
 		batteryCapacity: null, // kWh — design capacity for time estimates
 	},
 
@@ -57,12 +60,22 @@ var energyFlow = {
 	 * @param {object} states - ioBroker state values
 	 */
 	discoverApiId: function (states) {
+		var fallback = null;
 		for (var key in states) {
 			var m = key.match(/^_api\.Anlagen\.([^.]+)\./);
 			if (m) {
-				this.apiAnlagenId = m[1];
-				return;
+				// Prefer the ID that has Dashboard data (avoids stale/old IDs)
+				if (key.indexOf(".Dashboard.") !== -1) {
+					this.apiAnlagenId = m[1];
+					return;
+				}
+				if (!fallback) {
+					fallback = m[1];
+				}
 			}
+		}
+		if (fallback) {
+			this.apiAnlagenId = fallback;
 		}
 	},
 
@@ -137,6 +150,14 @@ var energyFlow = {
 			this.updateFromApi(states);
 		} else if (src === "web") {
 			this.updateFromWeb(states);
+		}
+
+		// Current autarky — API provides it natively, otherwise calculate
+		if (src === "api") {
+			var pfx = this.apiPrefix();
+			this.data.autarkyCurrent = this.getStateOrNull(states, `${pfx}currently.selfSufficiencyInPercent`);
+		} else {
+			this.data.autarkyCurrent = this.calcAutarky(this.data.house, this.data.grid);
 		}
 
 		// Day totals — try API first (Wh), then Web (kWh)
@@ -222,6 +243,8 @@ var energyFlow = {
 			this.data.todayBatteryDischarge = this.getState(states, `${pfx}today.batteryDischargeInWh`) / 1000;
 			this.data.todayWallbox = this.getState(states, `${pfx}today.wallboxInWh`) / 1000;
 			this.data.autarky = this.getStateOrNull(states, `${pfx}today.selfSufficiencyInPercent`);
+			this.data.autarkyWeek = this.getStateOrNull(states, "_meinsenec.Autarky.week");
+			this.data.autarkyAll = this.getStateOrNull(states, "_meinsenec.Autarky.all");
 			return;
 		}
 
@@ -236,6 +259,8 @@ var energyFlow = {
 			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuimport.today`);
 			this.data.todayWallbox = null;
 			this.data.autarky = this.getStateOrNull(states, "_meinsenec.Autarky.day");
+			this.data.autarkyWeek = this.getStateOrNull(states, "_meinsenec.Autarky.week");
+			this.data.autarkyAll = this.getStateOrNull(states, "_meinsenec.Autarky.all");
 		}
 	},
 
@@ -326,6 +351,24 @@ var energyFlow = {
 		this.data.todayBatteryDischarge = null;
 		this.data.todayWallbox = null;
 		this.data.autarky = null;
+		this.data.autarkyWeek = null;
+		this.data.autarkyAll = null;
+	},
+
+	/**
+	 * Calculate autarky from house consumption and grid import
+	 *
+	 * @param {number} house - House consumption in W
+	 * @param {number} grid - Grid value in W (positive = importing)
+	 * @returns {number|null} Self-sufficiency in percent
+	 */
+	calcAutarky: function (house, grid) {
+		if (!house || house <= 0) {
+			return null;
+		}
+		var gridImport = grid > 0 ? grid : 0;
+		var pct = (1 - gridImport / house) * 100;
+		return Math.max(0, Math.min(100, pct));
 	},
 
 	/**
@@ -494,9 +537,16 @@ var energyFlow = {
 		}
 		html += "</div></div>";
 
-		// Operating mode badge
-		if (modeBadge) {
-			html += modeBadge;
+		// Operating mode badge + current autarky
+		if (modeBadge || d.autarkyCurrent !== null) {
+			html += '<div class="energy-status-row">';
+			if (modeBadge) {
+				html += modeBadge;
+			}
+			if (d.autarkyCurrent !== null) {
+				html += `<div class="system-mode-badge" style="border-color:#157c00;color:#157c00">${t("total_self_sufficiency")}: ${Math.round(d.autarkyCurrent)}%</div>`;
+			}
+			html += "</div>";
 		}
 
 		// SVG energy flow diagram
@@ -776,7 +826,14 @@ var energyFlow = {
 		}
 
 		if (d.autarky !== null) {
-			html += this.renderTotalItem(t("total_self_sufficiency"), null, "#157c00", `${Math.round(d.autarky)}%`);
+			var autarkyParts = [`${Math.round(d.autarky)}%`];
+			if (d.autarkyWeek !== null && this.period === "today") {
+				autarkyParts.push(`${t("period_week")}: ${Math.round(d.autarkyWeek)}%`);
+			}
+			if (d.autarkyAll !== null && this.period === "today") {
+				autarkyParts.push(`${t("period_all")}: ${Math.round(d.autarkyAll)}%`);
+			}
+			html += this.renderTotalItem(t("total_self_sufficiency"), null, "#157c00", autarkyParts.join(" · "));
 		}
 
 		html += "</div></div>";

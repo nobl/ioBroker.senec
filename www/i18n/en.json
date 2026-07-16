@@ -111,5 +111,21 @@
     "control_wallbox": "Wallbox",
     "control_no_controls": "No controls available. Enable appliance control in the adapter settings.",
     "control_sent": "Sent",
-    "control_no_connector": "{connector} connector not connected"
+    "control_no_connector": "{connector} connector not connected",
+    "battery_active": "Active",
+    "battery_charging": "Charging",
+    "battery_discharging": "Discharging",
+    "battery_cycles_energy": "Cycles & Lifetime Energy",
+    "battery_charged": "Charged",
+    "battery_discharged": "Discharged",
+    "system_operating_hours": "Operating Hours",
+    "system_install_date": "Installation",
+    "system_installer": "Installer",
+    "system_installer_phone": "Phone",
+    "system_installer_email": "Email",
+    "pv_strings": "PV Strings",
+    "wallbox_ev_connected": "EV Connected",
+    "wallbox_smart_charge": "Smart Charge",
+    "period_week": "Week",
+    "period_all": "All Time"
 }

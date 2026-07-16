@@ -210,7 +210,80 @@ var systemInfo = {
 			);
 		}
 
+		// Module status counts
+		var nrActive = this.getFirst(states, ["BMS.NR_ACTIVE"]);
+		var nrCharge = this.getFirst(states, ["BMS.NR_CHARGE"]);
+		var nrDischarge = this.getFirst(states, ["BMS.NR_DISCHARGE"]);
+		if (nrActive !== null || nrCharge !== null || nrDischarge !== null) {
+			if (nrActive !== null) {
+				html += this.renderMetric(t("battery_active"), Math.round(Number(nrActive)), "#757575", "L");
+			}
+			if (nrCharge !== null) {
+				html += this.renderMetric(t("battery_charging"), Math.round(Number(nrCharge)), "#4caf50", "L");
+			}
+			if (nrDischarge !== null) {
+				html += this.renderMetric(t("battery_discharging"), Math.round(Number(nrDischarge)), "#ff9800", "L");
+			}
+		}
+
 		html += "</div></div>";
+		return html;
+	},
+
+	/**
+	 * Render battery cycles and lifetime energy card
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {string} HTML string
+	 */
+	renderBatteryCycles: function (states) {
+		var moduleCount = this.getModuleCount(states);
+
+		// Check if any cycle or energy data exists
+		var hasData = false;
+		for (var c = 0; c < moduleCount; c++) {
+			if (
+				this.getFirst(states, [`BMS.CYCLES.${c}`]) !== null ||
+				this.getFirst(states, [`BMS.CHARGED_ENERGY.${c}`]) !== null
+			) {
+				hasData = true;
+				break;
+			}
+		}
+
+		if (!hasData) {
+			return "";
+		}
+
+		var html = `<div class="card"><h2>${t("battery_cycles_energy")}</h2>`;
+		html += '<table class="grid-phase-table">';
+
+		// Column headers
+		html += '<tr class="grid-header-row">';
+		html += "<th></th>";
+		html += `<th>${t("battery_cycles")}</th>`;
+		html += `<th>${t("battery_charged")}</th>`;
+		html += `<th>${t("battery_discharged")}</th>`;
+		html += "</tr>";
+
+		for (var m = 0; m < moduleCount; m++) {
+			var cycles = this.getFirst(states, [`BMS.CYCLES.${m}`]);
+			var charged = this.getFirst(states, [`BMS.CHARGED_ENERGY.${m}`]);
+			var discharged = this.getFirst(states, [`BMS.DISCHARGED_ENERGY.${m}`]);
+
+			if (cycles === null && charged === null && discharged === null) {
+				continue;
+			}
+
+			html += "<tr>";
+			html += `<td class="grid-phase-label">Pack ${m + 1}</td>`;
+			html += cycles !== null ? `<td>${Math.round(Number(cycles))}</td>` : "<td>—</td>";
+			html += charged !== null ? `<td>${(Number(charged) / 1000).toFixed(0)} kWh</td>` : "<td>—</td>";
+			html += discharged !== null ? `<td>${(Number(discharged) / 1000).toFixed(0)} kWh</td>` : "<td>—</td>";
+			html += "</tr>";
+		}
+
+		html += "</table></div>";
 		return html;
 	},
 
@@ -321,16 +394,22 @@ var systemInfo = {
 		var moduleCount = this.getModuleCount(states);
 		var modLetters = ["A", "B", "C", "D"];
 
-		// Check if any per-module voltage data exists
+		// Check if any per-module voltage or current data exists
 		var hasModuleVolt = false;
+		var hasPackElectrical = false;
 		for (var mv = 0; mv < Math.min(moduleCount, 4); mv++) {
 			if (this.getFirst(states, [`BMS.CELL_VOLTAGES_MODULE_${modLetters[mv]}.0`]) !== null) {
 				hasModuleVolt = true;
-				break;
+			}
+			if (
+				this.getFirst(states, [`BMS.VOLTAGE.${mv}`]) !== null ||
+				this.getFirst(states, [`BMS.CURRENT.${mv}`]) !== null
+			) {
+				hasPackElectrical = true;
 			}
 		}
 
-		if (minV === null && !hasModuleVolt) {
+		if (minV === null && !hasModuleVolt && !hasPackElectrical) {
 			return "";
 		}
 
@@ -350,30 +429,61 @@ var systemInfo = {
 			html += this.renderMetric(t("battery_cell_delta"), `${deltaMv} mV`, deltaColor, "L");
 		}
 
-		// Per-module cell voltages (BMS.CELL_VOLTAGES_MODULE_A.0, ...)
-		for (var m = 0; m < Math.min(moduleCount, 4); m++) {
-			var cellVoltages = [];
-			for (var cv = 0; cv < 20; cv++) {
-				var cvVal = this.getFirst(states, [`BMS.CELL_VOLTAGES_MODULE_${modLetters[m]}.${cv}`]);
-				if (cvVal !== null && Number(cvVal) > 0) {
-					cellVoltages.push(Number(cvVal));
+		html += "</div>";
+
+		// Per-module pack voltage and current table
+		if (hasPackElectrical) {
+			html += '<table class="grid-phase-table">';
+			html += '<tr class="grid-header-row">';
+			html += "<th></th>";
+			html += `<th>${t("grid_voltage")}</th>`;
+			html += `<th>${t("grid_current")}</th>`;
+			html += "</tr>";
+
+			for (var pe = 0; pe < moduleCount; pe++) {
+				var packV = this.getFirst(states, [`BMS.VOLTAGE.${pe}`]);
+				var packI = this.getFirst(states, [`BMS.CURRENT.${pe}`]);
+				if (packV === null && packI === null) {
+					continue;
 				}
+				html += "<tr>";
+				html += `<td class="grid-phase-label">Pack ${pe + 1}</td>`;
+				html += packV !== null ? `<td>${Number(packV).toFixed(1)} V</td>` : "<td>—</td>";
+				html += packI !== null ? `<td>${Number(packI).toFixed(2)} A</td>` : "<td>—</td>";
+				html += "</tr>";
 			}
-			if (cellVoltages.length > 0) {
-				var cvMin = Math.min.apply(null, cellVoltages);
-				var cvMax = Math.max.apply(null, cellVoltages);
-				var cvDelta = cvMax - cvMin;
-				var cvColor = cvDelta < 50 ? "#4caf50" : cvDelta < 100 ? "#ff9800" : "#f44336";
-				html += this.renderMetric(
-					`${t("battery_cell_voltage")} M${m + 1}`,
-					`${cvMin} - ${cvMax} mV (\u0394${cvDelta.toFixed(0)})`,
-					cvColor,
-					"L",
-				);
-			}
+
+			html += "</table>";
 		}
 
-		html += "</div></div>";
+		// Per-module cell voltages (BMS.CELL_VOLTAGES_MODULE_A.0, ...)
+		if (hasModuleVolt) {
+			html += '<div class="system-grid" style="margin-top:8px">';
+			for (var m = 0; m < Math.min(moduleCount, 4); m++) {
+				var cellVoltages = [];
+				for (var cv = 0; cv < 20; cv++) {
+					var cvVal = this.getFirst(states, [`BMS.CELL_VOLTAGES_MODULE_${modLetters[m]}.${cv}`]);
+					if (cvVal !== null && Number(cvVal) > 0) {
+						cellVoltages.push(Number(cvVal));
+					}
+				}
+				if (cellVoltages.length > 0) {
+					var cvMin = Math.min.apply(null, cellVoltages);
+					var cvMax = Math.max.apply(null, cellVoltages);
+					var cvDelta = cvMax - cvMin;
+					var cvColor = cvDelta < 50 ? "#4caf50" : cvDelta < 100 ? "#ff9800" : "#f44336";
+					html += this.renderMetric(
+						`${t("battery_cell_voltage")} M${m + 1}`,
+						`${cvMin} - ${cvMax} mV (\u0394${cvDelta.toFixed(0)})`,
+						cvColor,
+						"L",
+					);
+				}
+			}
+			html += "</div>";
+		}
+
+		html += "</div>";
 		return html;
 	},
 
@@ -393,9 +503,7 @@ var systemInfo = {
 	renderMeterTable: function (states, prefix) {
 		var freq = this.getFirst(states, [`${prefix}.FREQ`]);
 		var pTotal = this.getFirst(states, [`${prefix}.P_TOTAL`]);
-		var u0 = this.getFirst(states, [`${prefix}.U_AC.0`]);
-		var skew =
-			prefix === "PM1OBJ1" ? this.getFirst(states, ["ENERGY.STAT_LIMITED_NET_SKEW"]) : null;
+		var skew = prefix === "PM1OBJ1" ? this.getFirst(states, ["ENERGY.STAT_LIMITED_NET_SKEW"]) : null;
 
 		// Check if meter has any non-zero voltage on any phase
 		var hasVoltage = false;
@@ -590,7 +698,144 @@ var systemInfo = {
 			);
 		}
 
+		// Operating hours
+		var opsHours = this.getFirst(states, ["ENERGY.STAT_HOURS_OF_OPERATION"]);
+		if (opsHours !== null) {
+			html += this.renderMetric(t("system_operating_hours"), `${Math.round(Number(opsHours))} h`, "#757575", "L");
+		}
+
+		// Installation date
+		var installKeys = [ap ? `${ap}systemOverview.installationDateTime` : ""];
+		var installDate = this.getFirst(states, installKeys);
+		if (installDate !== null) {
+			var dateStr = String(installDate);
+			if (dateStr.length > 10) {
+				dateStr = dateStr.substring(0, 10);
+			}
+			html += this.renderMetric(
+				t("system_install_date"),
+				dateStr,
+				"#757575",
+				this.sourceTag(states, installKeys),
+			);
+		}
+
+		// Installer info
+		var installerCompany = ap ? this.getFirst(states, [`${ap}installer.companyName`]) : null;
+		var installerPhone = ap ? this.getFirst(states, [`${ap}installer.phoneNumber`]) : null;
+		var installerEmail = ap ? this.getFirst(states, [`${ap}installer.email`]) : null;
+		if (installerCompany) {
+			html += this.renderMetric(t("system_installer"), String(installerCompany), "#757575", "A");
+		}
+		if (installerPhone) {
+			html += this.renderMetric(t("system_installer_phone"), String(installerPhone), "#757575", "A");
+		}
+		if (installerEmail) {
+			html += this.renderMetric(t("system_installer_email"), String(installerEmail), "#757575", "A");
+		}
+
 		html += "</div></div>";
+		return html;
+	},
+
+	/**
+	 * Render PV string details card
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {string} HTML string
+	 */
+	renderPvStrings: function (states) {
+		var power = this.getFirst(states, ["PV1.MPP_POWER.0"]);
+		var voltage = this.getFirst(states, ["PV1.MPP_VOL.0"]);
+		var current = this.getFirst(states, ["PV1.MPP_CUR.0"]);
+
+		if (power === null && voltage === null && current === null) {
+			return "";
+		}
+
+		var html = `<div class="card"><h2>${t("pv_strings")}</h2>`;
+		html += '<table class="grid-phase-table">';
+		html += '<tr class="grid-header-row">';
+		html += "<th></th>";
+		html += `<th>${t("grid_power")}</th>`;
+		html += `<th>${t("grid_voltage")}</th>`;
+		html += `<th>${t("grid_current")}</th>`;
+		html += "</tr>";
+
+		// Check for multiple MPP trackers (PV1.MPP_POWER.0, .1, .2...)
+		for (var s = 0; s < 4; s++) {
+			var sp = this.getFirst(states, [`PV1.MPP_POWER.${s}`]);
+			var sv = this.getFirst(states, [`PV1.MPP_VOL.${s}`]);
+			var si = this.getFirst(states, [`PV1.MPP_CUR.${s}`]);
+
+			if (sp === null && sv === null && si === null) {
+				break;
+			}
+
+			html += "<tr>";
+			html += `<td class="grid-phase-label">MPP ${s + 1}</td>`;
+			html += sp !== null ? `<td>${Math.round(Number(sp))} W</td>` : "<td>—</td>";
+			html += sv !== null ? `<td>${Number(sv).toFixed(1)} V</td>` : "<td>—</td>";
+			html += si !== null ? `<td>${Number(si).toFixed(2)} A</td>` : "<td>—</td>";
+			html += "</tr>";
+		}
+
+		html += "</table></div>";
+		return html;
+	},
+
+	/**
+	 * Render wallbox info card (status, per-phase current)
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {string} HTML string
+	 */
+	renderWallboxInfo: function (states) {
+		var evConn = this.getFirst(states, ["WALLBOX.EV_CONNECTED.0"]);
+		var smartCharge = this.getFirst(states, ["WALLBOX.SMART_CHARGE_ACTIVE.0"]);
+		var l1Current = this.getFirst(states, ["WALLBOX.L1_CHARGING_CURRENT.0"]);
+		var l2Current = this.getFirst(states, ["WALLBOX.L2_CHARGING_CURRENT.0"]);
+		var l3Current = this.getFirst(states, ["WALLBOX.L3_CHARGING_CURRENT.0"]);
+
+		if (evConn === null && l1Current === null) {
+			return "";
+		}
+
+		var html = `<div class="card"><h2>${t("energy_wallbox")}</h2>`;
+		html += '<div class="system-grid">';
+
+		if (evConn !== null) {
+			var connected = this.toBool(evConn);
+			html += this.renderStatus(t("wallbox_ev_connected"), connected, "L");
+		}
+		if (smartCharge !== null) {
+			var active = this.toBool(smartCharge);
+			html += this.renderStatus(t("wallbox_smart_charge"), active, "L");
+		}
+
+		html += "</div>";
+
+		// Per-phase charging current
+		if (l1Current !== null || l2Current !== null || l3Current !== null) {
+			html += '<table class="grid-phase-table">';
+			html += '<tr class="grid-header-row">';
+			html += "<th></th>";
+			html += `<th>${t("grid_current")}</th>`;
+			html += "</tr>";
+
+			var phases = [l1Current, l2Current, l3Current];
+			for (var wp = 0; wp < 3; wp++) {
+				if (phases[wp] !== null) {
+					html += "<tr>";
+					html += `<td class="grid-phase-label">L${wp + 1}</td>`;
+					html += `<td>${Number(phases[wp]).toFixed(2)} A</td>`;
+					html += "</tr>";
+				}
+			}
+			html += "</table>";
+		}
+
+		html += "</div>";
 		return html;
 	},
 
@@ -767,9 +1012,12 @@ var systemInfo = {
 	renderAll: function (states) {
 		return (
 			this.renderBatteryHealth(states) +
+			this.renderBatteryCycles(states) +
 			this.renderBatteryTemps(states) +
 			this.renderBatteryVoltages(states) +
 			this.renderGridQuality(states) +
+			this.renderPvStrings(states) +
+			this.renderWallboxInfo(states) +
 			this.renderFeatureStatus(states) +
 			this.renderSystemDetails(states)
 		);

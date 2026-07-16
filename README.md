@@ -73,6 +73,10 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Fix: jsonConfig validation error (`collapsed` not allowed on panel type)
 - Fix: Welcome screen tile color changed from green to SENEC blue
 - Dashboard: Grid quality card redesigned as table layout (Frequency, Total Power, per-phase Voltage/Power/Current). Support for EnFluRi 2 with automatic detection (non-zero voltage).
+- Dashboard: Battery tab — module status counts (active/charging/discharging), cycles & lifetime energy table per pack, per-pack voltage and current.
+- Dashboard: System tab — PV string details (MPP power/voltage/current), wallbox info (EV connected, smart charge, per-phase current), operating hours, installation date, installer contact.
+- Dashboard: Energy flow — live autarky badge (API native or calculated), week + lifetime autarky in period totals.
+- Fix: API energy flow discovery picked wrong Anlagen ID when stale states existed. Now prefers ID with Dashboard data.
 
 ### 2.9.0 (2026-07-15)
 - Web dashboard: Built-in dashboard accessible at `http://<iobroker>:8082/senec/` via ioBroker.web extension. Shows on the ioBroker.web welcome page. Dark/light theme toggle. Internationalization with 11 languages.
