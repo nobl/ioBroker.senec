@@ -1,12 +1,13 @@
 {
+    "autarky_now": "Autarkie (aktuell)",
     "battery_active": "Aktiv",
     "battery_cell_delta": "Zelldelta",
     "battery_cell_voltage": "Zellspannung",
     "battery_cells": "Zellen",
-    "battery_charged": "Aufgeladen",
+    "battery_charged": "Geladen",
     "battery_charging": "Aufladen",
     "battery_cycles": "Ladezyklen",
-    "battery_cycles_energy": "Zyklen und Lebensenergie",
+    "battery_cycles_energy": "Zyklen & Lebensdauer-Energie",
     "battery_discharged": "Entladen",
     "battery_discharging": "Entladen",
     "battery_health": "Batterie",
@@ -90,7 +91,7 @@
     "log_select_date": "Wählen Sie ein Datum und klicken Sie auf Laden, um die Geräteprotokolle anzuzeigen.",
     "log_title": "Geräteprotokolle",
     "no_connectors": "Derzeit sind keine Konnektoren verbunden.",
-    "period_all": "Alle Zeit",
+    "period_all": "Gesamt",
     "period_month": "Dieser Monat",
     "period_no_data": "Keine Daten für {period} verfügbar. Erfordert API- oder Web-Konnektor mit aktivierten Messungen.",
     "period_prev_month": "Vorheriger Monat",
@@ -115,7 +116,7 @@
     "system_inverter_temp": "Wechselrichtertemperatur",
     "system_mcu_temp": "MCU-Temperatur",
     "system_npu_version": "NPU-Version",
-    "system_operating_hours": "Betriebszeiten",
+    "system_operating_hours": "Betriebsstunden",
     "system_product": "Produkt",
     "tab_logs": "Geräteprotokolle",
     "tab_overview": "Übersicht",
@@ -128,5 +129,5 @@
     "total_self_sufficiency": "Autarkie",
     "total_wallbox": "Wallbox",
     "wallbox_ev_connected": "EV verbunden",
-    "wallbox_smart_charge": "Intelligentes Laden"
+    "wallbox_smart_charge": "Smart Charge"
 }

@@ -29,6 +29,7 @@
     "total_battery_discharge": "Battery Discharge",
     "total_wallbox": "Wallbox",
     "total_self_sufficiency": "Self-sufficiency",
+    "autarky_now": "Self-sufficiency (now)",
     "battery_until_empty": "{time} until empty",
     "battery_until_full": "{time} until full",
     "log_title": "Appliance Logs",

@@ -550,7 +550,7 @@ var energyFlow = {
 				html += modeBadge;
 			}
 			if (d.autarkyCurrent !== null) {
-				html += `<div class="system-mode-badge" style="border-color:#157c00;color:#157c00">${t("total_self_sufficiency")}: ${Math.round(d.autarkyCurrent)}%</div>`;
+				html += `<div class="system-mode-badge" style="border-color:#157c00;color:#157c00">${t("autarky_now")}: ${Math.round(d.autarkyCurrent)}%</div>`;
 			}
 			html += "</div>";
 		}
