@@ -1217,8 +1217,16 @@ function resolveStateAttrKey(fullKey, attrs) {
  * @param value value to modify
  */
 const ValueTyping = (key, value) => {
+	if (state_attr[key]?.stringtype) {
+		return typeof value === "string" ? value : String(value);
+	}
 	if (!isNaN(value)) {
-		value = Number(value);
+		const num = Number(value);
+		// Keep as string if conversion loses precision (e.g. large numeric IDs)
+		if (typeof value === "string" && String(num) !== value) {
+			return value;
+		}
+		value = num;
 	} // otherwise iobroker will note it as string
 	if (state_attr[key] === undefined) {
 		return value;
