@@ -1,6 +1,10 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.8.1 (2026-07-09)
+- Housekeeping
+- Code optimizations
+- Log messages now include connector prefix ([API], [Local], [Web], [Connect]) for easier filtering and debugging
 
 ## 2.7.0 (2026-07-07)
 - SENEC Account tab: Shared credentials (email, password, TOTP) moved to a dedicated tab, always visible regardless of which cloud features are enabled.

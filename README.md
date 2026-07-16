@@ -67,7 +67,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.9.1 (2026-07-16)
 - Fix: jsonConfig validation error (`collapsed` not allowed on panel type)
 - Fix: Welcome screen tile color changed from green to SENEC blue
 
@@ -97,11 +97,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 
 ### 2.8.2 (2026-07-09)
 - removed v2.8.0 from documentation - it never was released
-
-### 2.8.1 (2026-07-09)
-- Housekeeping
-- Code optimizations
-- Log messages now include connector prefix ([API], [Local], [Web], [Connect]) for easier filtering and debugging
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
