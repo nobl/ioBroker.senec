@@ -1,6 +1,9 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.8.2 (2026-07-09)
+- removed v2.8.0 from documentation - it never was released
+
 ## 2.8.1 (2026-07-09)
 - Housekeeping
 - Code optimizations

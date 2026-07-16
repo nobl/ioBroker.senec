@@ -67,7 +67,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.9.2 (2026-07-16)
 - Fix: API energy flow discovery picked wrong Anlagen ID when stale states existed. Now prefers ID with Dashboard data.
 - Fix: Web AllTime measurements now update every slow tier cycle (default 24h) instead of only once per year.
 - Fix: Web poll loop could die silently if measurement polling threw an unhandled error.
@@ -109,9 +109,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 ### 2.8.3 (2026-07-12)
 - Active measurement periods (current year, current month, today) no longer skip re-fetch — frequency is now fully controlled by the configured tier intervals
 - AllTime history now tracks a `last updated` timestamp
-
-### 2.8.2 (2026-07-09)
-- removed v2.8.0 from documentation - it never was released
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
