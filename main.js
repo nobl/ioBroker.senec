@@ -234,6 +234,7 @@ class Senec extends utils.Adapter {
 				minTimeBetweenStartsMs: apiMinRequestInterval,
 				successThreshold: 8,
 				cooldownMs: 8000,
+				onRetryLog: (msg) => this.log.warn(`[API] 🔄 ${msg}`),
 				setTimeout: (fn, ms) => this.setTimeout(fn, ms),
 				clearTimeout: (id) => this.clearTimeout(id),
 			});
@@ -249,6 +250,7 @@ class Senec extends utils.Adapter {
 				minTimeBetweenStartsMs: webMinRequestInterval,
 				successThreshold: 8,
 				cooldownMs: 8000,
+				onRetryLog: (msg) => this.log.warn(`[Web] 🔄 ${msg}`),
 				setTimeout: (fn, ms) => this.setTimeout(fn, ms),
 				clearTimeout: (id) => this.clearTimeout(id),
 			});
