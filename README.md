@@ -77,6 +77,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Dashboard: System tab — PV string details (MPP power/voltage/current), wallbox info (EV connected, smart charge, per-phase current), operating hours, installation date, installer contact.
 - Dashboard: Energy flow — live autarky badge (API native or calculated), week + lifetime autarky in period totals.
 - Fix: API energy flow discovery picked wrong Anlagen ID when stale states existed. Now prefers ID with Dashboard data.
+- Fix: Web AllTime measurements now update every slow tier cycle (default 24h) instead of only once per year.
 
 ### 2.9.0 (2026-07-15)
 - Web dashboard: Built-in dashboard accessible at `http://<iobroker>:8082/senec/` via ioBroker.web extension. Shows on the ioBroker.web welcome page. Dark/light theme toggle. Internationalization with 11 languages.
