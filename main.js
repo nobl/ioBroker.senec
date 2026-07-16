@@ -1110,7 +1110,7 @@ class Senec extends utils.Adapter {
 		}
 		this.log.silly(`API Array Value: ${fullKey} = ${value}`);
 		const desc = attrKey ? state_attr[attrKey].name : fullKey;
-		const unit = attrKey ? state_attr[attrKey].unit : "";
+		const unit = attrKey ? state_attr[attrKey].unit || "" : "";
 		await this.doState(pfx + fullKey, ValueTyping(attrKey || fullKey, value), desc, unit, false);
 	}
 
