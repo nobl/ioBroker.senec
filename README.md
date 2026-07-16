@@ -68,10 +68,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
-
-### 2.9.1 (2026-07-16)
-- Fix: jsonConfig validation error (`collapsed` not allowed on panel type)
-- Fix: Welcome screen tile color changed from green to SENEC blue
 - Fix: API energy flow discovery picked wrong Anlagen ID when stale states existed. Now prefers ID with Dashboard data.
 - Fix: Web AllTime measurements now update every slow tier cycle (default 24h) instead of only once per year.
 - Fix: Web poll loop could die silently if measurement polling threw an unhandled error.
@@ -85,6 +81,10 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Web: Secondary plant discovery and measurement polling. Control via `control.Plants.{id}.poll`.
 - AdaptiveRequestQueue: Optional per-request retry with configurable max attempts and logging.
 - Simplified `state_attr.js` from ~7000 to ~1080 lines (stripped redundant defaults, added type header comment).
+
+### 2.9.1 (2026-07-16)
+- Fix: jsonConfig validation error (`collapsed` not allowed on panel type)
+- Fix: Welcome screen tile color changed from green to SENEC blue
 
 ### 2.9.0 (2026-07-15)
 - Web dashboard: Built-in dashboard accessible at `http://<iobroker>:8082/senec/` via ioBroker.web extension. Shows on the ioBroker.web welcome page. Dark/light theme toggle. Internationalization with 11 languages.
