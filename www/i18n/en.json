@@ -74,6 +74,7 @@
     "grid_frequency": "Frequency",
     "grid_voltage": "Voltage",
     "grid_power": "Power",
+    "grid_power_total": "Total Power",
     "grid_current": "Current",
     "grid_skew": "Phase Skew",
     "grid_skew_active": "Active",

@@ -55,6 +55,7 @@
     "grid_current": "Aktualny",
     "grid_frequency": "Częstotliwość",
     "grid_power": "Moc",
+    "grid_power_total": "Całkowita moc",
     "grid_quality": "Siatka",
     "grid_skew": "Przesunięcie fazowe",
     "grid_skew_active": "Aktywny",

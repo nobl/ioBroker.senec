@@ -55,6 +55,7 @@
     "grid_current": "Huidig",
     "grid_frequency": "Frequentie",
     "grid_power": "Stroom",
+    "grid_power_total": "Totaal vermogen",
     "grid_quality": "Rooster",
     "grid_skew": "Fase scheef",
     "grid_skew_active": "Actief",

@@ -55,6 +55,7 @@
     "grid_current": "Actuel",
     "grid_frequency": "Fréquence",
     "grid_power": "Pouvoir",
+    "grid_power_total": "Puissance totale",
     "grid_quality": "Grille",
     "grid_skew": "Désalignement de phase",
     "grid_skew_active": "Actif",

@@ -55,6 +55,7 @@
     "grid_current": "当前的",
     "grid_frequency": "频率",
     "grid_power": "力量",
+    "grid_power_total": "总功率",
     "grid_quality": "网格",
     "grid_skew": "相位差",
     "grid_skew_active": "积极的",

@@ -55,6 +55,7 @@
     "grid_current": "Текущий",
     "grid_frequency": "Частота",
     "grid_power": "Власть",
+    "grid_power_total": "Общая мощность",
     "grid_quality": "Сетка",
     "grid_skew": "Фазовый перекос",
     "grid_skew_active": "Активный",

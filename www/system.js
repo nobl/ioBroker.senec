@@ -383,68 +383,122 @@ var systemInfo = {
 	 * @param {object} states - ioBroker state values
 	 * @returns {string} HTML string
 	 */
-	renderGridQuality: function (states) {
-		var freq = this.getFirst(states, ["PM1OBJ1.FREQ"]);
-		var u0 = this.getFirst(states, ["PM1OBJ1.U_AC.0"]);
-		var skew = this.getFirst(states, ["ENERGY.STAT_LIMITED_NET_SKEW"]);
+	/**
+	 * Render a single EnFluRi meter table
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} prefix - State prefix (PM1OBJ1 or PM1OBJ2)
+	 * @returns {string} HTML table or empty string
+	 */
+	renderMeterTable: function (states, prefix) {
+		var freq = this.getFirst(states, [`${prefix}.FREQ`]);
+		var pTotal = this.getFirst(states, [`${prefix}.P_TOTAL`]);
+		var u0 = this.getFirst(states, [`${prefix}.U_AC.0`]);
+		var skew =
+			prefix === "PM1OBJ1" ? this.getFirst(states, ["ENERGY.STAT_LIMITED_NET_SKEW"]) : null;
 
-		if (freq === null && u0 === null) {
+		// Check if meter has any non-zero voltage on any phase
+		var hasVoltage = false;
+		for (var c = 0; c < 3; c++) {
+			var uCheck = this.getFirst(states, [`${prefix}.U_AC.${c}`]);
+			if (uCheck !== null && Number(uCheck) !== 0) {
+				hasVoltage = true;
+				break;
+			}
+		}
+
+		if (!hasVoltage) {
 			return "";
 		}
 
-		var html = `<div class="card"><h2>${t("grid_quality")}</h2>`;
-		html += '<div class="system-grid">';
+		var html = '<table class="grid-phase-table">';
 
-		// Frequency
+		// Frequency as spanning header row
 		if (freq !== null) {
 			var freqVal = Number(freq).toFixed(2);
 			var freqColor = Math.abs(Number(freq) - 50) < 0.1 ? "#4caf50" : "#ff9800";
-			html += this.renderMetric(t("grid_frequency"), `${freqVal} Hz`, freqColor, "L");
+			html += `<tr class="grid-freq-row"><td class="grid-phase-label">${t("grid_frequency")}</td>`;
+			html += `<td colspan="3" style="color:${freqColor}">${freqVal} Hz`;
+			if (skew !== null && Number(skew) !== 0) {
+				html += ` <span style="color:#f44336;font-size:12px;margin-left:12px">⚠ ${t("grid_skew_active")}</span>`;
+			}
+			html += "</td></tr>";
 		}
 
-		// Phase skew warning
-		if (skew !== null && Number(skew) !== 0) {
-			html += this.renderMetric(t("grid_skew"), t("grid_skew_active"), "#f44336", "L");
+		// Total power row
+		if (pTotal !== null) {
+			html += `<tr class="grid-freq-row"><td class="grid-phase-label">${t("grid_power_total")}</td>`;
+			html += `<td colspan="3">${Math.round(Number(pTotal))} W</td></tr>`;
 		}
 
-		// Per-phase: voltage, power, current — each on its own line
+		// Column headers
+		html += '<tr class="grid-header-row">';
+		html += "<th></th>";
+		html += `<th>${t("grid_voltage")}</th>`;
+		html += `<th>${t("grid_power")}</th>`;
+		html += `<th>${t("grid_current")}</th>`;
+		html += "</tr>";
+
+		// Per-phase rows
 		for (var p = 0; p < 3; p++) {
-			var uVal = this.getFirst(states, [`PM1OBJ1.U_AC.${p}`]);
-			var pVal = this.getFirst(states, [`PM1OBJ1.P_AC.${p}`]);
-			var iVal = this.getFirst(states, [`PM1OBJ1.I_AC.${p}`]);
+			var uVal = this.getFirst(states, [`${prefix}.U_AC.${p}`]);
+			var pVal = this.getFirst(states, [`${prefix}.P_AC.${p}`]);
+			var iVal = this.getFirst(states, [`${prefix}.I_AC.${p}`]);
 
 			if (uVal === null && pVal === null && iVal === null) {
 				continue;
 			}
 
+			html += "<tr>";
+			html += `<td class="grid-phase-label">L${p + 1}</td>`;
+
 			if (uVal !== null) {
 				var vColor = Math.abs(Number(uVal) - 230) < 15 ? "#4caf50" : "#ff9800";
-				html += this.renderMetric(
-					`${t("grid_voltage")} L${p + 1}`,
-					`${Number(uVal).toFixed(1)} V`,
-					vColor,
-					"L",
-				);
+				html += `<td style="color:${vColor}">${Number(uVal).toFixed(1)} V</td>`;
+			} else {
+				html += "<td>—</td>";
 			}
 			if (pVal !== null) {
-				html += this.renderMetric(
-					`${t("grid_power")} L${p + 1}`,
-					`${Math.round(Number(pVal))} W`,
-					"#757575",
-					"L",
-				);
+				html += `<td>${Math.round(Number(pVal))} W</td>`;
+			} else {
+				html += "<td>—</td>";
 			}
 			if (iVal !== null) {
-				html += this.renderMetric(
-					`${t("grid_current")} L${p + 1}`,
-					`${Number(iVal).toFixed(2)} A`,
-					"#757575",
-					"L",
-				);
+				html += `<td>${Number(iVal).toFixed(2)} A</td>`;
+			} else {
+				html += "<td>—</td>";
 			}
+
+			html += "</tr>";
 		}
 
-		html += "</div></div>";
+		html += "</table>";
+		return html;
+	},
+
+	renderGridQuality: function (states) {
+		var meter1 = this.renderMeterTable(states, "PM1OBJ1");
+		var meter2 = this.renderMeterTable(states, "PM1OBJ2");
+
+		if (!meter1 && !meter2) {
+			return "";
+		}
+
+		var html = `<div class="card"><h2>${t("grid_quality")}</h2>`;
+
+		if (meter1) {
+			if (meter2) {
+				html += `<h3 class="grid-meter-heading">EnFluRi 1</h3>`;
+			}
+			html += meter1;
+		}
+
+		if (meter2) {
+			html += `<h3 class="grid-meter-heading">EnFluRi 2</h3>`;
+			html += meter2;
+		}
+
+		html += "</div>";
 		return html;
 	},
 

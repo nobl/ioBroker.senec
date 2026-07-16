@@ -55,6 +55,7 @@
     "grid_current": "Strom",
     "grid_frequency": "Frequenz",
     "grid_power": "Leistung",
+    "grid_power_total": "Gesamtleistung",
     "grid_quality": "Netz",
     "grid_skew": "Phasenversatz",
     "grid_skew_active": "Aktiv",
