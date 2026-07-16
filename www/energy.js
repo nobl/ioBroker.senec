@@ -397,17 +397,11 @@ var energyFlow = {
 	},
 
 	/**
-	 * Resolve battery capacity: config > API SystemDetails > null
+	 * Resolve battery capacity: API > Web > config (fallback)
 	 *
 	 * @param {object} states - ioBroker state values
 	 */
 	resolveBatteryCapacity: function (states) {
-		// User-configured value takes priority (0 = auto-detect)
-		var configCap = app.config.battery_capacity;
-		if (configCap && configCap > 0) {
-			return configCap;
-		}
-
 		// API SystemDetails
 		var pfx = this.apiPrefix();
 		if (pfx) {
@@ -416,6 +410,18 @@ var energyFlow = {
 			if (apiCap && apiCap > 0) {
 				return apiCap;
 			}
+		}
+
+		// Web AccuState
+		var webCap = this.getStateOrNull(states, "_meinsenec.AccuState.capacity");
+		if (webCap && webCap > 0) {
+			return webCap;
+		}
+
+		// Config as last resort (for local-only users)
+		var configCap = app.config.battery_capacity;
+		if (configCap && configCap > 0) {
+			return configCap;
 		}
 
 		return null;
