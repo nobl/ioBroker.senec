@@ -157,7 +157,7 @@
         "link": "senec/",
         "name": "SENEC Dashboard",
         "img": "senec.png",
-        "color": "#157c00",
+        "color": "#00529c",
         "localLink": true,
         "order": 10
       }

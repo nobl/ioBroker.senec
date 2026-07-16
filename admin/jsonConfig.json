@@ -639,7 +639,6 @@
 					"xs": 12,
 					"label": "controlOverviewLabel",
 					"collapsable": true,
-					"collapsed": true,
 					"newLine": true,
 					"items": {
 						"_ctrlLocal": {
