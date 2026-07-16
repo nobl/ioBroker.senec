@@ -31,6 +31,7 @@ var charts = {
 		accuexport: false,
 	},
 
+	showBatteryLevel: true,
 	stacked: false,
 	compare: false,
 	compareDay: "", // YYYY-MM-DD for custom day comparison
@@ -183,8 +184,8 @@ var charts = {
 		if (showHours > 24) {
 			showHours = 24;
 		}
-		// For yesterday, always show all 24
-		if (dayKey === "yesterday") {
+		// Show all 24 hours for yesterday or when comparing
+		if (dayKey === "yesterday" || charts.compare) {
 			showHours = 24;
 		}
 
@@ -193,6 +194,23 @@ var charts = {
 		}
 		for (var tKey in fullSeries) {
 			data.series[tKey] = fullSeries[tKey].slice(0, showHours);
+		}
+
+		// Battery level (%) — API only
+		if (hasApi && apiPfx) {
+			var blPfx = apiPfx.replace(".hourly.", ".hourly.");
+			var blSeries = [];
+			var hasBl = false;
+			for (var blh = 0; blh < showHours; blh++) {
+				var blVal = states[`${blPfx}BATTERY_LEVEL_IN_PERCENT.${blh}`];
+				if (blVal !== undefined && blVal !== null) {
+					hasBl = true;
+				}
+				blSeries.push(blVal !== undefined && blVal !== null ? Number(blVal) : null);
+			}
+			if (hasBl) {
+				data.batteryLevel = blSeries;
+			}
 		}
 
 		this.hasData = true;
@@ -235,6 +253,22 @@ var charts = {
 			this.loadApiDaily(states, apiPfx, data, daysInMonth);
 		}
 
+		// Battery level (%) — API only
+		if (hasApi && apiPfx) {
+			var blSeries = [];
+			var hasBl = false;
+			for (var bld = 1; bld <= daysInMonth; bld++) {
+				var blVal = states[`${apiPfx}BATTERY_LEVEL_IN_PERCENT.${bld}`];
+				if (blVal !== undefined && blVal !== null) {
+					hasBl = true;
+				}
+				blSeries.push(blVal !== undefined && blVal !== null ? Number(blVal) : null);
+			}
+			if (hasBl) {
+				data.batteryLevel = blSeries;
+			}
+		}
+
 		this.hasData = true;
 		return data;
 	},
@@ -272,6 +306,22 @@ var charts = {
 			}
 		} else if (hasApi) {
 			this.loadApiMonthly(states, apiPfx, data);
+		}
+
+		// Battery level (%) — API only
+		if (hasApi && apiPfx) {
+			var blSeries = [];
+			var hasBl = false;
+			for (var blm = 1; blm <= 12; blm++) {
+				var blVal = states[`${apiPfx}BATTERY_LEVEL_IN_PERCENT.${blm}`];
+				if (blVal !== undefined && blVal !== null) {
+					hasBl = true;
+				}
+				blSeries.push(blVal !== undefined && blVal !== null ? Number(blVal) : null);
+			}
+			if (hasBl) {
+				data.batteryLevel = blSeries;
+			}
 		}
 
 		this.hasData = true;
@@ -381,6 +431,10 @@ var charts = {
 				`onclick="charts.toggleType('${wt}')">` +
 				`<span class="chart-toggle-dot" style="background:${cfg.color}"></span>${t(cfg.labelKey)}</button>`;
 		}
+		var blCls = this.showBatteryLevel ? " active" : "";
+		html +=
+			`<button class="chart-toggle${blCls}" style="--toggle-color:#7e57c2" onclick="charts.toggleBatteryLevel()">` +
+			`<span class="chart-toggle-dot" style="background:#7e57c2"></span>${t("chart_battery_level")}</button>`;
 		var stackedCls = this.stacked ? " active" : "";
 		html +=
 			`<button class="chart-toggle${stackedCls}" style="--toggle-color:#757575" onclick="charts.toggleStacked()">` +
@@ -453,7 +507,7 @@ var charts = {
 
 		// Layout — fill available container width, fixed height
 		var padL = 50,
-			padR = 15,
+			padR = this.showBatteryLevel && data.batteryLevel ? 40 : 15,
 			padT = 15,
 			padB = 40;
 
@@ -479,6 +533,36 @@ var charts = {
 			if (showLabel) {
 				var labelX = padL + li * groupW + groupW / 2;
 				svg += `<text x="${labelX.toFixed(1)}" y="${chartH - 5}" text-anchor="middle" fill="#999" font-size="10">${data.labels[li]}</text>`;
+			}
+		}
+
+		// Battery level line overlay
+		if (this.showBatteryLevel) {
+			if (compData && compData.batteryLevel) {
+				svg += this.renderBatteryLine(
+					compData.batteryLevel,
+					labelCount,
+					padL,
+					padT,
+					plotH,
+					groupW,
+					chartW,
+					padR,
+					true,
+				);
+			}
+			if (data.batteryLevel) {
+				svg += this.renderBatteryLine(
+					data.batteryLevel,
+					labelCount,
+					padL,
+					padT,
+					plotH,
+					groupW,
+					chartW,
+					padR,
+					false,
+				);
 			}
 		}
 
@@ -687,6 +771,67 @@ var charts = {
 	},
 
 	/**
+	 * Render battery level as a line overlay with right-side % axis
+	 *
+	 * @param {Array<number|null>} blData - Battery level values (%)
+	 * @param {number} labelCount - Number of data points
+	 * @param {number} padL - Left padding
+	 * @param {number} padT - Top padding
+	 * @param {number} plotH - Plot height
+	 * @param {number} groupW - Width per group
+	 * @param {number} chartW - Total chart width
+	 * @param {number} padR - Right padding
+	 * @param {boolean} [isComparison] - Whether this is comparison data (dashed, semi-transparent)
+	 * @returns {string} SVG string
+	 */
+	renderBatteryLine: function (blData, labelCount, padL, padT, plotH, groupW, chartW, padR, isComparison) {
+		var svg = "";
+		var points = [];
+
+		for (var i = 0; i < labelCount; i++) {
+			var val = blData[i];
+			if (val === null || val === undefined || val <= 0) {
+				continue;
+			}
+			var x = padL + i * groupW + groupW / 2;
+			var y = padT + plotH - (val / 100) * plotH;
+			points.push({ x: x, y: y, val: val });
+		}
+
+		if (points.length < 2) {
+			return "";
+		}
+
+		// Right-side % axis (only for primary, not comparison)
+		if (!isComparison) {
+			for (var pct = 0; pct <= 100; pct += 25) {
+				var yPos = padT + plotH - (pct / 100) * plotH;
+				svg += `<text x="${chartW - padR + 5}" y="${yPos + 4}" text-anchor="start" fill="#7e57c2" font-size="10">${pct}%</text>`;
+			}
+		}
+
+		var opacity = isComparison ? "0.4" : "1";
+		var dash = isComparison ? ' stroke-dasharray="6,3"' : "";
+		var label = isComparison ? `SOC (${t("chart_compare")})` : "SOC";
+
+		// Line path
+		var pathD = "";
+		for (var pi = 0; pi < points.length; pi++) {
+			pathD += `${pi === 0 ? "M" : "L"}${points[pi].x.toFixed(1)},${points[pi].y.toFixed(1)}`;
+		}
+		svg += `<path d="${pathD}" fill="none" stroke="#7e57c2" stroke-width="2" opacity="${opacity}" stroke-linejoin="round" stroke-linecap="round"${dash}/>`;
+
+		// Dots with tooltips
+		for (var di = 0; di < points.length; di++) {
+			svg += `<circle cx="${points[di].x.toFixed(1)}" cy="${points[di].y.toFixed(1)}" r="3" fill="#7e57c2" opacity="${opacity}">`;
+			svg += `<title>${label}: ${Math.round(points[di].val)}%</title>`;
+			svg += "</circle>";
+		}
+
+		return svg;
+	},
+
+	/**
 	 * Round up to a "nice" axis maximum
 	 *
 	 * @param {number} val - Numeric value
@@ -739,6 +884,7 @@ var charts = {
 		}
 		html += "</tr></thead><tbody>";
 
+		var compData = result.comparison;
 		for (var ti = 0; ti < visibleTypes.length; ti++) {
 			var type = visibleTypes[ti];
 			var cfg = this.typeConfig[type];
@@ -748,6 +894,35 @@ var charts = {
 				html += `<td>${val > 0 ? val.toFixed(2) : ""}</td>`;
 			}
 			html += "</tr>";
+
+			// Comparison row
+			if (compData && compData.series[type]) {
+				html += `<tr class="chart-table-comp"><td class="chart-table-label" style="opacity:0.5"><span class="chart-toggle-dot" style="background:${cfg.color}"></span> ${t(cfg.labelKey)} (${result.compLabel})</td>`;
+				for (var ci = 0; ci < compData.series[type].length; ci++) {
+					var cVal = compData.series[type][ci];
+					html += `<td style="opacity:0.5">${cVal > 0 ? cVal.toFixed(2) : ""}</td>`;
+				}
+				html += "</tr>";
+			}
+		}
+
+		// Battery level row
+		if (this.showBatteryLevel && data.batteryLevel) {
+			html += `<tr><td class="chart-table-label"><span class="chart-toggle-dot" style="background:#7e57c2"></span> ${t("chart_battery_level")}</td>`;
+			for (var bli = 0; bli < data.batteryLevel.length; bli++) {
+				var blv = data.batteryLevel[bli];
+				html += `<td>${blv !== null && blv > 0 ? `${Math.round(blv)}%` : ""}</td>`;
+			}
+			html += "</tr>";
+
+			if (compData && compData.batteryLevel) {
+				html += `<tr class="chart-table-comp"><td class="chart-table-label" style="opacity:0.5"><span class="chart-toggle-dot" style="background:#7e57c2"></span> ${t("chart_battery_level")} (${result.compLabel})</td>`;
+				for (var cbli = 0; cbli < compData.batteryLevel.length; cbli++) {
+					var cblv = compData.batteryLevel[cbli];
+					html += `<td style="opacity:0.5">${cblv !== null && cblv > 0 ? `${Math.round(cblv)}%` : ""}</td>`;
+				}
+				html += "</tr>";
+			}
 		}
 
 		html += "</tbody></table></div>";
@@ -799,6 +974,11 @@ var charts = {
 
 	toggleCompare: function () {
 		this.compare = !this.compare;
+		app.renderDashboard();
+	},
+
+	toggleBatteryLevel: function () {
+		this.showBatteryLevel = !this.showBatteryLevel;
 		app.renderDashboard();
 	},
 

@@ -15,6 +15,7 @@
     "battery_temp": "温度",
     "battery_until_empty": "{time} 直到空",
     "battery_until_full": "{time} 直至满",
+    "chart_battery_level": "电池 ％",
     "chart_compare": "比较",
     "chart_data_table": "数据",
     "chart_no_data": "无可用测量数据。在 API 或 Web 连接器设置中启用测量轮询。",

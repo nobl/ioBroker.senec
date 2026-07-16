@@ -59,6 +59,7 @@
     "chart_stacked": "Stacked",
     "chart_data_table": "Data",
     "chart_compare": "Compare",
+    "chart_battery_level": "Battery %",
     "period_yesterday": "Yesterday",
     "period_prev_month": "Previous Month",
     "period_prev_year": "Previous Year",

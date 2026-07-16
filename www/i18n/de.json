@@ -15,6 +15,7 @@
     "battery_temp": "Temperatur",
     "battery_until_empty": "{time} bis leer",
     "battery_until_full": "{time} bis voll",
+    "chart_battery_level": "Batterie %",
     "chart_compare": "Vergleichen",
     "chart_data_table": "Daten",
     "chart_no_data": "Keine Messdaten verfügbar. Aktivieren Sie die Messabfrage in den API- oder Web-Connector-Einstellungen.",

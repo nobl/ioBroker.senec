@@ -15,6 +15,7 @@
     "battery_temp": "Температура",
     "battery_until_empty": "{time}, поки не залишиться",
     "battery_until_full": "{time} до заповнення",
+    "chart_battery_level": "Батарея %",
     "chart_compare": "Порівняйте",
     "chart_data_table": "Дані",
     "chart_no_data": "Дані вимірювань відсутні. Увімкніть опитування вимірювань у налаштуваннях API або веб-з’єднувача.",
