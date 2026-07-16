@@ -96,6 +96,7 @@ export interface SenecAdapter extends AdapterClass {
     webSlowIntervalMs: number;
     webQueue: AdaptiveRequestQueue | null;
     _webLastEmergencyPowerPoll: number | undefined;
+    _webLastAccuStatePoll: number | undefined;
     _webLastPeakShavingPoll: number | undefined;
     _webLastSgReadyStatePoll: number | undefined;
     _webLastSgReadyConfPoll: number | undefined;
