@@ -67,7 +67,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.9.3 (2026-07-17)
 - Fix: jsonConfig staticText missing size attributes (E5507)
 
 ### 2.9.2 (2026-07-16)
@@ -108,10 +108,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - API/Web request interval: Minimum time between requests is now configurable for both API and web connectors (API previously hardcoded at 400ms).
 - User-Agent settings moved from SENEC App API tab to SENEC Account tab — now applies to all connectors.
 - Queue diagnostics cleanup: Diagnostics states for both API and web queues are now automatically cleaned up when debug states are disabled.
-
-### 2.8.3 (2026-07-12)
-- Active measurement periods (current year, current month, today) no longer skip re-fetch — frequency is now fully controlled by the configured tier intervals
-- AllTime history now tracks a `last updated` timestamp
 
 ### [Former Updates](CHANGELOG_OLD.md)
 

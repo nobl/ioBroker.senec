@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.9.2",
+    "version": "2.9.3",
     "news": {
+      "2.9.3": {
+        "en": "Fix: jsonConfig staticText missing size attributes (E5507)",
+        "de": "Behoben: jsonConfig staticText – fehlende Größenattribute (E5507)",
+        "ru": "Исправление: в jsonConfig отсутствуют атрибуты размера staticText (E5507)",
+        "pt": "Correção: jsonConfig staticText sem atributos de tamanho (E5507)",
+        "nl": "Oplossing: jsonConfig staticText mist grootte-attributen (E5507)",
+        "fr": "Correction : attributs de taille manquants pour le texte statique jsonConfig (E5507)",
+        "it": "Correzione: attributi di dimensione mancanti in jsonConfig staticText (E5507)",
+        "es": "Corrección: Faltan atributos de tamaño en jsonConfig staticText (E5507)",
+        "pl": "Naprawiono: w jsonConfig staticText brakuje atrybutów rozmiaru (E5507)",
+        "uk": "Виправлення: у jsonConfig staticText відсутні атрибути розміру (E5507)",
+        "zh-cn": "修复：jsonConfig staticText 缺少 size 属性 (E5507)"
+      },
       "2.9.2": {
         "en": "Fix: API energy flow discovery picked wrong Anlagen ID when stale states existed. Now prefers ID with Dashboard data.\nFix: Web AllTime measurements now update every slow tier cycle (default 24h) instead of only once per year.\nFix: Web poll loop could die silently if measurement polling threw an unhandled error.\nFix: Numeric string precision loss in ValueTyping (e.g. DEVICE_ID). Added `stringtype` support.\nDashboard: Grid quality card redesigned as table layout (Frequency, Total Power, per-phase Voltage/Power/Current). Support for EnFluRi 2 with automatic detection (non-zero voltage).\nDashboard: Battery tab — module status counts (active/charging/discharging), cycles & lifetime energy table per pack, per-pack voltage and current.\nDashboard: System tab — PV string details (MPP power/voltage/current), wallbox info (EV connected, smart charge, per-phase current), operating hours, installation date, installer contact.\nDashboard: Energy flow — live autarky badge (API native or calculated), week + lifetime autarky in period totals. Battery capacity auto-detected from API or Web (config as fallback). Fixed flow paths to show actual source/destination (e.g. battery→grid instead of PV→grid when PV is idle). Power labels on all flow paths. Tab switch now re-renders with latest state values.\nDashboard: Measurement charts — battery level (%) line overlay with comparison support and data table.\nWeb: Poll battery state (`getaccustate.php`) on medium tier — voltage, current, capacity, type, history.\nWeb: Secondary plant discovery and measurement polling. Control via `control.Plants.{id}.poll`.\nAdaptiveRequestQueue: Optional per-request retry with configurable max attempts and logging.\nSimplified `state_attr.js` from ~7000 to ~1080 lines (stripped redundant defaults, added type header comment).",
         "de": "Behoben: Die API zur Ermittlung des Energieflusses wählte die falsche Anlagen-ID, wenn veraltete Zustände vorlagen. Nun wird die ID mit den Dashboard-Daten bevorzugt.\nBehoben: Die Web AllTime-Messwerte werden nun in jedem Slow-Tier-Zyklus (standardmäßig 24 Stunden) aktualisiert, anstatt nur einmal im Jahr.\nBehebung: Die Web-Abfrageschleife konnte stillschweigend abstürzen, wenn bei der Messung ein unbehandelter Fehler auftrat.\nBehoben: Genauigkeitsverlust bei numerischen Zeichenketten in ValueTyping (z. B. DEVICE_ID). Unterstützung für `stringtype` hinzugefügt.\nDashboard: Die Karte zur Netzqualität wurde als Tabellenansicht neu gestaltet (Frequenz, Gesamtleistung, Spannung/Leistung/Strom pro Phase). Unterstützung für EnFluRi 2 mit automatischer Erkennung (Spannung ungleich Null).\nDashboard: Registerkarte Batterie — Modulstatuszähler (aktiv/Laden/Entladen), Zyklen- und Lebensdauerenergietabelle pro Akku, Spannung und Stromstärke pro Akku.\nDashboard: Registerkarte System — PV-String-Details (MPP-Leistung/Spannung/Stromstärke), Wallbox-Informationen (EV-Anschluss, intelligentes Laden, Stromstärke pro Phase), Betriebsstunden, Installationsdatum, Kontakt des Installateurs.\nDashboard: Energiefluss – Live-Autarkie-Badge (API-basiert oder berechnet), wöchentliche und gesamtwirtschaftliche Autarkie in Periodensummen. Batteriekapazität wird automatisch über API oder Web ermittelt (Konfiguration als Fallback). Korrigierte Flusspfade zeigen nun die tatsächliche Quelle/das tatsächliche Ziel an (z. B. Batterie→Netz statt PV→Netz, wenn die PV-Anlage im Leerlauf ist). Leistungsbezeichnungen für alle Flusspfade. Der Tab-Wechsel zeigt jetzt die aktuellsten Statuswerte an.\nDashboard: Messdiagramme – Linienüberlagerung des Batteriestands (%) mit Vergleichsfunktion und Datentabelle.\nWeb: Abfrage des Batteriestatus (`getaccustate.php`) bei mittlerer Stufe — Spannung, Stromstärke, Kapazität, Typ, Verlauf.\nWeb: Sekundäre Pflanzenerkennung und Messabfrage. Steuerung über `control.Plants.{id}.poll`.\nAdaptiveRequestQueue: Optionale Wiederholungsversuche pro Anfrage mit konfigurierbarer maximaler Anzahl an Versuchen und Protokollierung.\nDie Datei `state_attr.js` wurde von ca. 7000 auf ca. 1080 Zeilen vereinfacht (überflüssige Standardwerte wurden entfernt, ein Kommentar zum Typheader wurde hinzugefügt).",
@@ -80,19 +93,6 @@
         "pl": "usunięto wersję 2.8.0 z dokumentacji – nigdy nie została wydana",
         "uk": "видалено з документації версію 2.8.0 — вона так і не була випущена",
         "zh-cn": "从文档中移除了 v2.8.0 版本——该版本从未正式发布。"
-      },
-      "2.8.1": {
-        "en": "Housekeeping",
-        "de": "Hauswirtschaft",
-        "ru": "Уборка номеров",
-        "pt": "Serviços de limpeza",
-        "nl": "Huishoudelijke taken",
-        "fr": "Service ménager",
-        "it": "Servizio di pulizia",
-        "es": "Gestión interna",
-        "pl": "Gospodarowanie",
-        "uk": "Прибирання",
-        "zh-cn": "家政"
       }
     },
     "docs": {
