@@ -644,24 +644,40 @@
 						"_ctrlLocal": {
 							"type": "staticText",
 							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12,
 							"text": "controlOverviewLocal",
 							"style": { "fontWeight": "500", "marginBottom": "4px" }
 						},
 						"_ctrlApi": {
 							"type": "staticText",
 							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12,
 							"text": "controlOverviewApi",
 							"style": { "fontWeight": "500", "marginBottom": "4px" }
 						},
 						"_ctrlWeb": {
 							"type": "staticText",
 							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12,
 							"text": "controlOverviewWeb",
 							"style": { "fontWeight": "500", "marginBottom": "8px" }
 						},
 						"_ctrlNote": {
 							"type": "staticText",
 							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12,
 							"text": "controlOverviewNote",
 							"style": { "fontStyle": "italic", "fontSize": "12px" }
 						}
