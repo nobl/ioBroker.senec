@@ -125,6 +125,8 @@ class Senec extends utils.Adapter {
 
 		this.lastLoggedRecommendedConcurrency = null;
 		this.lastLoggedQueueSnapshot = null;
+		this._lastLoggedWebRecommendedConcurrency = null;
+		this._lastLoggedWebQueueSnapshot = null;
 
 		this.guiLang = "1"; // fallback english
 

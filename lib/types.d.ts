@@ -72,6 +72,10 @@ export interface SenecAdapter extends AdapterClass {
     lastLoggedRecommendedConcurrency: number | null;
     lastLoggedQueueSnapshot: string | null;
 
+    // ── Web logging dedup ────────────────────────────────────────────
+    _lastLoggedWebRecommendedConcurrency: number | null;
+    _lastLoggedWebQueueSnapshot: string | null;
+
     // ── Local (lala.cgi) state ────────────────────────────────────────
     localAgent: import("node:https").Agent | null;
     localClient: AxiosInstance | null;
