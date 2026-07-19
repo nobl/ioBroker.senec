@@ -649,7 +649,10 @@
 							"lg": 12,
 							"xl": 12,
 							"text": "controlOverviewLocal",
-							"style": { "fontWeight": "500", "marginBottom": "4px" }
+							"style": {
+								"fontWeight": "500",
+								"marginBottom": "4px"
+							}
 						},
 						"_ctrlApi": {
 							"type": "staticText",
@@ -659,7 +662,10 @@
 							"lg": 12,
 							"xl": 12,
 							"text": "controlOverviewApi",
-							"style": { "fontWeight": "500", "marginBottom": "4px" }
+							"style": {
+								"fontWeight": "500",
+								"marginBottom": "4px"
+							}
 						},
 						"_ctrlWeb": {
 							"type": "staticText",
@@ -669,7 +675,10 @@
 							"lg": 12,
 							"xl": 12,
 							"text": "controlOverviewWeb",
-							"style": { "fontWeight": "500", "marginBottom": "8px" }
+							"style": {
+								"fontWeight": "500",
+								"marginBottom": "8px"
+							}
 						},
 						"_ctrlNote": {
 							"type": "staticText",
@@ -679,7 +688,10 @@
 							"lg": 12,
 							"xl": 12,
 							"text": "controlOverviewNote",
-							"style": { "fontStyle": "italic", "fontSize": "12px" }
+							"style": {
+								"fontStyle": "italic",
+								"fontSize": "12px"
+							}
 						}
 					}
 				},
@@ -766,9 +778,18 @@
 					"label": "controlWallboxConnector",
 					"help": "controlWallboxConnectorHelp",
 					"options": [
-						{ "label": "Off", "value": "off" },
-						{ "label": "Local (lala.cgi)", "value": "local" },
-						{ "label": "API (SENEC App)", "value": "api" }
+						{
+							"label": "Off",
+							"value": "off"
+						},
+						{
+							"label": "Local (lala.cgi)",
+							"value": "local"
+						},
+						{
+							"label": "API (SENEC App)",
+							"value": "api"
+						}
 					],
 					"default": "off",
 					"hidden": "data.control_active !== true && data.control_api_active !== true",
@@ -782,7 +803,9 @@
 					"lg": 12,
 					"xl": 12,
 					"text": "connectorWarnLocal",
-					"style": { "color": "red" },
+					"style": {
+						"color": "red"
+					},
 					"hidden": "data.control_wallbox_connector !== 'local' || data.lala_use === true",
 					"newLine": true
 				},
@@ -794,7 +817,9 @@
 					"lg": 12,
 					"xl": 12,
 					"text": "connectorWarnApi",
-					"style": { "color": "red" },
+					"style": {
+						"color": "red"
+					},
 					"hidden": "data.control_wallbox_connector !== 'api' || data.api_use === true",
 					"newLine": true
 				},
@@ -808,9 +833,18 @@
 					"label": "controlSocketsConnector",
 					"help": "controlSocketsConnectorHelp",
 					"options": [
-						{ "label": "Off", "value": "off" },
-						{ "label": "Local (lala.cgi)", "value": "local" },
-						{ "label": "Web (mein-senec.de)", "value": "web" }
+						{
+							"label": "Off",
+							"value": "off"
+						},
+						{
+							"label": "Local (lala.cgi)",
+							"value": "local"
+						},
+						{
+							"label": "Web (mein-senec.de)",
+							"value": "web"
+						}
 					],
 					"default": "off",
 					"hidden": "data.control_active !== true && data.control_web_active !== true",
@@ -824,7 +858,9 @@
 					"lg": 12,
 					"xl": 12,
 					"text": "connectorWarnLocal",
-					"style": { "color": "red" },
+					"style": {
+						"color": "red"
+					},
 					"hidden": "data.control_sockets_connector !== 'local' || data.lala_use === true",
 					"newLine": true
 				},
@@ -836,7 +872,9 @@
 					"lg": 12,
 					"xl": 12,
 					"text": "connectorWarnWeb",
-					"style": { "color": "red" },
+					"style": {
+						"color": "red"
+					},
 					"hidden": "data.control_sockets_connector !== 'web' || data.web_use === true",
 					"newLine": true
 				},
@@ -1141,7 +1179,7 @@
 			"items": {
 				"_dbgHdrLabel": {
 					"type": "staticText",
-					"xs": 4,
+					"xs": 12,
 					"sm": 4,
 					"md": 4,
 					"lg": 4,
@@ -1151,55 +1189,69 @@
 				},
 				"_dbgHdrLocal": {
 					"type": "staticText",
-					"xs": 2,
+					"xs": 12,
 					"sm": 2,
 					"md": 2,
 					"lg": 2,
 					"xl": 2,
 					"label": "dbgHdrLocal",
-					"style": { "fontWeight": "bold", "paddingLeft": "12px" }
+					"style": {
+						"fontWeight": "bold",
+						"paddingLeft": "12px"
+					}
 				},
 				"_dbgHdrApi": {
 					"type": "staticText",
-					"xs": 2,
+					"xs": 12,
 					"sm": 2,
 					"md": 2,
 					"lg": 2,
 					"xl": 2,
 					"label": "dbgHdrApi",
-					"style": { "fontWeight": "bold", "paddingLeft": "12px" }
+					"style": {
+						"fontWeight": "bold",
+						"paddingLeft": "12px"
+					}
 				},
 				"_dbgHdrWeb": {
 					"type": "staticText",
-					"xs": 2,
+					"xs": 12,
 					"sm": 2,
 					"md": 2,
 					"lg": 2,
 					"xl": 2,
 					"label": "dbgHdrWeb",
-					"style": { "fontWeight": "bold", "paddingLeft": "12px" }
+					"style": {
+						"fontWeight": "bold",
+						"paddingLeft": "12px"
+					}
 				},
 				"_dbgHdrConnect": {
 					"type": "staticText",
-					"xs": 2,
+					"xs": 12,
 					"sm": 2,
 					"md": 2,
 					"lg": 2,
 					"xl": 2,
 					"label": "dbgHdrConnect",
-					"style": { "fontWeight": "bold", "paddingLeft": "12px" }
+					"style": {
+						"fontWeight": "bold",
+						"paddingLeft": "12px"
+					}
 				},
-
 				"_dbgShowPollingLabel": {
 					"type": "staticText",
-					"xs": 4,
+					"xs": 12,
 					"sm": 4,
 					"md": 4,
 					"lg": 4,
 					"xl": 4,
 					"label": "dbgShowPolling",
 					"tooltip": "dbgShowPollingHelp",
-					"style": { "fontSize": "1rem", "paddingTop": "6px" },
+					"style": {
+						"fontSize": "1rem",
+						"paddingTop": "6px"
+					},
 					"newLine": true
 				},
 				"local_showPolling": {
@@ -1238,17 +1290,19 @@
 					"xl": 2,
 					"default": true
 				},
-
 				"_dbgReqRespLabel": {
 					"type": "staticText",
-					"xs": 4,
+					"xs": 12,
 					"sm": 4,
 					"md": 4,
 					"lg": 4,
 					"xl": 4,
 					"label": "dbgReqResp",
 					"tooltip": "dbgReqRespHelp",
-					"style": { "fontSize": "1rem", "paddingTop": "6px" },
+					"style": {
+						"fontSize": "1rem",
+						"paddingTop": "6px"
+					},
 					"newLine": true
 				},
 				"local_reqnresp_log": {
@@ -1287,22 +1341,24 @@
 					"xl": 2,
 					"default": false
 				},
-
 				"_dbgDebugLogLabel": {
 					"type": "staticText",
-					"xs": 4,
+					"xs": 12,
 					"sm": 4,
 					"md": 4,
 					"lg": 4,
 					"xl": 4,
 					"label": "dbgDebugLog",
 					"tooltip": "dbgDebugLogHelp",
-					"style": { "fontSize": "1rem", "paddingTop": "6px" },
+					"style": {
+						"fontSize": "1rem",
+						"paddingTop": "6px"
+					},
 					"newLine": true
 				},
 				"_dbgDebugLogLocalSpacer": {
 					"type": "staticText",
-					"xs": 2,
+					"xs": 12,
 					"sm": 2,
 					"md": 2,
 					"lg": 2,
@@ -1329,29 +1385,31 @@
 				},
 				"_dbgDebugLogConnectSpacer": {
 					"type": "staticText",
-					"xs": 2,
+					"xs": 12,
 					"sm": 2,
 					"md": 2,
 					"lg": 2,
 					"xl": 2,
 					"text": ""
 				},
-
 				"_dbgDebugStatesLabel": {
 					"type": "staticText",
-					"xs": 4,
+					"xs": 12,
 					"sm": 4,
 					"md": 4,
 					"lg": 4,
 					"xl": 4,
 					"label": "dbgDebugStates",
 					"tooltip": "dbgDebugStatesHelp",
-					"style": { "fontSize": "1rem", "paddingTop": "6px" },
+					"style": {
+						"fontSize": "1rem",
+						"paddingTop": "6px"
+					},
 					"newLine": true
 				},
 				"_dbgDebugStatesLocalSpacer": {
 					"type": "staticText",
-					"xs": 2,
+					"xs": 12,
 					"sm": 2,
 					"md": 2,
 					"lg": 2,
@@ -1378,7 +1436,7 @@
 				},
 				"_dbgDebugStatesConnectSpacer": {
 					"type": "staticText",
-					"xs": 2,
+					"xs": 12,
 					"sm": 2,
 					"md": 2,
 					"lg": 2,
