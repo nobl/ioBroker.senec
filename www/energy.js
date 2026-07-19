@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t */
+/* global app, t, liveChart */
 /* exported energyFlow */
 
 /**
@@ -890,6 +890,12 @@ var energyFlow = {
 	onSourceChange: function (val) {
 		this.source = val;
 		this.update(app.states, app.connectors);
+		// Reset live chart buffer for new source
+		liveChart.buffer = [];
+		liveChart._historyLoaded = false;
+		liveChart._historyInstance = null;
+		liveChart.record();
+		liveChart.initHistory(app.conn, "senec.0", app.connectors);
 		app.renderDashboard();
 	},
 

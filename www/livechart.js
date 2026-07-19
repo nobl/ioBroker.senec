@@ -37,6 +37,9 @@ var liveChart = {
 	/** Whether the chart is paused */
 	paused: false,
 
+	/** Whether the chart is disabled (collapsed, no recording) */
+	disabled: false,
+
 	/** Maximum buffer size (points) — limit memory. At 10s intervals, 24h = 8640 points */
 	maxPoints: 8640,
 
@@ -86,7 +89,7 @@ var liveChart = {
 	 * @param {object} connectors - connector status
 	 */
 	initHistory: function (conn, namespace, connectors) {
-		if (this._historyLoaded) {
+		if (this._historyLoaded || this.disabled) {
 			return;
 		}
 		this._historyLoaded = true;
@@ -466,7 +469,7 @@ var liveChart = {
 	 * Called on each state update that affects power values.
 	 */
 	record: function () {
-		if (this.paused) {
+		if (this.paused || this.disabled) {
 			return;
 		}
 		var d = energyFlow.data;
@@ -517,6 +520,14 @@ var liveChart = {
 		var html = '<div class="card">';
 		html += '<div class="energy-header">';
 		html += `<h2>${t("livechart_title")}</h2>`;
+		// Enable/disable toggle
+		var disabledCls = this.disabled ? "" : " active";
+		html += `<button class="chart-toggle${disabledCls}" style="--toggle-color:#757575;margin-left:auto;margin-right:8px" onclick="liveChart.toggleDisabled()">`;
+		html += `<span class="chart-toggle-dot" style="background:#757575"></span>${this.disabled ? "▶" : "●"}</button>`;
+		if (this.disabled) {
+			html += "</div></div>";
+			return html;
+		}
 		html += '<div class="day-totals-tabs">';
 
 		// Time window tabs
@@ -530,6 +541,7 @@ var liveChart = {
 		// Pause button
 		var pauseCls = this.paused ? " active" : "";
 		html += `<button class="period-tab${pauseCls}" onclick="liveChart.togglePause()">${this.paused ? "▶" : "⏸"}</button>`;
+
 		html += "</div></div>";
 
 		// Line toggles
@@ -842,6 +854,18 @@ var liveChart = {
 
 	toggleLine: function (key) {
 		this.visible[key] = !this.visible[key];
+		app.renderDashboard();
+	},
+
+	toggleDisabled: function () {
+		this.disabled = !this.disabled;
+		if (!this.disabled) {
+			// Re-enable: record current state and try history backfill
+			this.record();
+			if (!this._historyLoaded) {
+				this.initHistory(app.conn, "senec.0", app.connectors);
+			}
+		}
 		app.renderDashboard();
 	},
 };
