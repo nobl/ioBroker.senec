@@ -456,31 +456,9 @@ var systemInfo = {
 			html += "</table>";
 		}
 
-		// Per-module cell voltages (BMS.CELL_VOLTAGES_MODULE_A.0, ...)
+		// Per-module cell voltages — heatmap + range summary
 		if (hasModuleVolt) {
-			html += '<div class="system-grid" style="margin-top:8px">';
-			for (var m = 0; m < Math.min(moduleCount, 4); m++) {
-				var cellVoltages = [];
-				for (var cv = 0; cv < 20; cv++) {
-					var cvVal = this.getFirst(states, [`BMS.CELL_VOLTAGES_MODULE_${modLetters[m]}.${cv}`]);
-					if (cvVal !== null && Number(cvVal) > 0) {
-						cellVoltages.push(Number(cvVal));
-					}
-				}
-				if (cellVoltages.length > 0) {
-					var cvMin = Math.min.apply(null, cellVoltages);
-					var cvMax = Math.max.apply(null, cellVoltages);
-					var cvDelta = cvMax - cvMin;
-					var cvColor = cvDelta < 50 ? "#4caf50" : cvDelta < 100 ? "#ff9800" : "#f44336";
-					html += this.renderMetric(
-						`${t("battery_cell_voltage")} M${m + 1}`,
-						`${cvMin} - ${cvMax} mV (\u0394${cvDelta.toFixed(0)})`,
-						cvColor,
-						"L",
-					);
-				}
-			}
-			html += "</div>";
+			html += this.renderCellHeatmap(states, moduleCount, modLetters);
 		}
 
 		html += "</div>";
@@ -488,11 +466,161 @@ var systemInfo = {
 	},
 
 	/**
-	 * Render grid quality card
+	 * Render cell voltage heatmap — SVG grid with color-coded cells.
+	 * Rows = modules, columns = cells. Color: green (balanced) → yellow → red (imbalanced).
 	 *
 	 * @param {object} states - ioBroker state values
-	 * @returns {string} HTML string
+	 * @param {number} moduleCount - Number of battery modules
+	 * @param {Array<string>} modLetters - Module letter identifiers
+	 * @returns {string} HTML string with SVG heatmap
 	 */
+	renderCellHeatmap: function (states, moduleCount, modLetters) {
+		// Collect all cell voltages per module
+		var modules = [];
+		var allCells = [];
+		var maxCells = 0;
+
+		for (var m = 0; m < Math.min(moduleCount, 4); m++) {
+			var cells = [];
+			for (var cv = 0; cv < 20; cv++) {
+				var val = this.getFirst(states, [`BMS.CELL_VOLTAGES_MODULE_${modLetters[m]}.${cv}`]);
+				if (val !== null && Number(val) > 0) {
+					var numVal = Number(val);
+					cells.push(numVal);
+					allCells.push(numVal);
+				}
+			}
+			modules.push(cells);
+			if (cells.length > maxCells) {
+				maxCells = cells.length;
+			}
+		}
+
+		if (allCells.length === 0 || maxCells === 0) {
+			return "";
+		}
+
+		// Global min/max for color scale
+		var globalMin = Math.min.apply(null, allCells);
+		var globalMax = Math.max.apply(null, allCells);
+		var globalDelta = globalMax - globalMin;
+
+		// SVG dimensions
+		var cellW = 36;
+		var cellH = 28;
+		var gap = 2;
+		var labelW = 40;
+		var legendH = 30;
+		var svgW = labelW + maxCells * (cellW + gap);
+		var svgH = modules.length * (cellH + gap) + legendH + 10;
+
+		var html = '<div style="margin-top:10px;overflow-x:auto">';
+		html += `<svg width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg" style="font-family:sans-serif;font-size:10px">`;
+
+		// Render cells
+		for (var mi = 0; mi < modules.length; mi++) {
+			var y = mi * (cellH + gap);
+			// Module label
+			html += `<text x="2" y="${y + cellH / 2 + 4}" fill="#999" font-size="11" font-weight="bold">M${mi + 1}</text>`;
+
+			for (var ci = 0; ci < modules[mi].length; ci++) {
+				var x = labelW + ci * (cellW + gap);
+				var cellVal = modules[mi][ci];
+				var color = this.heatmapColor(cellVal, globalMin, globalMax, globalDelta);
+				var textColor = this.heatmapTextColor(cellVal, globalMin, globalMax, globalDelta);
+
+				html += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="3" fill="${color}">`;
+				html += `<title>M${mi + 1} Cell ${ci + 1}: ${cellVal} mV</title>`;
+				html += "</rect>";
+				html += `<text x="${x + cellW / 2}" y="${y + cellH / 2 + 4}" text-anchor="middle" fill="${textColor}" font-size="9">${cellVal}</text>`;
+			}
+
+			// Per-module delta
+			if (modules[mi].length > 1) {
+				var modMin = Math.min.apply(null, modules[mi]);
+				var modMax = Math.max.apply(null, modules[mi]);
+				var modDelta = modMax - modMin;
+				var deltaX = labelW + modules[mi].length * (cellW + gap) + 4;
+				var deltaColor = modDelta < 50 ? "#4caf50" : modDelta < 100 ? "#ff9800" : "#f44336";
+				html += `<text x="${deltaX}" y="${y + cellH / 2 + 4}" fill="${deltaColor}" font-size="10">\u0394${modDelta.toFixed(0)}</text>`;
+			}
+		}
+
+		// Legend bar
+		var legendY = modules.length * (cellH + gap) + 8;
+		var legendW = Math.min(200, svgW - labelW - 60);
+		var legendX = labelW;
+		// Gradient definition
+		html += "<defs>";
+		html += `<linearGradient id="heatGrad" x1="0%" y1="0%" x2="100%" y2="0%">`;
+		html += '<stop offset="0%" stop-color="#f44336"/>';
+		html += '<stop offset="30%" stop-color="#ff9800"/>';
+		html += '<stop offset="60%" stop-color="#ffeb3b"/>';
+		html += '<stop offset="100%" stop-color="#4caf50"/>';
+		html += "</linearGradient>";
+		html += "</defs>";
+		html += `<rect x="${legendX}" y="${legendY}" width="${legendW}" height="12" rx="2" fill="url(#heatGrad)"/>`;
+		html += `<text x="${legendX}" y="${legendY + 24}" fill="#999" font-size="9">${globalMin} mV</text>`;
+		html += `<text x="${legendX + legendW}" y="${legendY + 24}" text-anchor="end" fill="#999" font-size="9">${globalMax} mV</text>`;
+
+		html += "</svg></div>";
+		return html;
+	},
+
+	/**
+	 * Calculate heatmap cell color based on value relative to global range.
+	 * Lowest = red, middle = yellow, highest = green.
+	 *
+	 * @param {number} val - Cell voltage in mV
+	 * @param {number} min - Global minimum
+	 * @param {number} max - Global maximum
+	 * @param {number} delta - Global delta (max - min)
+	 * @returns {string} CSS color
+	 */
+	heatmapColor: function (val, min, max, delta) {
+		if (delta < 5) {
+			return "#4caf50"; // All cells essentially equal — green
+		}
+		var ratio = (val - min) / delta; // 0 = lowest, 1 = highest
+		// Red → Orange → Yellow → Green
+		if (ratio < 0.33) {
+			// Red to Orange
+			var r1 = Math.round(244 + (255 - 244) * (ratio / 0.33));
+			var g1 = Math.round(67 + (152 - 67) * (ratio / 0.33));
+			return `rgb(${r1},${g1},54)`;
+		}
+		if (ratio < 0.66) {
+			// Orange to Yellow
+			var r2 = Math.round(255);
+			var g2 = Math.round(152 + (235 - 152) * ((ratio - 0.33) / 0.33));
+			var b2 = Math.round(0 + (59 - 0) * ((ratio - 0.33) / 0.33));
+			return `rgb(${r2},${g2},${b2})`;
+		}
+		// Yellow to Green
+		var r3 = Math.round(255 - (255 - 76) * ((ratio - 0.66) / 0.34));
+		var g3 = Math.round(235 - (235 - 175) * ((ratio - 0.66) / 0.34));
+		var b3 = Math.round(59 - (59 - 80) * ((ratio - 0.66) / 0.34));
+		return `rgb(${r3},${g3},${b3})`;
+	},
+
+	/**
+	 * Determine text color for readability against heatmap background.
+	 *
+	 * @param {number} val - Cell voltage in mV
+	 * @param {number} min - Global minimum
+	 * @param {number} max - Global maximum
+	 * @param {number} delta - Global delta
+	 * @returns {string} CSS color for text
+	 */
+	heatmapTextColor: function (val, min, max, delta) {
+		if (delta < 5) {
+			return "#fff";
+		}
+		var ratio = (val - min) / delta;
+		// Dark text on light backgrounds (yellow/green middle), white on dark (red)
+		return ratio < 0.25 ? "#fff" : "#333";
+	},
+
 	/**
 	 * Render a single EnFluRi meter table
 	 *
