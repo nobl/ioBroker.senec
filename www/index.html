@@ -1207,6 +1207,7 @@
 				this.renderConnectors();
 				this.renderDashboard();
 				liveChart.record(); // first data point from initial state load
+				liveChart.initHistory(this.conn, NAMESPACE, this.connectors);
 			},
 
 			renderConnectors: function () {

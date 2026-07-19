@@ -10,7 +10,6 @@
  * Smooth monotone cubic interpolation between data points.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 var liveChart = {
 	buffer: [],
 
@@ -43,6 +42,424 @@ var liveChart = {
 
 	/** Last recorded timestamp to avoid duplicates */
 	_lastTs: 0,
+
+	/** History adapter instance (e.g. "influxdb.0") — discovered on init */
+	_historyInstance: null,
+
+	/** Whether history backfill has been attempted */
+	_historyLoaded: false,
+
+	/**
+	 * State keys per source for history queries
+	 */
+	_stateKeys: {
+		local: {
+			pv: "ENERGY.GUI_INVERTER_POWER",
+			battery: "ENERGY.GUI_BAT_DATA_POWER",
+			grid: "ENERGY.GUI_GRID_POW",
+			house: "ENERGY.GUI_HOUSE_POW",
+			wallbox: "WALLBOX.APPARENT_CHARGING_POWER.0",
+		},
+		api: {
+			// Filled dynamically with discovered anlagenId prefix
+			pv: null,
+			battery: null,
+			grid: null,
+			house: null,
+			wallbox: null,
+		},
+		web: {
+			pv: "_meinsenec.Status.powergenerated.now",
+			battery: null, // Web uses charge/discharge separately — handled in transform
+			grid: null, // Web uses import/export separately — handled in transform
+			house: "_meinsenec.Status.consumption.now",
+			wallbox: null,
+		},
+	},
+
+	/**
+	 * Initialize history backfill — discover history adapter and load past data.
+	 * Called once after initial state load.
+	 *
+	 * @param {object} conn - socket.io connection
+	 * @param {string} namespace - adapter namespace (e.g. "senec.0")
+	 * @param {object} connectors - connector status
+	 */
+	initHistory: function (conn, namespace, connectors) {
+		if (this._historyLoaded) {
+			return;
+		}
+		this._historyLoaded = true;
+
+		// Determine which source to use
+		var src = energyFlow.resolveSource(connectors);
+		if (!src) {
+			return;
+		}
+
+		// Build API state keys if needed
+		if (src === "api" && energyFlow.apiAnlagenId) {
+			var pfx = `_api.Anlagen.${energyFlow.apiAnlagenId}.Dashboard.currently.`;
+			this._stateKeys.api.pv = `${pfx}powerGenerationInW`;
+			this._stateKeys.api.battery = `${pfx}batteryChargeInW`; // will need discharge too
+			this._stateKeys.api.grid = `${pfx}gridDrawInW`; // will need feedIn too
+			this._stateKeys.api.house = `${pfx}powerConsumptionInW`;
+			this._stateKeys.api.wallbox = `${pfx}wallboxInW`;
+		}
+
+		// Pick a representative state to check for history
+		var checkState;
+		if (src === "local") {
+			checkState = `${namespace}.ENERGY.GUI_HOUSE_POW`;
+		} else if (src === "api" && this._stateKeys.api.house) {
+			checkState = `${namespace}.${this._stateKeys.api.house}`;
+		} else if (src === "web") {
+			checkState = `${namespace}.${this._stateKeys.web.house}`;
+		} else {
+			return;
+		}
+
+		conn.emit("getObject", checkState, function (err, obj) {
+			if (err || !obj || !obj.common || !obj.common.custom) {
+				return;
+			}
+			// Find first enabled history instance
+			var instance = null;
+			for (var key in obj.common.custom) {
+				if (obj.common.custom[key] && obj.common.custom[key].enabled) {
+					instance = key;
+					break;
+				}
+			}
+			if (!instance) {
+				return;
+			}
+			liveChart._historyInstance = instance;
+			liveChart._loadHistory(conn, namespace, src);
+		});
+	},
+
+	/**
+	 * Load historical data from the discovered history adapter
+	 *
+	 * @param {object} conn - socket.io connection
+	 * @param {string} namespace - adapter namespace
+	 * @param {string} src - active source ("local", "api", "web")
+	 */
+	_loadHistory: function (conn, namespace, src) {
+		var windowMs = this.window * 60 * 1000;
+		var start = Date.now() - windowMs;
+		var end = Date.now();
+		var instance = this._historyInstance;
+
+		if (src === "local") {
+			this._loadHistoryLocal(conn, namespace, instance, start, end);
+		} else if (src === "api") {
+			this._loadHistoryApi(conn, namespace, instance, start, end);
+		} else if (src === "web") {
+			this._loadHistoryWeb(conn, namespace, instance, start, end);
+		}
+	},
+
+	_loadHistoryLocal: function (conn, namespace, instance, start, end) {
+		var keys = this._stateKeys.local;
+		var pending = { pv: null, battery: null, grid: null, house: null, wallbox: null };
+		var done = 0;
+		var total = 5;
+
+		var queryOne = function (field, stateId) {
+			var fullId = `${namespace}.${stateId}`;
+			conn.emit(
+				"getHistory",
+				fullId,
+				{
+					instance: instance,
+					start: start,
+					end: end,
+					aggregate: "none",
+					returnNewestEntries: true,
+					removeBorderValues: true,
+					count: 2000,
+				},
+				function (err, result) {
+					if (!err && result) {
+						pending[field] = result;
+					}
+					done++;
+					if (done === total) {
+						liveChart._mergeHistory(pending, "local");
+					}
+				},
+			);
+		};
+
+		queryOne("pv", keys.pv);
+		queryOne("battery", keys.battery);
+		queryOne("grid", keys.grid);
+		queryOne("house", keys.house);
+		queryOne("wallbox", keys.wallbox);
+	},
+
+	_loadHistoryApi: function (conn, namespace, instance, start, end) {
+		var keys = this._stateKeys.api;
+		if (!keys.house) {
+			return;
+		}
+
+		// API has separate charge/discharge and draw/feedIn
+		var pfx = `_api.Anlagen.${energyFlow.apiAnlagenId}.Dashboard.currently.`;
+		var pending = { pv: null, house: null, charge: null, discharge: null, draw: null, feed: null, wallbox: null };
+		var done = 0;
+		var total = 7;
+
+		var queryOne = function (field, stateKey) {
+			var fullId = `${namespace}.${stateKey}`;
+			conn.emit(
+				"getHistory",
+				fullId,
+				{
+					instance: instance,
+					start: start,
+					end: end,
+					aggregate: "none",
+					returnNewestEntries: true,
+					removeBorderValues: true,
+					count: 2000,
+				},
+				function (err, result) {
+					if (!err && result) {
+						pending[field] = result;
+					}
+					done++;
+					if (done === total) {
+						liveChart._mergeHistory(pending, "api");
+					}
+				},
+			);
+		};
+
+		queryOne("pv", `${pfx}powerGenerationInW`);
+		queryOne("house", `${pfx}powerConsumptionInW`);
+		queryOne("charge", `${pfx}batteryChargeInW`);
+		queryOne("discharge", `${pfx}batteryDischargeInW`);
+		queryOne("draw", `${pfx}gridDrawInW`);
+		queryOne("feed", `${pfx}gridFeedInInW`);
+		queryOne("wallbox", `${pfx}wallboxInW`);
+	},
+
+	_loadHistoryWeb: function (conn, namespace, instance, start, end) {
+		var wpfx = "_meinsenec.Status.";
+		var pending = { pv: null, house: null, charge: null, discharge: null, gridImport: null, gridExport: null };
+		var done = 0;
+		var total = 6;
+
+		var queryOne = function (field, stateKey) {
+			var fullId = `${namespace}.${stateKey}`;
+			conn.emit(
+				"getHistory",
+				fullId,
+				{
+					instance: instance,
+					start: start,
+					end: end,
+					aggregate: "none",
+					returnNewestEntries: true,
+					removeBorderValues: true,
+					count: 2000,
+				},
+				function (err, result) {
+					if (!err && result) {
+						pending[field] = result;
+					}
+					done++;
+					if (done === total) {
+						liveChart._mergeHistory(pending, "web");
+					}
+				},
+			);
+		};
+
+		queryOne("pv", `${wpfx}powergenerated.now`);
+		queryOne("house", `${wpfx}consumption.now`);
+		queryOne("charge", `${wpfx}accuexport.now`);
+		queryOne("discharge", `${wpfx}accuimport.now`);
+		queryOne("gridImport", `${wpfx}gridimport.now`);
+		queryOne("gridExport", `${wpfx}gridexport.now`);
+	},
+
+	/**
+	 * Merge history results into the buffer.
+	 * Aligns timestamps across multiple state histories.
+	 *
+	 * @param {object} pending - History results per field
+	 * @param {string} src - Source type
+	 */
+	_mergeHistory: function (pending, src) {
+		// Collect all unique timestamps from the primary state (house for reliability)
+		var primary = pending.house;
+		if (!primary || primary.length === 0) {
+			return;
+		}
+
+		// Build lookup maps for other fields by timestamp
+		var buildMap = function (arr) {
+			var map = {};
+			if (!arr) {
+				return map;
+			}
+			for (var i = 0; i < arr.length; i++) {
+				if (arr[i] && arr[i].ts) {
+					map[arr[i].ts] = arr[i].val;
+				}
+			}
+			return map;
+		};
+
+		// Find nearest value in a map (within 30s tolerance)
+		var findNearest = function (map, ts) {
+			if (map[ts] !== undefined) {
+				return map[ts];
+			}
+			// Check within ±30s
+			for (var offset = 1; offset <= 30000; offset += 1000) {
+				if (map[ts + offset] !== undefined) {
+					return map[ts + offset];
+				}
+				if (map[ts - offset] !== undefined) {
+					return map[ts - offset];
+				}
+			}
+			return null;
+		};
+
+		var points = [];
+
+		if (src === "local") {
+			var pvMap = buildMap(pending.pv);
+			var batMap = buildMap(pending.battery);
+			var gridMap = buildMap(pending.grid);
+			var wbMap = buildMap(pending.wallbox);
+
+			for (var i = 0; i < primary.length; i++) {
+				var ts = primary[i].ts;
+				if (!ts) {
+					continue;
+				}
+				var pv = findNearest(pvMap, ts);
+				var bat = findNearest(batMap, ts);
+				var grid = findNearest(gridMap, ts);
+				var wb = findNearest(wbMap, ts);
+				points.push({
+					ts: ts,
+					pv: Math.abs(Number(pv) || 0),
+					battery: Number(bat) || 0,
+					grid: Number(grid) || 0,
+					house: Math.abs(Number(primary[i].val) || 0),
+					wallbox: Number(wb) || 0,
+				});
+			}
+		} else if (src === "api") {
+			var pvMapA = buildMap(pending.pv);
+			var chargeMap = buildMap(pending.charge);
+			var dischargeMap = buildMap(pending.discharge);
+			var drawMap = buildMap(pending.draw);
+			var feedMap = buildMap(pending.feed);
+			var wbMapA = buildMap(pending.wallbox);
+
+			for (var ai = 0; ai < primary.length; ai++) {
+				var ats = primary[ai].ts;
+				if (!ats) {
+					continue;
+				}
+				var aPv = findNearest(pvMapA, ats);
+				var aCharge = findNearest(chargeMap, ats);
+				var aDischarge = findNearest(dischargeMap, ats);
+				var aDraw = findNearest(drawMap, ats);
+				var aFeed = findNearest(feedMap, ats);
+				var aWb = findNearest(wbMapA, ats);
+				points.push({
+					ts: ats,
+					pv: Number(aPv) || 0,
+					battery: (Number(aCharge) || 0) - (Number(aDischarge) || 0),
+					grid: (Number(aDraw) || 0) - (Number(aFeed) || 0),
+					house: Number(primary[ai].val) || 0,
+					wallbox: Number(aWb) || 0,
+				});
+			}
+		} else if (src === "web") {
+			var pvMapW = buildMap(pending.pv);
+			var chargeMapW = buildMap(pending.charge);
+			var dischargeMapW = buildMap(pending.discharge);
+			var gridImportMap = buildMap(pending.gridImport);
+			var gridExportMap = buildMap(pending.gridExport);
+
+			for (var wi = 0; wi < primary.length; wi++) {
+				var wts = primary[wi].ts;
+				if (!wts) {
+					continue;
+				}
+				var wPv = findNearest(pvMapW, wts);
+				var wCharge = findNearest(chargeMapW, wts);
+				var wDischarge = findNearest(dischargeMapW, wts);
+				var wGridImp = findNearest(gridImportMap, wts);
+				var wGridExp = findNearest(gridExportMap, wts);
+				// Web values are in kW — multiply by 1000
+				points.push({
+					ts: wts,
+					pv: (Number(wPv) || 0) * 1000,
+					battery: ((Number(wCharge) || 0) - (Number(wDischarge) || 0)) * 1000,
+					grid: ((Number(wGridImp) || 0) - (Number(wGridExp) || 0)) * 1000,
+					house: (Number(primary[wi].val) || 0) * 1000,
+					wallbox: 0,
+				});
+			}
+		}
+
+		if (points.length === 0) {
+			return;
+		}
+
+		// Sort by timestamp and prepend to buffer (history is older than live data)
+		points.sort(function (a, b) {
+			return a.ts - b.ts;
+		});
+
+		// Strip leading all-zero points (adapter startup artifacts)
+		while (
+			points.length > 0 &&
+			points[0].pv === 0 &&
+			points[0].battery === 0 &&
+			points[0].grid === 0 &&
+			points[0].house === 0 &&
+			points[0].wallbox === 0
+		) {
+			points.shift();
+		}
+		if (points.length === 0) {
+			return;
+		}
+
+		// Remove any live points that overlap with history
+		var latestHistoryTs = points[points.length - 1].ts;
+		var liveStart = 0;
+		for (var li = 0; li < this.buffer.length; li++) {
+			if (this.buffer[li].ts > latestHistoryTs) {
+				liveStart = li;
+				break;
+			}
+			liveStart = this.buffer.length;
+		}
+
+		this.buffer = points.concat(this.buffer.slice(liveStart));
+
+		// Trim to max
+		if (this.buffer.length > this.maxPoints) {
+			this.buffer = this.buffer.slice(this.buffer.length - this.maxPoints);
+		}
+
+		// Trigger re-render
+		app.renderDashboard();
+	},
 
 	/**
 	 * Record a new data point from the current energyFlow state.

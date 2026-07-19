@@ -71,7 +71,7 @@
     "livechart_battery": "Batterie",
     "livechart_grid": "Netz",
     "livechart_title": "Live-Power",
-    "livechart_waiting": "Warten auf Daten... Das Diagramm wird angezeigt, nachdem mindestens zwei Datenpunkte empfangen wurden.",
+    "livechart_waiting": "Warten auf Daten... Das Diagramm füllt sich automatisch mit neuen Daten. Für sofortige Anzeige beim Laden einen History-Adapter (InfluxDB, SQL oder History) auf den Leistungs-Datenpunkten aktivieren.",
     "livechart_wallbox": "Wallbox",
     "log_category_all": "Alle Kategorien",
     "log_download": "Download",

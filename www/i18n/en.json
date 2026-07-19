@@ -58,7 +58,7 @@
     "livechart_grid": "Grid",
     "livechart_battery": "Battery",
     "livechart_wallbox": "Wallbox",
-    "livechart_waiting": "Waiting for data... The chart will appear after at least two data points are received.",
+    "livechart_waiting": "Waiting for data... The chart fills automatically as new data arrives. Enable a history adapter (InfluxDB, SQL, or History) on the power states for instant backfill on page load.",
     "chart_title": "Measurement History",
     "chart_no_data": "No measurement data available. Enable measurement polling in the API or Web connector settings.",
     "chart_select_type": "Select at least one measurement type to display.",
