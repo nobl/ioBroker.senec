@@ -255,7 +255,7 @@ var systemInfo = {
 			return "";
 		}
 
-		var html = `<div class="card"><h2>${t("battery_cycles_energy")}</h2>`;
+		var html = `<div class="card"><h2>${t("battery_cycles_energy")}${this.srcBadge("L")}</h2>`;
 		html += '<table class="grid-phase-table">';
 
 		// Column headers
@@ -413,7 +413,7 @@ var systemInfo = {
 			return "";
 		}
 
-		var html = `<div class="card"><h2>${t("battery_cell_voltage")}</h2>`;
+		var html = `<div class="card"><h2>${t("battery_cell_voltage")}${this.srcBadge("L")}</h2>`;
 		html += '<div class="system-grid">';
 
 		// Overall cell voltage range (values already in V from multiply 0.01)
@@ -720,7 +720,7 @@ var systemInfo = {
 			return "";
 		}
 
-		var html = `<div class="card"><h2>${t("grid_quality")}</h2>`;
+		var html = `<div class="card"><h2>${t("grid_quality")}${this.srcBadge("L")}</h2>`;
 
 		if (meter1) {
 			if (meter2) {
@@ -881,7 +881,7 @@ var systemInfo = {
 			return "";
 		}
 
-		var html = `<div class="card"><h2>${t("pv_strings")}</h2>`;
+		var html = `<div class="card"><h2>${t("pv_strings")}${this.srcBadge("L")}</h2>`;
 		html += '<table class="grid-phase-table">';
 		html += '<tr class="grid-header-row">';
 		html += "<th></th>";

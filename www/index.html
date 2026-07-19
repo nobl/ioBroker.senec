@@ -960,6 +960,7 @@
 			<div class="tab-content active" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview">
 				<div class="grid" id="dashboard"></div>
 				<div id="livechart-container"></div>
+				<div id="timeline-container"></div>
 			</div>
 
 			<div class="tab-content" id="tab-battery" role="tabpanel" aria-labelledby="tab-battery" hidden>
@@ -987,6 +988,7 @@
 	<script src="i18n.js"></script>
 	<script src="energy.js"></script>
 	<script src="livechart.js"></script>
+	<script src="timeline.js"></script>
 	<script src="charts.js"></script>
 	<script src="system.js"></script>
 	<script src="control.js"></script>
@@ -1115,6 +1117,7 @@
 					if (!err && obj && obj.native) {
 						app.config = obj.native;
 						logViewer.onConfigLoaded();
+						eventTimeline.fetchEvents();
 					}
 				});
 			},
@@ -1228,6 +1231,9 @@
 
 				var liveEl = document.getElementById("livechart-container");
 				if (liveEl) liveEl.innerHTML = liveChart.render();
+
+				var timelineEl = document.getElementById("timeline-container");
+				if (timelineEl) timelineEl.innerHTML = eventTimeline.render();
 
 				var batteryEl = document.getElementById("battery-container");
 				if (batteryEl) {

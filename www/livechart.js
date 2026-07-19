@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, energyFlow */
+/* global app, t, energyFlow, document */
 /* exported liveChart */
 
 /**
@@ -460,8 +460,11 @@ var liveChart = {
 			this.buffer = this.buffer.slice(this.buffer.length - this.maxPoints);
 		}
 
-		// Trigger re-render
-		app.renderDashboard();
+		// Update only live chart container
+		var el = document.getElementById("livechart-container");
+		if (el) {
+			el.innerHTML = this.render();
+		}
 	},
 
 	/**
