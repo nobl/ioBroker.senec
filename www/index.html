@@ -959,6 +959,7 @@
 		<div id="content" style="display: none;">
 			<div class="tab-content active" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview">
 				<div class="grid" id="dashboard"></div>
+				<div id="livechart-container"></div>
 			</div>
 
 			<div class="tab-content" id="tab-battery" role="tabpanel" aria-labelledby="tab-battery" hidden>
@@ -985,6 +986,7 @@
 
 	<script src="i18n.js"></script>
 	<script src="energy.js"></script>
+	<script src="livechart.js"></script>
 	<script src="charts.js"></script>
 	<script src="system.js"></script>
 	<script src="control.js"></script>
@@ -1171,6 +1173,10 @@
 					shortId.indexOf("SystemDetails.") !== -1 ||
 					shortId.indexOf("SystemStatus.") !== -1;
 
+				if (isEnergyState) {
+					energyFlow.update(this.states, this.connectors);
+					liveChart.record();
+				}
 				if (this.activeTab === "overview" && (isEnergyState || isSystemState)) {
 					this.renderDashboard();
 				}
@@ -1200,6 +1206,7 @@
 
 				this.renderConnectors();
 				this.renderDashboard();
+				liveChart.record(); // first data point from initial state load
 			},
 
 			renderConnectors: function () {
@@ -1217,6 +1224,9 @@
 				var el = document.getElementById("dashboard");
 				energyFlow.update(this.states, this.connectors);
 				el.innerHTML = energyFlow.render(systemInfo.renderOperatingMode(this.states));
+
+				var liveEl = document.getElementById("livechart-container");
+				if (liveEl) liveEl.innerHTML = liveChart.render();
 
 				var batteryEl = document.getElementById("battery-container");
 				if (batteryEl) {
