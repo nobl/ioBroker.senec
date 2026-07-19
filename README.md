@@ -69,6 +69,10 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 -->
 ### **WORK IN PROGRESS**
 - Dashboard: Live power curve on Overview tab — real-time SVG line chart with smooth monotone cubic interpolation. Shows PV, house, grid, battery, wallbox from any connector. Time windows 10m–24h, line toggles, pause, disable toggle. History adapter backfill on page load (InfluxDB, SQL, History). Source follows energy flow selector.
+- Dashboard: Cell voltage heatmap on Battery tab — SVG grid with color-coded per-cell voltages across all modules, per-module delta indicators, and legend bar.
+- Dashboard: Event timeline on Overview tab — 24h strip showing warnings, errors, and panics as colored markers with hover details. Auto-refreshes every 10 minutes.
+- Dashboard: Source badges added to Cell Voltage, Cycles, Grid Quality, and PV-Strings cards.
+- Dashboard: Async loading — energy flow renders immediately, live chart history and event timeline load independently.
 - Fix: Energy flow path allocation rewritten with proper priority-based logic (PV→House→Battery→Grid). Fixes missing flows in multi-source scenarios (e.g. PV→Grid while Battery→House, or Battery→Grid while PV active).
 - Debug & Logging: Per-connector matrix for all debug options (Local, API, mein-senec, Connect). Show polling, request/response logging, queue diagnostics, and diagnostic states can now be toggled independently per connector.
 - Web connector now has its own `web_debug_states` and `web_debug_log` options (previously shared with API).
