@@ -607,49 +607,46 @@ var energyFlow = {
 		svg += "</defs>";
 
 		// Flow paths (curved, behind nodes)
-		// Calculate actual power flows based on energy balance
+		// Decompose signed values into directional flows
 		var gridExport = d.grid < 0 ? Math.abs(d.grid) : 0;
 		var gridImport = d.grid > 0 ? d.grid : 0;
 		var batDischarge = d.battery < 0 ? Math.abs(d.battery) : 0;
 		var batCharge = d.battery > 0 ? d.battery : 0;
 
-		// PV → House: PV production minus what goes to battery/grid
-		var pvToHouse = Math.max(0, d.pv - batCharge - gridExport);
-		if (d.pv > 10 && pvToHouse > 0) {
+		// Allocate flows using standard home energy priority:
+		// PV → House first, then PV → Battery, then PV → Grid (surplus)
+		// Battery → House (remaining demand), then Battery → Grid (forced export)
+		// Grid → House (shortfall), Grid → Battery (if charging from grid)
+		var pvToHouse = Math.min(d.pv, d.house);
+		var pvToBat = Math.min(batCharge, Math.max(0, d.pv - pvToHouse));
+		var pvToGrid = Math.max(0, d.pv - pvToHouse - pvToBat);
+
+		var houseRemaining = Math.max(0, d.house - pvToHouse);
+		var gridToHouse = Math.min(gridImport, houseRemaining);
+		var batToHouse = Math.min(batDischarge, Math.max(0, houseRemaining - gridToHouse));
+		var batToGrid = Math.max(0, Math.min(gridExport - pvToGrid, batDischarge - batToHouse));
+
+		var gridToBat = Math.min(Math.max(0, gridImport - gridToHouse), Math.max(0, batCharge - pvToBat));
+
+		// Render flow paths
+		if (pvToHouse > 10) {
 			svg += this.renderCurvedFlow(nodes.pv, nodes.house, "#f9a825", pvToHouse);
 		}
-		// PV → Battery (charging from PV)
-		if (d.pv > 10 && batCharge > 0) {
-			svg += this.renderCurvedFlow(nodes.pv, nodes.battery, "#f9a825", Math.min(d.pv, batCharge), -30);
+		if (pvToBat > 10) {
+			svg += this.renderCurvedFlow(nodes.pv, nodes.battery, "#f9a825", pvToBat, -30);
 		}
-		// PV → Grid (exporting PV surplus)
-		if (d.pv > 10 && gridExport > 0) {
-			var pvToGrid = Math.min(gridExport, Math.max(0, d.pv - d.house - batCharge));
-			if (pvToGrid > 10) {
-				svg += this.renderCurvedFlow(nodes.pv, nodes.grid, "#42a5f5", pvToGrid, 30);
-			}
+		if (pvToGrid > 10) {
+			svg += this.renderCurvedFlow(nodes.pv, nodes.grid, "#42a5f5", pvToGrid, 30);
 		}
-		// Battery → House (discharging to house)
-		if (batDischarge > 10) {
-			var batToHouse = Math.min(batDischarge, d.house - Math.max(0, d.pv) - gridImport);
-			if (batToHouse > 10) {
-				svg += this.renderCurvedFlow(nodes.battery, nodes.house, "#4caf50", batToHouse);
-			}
+		if (batToHouse > 10) {
+			svg += this.renderCurvedFlow(nodes.battery, nodes.house, "#4caf50", batToHouse);
 		}
-		// Battery → Grid (discharging surplus to grid)
-		if (batDischarge > 10 && gridExport > 0 && d.pv <= 10) {
-			svg += this.renderCurvedFlow(nodes.battery, nodes.grid, "#42a5f5", gridExport, 30);
+		if (batToGrid > 10) {
+			svg += this.renderCurvedFlow(nodes.battery, nodes.grid, "#42a5f5", batToGrid, 30);
 		}
-		// Grid → Battery (charging from grid — calculate first to subtract from grid→house)
-		var gridToBat = 0;
-		if (gridImport > 10 && batCharge > 0) {
-			gridToBat = Math.min(gridImport, Math.max(0, batCharge - Math.max(0, d.pv)));
-			if (gridToBat > 10) {
-				svg += this.renderCurvedFlow(nodes.grid, nodes.battery, "#ef5350", gridToBat, 30);
-			}
+		if (gridToBat > 10) {
+			svg += this.renderCurvedFlow(nodes.grid, nodes.battery, "#ef5350", gridToBat, 30);
 		}
-		// Grid → House (importing from grid, minus what goes to battery)
-		var gridToHouse = gridImport - gridToBat;
 		if (gridToHouse > 10) {
 			svg += this.renderCurvedFlow(nodes.grid, nodes.house, "#ef5350", gridToHouse);
 		}
