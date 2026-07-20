@@ -87,7 +87,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.11.0 (2026-07-20)
 - External Sources: Add PV, consumer (wallbox, heat pump, etc.), and battery sources from other ioBroker adapters. Formula support for calculated values (e.g. V*A per phase). Integrate mode adds to SENEC totals, separate mode shows individual nodes in the energy flow diagram. Battery SOC and capacity support with time estimates. Dynamic diagram layout with summary nodes for multiple PV/battery sources.
 - Fix: ValueTyping type flip-flop between string/number for states with physical units.
 - Fix: Live chart history backfill now uses carry-forward merge instead of timestamp alignment. Handles sparse SQL data ("log only on change") correctly.
@@ -125,19 +125,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 ### 2.9.1 (2026-07-16)
 - Fix: jsonConfig validation error (`collapsed` not allowed on panel type)
 - Fix: Welcome screen tile color changed from green to SENEC blue
-
-### 2.9.0 (2026-07-15)
-- Web dashboard: Built-in dashboard accessible at `http://<iobroker>:8082/senec/` via ioBroker.web extension. Shows on the ioBroker.web welcome page. Dark/light theme toggle. Internationalization with 11 languages.
-- Energy flow diagram: Live SVG visualization of power flow between PV, battery, grid, house, and wallbox. Animated curved flow paths with power-proportional thickness. Battery SOC gauge with fill level indicator. Operating mode badge (color-coded). Battery time estimates (until empty/full). Multi-source support with manual override (Local > API > Web). Period totals (today/month/year) with self-sufficiency display. Last update timestamp from active connector.
-- Measurement charts: Bar charts for hourly (today), daily (month), and monthly (year) energy data. Toggle individual measurement types. Stacked production/consumption view. Period comparison (yesterday, previous month, selectable year). Data source selector (Auto/API/Web). Auto-update mode. Data table view. PNG image export. Today view trims to hours with data.
-- Battery health tab: System and per-pack SOH with color-coded health indicators. Module count. Separate temperature card (overall, per-module, per-module cell temps). Separate voltage card (overall min/max with delta, per-module cell voltages with delta). Data from Local (BMS) or API (SystemDetails) with source indicator badges.
-- System tab: Grid quality (frequency, per-phase voltage/power/current, phase skew warning). Feature flags from all connectors with mismatch detection. System details (product, firmware, GUI/NPU version, inverter state, casing/MCU/battery/inverter temperatures). Source indicator badges on all metrics.
-- Control panel: Force battery charging (toggle), appliance reboot (with confirmation), emergency power reserve, peak shaving (mode-dependent fields), SG-Ready (enable + thresholds), switchable sockets (per-socket mode with auto-threshold settings, name editing via web), wallbox control (smart charge, current, intercharge). All controls check connector availability and show warnings. Apply button feedback with "Sent" confirmation. Config changes auto-detected.
-- Appliance log viewer: Browse SENEC device logs by date with filterable table (Time, Level, Category, Message). Supports Info/Warning/Error/Panic levels with color-coded row highlighting. Newest entries first. Live mode auto-refreshes today's log (UTC-aware). Download raw log files.
-- Per-connector connection states: New `info.localConnected`, `info.apiConnected`, `info.webConnected`, `info.connectConnected` states. Local polling now writes `info.lastPoll.HighPrio` and `info.lastPoll.LowPrio` timestamps.
-- Accessibility: Semantic HTML, ARIA roles and attributes, keyboard navigation for tabs, focus indicators, screen reader support.
-- State translations: Added system state 100 (SOX calibration), system types 20-21 (SENEC.Home V3 hybrid LFP), updated wallbox states with official SENEC names, added SYS_UPDATE.FSM_STATE and PWR_UNIT.TYPE translations. Fixed BATTERY_IMPORT/EXPORT and accuimport/accuexport naming.
-- Admin settings: Collapsible control overview panel showing available controls per connector. Simplified control help texts. Battery capacity config field for manual input.
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
