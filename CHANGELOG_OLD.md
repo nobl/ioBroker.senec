@@ -1,6 +1,13 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.8.4 (2026-07-13)
+- Web measurements: Measurement history (today, yesterday, monthly, yearly, AllTime) and autarky can now be polled from mein-senec.de. Data appears under `_meinsenec.Measurements` and `_meinsenec.Autarky`. Enable in adapter settings with "Poll measurement history". Optional 5-minute detail data with time-based keys for today/yesterday (creates ~3,500 additional states).
+- Web request queue: All mein-senec.de requests now use an AdaptiveRequestQueue for rate-limiting. Configurable concurrency and min request interval in adapter settings.
+- API/Web request interval: Minimum time between requests is now configurable for both API and web connectors (API previously hardcoded at 400ms).
+- User-Agent settings moved from SENEC App API tab to SENEC Account tab — now applies to all connectors.
+- Queue diagnostics cleanup: Diagnostics states for both API and web queues are now automatically cleaned up when debug states are disabled.
+
 ## 2.8.3 (2026-07-12)
 - Active measurement periods (current year, current month, today) no longer skip re-fetch — frequency is now fully controlled by the configured tier intervals
 - AllTime history now tracks a `last updated` timestamp

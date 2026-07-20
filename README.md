@@ -87,7 +87,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.10.0 (2026-07-20)
 - Dashboard: Live power curve on Overview tab — real-time SVG line chart with smooth monotone cubic interpolation. Shows PV, house, grid, battery, wallbox from any connector. Time windows 10m–24h, line toggles, pause, disable toggle. History adapter backfill on page load (InfluxDB, SQL, History). Source follows energy flow selector.
 - Dashboard: Cell voltage heatmap on Battery tab — SVG grid with color-coded per-cell voltages across all modules, per-module delta indicators, and legend bar.
 - Dashboard: Event timeline on Overview tab — 24h strip showing warnings, errors, and panics as colored markers with hover details. Auto-refreshes every 10 minutes.
@@ -133,13 +133,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Accessibility: Semantic HTML, ARIA roles and attributes, keyboard navigation for tabs, focus indicators, screen reader support.
 - State translations: Added system state 100 (SOX calibration), system types 20-21 (SENEC.Home V3 hybrid LFP), updated wallbox states with official SENEC names, added SYS_UPDATE.FSM_STATE and PWR_UNIT.TYPE translations. Fixed BATTERY_IMPORT/EXPORT and accuimport/accuexport naming.
 - Admin settings: Collapsible control overview panel showing available controls per connector. Simplified control help texts. Battery capacity config field for manual input.
-
-### 2.8.4 (2026-07-13)
-- Web measurements: Measurement history (today, yesterday, monthly, yearly, AllTime) and autarky can now be polled from mein-senec.de. Data appears under `_meinsenec.Measurements` and `_meinsenec.Autarky`. Enable in adapter settings with "Poll measurement history". Optional 5-minute detail data with time-based keys for today/yesterday (creates ~3,500 additional states).
-- Web request queue: All mein-senec.de requests now use an AdaptiveRequestQueue for rate-limiting. Configurable concurrency and min request interval in adapter settings.
-- API/Web request interval: Minimum time between requests is now configurable for both API and web connectors (API previously hardcoded at 400ms).
-- User-Agent settings moved from SENEC App API tab to SENEC Account tab — now applies to all connectors.
-- Queue diagnostics cleanup: Diagnostics states for both API and web queues are now automatically cleaned up when debug states are disabled.
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
