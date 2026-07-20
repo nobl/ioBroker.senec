@@ -124,6 +124,26 @@ Der API-Konnektor kann historische Messdaten (AllTime-Summen) komplett neu aufba
 | Subscription Key | Azure API Subscription Key | — |
 | Enthaltene Bereiche | Welche Datenbereiche abgefragt werden | battery,meter |
 
+### Externe Quellen
+
+![Externe Quellen](media/admin-external.png)
+
+Fügen Sie externe Energiequellen aus anderen ioBroker-Adaptern hinzu — z.B. Balkon-PV, zusätzliche Wechselrichter, eigenständige Wallboxen, Wärmepumpen oder externe Batteriespeicher. Werte werden auf Watt normalisiert und im Dashboard-Energieflussdiagramm und der Live-Leistungskurve angezeigt.
+
+Verwenden Sie die **State-ID Suche** um die State-ID des gewünschten Datenpunkts zu finden und fügen Sie sie in die Tabelle ein.
+
+| Spalte | Beschreibung |
+|--------|-------------|
+| State-ID / Formel | Einzelne State-ID (z.B. `solar.0.power`) oder Formel mit `{stateId}`-Referenzen (z.B. `{wallbox.0.l1_amps} * {wallbox.0.l1_volts}`) |
+| Typ | PV, Verbraucher (Wallbox, Wärmepumpe, etc.) oder Batterie |
+| Einheit | W oder kW — wird auf den Endwert angewendet |
+| Modus | **Integrieren** = zum SENEC-Gesamtwert addieren (ein Knoten). **Separat** = als eigener Knoten im Energiefluss anzeigen |
+| SOC-State | (Nur Batterie) State-ID für den Ladezustand (%) |
+| Kapazität | (Nur Batterie) Batteriekapazität in kWh — ermöglicht Zeitschätzungen |
+| Bezeichnung | Anzeigename im Energieflussdiagramm |
+
+Formeln unterstützen `+ - * / ( )` Operatoren. State-IDs ohne geschweifte Klammern werden automatisch erkannt wenn sie Rechenoperatoren enthalten. Für komplexe Formeln ist ein Dashboard-basierter Konfigurator mit interaktiver State-Auswahl geplant.
+
 ### Gerätesteuerung
 
 ![Gerätesteuerung](media/admin-control.png)
@@ -330,6 +350,21 @@ mein-senec.de Daten werden unter `_meinsenec.*` gespeichert:
 ### Connect-States (`_connect.*`)
 
 SENEC.Connect Daten werden unter `_connect.Systems.{n}.*` mit Batterie- und Zähler-Unterbereichen gespeichert.
+
+### Externe States (`_external.*`)
+
+Daten externer Quellen werden unter `_external.{typ}.{index}.*` gespeichert:
+
+| State | Beschreibung |
+|-------|-------------|
+| `_external.pv.{n}.power` | Externe PV-Leistung (W) |
+| `_external.consumer.{n}.power` | Externer Verbraucher (W) |
+| `_external.battery.{n}.power` | Externe Batterieleistung (W, vorzeichenbehaftet) |
+| `_external.battery.{n}.soc` | Externer Batterie-Ladezustand (%) |
+| `_external.battery.{n}.capacity` | Externe Batterie-Kapazität (kWh) |
+| `_external.{typ}.{n}.label` | Benutzerdefinierte Bezeichnung |
+| `_external.{typ}.{n}.mode` | Anzeigemodus (integrate/separate) |
+| `_external.{typ}.{n}.sourceId` | Fremde State-ID oder Formel |
 
 ### Steuerungs-States (`control.*`)
 

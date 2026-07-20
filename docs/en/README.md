@@ -123,6 +123,26 @@ The API connector can rebuild historical measurement data (AllTime totals) from 
 | Subscription key | Azure API subscription key | — |
 | Include sections | Which data sections to request | battery,meter |
 
+### External Sources
+
+![External Sources](media/admin-external.png)
+
+Add external energy sources from other ioBroker adapters — e.g. balcony PV, additional inverters, standalone wallboxes, heat pumps, or external battery storage. Values are normalized to Watts and shown in the dashboard energy flow diagram and live power chart.
+
+Use the **State ID Lookup** picker to find the state ID of the datapoint you want to use, then paste it into the table.
+
+| Column | Description |
+|--------|-------------|
+| State ID / Formula | Single state ID (e.g. `solar.0.power`) or formula with `{stateId}` references (e.g. `{wallbox.0.l1_amps} * {wallbox.0.l1_volts}`) |
+| Type | PV, Consumer (wallbox, heat pump, etc.), or Battery |
+| Unit | W or kW — applied to the final value |
+| Mode | **Integrate** = add to SENEC total (single node). **Separate** = show as individual node in energy flow |
+| SOC State | (Battery only) State ID for the charge level (%) |
+| Capacity | (Battery only) Battery capacity in kWh — enables time estimates |
+| Label | Display name shown on the energy flow diagram |
+
+Formulas support `+ - * / ( )` operators. State IDs without curly braces are auto-detected if they contain math operators. For complex formulas, a dashboard-based configurator with interactive state pickers is planned.
+
 ### Appliance Control
 
 ![Appliance Control](media/admin-control.png)
@@ -328,6 +348,21 @@ mein-senec.de data is stored under `_meinsenec.*`:
 ### Connect States (`_connect.*`)
 
 SENEC.Connect data is stored under `_connect.Systems.{n}.*` with battery and meter subsections.
+
+### External States (`_external.*`)
+
+External source data is stored under `_external.{type}.{index}.*`:
+
+| State | Description |
+|-------|-------------|
+| `_external.pv.{n}.power` | External PV power (W) |
+| `_external.consumer.{n}.power` | External consumer power (W) |
+| `_external.battery.{n}.power` | External battery power (W, signed) |
+| `_external.battery.{n}.soc` | External battery state of charge (%) |
+| `_external.battery.{n}.capacity` | External battery capacity (kWh) |
+| `_external.{type}.{n}.label` | User-defined label |
+| `_external.{type}.{n}.mode` | Display mode (integrate/separate) |
+| `_external.{type}.{n}.sourceId` | Foreign state ID or formula |
 
 ### Control States (`control.*`)
 
