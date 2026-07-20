@@ -1,7 +1,7 @@
 "use strict";
 
 /* exported i18n, t */
-/* global document */
+/* global document, window */
 
 /**
  * Lightweight i18n runtime for the SENEC web dashboard.
