@@ -97,6 +97,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Debug & Logging: Per-connector matrix for all debug options (Local, API, mein-senec, Connect). Show polling, request/response logging, queue diagnostics, and diagnostic states can now be toggled independently per connector.
 - Web connector now has its own `web_debug_states` and `web_debug_log` options (previously shared with API).
 - Fix: jsonConfig staticText responsive attributes (W5508).
+- Documentation: Complete rewrite of README, English and German user guides with screenshots. Dashboard `?lang=` URL parameter for language override.
 
 ### 2.9.3 (2026-07-17)
 - Fix: jsonConfig staticText missing size attributes (E5507)
