@@ -13,7 +13,7 @@
     "extFinderHelp": "Use this picker to find the state ID of the datapoint you want to use. Copy the ID from the field below and paste it into the table's 'State ID / Formula' column.",
     "extFinderPick": "Browse states...",
     "externalSourcesTable": "External Sources Configuration",
-    "extFormulaHelp": "Enter a single state ID (e.g. <code>solar.0.power</code>) or a formula with <code>{stateId}</code> references (e.g. <code>{wallbox.0.l1_amps} * {wallbox.0.l1_volts}</code>). For complex formulas, use the dashboard configurator which provides an interactive state picker and formula builder.",
+    "extFormulaHelp": "Enter a single state ID (e.g. solar.0.power) or a formula with {stateId} references (e.g. {wallbox.0.l1_amps} * {wallbox.0.l1_volts}). Formulas support + - * / ( ) operators. State IDs without curly braces are auto-detected.",
     "extColStateId": "State ID / Formula",
     "extColType": "Type",
     "extColUnit": "Unit",

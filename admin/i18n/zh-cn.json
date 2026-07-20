@@ -138,7 +138,7 @@
     "extFinderHelp": "使用此选择器查找要使用的数据点的状态 ID。从下面的字段复制 ID 并将其粘贴到表的“州 ID/公式”列中。",
     "extFinderLabel": "州 ID 查找",
     "extFinderPick": "浏览州...",
-    "extFormulaHelp": "输入单个州 ID（例如 <code>solar.0.power</code>）或带有 <code>{stateId}</code> 引用的公式（例如 <code>{wallbox.0.l1_amps} * {wallbox.0.l1_volts}</code>）。对于复杂的公式，请使用仪表板配置器，它提供交互式状态选择器和公式生成器。",
+    "extFormulaHelp": "输入单个状态 ID（例如 Solar.0.power）或带有 {stateId} 引用的公式（例如 {wallbox.0.l1_amps} * {wallbox.0.l1_volts}）。公式支持 + - * / ( ) 运算符。不带花括号的状态 ID 是自动检测的。",
     "extModeIntegrate": "整合",
     "extModeSeparate": "分离",
     "extTypeBattery": "电池",

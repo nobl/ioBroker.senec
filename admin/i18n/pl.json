@@ -138,7 +138,7 @@
     "extFinderHelp": "Użyj tego selektora, aby znaleźć identyfikator stanu punktu danych, którego chcesz użyć. Skopiuj identyfikator z poniższego pola i wklej go w kolumnie „Stan ID / Formuła” w tabeli.",
     "extFinderLabel": "Wyszukiwanie identyfikatora stanu",
     "extFinderPick": "Przeglądaj stany...",
-    "extFormulaHelp": "Wprowadź identyfikator pojedynczego stanu (np. <code>solar.0.power</code>) lub formułę z odniesieniami <code>{stateId</code> (np. <code>{wallbox.0.l1_amps} * {wallbox.0.l1_volts</code>). W przypadku złożonych formuł użyj konfiguratora pulpitu nawigacyjnego, który udostępnia interaktywny selektor stanu i narzędzie do tworzenia formuł.",
+    "extFormulaHelp": "Wprowadź pojedynczy identyfikator stanu (np. solar.0.power) lub formułę z odniesieniami do {stateId} (np. {wallbox.0.l1_amps} * {wallbox.0.l1_volts}). Formuły obsługują operatory + - * / ( ). Identyfikatory stanów bez nawiasów klamrowych są wykrywane automatycznie.",
     "extModeIntegrate": "Zintegrować",
     "extModeSeparate": "Oddzielny",
     "extTypeBattery": "Bateria",
