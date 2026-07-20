@@ -1250,7 +1250,7 @@
 					"newLine": true,
 					"items": [
 						{
-							"type": "text",
+							"type": "objectId",
 							"attr": "stateId",
 							"title": "extColStateId",
 							"width": "35%",
@@ -1291,7 +1291,7 @@
 							"default": "integrate"
 						},
 						{
-							"type": "text",
+							"type": "objectId",
 							"attr": "socStateId",
 							"title": "extColSoc",
 							"width": "12%",
