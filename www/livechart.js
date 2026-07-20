@@ -304,115 +304,128 @@ var liveChart = {
 			return;
 		}
 
-		// Build lookup maps for other fields by timestamp
-		var buildMap = function (arr) {
-			var map = {};
+		// Build sorted array of {ts, val} from history result
+		var toSorted = function (arr) {
 			if (!arr) {
-				return map;
+				return [];
 			}
+			var result = [];
 			for (var i = 0; i < arr.length; i++) {
 				if (arr[i] && arr[i].ts) {
-					map[arr[i].ts] = arr[i].val;
+					result.push({ ts: arr[i].ts, val: arr[i].val });
 				}
 			}
-			return map;
+			result.sort(function (a, b) {
+				return a.ts - b.ts;
+			});
+			return result;
 		};
 
-		// Find nearest value in a map (within 30s tolerance)
-		var findNearest = function (map, ts) {
-			if (map[ts] !== undefined) {
-				return map[ts];
-			}
-			// Check within ±30s
-			for (var offset = 1; offset <= 30000; offset += 1000) {
-				if (map[ts + offset] !== undefined) {
-					return map[ts + offset];
-				}
-				if (map[ts - offset] !== undefined) {
-					return map[ts - offset];
+		// Collect all unique timestamps from all states, build unified timeline
+		// Uses carry-forward: if a state has no new value at a timestamp, use its last known value
+		var mergeTimelines = function (fields) {
+			// Collect all timestamps
+			var allTs = {};
+			for (var fi = 0; fi < fields.length; fi++) {
+				for (var di = 0; di < fields[fi].data.length; di++) {
+					allTs[fields[fi].data[di].ts] = true;
 				}
 			}
-			return null;
+			var timestamps = Object.keys(allTs)
+				.map(Number)
+				.sort(function (a, b) {
+					return a - b;
+				});
+
+			// Build points with carry-forward
+			var points = [];
+			var lastVals = {};
+			for (var ffi = 0; ffi < fields.length; ffi++) {
+				lastVals[fields[ffi].name] = 0;
+			}
+
+			// Create index pointers for each field
+			var ptrs = [];
+			for (var pi = 0; pi < fields.length; pi++) {
+				ptrs.push(0);
+			}
+
+			for (var ti = 0; ti < timestamps.length; ti++) {
+				var t = timestamps[ti];
+				var point = { ts: t };
+
+				for (var fj = 0; fj < fields.length; fj++) {
+					var f = fields[fj];
+					// Advance pointer to current or past timestamp
+					while (ptrs[fj] < f.data.length && f.data[ptrs[fj]].ts <= t) {
+						lastVals[f.name] = Number(f.data[ptrs[fj]].val) || 0;
+						ptrs[fj]++;
+					}
+					point[f.name] = lastVals[f.name];
+				}
+				points.push(point);
+			}
+			return points;
 		};
 
 		var points = [];
 
 		if (src === "local") {
-			var pvMap = buildMap(pending.pv);
-			var batMap = buildMap(pending.battery);
-			var gridMap = buildMap(pending.grid);
-			var wbMap = buildMap(pending.wallbox);
-
-			for (var i = 0; i < primary.length; i++) {
-				var ts = primary[i].ts;
-				if (!ts) {
-					continue;
-				}
-				var pv = findNearest(pvMap, ts);
-				var bat = findNearest(batMap, ts);
-				var grid = findNearest(gridMap, ts);
-				var wb = findNearest(wbMap, ts);
+			var merged = mergeTimelines([
+				{ name: "house", data: toSorted(pending.house) },
+				{ name: "pv", data: toSorted(pending.pv) },
+				{ name: "battery", data: toSorted(pending.battery) },
+				{ name: "grid", data: toSorted(pending.grid) },
+				{ name: "wallbox", data: toSorted(pending.wallbox) },
+			]);
+			for (var i = 0; i < merged.length; i++) {
 				points.push({
-					ts: ts,
-					pv: Math.abs(Number(pv) || 0),
-					battery: Number(bat) || 0,
-					grid: Number(grid) || 0,
-					house: Math.abs(Number(primary[i].val) || 0),
-					wallbox: Number(wb) || 0,
+					ts: merged[i].ts,
+					pv: Math.abs(merged[i].pv),
+					battery: merged[i].battery,
+					grid: merged[i].grid,
+					house: Math.abs(merged[i].house),
+					wallbox: merged[i].wallbox,
 				});
 			}
 		} else if (src === "api") {
-			var pvMapA = buildMap(pending.pv);
-			var chargeMap = buildMap(pending.charge);
-			var dischargeMap = buildMap(pending.discharge);
-			var drawMap = buildMap(pending.draw);
-			var feedMap = buildMap(pending.feed);
-			var wbMapA = buildMap(pending.wallbox);
-
-			for (var ai = 0; ai < primary.length; ai++) {
-				var ats = primary[ai].ts;
-				if (!ats) {
-					continue;
-				}
-				var aPv = findNearest(pvMapA, ats);
-				var aCharge = findNearest(chargeMap, ats);
-				var aDischarge = findNearest(dischargeMap, ats);
-				var aDraw = findNearest(drawMap, ats);
-				var aFeed = findNearest(feedMap, ats);
-				var aWb = findNearest(wbMapA, ats);
+			var apiMerged = mergeTimelines([
+				{ name: "house", data: toSorted(pending.house) },
+				{ name: "pv", data: toSorted(pending.pv) },
+				{ name: "charge", data: toSorted(pending.charge) },
+				{ name: "discharge", data: toSorted(pending.discharge) },
+				{ name: "draw", data: toSorted(pending.draw) },
+				{ name: "feed", data: toSorted(pending.feed) },
+				{ name: "wallbox", data: toSorted(pending.wallbox) },
+			]);
+			for (var ai = 0; ai < apiMerged.length; ai++) {
+				var am = apiMerged[ai];
 				points.push({
-					ts: ats,
-					pv: Number(aPv) || 0,
-					battery: (Number(aCharge) || 0) - (Number(aDischarge) || 0),
-					grid: (Number(aDraw) || 0) - (Number(aFeed) || 0),
-					house: Number(primary[ai].val) || 0,
-					wallbox: Number(aWb) || 0,
+					ts: am.ts,
+					pv: am.pv,
+					battery: am.charge - am.discharge,
+					grid: am.draw - am.feed,
+					house: am.house,
+					wallbox: am.wallbox,
 				});
 			}
 		} else if (src === "web") {
-			var pvMapW = buildMap(pending.pv);
-			var chargeMapW = buildMap(pending.charge);
-			var dischargeMapW = buildMap(pending.discharge);
-			var gridImportMap = buildMap(pending.gridImport);
-			var gridExportMap = buildMap(pending.gridExport);
-
-			for (var wi = 0; wi < primary.length; wi++) {
-				var wts = primary[wi].ts;
-				if (!wts) {
-					continue;
-				}
-				var wPv = findNearest(pvMapW, wts);
-				var wCharge = findNearest(chargeMapW, wts);
-				var wDischarge = findNearest(dischargeMapW, wts);
-				var wGridImp = findNearest(gridImportMap, wts);
-				var wGridExp = findNearest(gridExportMap, wts);
-				// Web values are in kW — multiply by 1000
+			var webMerged = mergeTimelines([
+				{ name: "house", data: toSorted(pending.house) },
+				{ name: "pv", data: toSorted(pending.pv) },
+				{ name: "charge", data: toSorted(pending.charge) },
+				{ name: "discharge", data: toSorted(pending.discharge) },
+				{ name: "gridImport", data: toSorted(pending.gridImport) },
+				{ name: "gridExport", data: toSorted(pending.gridExport) },
+			]);
+			for (var wi = 0; wi < webMerged.length; wi++) {
+				var wm = webMerged[wi];
 				points.push({
-					ts: wts,
-					pv: (Number(wPv) || 0) * 1000,
-					battery: ((Number(wCharge) || 0) - (Number(wDischarge) || 0)) * 1000,
-					grid: ((Number(wGridImp) || 0) - (Number(wGridExp) || 0)) * 1000,
-					house: (Number(primary[wi].val) || 0) * 1000,
+					ts: wm.ts,
+					pv: wm.pv * 1000,
+					battery: (wm.charge - wm.discharge) * 1000,
+					grid: (wm.gridImport - wm.gridExport) * 1000,
+					house: wm.house * 1000,
 					wallbox: 0,
 				});
 			}
