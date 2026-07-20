@@ -51,7 +51,10 @@ var i18n = {
 	 * @param {string|null} sysLang - ioBroker system language or null
 	 */
 	detectLanguage: function (sysLang) {
-		var lang = sysLang || navigator.language || "en";
+		// URL parameter override: ?lang=en
+		var urlParams = new URLSearchParams(window.location.search);
+		var urlLang = urlParams.get("lang");
+		var lang = urlLang || sysLang || navigator.language || "en";
 
 		// Normalize: "de-DE" -> "de", "zh-CN" -> "zh-cn"
 		lang = lang.toLowerCase();

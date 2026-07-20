@@ -11,21 +11,40 @@
 
 **Tests:** ![Test and Release](https://github.com/nobl/ioBroker.senec/workflows/Test%20and%20Release/badge.svg)
 
-## senec adapter for ioBroker
+## SENEC adapter for ioBroker
 
-[Dokumentation DE](docs/de/README.md)<br>
-[Documentation EN](docs/en/README.md)
+[Dokumentation DE](docs/de/README.md) | [Documentation EN](docs/en/README.md)
 
-Initially targeted at the Senec Home V2.1 System.
-In the Senec.Home system, only selected values can be changed by the adapter. Use of this functionality is at your own risk and must be activated manually in the configuration beforehand.
-Senec currently also no longer provides a reliable way to influence peak shaving via the web interface. For this purpose, mein-senec.de must be used.
-Whether other systems (e.g. V3) also work with it depends on whether they are also based on lala.cgi and provide the same JSON information.
-Even with integration into the Senec.Clound it is not guaranteed that the data can still be retrieved via the web interface (for this please report your experiences).
+Monitor and control your SENEC home battery storage system from ioBroker. The adapter connects via four independent data sources — use one or combine them for maximum coverage:
 
-Adapter supports local polling via lala.cgi and polling via Web API.
+| Connector | Data source | Update speed | Key capabilities |
+|-----------|------------|-------------|-----------------|
+| **Local** | lala.cgi (LAN) | 10s real-time | Full BMS data, grid meter, wallbox, appliance control |
+| **SENEC App API** | Cloud API | 6 min | Dashboard, measurements, system details |
+| **mein-senec.de** | Web portal | 6 min | Measurements, emergency power, peak shaving, SG-Ready, sockets |
+| **SENEC.Connect** | Azure API | 5 min | Battery & meter data |
 
-Systems that might work:
-* Senec Home 4.0,  6.0, 8.0, 10.0 / Blei
+### Built-in Dashboard
+
+Access a full-featured dashboard at `http://<iobroker>:8082/senec/` — no extra adapters needed. Dark/light theme, 11 languages.
+
+![Dashboard Overview](docs/en/media/dashboard-overview.png)
+
+**Overview** — Live energy flow diagram with animated power paths, battery SOC gauge, operating mode, period totals with autarky. Live power curve chart with history backfill from InfluxDB/SQL/History. Event timeline showing today's warnings and errors.
+
+**Battery** — State of health per pack, charge cycles, cell voltage heatmap (spot imbalance at a glance), temperatures.
+
+**Charts** — Measurement history (hourly/daily/monthly/yearly) with comparison mode, stacked view, battery level overlay, data table, PNG export.
+
+**System** — Grid quality (frequency, per-phase voltage/power/current), PV string details, wallbox info, feature flags, firmware versions.
+
+**Control** — Force charge, appliance reboot, emergency power reserve, peak shaving, SG-Ready, switchable sockets, wallbox control. Available via Local and/or mein-senec.de.
+
+**Logs** — Browse device logs by date, filter by level/category, live mode, download.
+
+### Supported Systems
+
+* Senec Home 4.0, 6.0, 8.0, 10.0 / Blei
 * Senec Home 5.0, 7.5, 10.0, 15.0 / Lithium
 * Senec Home V2 5.0, 7.5, 10.0
 * Senec Home V2.1
@@ -40,14 +59,15 @@ Systems that might work:
 * OEM LG
 * Solarinvert Storage 10.0 / Blei
 
-SENEC Systems that don't provide a local webinterface might be monitored by using the API functionality only. Please contact the developer if you have any input on this.
+Systems without a local web interface can be monitored using the API and/or Web connectors. Please contact the developer if you have input on additional system compatibility.
+
+### Getting Started
+
+See the [full documentation](docs/en/README.md) for installation, configuration, and feature details.
 
 ## Disclaimer
 **All product and company names or logos are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them or any associated subsidiaries! This personal project is maintained in spare time and has no business goal.**
 
-## Usage
-You can find a description of some sample states in documentation. All states of this adapter are read-only states unless they are control-states to control the appliance.
-   
 ### Deprecated / Removed states
 * STATISTIC
 * Display
