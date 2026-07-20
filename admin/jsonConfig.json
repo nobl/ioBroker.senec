@@ -1173,6 +1173,150 @@
 				}
 			}
 		},
+		"_externalSources": {
+			"type": "panel",
+			"label": "externalSources",
+			"items": {
+				"_extInfo": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "externalSourcesInfo",
+					"newLine": true
+				},
+				"_extFinderLabel": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"label": "extFinderLabel",
+					"style": { "fontSize": "1rem", "fontWeight": "bold", "paddingTop": "12px" },
+					"newLine": true
+				},
+				"_extFinderHelp": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "extFinderHelp",
+					"newLine": true
+				},
+				"_ext_finder": {
+					"type": "objectId",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "extFinderPick",
+					"default": "",
+					"newLine": true
+				},
+				"_extTableLabel": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"label": "externalSourcesTable",
+					"style": { "fontSize": "1rem", "fontWeight": "bold", "paddingTop": "12px" },
+					"newLine": true
+				},
+				"_extFormulaHelp": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "extFormulaHelp",
+					"newLine": true
+				},
+				"external_sources": {
+					"type": "table",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"newLine": true,
+					"items": [
+						{
+							"type": "text",
+							"attr": "stateId",
+							"title": "extColStateId",
+							"width": "35%",
+							"default": ""
+						},
+						{
+							"type": "select",
+							"attr": "sourceType",
+							"title": "extColType",
+							"width": "12%",
+							"options": [
+								{ "label": "PV", "value": "pv" },
+								{ "label": "extTypeConsumer", "value": "consumer" },
+								{ "label": "extTypeBattery", "value": "battery" }
+							],
+							"default": "pv"
+						},
+						{
+							"type": "select",
+							"attr": "unit",
+							"title": "extColUnit",
+							"width": "10%",
+							"options": [
+								{ "label": "W", "value": "W" },
+								{ "label": "kW", "value": "kW" }
+							],
+							"default": "W"
+						},
+						{
+							"type": "select",
+							"attr": "mode",
+							"title": "extColMode",
+							"width": "15%",
+							"options": [
+								{ "label": "extModeIntegrate", "value": "integrate" },
+								{ "label": "extModeSeparate", "value": "separate" }
+							],
+							"default": "integrate"
+						},
+						{
+							"type": "text",
+							"attr": "socStateId",
+							"title": "extColSoc",
+							"width": "12%",
+							"default": ""
+						},
+						{
+							"type": "number",
+							"attr": "capacity",
+							"title": "extColCapacity",
+							"width": "8%",
+							"default": 0,
+							"min": 0,
+							"step": 0.1
+						},
+						{
+							"type": "text",
+							"attr": "label",
+							"title": "extColLabel",
+							"width": "10%",
+							"default": ""
+						}
+					]
+				}
+			}
+		},
 		"_debug": {
 			"type": "panel",
 			"label": "debugAndLogging",

@@ -487,10 +487,20 @@ var liveChart = {
 		}
 		this._lastTs = now;
 
+		// Include separate external sources in totals for live chart
+		var extPv = 0;
+		var extBat = 0;
+		for (var epi = 0; epi < (d.externalPv || []).length; epi++) {
+			extPv += Math.abs(d.externalPv[epi].power);
+		}
+		for (var ebi = 0; ebi < (d.externalBattery || []).length; ebi++) {
+			extBat += d.externalBattery[ebi].power;
+		}
+
 		this.buffer.push({
 			ts: now,
-			pv: d.pv || 0,
-			battery: d.battery || 0, // signed: + charge, - discharge
+			pv: (d.pv || 0) + extPv,
+			battery: (d.battery || 0) + extBat, // signed: + charge, - discharge
 			grid: d.grid || 0, // signed: + import, - export
 			house: d.house || 0,
 			wallbox: d.wallbox || 0,

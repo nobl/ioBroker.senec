@@ -32,6 +32,10 @@ var energyFlow = {
 		autarkyWeek: null, // % self-sufficiency this week (web only)
 		autarkyAll: null, // % self-sufficiency lifetime (web only)
 		batteryCapacity: null, // kWh — design capacity for time estimates
+		// External sources (separate mode only — integrate mode values already added to pv/wallbox/battery)
+		externalPv: [], // array of { power, label }
+		externalConsumer: [], // array of { power, label }
+		externalBattery: [], // array of { power, label } — signed: +charge/-discharge
 	},
 
 	source: "auto", // "auto", "local", "api", "web"
@@ -160,6 +164,9 @@ var energyFlow = {
 			this.data.autarkyCurrent = this.calcAutarky(this.data.house, this.data.grid);
 		}
 
+		// External energy sources
+		this.updateExternalSources(states);
+
 		// Day totals — try API first (Wh), then Web (kWh)
 		this.updateDayTotals(states);
 
@@ -219,6 +226,62 @@ var energyFlow = {
 		this.data.soc = this.getStateOrNull(states, `${pfx}acculevel.now`); // % — no conversion
 		this.data.wallbox = 0; // Web connector doesn't provide live wallbox power
 		this.data.batteryCapacity = this.resolveBatteryCapacity(states);
+	},
+
+	/**
+	 * Read external energy source states and integrate/separate them.
+	 * Integrate mode: adds to data.pv / data.wallbox / data.battery.
+	 * Separate mode: populates data.externalPv / externalConsumer / externalBattery arrays.
+	 *
+	 * @param {object} states - ioBroker state values
+	 */
+	updateExternalSources: function (states) {
+		this.data.externalPv = [];
+		this.data.externalConsumer = [];
+		this.data.externalBattery = [];
+
+		var types = ["pv", "consumer", "battery"];
+		for (var ti = 0; ti < types.length; ti++) {
+			var type = types[ti];
+			for (var idx = 0; idx < 10; idx++) {
+				var pfx = `_external.${type}.${idx}.`;
+				var power = this.getStateOrNull(states, `${pfx}power`);
+				if (power === null) {
+					break; // no more sources of this type
+				}
+
+				var mode = states[`${pfx}mode`] || "integrate";
+				var label = states[`${pfx}label`] || "";
+				var val = Number(power);
+
+				var entry = { power: val, label: label };
+				if (type === "battery") {
+					entry.soc = this.getStateOrNull(states, `${pfx}soc`);
+					entry.capacity = this.getStateOrNull(states, `${pfx}capacity`);
+				}
+
+				if (mode === "integrate") {
+					// Add directly to the SENEC total
+					if (type === "pv") {
+						this.data.pv += Math.abs(val);
+					} else if (type === "consumer") {
+						// Consumers always show as separate nodes (they have individual labels)
+						this.data.externalConsumer.push(entry);
+					} else if (type === "battery") {
+						this.data.battery += val; // signed
+					}
+				} else {
+					// Separate mode for diagram rendering
+					if (type === "pv") {
+						this.data.externalPv.push(entry);
+					} else if (type === "consumer") {
+						this.data.externalConsumer.push(entry);
+					} else if (type === "battery") {
+						this.data.externalBattery.push(entry);
+					}
+				}
+			}
+		}
 	},
 
 	updateDayTotals: function (states) {
@@ -483,14 +546,21 @@ var energyFlow = {
 		return `${h}h ${m}m`;
 	},
 
-	/** Estimate battery time remaining or time to full */
-	getBatteryTimeEstimate: function () {
-		var d = this.data;
-		if (d.soc === null || d.batteryCapacity === null || d.batteryCapacity <= 0) {
+	/**
+	 * Estimate battery time remaining or time to full
+	 *
+	 * @param soc
+	 * @param capacity
+	 * @param power
+	 */
+	getBatteryTimeEstimate: function (soc, capacity, power) {
+		// Use passed params or fall back to main battery data
+		var s = soc !== undefined ? soc : this.data.soc;
+		var cap = capacity !== undefined ? capacity : this.data.batteryCapacity;
+		var powerW = power !== undefined ? power : this.data.battery;
+		if (s === null || cap === null || cap <= 0) {
 			return null;
 		}
-		var cap = d.batteryCapacity; // kWh
-		var powerW = d.battery;
 		var absW = Math.abs(powerW);
 		if (absW < 50) {
 			return null;
@@ -498,13 +568,13 @@ var energyFlow = {
 
 		if (powerW < 0) {
 			// Discharging — time until empty
-			var remainKwh = (cap * d.soc) / 100;
+			var remainKwh = (cap * s) / 100;
 			var hours = remainKwh / (absW / 1000);
 			var formatted = this.formatTime(hours);
 			return formatted ? t("battery_until_empty", { time: formatted }) : null;
 		}
 		// Charging — time until full
-		var neededKwh = (cap * (100 - d.soc)) / 100;
+		var neededKwh = (cap * (100 - s)) / 100;
 		var hoursToFull = neededKwh / (absW / 1000);
 		var fmtd = this.formatTime(hoursToFull);
 		return fmtd ? t("battery_until_full", { time: fmtd }) : null;
@@ -575,22 +645,163 @@ var energyFlow = {
 	},
 
 	renderFlowDiagram: function (d) {
-		var hasWallbox = d.wallbox > 10 || d.todayWallbox > 0;
-		var w = 520,
-			h = hasWallbox ? 440 : 380;
-		var cx = w / 2,
-			cy = h / 2;
+		// Individual external PV sources
+		var pvSources = [];
+		var extPvPower = 0;
+		for (var epi = 0; epi < d.externalPv.length; epi++) {
+			var pvPow = Math.abs(d.externalPv[epi].power);
+			extPvPower += pvPow;
+			if (pvPow > 10) {
+				pvSources.push({
+					power: pvPow,
+					label: d.externalPv[epi].label || `Ext. PV ${epi + 1}`,
+				});
+			}
+		}
+		var hasSeparatePv = pvSources.length > 0;
 
-		// Node positions — diamond layout
-		var nodes = {
-			pv: { x: cx, y: 55 },
-			house: { x: w - 80, y: cy },
-			battery: { x: cx, y: h - 75 },
-			grid: { x: 80, y: cy },
-		};
+		// Individual consumers (each gets its own node)
+		var consumers = [];
+		for (var ewi = 0; ewi < d.externalConsumer.length; ewi++) {
+			var conPower = Math.abs(d.externalConsumer[ewi].power);
+			if (conPower > 10) {
+				consumers.push({
+					power: conPower,
+					label: d.externalConsumer[ewi].label || `Consumer ${ewi + 1}`,
+				});
+			}
+		}
+
+		// Individual external batteries
+		var batSources = [];
+		for (var ebi = 0; ebi < d.externalBattery.length; ebi++) {
+			var batPow = d.externalBattery[ebi].power;
+			if (Math.abs(batPow) > 10) {
+				batSources.push({
+					power: batPow,
+					label: d.externalBattery[ebi].label || `Ext. Bat ${ebi + 1}`,
+					soc: d.externalBattery[ebi].soc,
+					capacity: d.externalBattery[ebi].capacity,
+				});
+			}
+		}
+		var hasWallbox = d.wallbox > 10 || d.todayWallbox > 0;
+
+		// Total PV for flow math (includes all PV regardless of mode — separate PV still produces)
+		var totalPv = d.pv + extPvPower;
+
+		// Collect right-side nodes (branch from house)
+		var rightNodeList = [];
 		if (hasWallbox) {
-			nodes.wallbox = { x: w - 80, y: h - 75 };
-			nodes.house.y = cy - 20;
+			rightNodeList.push("wallbox");
+		}
+		for (var ci = 0; ci < consumers.length; ci++) {
+			rightNodeList.push(`consumer_${ci}`);
+		}
+
+		// Collect bottom nodes
+		var bottomNodeList = ["battery"];
+		for (var bni = 0; bni < batSources.length; bni++) {
+			bottomNodeList.push(`extBat_${bni}`);
+		}
+
+		// Zigzag layout: single column, alternating left/right indent
+		// Horizontal row layout: fills a row, overflow wraps to next row
+		// direction: -1 = overflow upward (PV), +1 = overflow downward (batteries)
+		var rowLayout = function (count, anchorX, anchorY, spaceX, rowSpaceY, maxPerRow, direction) {
+			var perRow = Math.min(count, maxPerRow);
+			var rows = Math.ceil(count / perRow);
+			var positions = [];
+			var placed = 0;
+			for (var row = rows - 1; row >= 0; row--) {
+				var inRow = Math.min(perRow, count - placed);
+				var rowW = (inRow - 1) * spaceX;
+				for (var col = 0; col < inRow; col++) {
+					positions.push({
+						x: anchorX - rowW / 2 + col * spaceX,
+						y: anchorY + row * rowSpaceY * direction,
+					});
+					placed++;
+				}
+			}
+			return positions;
+		};
+
+		// Zigzag layout for right-side nodes (consumers)
+		var zigzagLayout = function (count, anchorX, anchorY, indentX, spaceY) {
+			var positions = [];
+			for (var gi = 0; gi < count; gi++) {
+				positions.push({
+					x: anchorX + (gi % 2 === 1 ? indentX : 0),
+					y: anchorY + (gi - (count - 1) / 2) * spaceY,
+				});
+			}
+			return positions;
+		};
+
+		// Sizing
+		var topPvCount = hasSeparatePv ? 1 + pvSources.length : 0;
+		var rightCount = rightNodeList.length;
+		var bottomCount = bottomNodeList.length;
+		var pvMaxPerRow = 4;
+		var batMaxPerRow = 4;
+		var pvRows = hasSeparatePv ? Math.ceil(topPvCount / pvMaxPerRow) : 0;
+		var batRows = Math.ceil(bottomCount / batMaxPerRow);
+
+		// SVG dimensions
+		var extraRight = rightCount > 0 ? 140 : 0;
+		var pvRowW = hasSeparatePv ? Math.min(topPvCount, pvMaxPerRow) * 140 + 100 : 0;
+		var batRowW = Math.min(bottomCount, batMaxPerRow) * 100 + 100;
+		var baseW = Math.max(520, pvRowW, batRowW);
+		var w = baseW + extraRight;
+		var extraTop = pvRows > 0 ? pvRows * 80 + 10 : 0;
+		var extraBottom = batSources.length > 0 ? 90 + (batRows - 1) * 80 : batRows > 1 ? (batRows - 1) * 80 : 0;
+		var rightH = rightCount > 1 ? (rightCount - 1) * 80 : 0;
+		var baseH = Math.max(380, 280 + rightH);
+		var h = baseH + extraTop + extraBottom;
+		var coreW = w - extraRight;
+		var cx = coreW / 2;
+		var topY = extraTop + 55;
+		var cy = extraTop + 190;
+
+		// Node positions — diamond core
+		var nodes = {};
+		if (hasSeparatePv) {
+			// PV sources in rows, bottom row at y=extraTop-25, overflow upward
+			var pvBaseY = extraTop - 25;
+			var pvPos = rowLayout(topPvCount, cx, pvBaseY, 140, 80, pvMaxPerRow, -1);
+			nodes.senecPv = pvPos[0];
+			for (var pni = 0; pni < pvSources.length; pni++) {
+				nodes[`extPv_${pni}`] = pvPos[pni + 1];
+			}
+			nodes.pv = { x: cx, y: topY }; // production node
+		} else {
+			nodes.pv = { x: cx, y: topY };
+		}
+		nodes.grid = { x: 80, y: cy };
+		nodes.house = { x: coreW - 80, y: cy };
+
+		// Bottom nodes — batteries
+		var hasBatSummary = batSources.length > 0;
+		if (hasBatSummary) {
+			// Summary node at the diamond position, individual batteries below
+			nodes.batSummary = { x: cx, y: baseH + extraTop - 75 };
+			var batIndY = baseH + extraTop - 75 + 90;
+			var botPos = rowLayout(bottomCount, cx, batIndY, 120, 80, batMaxPerRow, 1);
+			for (var bi = 0; bi < bottomNodeList.length; bi++) {
+				nodes[bottomNodeList[bi]] = botPos[bi];
+			}
+		} else {
+			nodes[bottomNodeList[0]] = { x: cx, y: baseH + extraTop - 75 };
+		}
+
+		// Right-side nodes — zigzag to the right of house
+		if (rightCount > 0) {
+			var rightAnchorX = coreW + extraRight / 2 - 20;
+			var rPos = zigzagLayout(rightCount, rightAnchorX, cy, 40, 80);
+			for (var ri = 0; ri < rightNodeList.length; ri++) {
+				nodes[rightNodeList[ri]] = rPos[ri];
+			}
 		}
 
 		var svg = `<svg class="energy-flow-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
@@ -607,58 +818,125 @@ var energyFlow = {
 		svg += "</defs>";
 
 		// Flow paths (curved, behind nodes)
-		// Decompose signed values into directional flows
 		var gridExport = d.grid < 0 ? Math.abs(d.grid) : 0;
 		var gridImport = d.grid > 0 ? d.grid : 0;
 		var batDischarge = d.battery < 0 ? Math.abs(d.battery) : 0;
 		var batCharge = d.battery > 0 ? d.battery : 0;
 
-		// Allocate flows using standard home energy priority:
-		// PV → House first, then PV → Battery, then PV → Grid (surplus)
-		// Battery → House (remaining demand), then Battery → Grid (forced export)
-		// Grid → House (shortfall), Grid → Battery (if charging from grid)
-		var pvToHouse = Math.min(d.pv, d.house);
-		var pvToBat = Math.min(batCharge, Math.max(0, d.pv - pvToHouse));
-		var pvToGrid = Math.max(0, d.pv - pvToHouse - pvToBat);
+		// Flow math uses totalPv (SENEC + external) for allocation
+		var pvToHouse = Math.min(totalPv, d.house);
+		var pvToBat = Math.min(batCharge, Math.max(0, totalPv - pvToHouse));
+		var pvToGrid = Math.max(0, totalPv - pvToHouse - pvToBat);
 
 		var houseRemaining = Math.max(0, d.house - pvToHouse);
 		var gridToHouse = Math.min(gridImport, houseRemaining);
 		var batToHouse = Math.min(batDischarge, Math.max(0, houseRemaining - gridToHouse));
 		var batToGrid = Math.max(0, Math.min(gridExport - pvToGrid, batDischarge - batToHouse));
-
 		var gridToBat = Math.min(Math.max(0, gridImport - gridToHouse), Math.max(0, batCharge - pvToBat));
 
-		// Render flow paths
+		// The PV flow origin node — production node if separate PV, else PV node
+		var pvFlowOrigin = nodes.pv;
+
+		// Separate PV: each source → Production node
+		if (hasSeparatePv) {
+			if (d.pv > 10) {
+				svg += this.renderCurvedFlow(nodes.senecPv, nodes.pv, "#f9a825", d.pv);
+			}
+			for (var pvfi = 0; pvfi < pvSources.length; pvfi++) {
+				var pvfNode = nodes[`extPv_${pvfi}`];
+				if (pvfNode && pvSources[pvfi].power > 10) {
+					svg += this.renderCurvedFlow(pvfNode, nodes.pv, "#f9a825", pvSources[pvfi].power);
+				}
+			}
+		}
+
+		// The battery flow node — summary if external batteries, else direct
+		var batFlowNode = hasBatSummary ? nodes.batSummary : nodes.battery;
+
+		// Production/PV → House, Battery, Grid
 		if (pvToHouse > 10) {
-			svg += this.renderCurvedFlow(nodes.pv, nodes.house, "#f9a825", pvToHouse);
+			svg += this.renderCurvedFlow(pvFlowOrigin, nodes.house, "#f9a825", pvToHouse);
 		}
 		if (pvToBat > 10) {
-			svg += this.renderCurvedFlow(nodes.pv, nodes.battery, "#f9a825", pvToBat, -30);
+			svg += this.renderCurvedFlow(pvFlowOrigin, batFlowNode, "#f9a825", pvToBat, -30);
 		}
 		if (pvToGrid > 10) {
-			svg += this.renderCurvedFlow(nodes.pv, nodes.grid, "#42a5f5", pvToGrid, 30);
+			svg += this.renderCurvedFlow(pvFlowOrigin, nodes.grid, "#42a5f5", pvToGrid, 30);
 		}
 		if (batToHouse > 10) {
-			svg += this.renderCurvedFlow(nodes.battery, nodes.house, "#4caf50", batToHouse);
+			svg += this.renderCurvedFlow(batFlowNode, nodes.house, "#4caf50", batToHouse);
 		}
 		if (batToGrid > 10) {
-			svg += this.renderCurvedFlow(nodes.battery, nodes.grid, "#42a5f5", batToGrid, 30);
+			svg += this.renderCurvedFlow(batFlowNode, nodes.grid, "#42a5f5", batToGrid, 30);
 		}
 		if (gridToBat > 10) {
-			svg += this.renderCurvedFlow(nodes.grid, nodes.battery, "#ef5350", gridToBat, 30);
+			svg += this.renderCurvedFlow(nodes.grid, batFlowNode, "#ef5350", gridToBat, 30);
 		}
 		if (gridToHouse > 10) {
 			svg += this.renderCurvedFlow(nodes.grid, nodes.house, "#ef5350", gridToHouse);
 		}
+
 		// House → Wallbox
 		if (hasWallbox && d.wallbox > 10) {
 			svg += this.renderCurvedFlow(nodes.house, nodes.wallbox, "#ab47bc", d.wallbox);
 		}
+		// House → External consumers (one flow per consumer)
+		for (var cfi = 0; cfi < consumers.length; cfi++) {
+			var conNode = nodes[`consumer_${cfi}`];
+			if (conNode) {
+				svg += this.renderCurvedFlow(nodes.house, conNode, "#ff7043", consumers[cfi].power);
+			}
+		}
 
-		// Node circles with icons
-		svg += this.renderNode(nodes.pv, "sun", t("energy_pv"), this.formatPower(d.pv), "#f9a825", d.pv > 10);
+		// Battery summary flows — individual batteries ↔ summary node
+		if (hasBatSummary) {
+			// SENEC battery → summary
+			if (Math.abs(d.battery) > 10) {
+				svg += this.renderCurvedFlow(nodes.battery, nodes.batSummary, "#4caf50", Math.abs(d.battery));
+			}
+			// External batteries → summary
+			for (var bfi = 0; bfi < batSources.length; bfi++) {
+				var batNode = nodes[`extBat_${bfi}`];
+				if (batNode && Math.abs(batSources[bfi].power) > 10) {
+					svg += this.renderCurvedFlow(batNode, nodes.batSummary, "#4caf50", Math.abs(batSources[bfi].power));
+				}
+			}
+		}
+
+		// Node circles — PV
+		if (hasSeparatePv) {
+			svg += this.renderNode(nodes.senecPv, "sun", "SENEC PV", this.formatPower(d.pv), "#f9a825", d.pv > 10);
+			for (var pvni = 0; pvni < pvSources.length; pvni++) {
+				var pvnNode = nodes[`extPv_${pvni}`];
+				if (pvnNode) {
+					svg += this.renderNode(
+						pvnNode,
+						"sun",
+						pvSources[pvni].label,
+						this.formatPower(pvSources[pvni].power),
+						"#f9a825",
+						pvSources[pvni].power > 10,
+					);
+				}
+			}
+			svg += this.renderNode(nodes.pv, "sun", t("energy_pv"), this.formatPower(totalPv), "#e6a200", totalPv > 10);
+		} else {
+			svg += this.renderNode(nodes.pv, "sun", t("energy_pv"), this.formatPower(d.pv), "#f9a825", d.pv > 10);
+		}
+
 		svg += this.renderNode(nodes.house, "house", t("energy_house"), this.formatPower(d.house), "#ff7043", true);
-		svg += this.renderBatteryNode(nodes.battery, d.soc, d.battery);
+		if (hasBatSummary) {
+			// Summary battery node (total power)
+			var totalBatPower = d.battery;
+			for (var tbi = 0; tbi < batSources.length; tbi++) {
+				totalBatPower += batSources[tbi].power;
+			}
+			svg += this.renderBatteryNode(nodes.batSummary, null, totalBatPower, t("energy_battery"));
+			// Individual SENEC battery
+			svg += this.renderBatteryNode(nodes.battery, d.soc, d.battery, "SENEC");
+		} else {
+			svg += this.renderBatteryNode(nodes.battery, d.soc, d.battery);
+		}
 		svg += this.renderNode(
 			nodes.grid,
 			"grid",
@@ -668,7 +946,7 @@ var energyFlow = {
 			Math.abs(d.grid) > 10,
 		);
 
-		if (hasWallbox) {
+		if (hasWallbox && (d.wallbox > 10 || d.todayWallbox > 0)) {
 			svg += this.renderNode(
 				nodes.wallbox,
 				"wallbox",
@@ -677,6 +955,33 @@ var energyFlow = {
 				"#ab47bc",
 				d.wallbox > 10,
 			);
+		}
+		for (var cni = 0; cni < consumers.length; cni++) {
+			var conNodeR = nodes[`consumer_${cni}`];
+			if (conNodeR) {
+				svg += this.renderNode(
+					conNodeR,
+					"house",
+					consumers[cni].label,
+					this.formatPower(consumers[cni].power),
+					"#ff7043",
+					true,
+				);
+			}
+		}
+		// Node circles — external batteries
+		for (var batni = 0; batni < batSources.length; batni++) {
+			var batNNode = nodes[`extBat_${batni}`];
+			if (batNNode) {
+				var bCap = batSources[batni].capacity;
+				svg += this.renderBatteryNode(
+					batNNode,
+					batSources[batni].soc,
+					batSources[batni].power,
+					batSources[batni].label,
+					bCap > 0 ? bCap : null,
+				);
+			}
 		}
 
 		svg += "</svg>";
@@ -712,7 +1017,7 @@ var energyFlow = {
 		return svg;
 	},
 
-	renderBatteryNode: function (pos, soc, power) {
+	renderBatteryNode: function (pos, soc, power, customLabel, capacity) {
 		var r = 36;
 		var socRounded = soc !== null ? Math.round(soc) : null;
 		var color = "#4caf50";
@@ -751,13 +1056,13 @@ var energyFlow = {
 		svg += `<text x="${pos.x}" y="${pos.y + 10}" text-anchor="middle" fill="var(--color-text)" font-size="13" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${this.formatPower(power)}</text>`;
 
 		// Label below: "Battery · 86%"  + optional time estimate
-		var label = t("energy_battery");
+		var label = customLabel || t("energy_battery");
 		if (socRounded !== null) {
 			label += ` \u00b7 ${socRounded}%`;
 		}
 		svg += `<text x="${pos.x}" y="${pos.y + r + 16}" text-anchor="middle" fill="var(--color-text-secondary)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${label}</text>`;
 
-		var timeEst = this.getBatteryTimeEstimate();
+		var timeEst = this.getBatteryTimeEstimate(soc, capacity, power);
 		if (timeEst) {
 			svg += `<text x="${pos.x}" y="${pos.y + r + 32}" text-anchor="middle" fill="#999999" font-size="11" font-style="italic" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${timeEst}</text>`;
 		}

@@ -249,6 +249,7 @@
     "connect_subscription_key": "",
     "connect_interval": 300,
     "connect_include": "battery,meter,evse,bessNameplate",
+    "external_sources": [],
     "webInstance": "*"
   },
   "encryptedNative": [

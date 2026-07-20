@@ -439,6 +439,13 @@ class Senec extends utils.Adapter {
 				await this.subscribeStatesAsync("ENERGY.STAT_STATE");
 				await this.subscribeStatesAsync("SYS_UPDATE.USER_REBOOT_DEVICE");
 			}
+
+			// External energy sources (PV, consumers, batteries from other adapters)
+			const extSources = Array.isArray(this.config.external_sources) ? this.config.external_sources : [];
+			await this.cleanupExternalStates(extSources);
+			if (extSources.length > 0) {
+				await this.initExternalSources(extSources);
+			}
 		} catch (error) {
 			this.logError(error, "❌ Adapter startup failed");
 			await this.setState("info.connection", false, true);
@@ -451,6 +458,52 @@ class Senec extends utils.Adapter {
 	 */
 	async onStateChange(id, state) {
 		if (!state) {
+			return;
+		}
+
+		// External energy source updates (ack=true from foreign adapters)
+		if (state.ack && this._externalSourceMap && this._externalSourceMap[id]) {
+			const ext = this._externalSourceMap[id];
+
+			// SOC state update
+			if (ext.isSoc) {
+				await this.doState(`${ext.pfx}.soc`, Number(state.val) || 0, "Battery SOC", "%", false);
+				return;
+			}
+
+			// Formula reference — re-evaluate all formulas that use this state
+			if (ext.formulas) {
+				for (const f of ext.formulas) {
+					const result = await this.evaluateFormula(f.formula, f.refs);
+					let value = result;
+					if (f.unit === "kW") {
+						value *= 1000;
+					}
+					const normalized = f.sourceType === "battery" ? value : Math.abs(value);
+					await this.doState(
+						`_external.${f.sourceType}.${f.index}.power`,
+						normalized,
+						`${f.label || f.sourceType} power`,
+						"W",
+						false,
+					);
+				}
+				return;
+			}
+
+			// Simple single state
+			let value = Number(state.val) || 0;
+			if (ext.unit === "kW") {
+				value *= 1000;
+			}
+			const normalized = ext.sourceType === "battery" ? value : Math.abs(value);
+			await this.doState(
+				`_external.${ext.sourceType}.${ext.index}.power`,
+				normalized,
+				`${ext.label || ext.sourceType} power`,
+				"W",
+				false,
+			);
 			return;
 		}
 
@@ -619,6 +672,219 @@ class Senec extends utils.Adapter {
 					ack: true,
 				});
 			}
+		}
+	}
+
+	/**
+	 * Remove _external.* states that no longer match the current config.
+	 *
+	 * @param {Array} sources - Current external sources config
+	 */
+	async cleanupExternalStates(sources) {
+		// Build set of expected channel prefixes: _external.{type}.{index}
+		const expected = new Set();
+		const counters = { pv: 0, consumer: 0, battery: 0 };
+		for (const src of sources) {
+			if (src.stateId && src.sourceType && counters[src.sourceType] !== undefined) {
+				expected.add(`${this.namespace}._external.${src.sourceType}.${counters[src.sourceType]}`);
+				counters[src.sourceType]++;
+			}
+		}
+
+		this.log.debug(`[External] Expected channels: ${[...expected].join(", ") || "(none)"}`);
+
+		// Find all existing _external.* objects and delete orphans
+		try {
+			const allObjects = await this.getAdapterObjectsAsync();
+			const nsParts = this.namespace.split(".").length; // e.g. "senec.0" → 2
+			const toDelete = [];
+			for (const id in allObjects) {
+				if (id.includes("._external.")) {
+					// Extract the channel prefix: namespace + _external + type + index
+					const parts = id.split(".");
+					const channelId = parts.slice(0, nsParts + 3).join(".");
+					if (!expected.has(channelId)) {
+						toDelete.push(id);
+					} else {
+						this.log.debug(`[External] Keeping: ${id} (matches ${channelId})`);
+					}
+				}
+			}
+			for (const id of toDelete) {
+				const shortId = id.replace(`${this.namespace}.`, "");
+				this.log.info(`[External] Cleaning up orphaned state: ${shortId}`);
+				await this.delObjectAsync(shortId);
+			}
+			if (toDelete.length > 0) {
+				this.log.info(`[External] Cleaned up ${toDelete.length} orphaned states`);
+			}
+		} catch (err) {
+			this.log.warn(`[External] Cleanup failed: ${err.message}`);
+		}
+	}
+
+	/**
+	 * Initialize external energy sources — subscribe to foreign states and create mirror objects.
+	 *
+	 * @param {Array<{stateId: string, sourceType: string, unit: string, mode: string, label: string, socStateId?: string, capacity?: number}>} sources
+	 */
+	async initExternalSources(sources) {
+		this._externalSourceMap = {}; // single stateId → config
+		this._externalFormulas = []; // formula entries with parsed refs
+		const counters = { pv: 0, consumer: 0, battery: 0 };
+		const validTypes = ["pv", "consumer", "battery"];
+
+		for (const src of sources) {
+			if (!src.stateId || !src.sourceType) {
+				continue;
+			}
+			if (!validTypes.includes(src.sourceType)) {
+				this.log.warn(`[External] Unsupported source type: ${src.sourceType}`);
+				continue;
+			}
+
+			const idx = counters[src.sourceType]++;
+			const pfx = `_external.${src.sourceType}.${idx}`;
+			// Detect formula: has {stateId} references OR contains math operators
+			const hasExplicitRefs = src.stateId.includes("{");
+			const hasMathOps = /[+\-*/]/.test(src.stateId);
+			const isFormula = hasExplicitRefs || (hasMathOps && src.stateId.includes("."));
+
+			// Auto-wrap bare state IDs in formulas without braces:
+			// "a.0.x * a.0.y" → "{a.0.x} * {a.0.y}"
+			let formulaStr = src.stateId;
+			if (isFormula && !hasExplicitRefs) {
+				formulaStr = src.stateId.replace(/([a-zA-Z_][\w-]*(?:\.[\w-]+)+)/g, "{$1}");
+				this.log.info(`[External] Auto-wrapped formula: ${src.stateId} → ${formulaStr}`);
+			}
+
+			await this.setObjectNotExistsAsync(pfx, {
+				type: "channel",
+				common: { name: src.label || `External ${src.sourceType} ${idx}` },
+				native: {},
+			});
+			await this.doState(`${pfx}.power`, 0, `${src.label || src.sourceType} power`, "W", false);
+			await this.doState(`${pfx}.sourceId`, formulaStr, "Foreign state ID or formula", "", false);
+			await this.doState(`${pfx}.label`, src.label || "", "User label", "", false);
+			await this.doState(`${pfx}.mode`, src.mode || "integrate", "Display mode", "", false);
+
+			// Battery SOC and capacity (optional)
+			if (src.sourceType === "battery") {
+				if (src.socStateId) {
+					await this.doState(`${pfx}.soc`, 0, `${src.label || "Battery"} SOC`, "%", false);
+					this._externalSourceMap[src.socStateId] = {
+						isSoc: true,
+						pfx: pfx,
+					};
+					try {
+						await this.subscribeForeignStatesAsync(src.socStateId);
+						this.log.info(`[External] SOC subscribed: ${src.socStateId} → ${pfx}.soc`);
+					} catch (err) {
+						this.log.warn(`[External] Failed to subscribe to SOC state ${src.socStateId}: ${err.message}`);
+					}
+				}
+				if (src.capacity && src.capacity > 0) {
+					await this.doState(
+						`${pfx}.capacity`,
+						src.capacity,
+						`${src.label || "Battery"} capacity`,
+						"kWh",
+						false,
+					);
+				}
+			}
+
+			if (isFormula) {
+				// Parse {stateId} references from formula
+				const refs = [];
+				const regex = /\{([^}]+)\}/g;
+				let match;
+				while ((match = regex.exec(formulaStr)) !== null) {
+					refs.push(match[1]);
+				}
+
+				const formulaEntry = {
+					formula: formulaStr,
+					refs: refs,
+					sourceType: src.sourceType,
+					index: idx,
+					unit: src.unit || "W",
+					label: src.label || "",
+					pfx: pfx,
+				};
+				this._externalFormulas.push(formulaEntry);
+
+				// Subscribe to all referenced states and map them to this formula
+				for (const ref of refs) {
+					try {
+						await this.subscribeForeignStatesAsync(ref);
+						// Map each ref to the formula entry for recalculation
+						if (!this._externalSourceMap[ref]) {
+							this._externalSourceMap[ref] = { formulas: [] };
+						}
+						if (this._externalSourceMap[ref].formulas) {
+							this._externalSourceMap[ref].formulas.push(formulaEntry);
+						}
+					} catch (err) {
+						this.log.warn(`[External] Failed to subscribe to formula ref ${ref}: ${err.message}`);
+					}
+				}
+				this.log.info(`[External] Formula → ${pfx}: ${src.stateId} (${refs.length} refs)`);
+			} else {
+				// Simple single state
+				this._externalSourceMap[src.stateId] = {
+					sourceType: src.sourceType,
+					index: idx,
+					unit: src.unit || "W",
+					label: src.label || "",
+				};
+
+				try {
+					await this.subscribeForeignStatesAsync(src.stateId);
+					this.log.info(
+						`[External] Subscribed to ${src.stateId} → ${pfx} (${src.sourceType}, ${src.unit}, ${src.mode})`,
+					);
+				} catch (err) {
+					this.log.warn(`[External] Failed to subscribe to ${src.stateId}: ${err.message}`);
+				}
+			}
+		}
+
+		this.log.info(
+			`[External] Initialized ${counters.pv} PV, ${counters.consumer} consumer, ${counters.battery} battery external sources`,
+		);
+	}
+
+	/**
+	 * Evaluate a formula expression with {stateId} references.
+	 * Only supports + - * / ( ) and numeric state values. Safe — no eval().
+	 *
+	 * @param {string} formula - Formula string with {stateId} references
+	 * @param {Array<string>} refs - State ID references extracted from formula
+	 * @returns {Promise<number>} Evaluated result
+	 */
+	async evaluateFormula(formula, refs) {
+		// Substitute {stateId} with current values
+		let expr = formula;
+		for (const ref of refs) {
+			const state = await this.getForeignStateAsync(ref);
+			const val = state && state.val !== null && state.val !== undefined ? Number(state.val) : 0;
+			expr = expr.replace(new RegExp(`\\{${ref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\}`, "g"), String(val));
+		}
+
+		// Safe math evaluation — only allow digits, operators, parentheses, dots, spaces, minus
+		expr = expr.replace(/\s/g, "");
+		if (!/^[0-9+\-*/().]+$/.test(expr)) {
+			this.log.warn(`[External] Invalid formula expression: ${expr}`);
+			return 0;
+		}
+
+		try {
+			// Use Function constructor (safer than eval, no access to scope)
+			return Number(new Function(`"use strict"; return (${expr})`)()) || 0;
+		} catch (err) {
+			this.log.warn(`[External] Formula evaluation error: ${err.message}`);
+			return 0;
 		}
 	}
 
@@ -1221,6 +1487,10 @@ function resolveStateAttrKey(fullKey, attrs) {
 const ValueTyping = (key, value) => {
 	if (state_attr[key]?.stringtype) {
 		return typeof value === "string" ? value : String(value);
+	}
+	// States with a physical unit or explicit numtype must always be numeric
+	if (state_attr[key]?.numtype || (state_attr[key]?.unit && !isNaN(value))) {
+		return Number(value) || 0;
 	}
 	if (!isNaN(value)) {
 		const num = Number(value);

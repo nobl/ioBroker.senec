@@ -958,6 +958,7 @@
 
 		<div id="content" style="display: none;">
 			<div class="tab-content active" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview">
+				<div id="sim-panel" style="display:none"></div>
 				<div class="grid" id="dashboard"></div>
 				<div id="livechart-container"></div>
 				<div id="timeline-container"></div>
@@ -1227,6 +1228,7 @@
 			renderDashboard: function () {
 				var el = document.getElementById("dashboard");
 				energyFlow.update(this.states, this.connectors);
+				if (window._sim) window._sim.apply();
 				el.innerHTML = energyFlow.render(systemInfo.renderOperatingMode(this.states));
 
 				var liveEl = document.getElementById("livechart-container");
@@ -1679,5 +1681,108 @@
 
 		document.addEventListener("DOMContentLoaded", function () { app.init(); });
 	</script>
+<script>
+	// Simulation mode — activated by ?sim=true
+	(function () {
+		if (new URLSearchParams(window.location.search).get("sim") !== "true") return;
+
+		var sim = {
+			sources: [],
+			nextId: 0,
+			add: function (type) {
+				this.sources.push({
+					id: this.nextId++,
+					type: type,
+					mode: type === "consumer" ? "separate" : "separate",
+					power: type === "battery" ? 500 : 1000,
+					label: type + " " + this.nextId,
+					soc: type === "battery" ? 50 : null,
+					capacity: type === "battery" ? 5 : null,
+				});
+				this.renderPanel();
+				app.renderDashboard();
+			},
+			remove: function (id) {
+				this.sources = this.sources.filter(function (s) { return s.id !== id; });
+				this.renderPanel();
+				app.renderDashboard();
+			},
+			update: function (id, field, val) {
+				for (var i = 0; i < this.sources.length; i++) {
+					if (this.sources[i].id === id) {
+						this.sources[i][field] = Number(val);
+						break;
+					}
+				}
+				app.renderDashboard();
+			},
+			apply: function () {
+				var d = energyFlow.data;
+				d.externalPv = [];
+				d.externalConsumer = [];
+				d.externalBattery = [];
+				for (var i = 0; i < this.sources.length; i++) {
+					var s = this.sources[i];
+					var entry = { power: s.power, label: s.label };
+					if (s.type === "battery") {
+						entry.soc = s.soc;
+						entry.capacity = s.capacity;
+					}
+					if (s.mode === "integrate") {
+						if (s.type === "pv") d.pv += Math.abs(s.power);
+						else if (s.type === "battery") d.battery += s.power;
+						// consumers always separate
+						else if (s.type === "consumer") d.externalConsumer.push(entry);
+					} else {
+						if (s.type === "pv") d.externalPv.push(entry);
+						else if (s.type === "consumer") d.externalConsumer.push(entry);
+						else if (s.type === "battery") d.externalBattery.push(entry);
+					}
+				}
+			},
+			renderPanel: function () {
+				var el = document.getElementById("sim-panel");
+				var html = '<div class="card" style="background:#2a1a3e;border:2px solid #9c27b0">';
+				html += '<div class="energy-header"><h2 style="color:#ce93d8">Simulation Mode</h2></div>';
+				html += '<div style="padding:8px">';
+				html += '<button onclick="window._sim.add(\'pv\')" style="margin:4px;padding:4px 12px;cursor:pointer">+ PV</button>';
+				html += '<button onclick="window._sim.add(\'consumer\')" style="margin:4px;padding:4px 12px;cursor:pointer">+ Consumer</button>';
+				html += '<button onclick="window._sim.add(\'battery\')" style="margin:4px;padding:4px 12px;cursor:pointer">+ Battery</button>';
+
+				for (var i = 0; i < this.sources.length; i++) {
+					var s = this.sources[i];
+					html += '<div style="margin:6px 0;display:flex;align-items:center;gap:8px">';
+					html += '<span style="color:#ce93d8;min-width:70px">' + s.type + '</span>';
+					html += '<select onchange="window._sim.sources[' + i + '].mode=this.value;app.renderDashboard()" style="width:80px">';
+					html += '<option value="separate"' + (s.mode === "separate" ? " selected" : "") + '>Separate</option>';
+					html += '<option value="integrate"' + (s.mode === "integrate" ? " selected" : "") + '>Integrate</option>';
+					html += '</select>';
+					html += '<input value="' + s.label + '" style="width:80px" onchange="window._sim.sources[' + i + '].label=this.value;app.renderDashboard()">';
+					html += '<label style="color:#aaa">W:</label>';
+					html += '<input type="range" min="-5000" max="5000" value="' + s.power + '" oninput="window._sim.update(' + s.id + ',\'power\',this.value);this.nextElementSibling.textContent=this.value+\'W\'" style="width:120px">';
+					html += '<span style="color:#fff;min-width:60px">' + s.power + 'W</span>';
+
+					if (s.type === "battery") {
+						html += '<label style="color:#aaa">SOC:</label>';
+						html += '<input type="range" min="0" max="100" value="' + s.soc + '" oninput="window._sim.update(' + s.id + ',\'soc\',this.value)" style="width:80px">';
+						html += '<span style="color:#fff">' + s.soc + '%</span>';
+						html += '<label style="color:#aaa">Cap:</label>';
+						html += '<input type="number" value="' + s.capacity + '" min="0" step="0.5" style="width:50px" onchange="window._sim.update(' + s.id + ',\'capacity\',this.value)">';
+						html += '<span style="color:#aaa">kWh</span>';
+					}
+
+					html += '<button onclick="window._sim.remove(' + s.id + ')" style="cursor:pointer;color:#f44336">X</button>';
+					html += '</div>';
+				}
+				html += '</div></div>';
+				el.innerHTML = html;
+			}
+		};
+
+		window._sim = sim;
+		document.getElementById("sim-panel").style.display = "block";
+		sim.renderPanel();
+	})();
+</script>
 </body>
 </html>
