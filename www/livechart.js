@@ -394,6 +394,21 @@ var liveChart = {
 
 		var points = [];
 
+		// Null-safe helpers for transforms
+		var nAbs = function (v) {
+			return v != null ? Math.abs(v) : null;
+		};
+		var nSub = function (a, b) {
+			return a != null && b != null ? a - b : a != null ? a : b != null ? -b : null;
+		};
+		var nMul = function (v, f) {
+			return v != null ? v * f : null;
+		};
+		var nSubMul = function (a, b, f) {
+			var d = nSub(a, b);
+			return d != null ? d * f : null;
+		};
+
 		if (src === "local") {
 			var merged = mergeTimelines([
 				{ name: "house", data: toSorted(pending.house) },
@@ -405,10 +420,10 @@ var liveChart = {
 			for (var i = 0; i < merged.length; i++) {
 				points.push({
 					ts: merged[i].ts,
-					pv: Math.abs(merged[i].pv),
+					pv: nAbs(merged[i].pv),
 					battery: merged[i].battery,
 					grid: merged[i].grid,
-					house: Math.abs(merged[i].house),
+					house: nAbs(merged[i].house),
 					wallbox: merged[i].wallbox,
 				});
 			}
@@ -427,8 +442,8 @@ var liveChart = {
 				points.push({
 					ts: am.ts,
 					pv: am.pv,
-					battery: am.charge - am.discharge,
-					grid: am.draw - am.feed,
+					battery: nSub(am.charge, am.discharge),
+					grid: nSub(am.draw, am.feed),
 					house: am.house,
 					wallbox: am.wallbox,
 				});
@@ -446,11 +461,11 @@ var liveChart = {
 				var wm = webMerged[wi];
 				points.push({
 					ts: wm.ts,
-					pv: wm.pv * 1000,
-					battery: (wm.charge - wm.discharge) * 1000,
-					grid: (wm.gridImport - wm.gridExport) * 1000,
-					house: wm.house * 1000,
-					wallbox: 0,
+					pv: nMul(wm.pv, 1000),
+					battery: nSubMul(wm.charge, wm.discharge, 1000),
+					grid: nSubMul(wm.gridImport, wm.gridExport, 1000),
+					house: nMul(wm.house, 1000),
+					wallbox: null,
 				});
 			}
 		}
@@ -464,14 +479,14 @@ var liveChart = {
 			return a.ts - b.ts;
 		});
 
-		// Strip leading all-zero points (adapter startup artifacts)
+		// Strip leading all-zero/null points (adapter startup artifacts)
 		while (
 			points.length > 0 &&
-			points[0].pv === 0 &&
-			points[0].battery === 0 &&
-			points[0].grid === 0 &&
-			points[0].house === 0 &&
-			points[0].wallbox === 0
+			(points[0].pv == null || points[0].pv === 0) &&
+			(points[0].battery == null || points[0].battery === 0) &&
+			(points[0].grid == null || points[0].grid === 0) &&
+			(points[0].house == null || points[0].house === 0) &&
+			(points[0].wallbox == null || points[0].wallbox === 0)
 		) {
 			points.shift();
 		}
