@@ -726,7 +726,7 @@ class Senec extends utils.Adapter {
 	/**
 	 * Initialize external energy sources — subscribe to foreign states and create mirror objects.
 	 *
-	 * @param {Array<{stateId: string, sourceType: string, unit: string, mode: string, label: string, socStateId?: string, capacity?: number}>} sources
+	 * @param {Array<{stateId: string, sourceType: string, unit: string, mode: string, label: string, socStateId?: string, capacity?: number}>} sources - external source configurations
 	 */
 	async initExternalSources(sources) {
 		this._externalSourceMap = {}; // single stateId → config

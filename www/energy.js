@@ -549,9 +549,9 @@ var energyFlow = {
 	/**
 	 * Estimate battery time remaining or time to full
 	 *
-	 * @param soc
-	 * @param capacity
-	 * @param power
+	 * @param {number} soc - state of charge (0-100)
+	 * @param {number} capacity - battery capacity in Wh
+	 * @param {number} power - current charge/discharge power in W
 	 */
 	getBatteryTimeEstimate: function (soc, capacity, power) {
 		// Use passed params or fall back to main battery data
