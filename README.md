@@ -91,6 +91,8 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
 ### 2.11.2 (2026-07-21)
 - Live chart: Linear interpolation for sparse history data instead of flat carry-forward. Smoother lines when SQL logs on change only.
 - Live chart: Skip history queries for states without a history adapter enabled (no more SQL warnings).
