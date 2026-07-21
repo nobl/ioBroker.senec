@@ -91,7 +91,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.11.1 (2026-07-21)
 - Live chart: Delta history loading — expanding the time window only fetches the missing range instead of reloading all data.
 
 ### 2.11.0 (2026-07-20)
@@ -128,10 +128,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Web: Secondary plant discovery and measurement polling. Control via `control.Plants.{id}.poll`.
 - AdaptiveRequestQueue: Optional per-request retry with configurable max attempts and logging.
 - Simplified `state_attr.js` from ~7000 to ~1080 lines (stripped redundant defaults, added type header comment).
-
-### 2.9.1 (2026-07-16)
-- Fix: jsonConfig validation error (`collapsed` not allowed on panel type)
-- Fix: Welcome screen tile color changed from green to SENEC blue
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
