@@ -342,9 +342,9 @@ var liveChart = {
 			return result;
 		};
 
-		// Merge all state timelines with linear interpolation for missing values.
-		// When a field has no data at a timestamp, linearly interpolate between
-		// its previous and next real values instead of flat carry-forward.
+		// Merge all state timelines — store null for fields without data at a timestamp.
+		// Each line is rendered independently from its own real data points,
+		// letting the monotone cubic spline handle smooth interpolation.
 		var mergeTimelines = function (fields) {
 			// Collect all timestamps
 			var allTs = {};
@@ -359,58 +359,18 @@ var liveChart = {
 					return a - b;
 				});
 
-			// Build sorted data arrays per field for interpolation lookups
-			var fieldData = [];
+			// Build value maps per field for exact lookup
+			var maps = [];
 			for (var mi = 0; mi < fields.length; mi++) {
-				var sorted = [];
+				var map = {};
 				for (var mdi = 0; mdi < fields[mi].data.length; mdi++) {
 					var d = fields[mi].data[mdi];
 					if (d && d.ts) {
-						sorted.push({ ts: d.ts, val: Number(d.val) || 0 });
+						map[d.ts] = Number(d.val) || 0;
 					}
 				}
-				sorted.sort(function (a, b) {
-					return a.ts - b.ts;
-				});
-				// Also build a quick lookup map for exact matches
-				var map = {};
-				for (var si = 0; si < sorted.length; si++) {
-					map[sorted[si].ts] = sorted[si].val;
-				}
-				fieldData.push({ sorted: sorted, map: map, ptr: 0 });
+				maps.push(map);
 			}
-
-			// Linear interpolation helper: find value for field at timestamp t
-			var interpolate = function (fd, t) {
-				// Exact match
-				if (fd.map[t] !== undefined) {
-					return fd.map[t];
-				}
-				var arr = fd.sorted;
-				if (arr.length === 0) {
-					return 0;
-				}
-				// Advance pointer to bracket t
-				while (fd.ptr < arr.length - 1 && arr[fd.ptr + 1].ts <= t) {
-					fd.ptr++;
-				}
-				var lo = fd.ptr;
-				// Before first data point
-				if (t <= arr[0].ts) {
-					return arr[0].val;
-				}
-				// After last data point
-				if (lo >= arr.length - 1) {
-					return arr[arr.length - 1].val;
-				}
-				// Interpolate between arr[lo] and arr[lo+1]
-				var t0 = arr[lo].ts,
-					t1 = arr[lo + 1].ts;
-				var v0 = arr[lo].val,
-					v1 = arr[lo + 1].val;
-				var frac = (t - t0) / (t1 - t0);
-				return v0 + (v1 - v0) * frac;
-			};
 
 			var points = [];
 			for (var ti = 0; ti < timestamps.length; ti++) {
@@ -418,10 +378,12 @@ var liveChart = {
 				var point = { ts: t };
 				var hasAny = false;
 				for (var fj = 0; fj < fields.length; fj++) {
-					if (fieldData[fj].map[t] !== undefined) {
+					if (maps[fj][t] !== undefined) {
+						point[fields[fj].name] = maps[fj][t];
 						hasAny = true;
+					} else {
+						point[fields[fj].name] = null;
 					}
-					point[fields[fj].name] = interpolate(fieldData[fj], t);
 				}
 				if (hasAny) {
 					points.push(point);
@@ -697,6 +659,9 @@ var liveChart = {
 					continue;
 				}
 				var val = data[di][lines[li]];
+				if (val == null) {
+					continue;
+				}
 				if (val > yMax) {
 					yMax = val;
 				}
@@ -793,9 +758,13 @@ var liveChart = {
 	renderLine: function (data, key, tMin, tRange, yMin, range, padL, padT, plotW, plotH) {
 		var points = [];
 		for (var i = 0; i < data.length; i++) {
+			var val = data[i][key];
+			if (val == null) {
+				continue;
+			}
 			var x = padL + ((data[i].ts - tMin) / tRange) * plotW;
-			var y = padT + plotH - ((data[i][key] - yMin) / range) * plotH;
-			points.push({ x: x, y: y, val: data[i][key] });
+			var y = padT + plotH - ((val - yMin) / range) * plotH;
+			points.push({ x: x, y: y, val: val });
 		}
 
 		if (points.length < 2) {
