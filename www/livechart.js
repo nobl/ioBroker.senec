@@ -49,6 +49,9 @@ var liveChart = {
 	/** History adapter instance (e.g. "influxdb.0") — discovered on init */
 	_historyInstance: null,
 
+	/** Oldest timestamp loaded from history — for delta loading on window expansion */
+	_historyOldestTs: Infinity,
+
 	/** Whether history backfill has been attempted */
 	_historyLoaded: false,
 
@@ -143,16 +146,19 @@ var liveChart = {
 	},
 
 	/**
-	 * Load historical data from the discovered history adapter
+	 * Load historical data from the discovered history adapter.
+	 * Supports delta loading — if startOverride/endOverride are given, only that range is fetched.
 	 *
 	 * @param {object} conn - socket.io connection
 	 * @param {string} namespace - adapter namespace
 	 * @param {string} src - active source ("local", "api", "web")
+	 * @param {number} [startOverride] - custom start timestamp (for delta loading)
+	 * @param {number} [endOverride] - custom end timestamp (for delta loading)
 	 */
-	_loadHistory: function (conn, namespace, src) {
+	_loadHistory: function (conn, namespace, src, startOverride, endOverride) {
 		var windowMs = this.window * 60 * 1000;
-		var start = Date.now() - windowMs;
-		var end = Date.now();
+		var start = startOverride != null ? startOverride : Date.now() - windowMs;
+		var end = endOverride != null ? endOverride : Date.now();
 		var instance = this._historyInstance;
 
 		if (src === "local") {
@@ -321,8 +327,8 @@ var liveChart = {
 			return result;
 		};
 
-		// Collect all unique timestamps from all states, build unified timeline
-		// Uses carry-forward: if a state has no new value at a timestamp, use its last known value
+		// Merge all state timelines — pass through actual values, null for missing.
+		// The SVG renderer's monotone cubic spline handles interpolation between points.
 		var mergeTimelines = function (fields) {
 			// Collect all timestamps
 			var allTs = {};
@@ -337,33 +343,42 @@ var liveChart = {
 					return a - b;
 				});
 
-			// Build points with carry-forward
-			var points = [];
-			var lastVals = {};
-			for (var ffi = 0; ffi < fields.length; ffi++) {
-				lastVals[fields[ffi].name] = 0;
+			// Build value maps per field for exact lookup
+			var maps = [];
+			for (var mi = 0; mi < fields.length; mi++) {
+				var map = {};
+				for (var mdi = 0; mdi < fields[mi].data.length; mdi++) {
+					var d = fields[mi].data[mdi];
+					if (d && d.ts) {
+						map[d.ts] = Number(d.val) || 0;
+					}
+				}
+				maps.push(map);
 			}
 
-			// Create index pointers for each field
-			var ptrs = [];
-			for (var pi = 0; pi < fields.length; pi++) {
-				ptrs.push(0);
+			var points = [];
+			var lastVals = {};
+			for (var lvi = 0; lvi < fields.length; lvi++) {
+				lastVals[lvi] = null;
 			}
 
 			for (var ti = 0; ti < timestamps.length; ti++) {
 				var t = timestamps[ti];
 				var point = { ts: t };
-
+				var hasAny = false;
 				for (var fj = 0; fj < fields.length; fj++) {
-					var f = fields[fj];
-					// Advance pointer to current or past timestamp
-					while (ptrs[fj] < f.data.length && f.data[ptrs[fj]].ts <= t) {
-						lastVals[f.name] = Number(f.data[ptrs[fj]].val) || 0;
-						ptrs[fj]++;
+					if (maps[fj][t] !== undefined) {
+						point[fields[fj].name] = maps[fj][t];
+						lastVals[fj] = maps[fj][t];
+						hasAny = true;
+					} else {
+						// Use last known value to avoid gaps in non-primary fields
+						point[fields[fj].name] = lastVals[fj] !== null ? lastVals[fj] : 0;
 					}
-					point[f.name] = lastVals[f.name];
 				}
-				points.push(point);
+				if (hasAny) {
+					points.push(point);
+				}
 			}
 			return points;
 		};
@@ -455,18 +470,26 @@ var liveChart = {
 			return;
 		}
 
-		// Remove any live points that overlap with history
-		var latestHistoryTs = points[points.length - 1].ts;
-		var liveStart = 0;
-		for (var li = 0; li < this.buffer.length; li++) {
-			if (this.buffer[li].ts > latestHistoryTs) {
-				liveStart = li;
-				break;
-			}
-			liveStart = this.buffer.length;
+		// Track oldest loaded timestamp for delta loading
+		if (points[0].ts < this._historyOldestTs) {
+			this._historyOldestTs = points[0].ts;
 		}
 
-		this.buffer = points.concat(this.buffer.slice(liveStart));
+		// Merge history into buffer — avoid duplicates, maintain sort order
+		var latestHistoryTs = points[points.length - 1].ts;
+		var oldestHistoryTs = points[0].ts;
+		// Find existing buffer points that are outside the new history range
+		var before = [];
+		var after = [];
+		for (var li = 0; li < this.buffer.length; li++) {
+			if (this.buffer[li].ts < oldestHistoryTs) {
+				before.push(this.buffer[li]);
+			} else if (this.buffer[li].ts > latestHistoryTs) {
+				after.push(this.buffer[li]);
+			}
+		}
+
+		this.buffer = before.concat(points, after);
 
 		// Trim to max
 		if (this.buffer.length > this.maxPoints) {
@@ -869,7 +892,21 @@ var liveChart = {
 	// --- Interaction handlers ---
 
 	setWindow: function (minutes) {
+		var oldWindow = this.window;
 		this.window = minutes;
+		// Load only the delta when expanding to a larger window
+		if (minutes > oldWindow && this._historyInstance) {
+			var src = energyFlow.resolveSource(app.connectors);
+			if (src) {
+				var now = Date.now();
+				var newStart = now - minutes * 60 * 1000;
+				// Only fetch the gap: from new window start to the oldest data we already have
+				var gapEnd = this._historyOldestTs < Infinity ? this._historyOldestTs : now;
+				if (newStart < gapEnd) {
+					this._loadHistory(app.conn, "senec.0", src, newStart, gapEnd);
+				}
+			}
+		}
 		app.renderDashboard();
 	},
 
