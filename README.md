@@ -42,6 +42,10 @@ Access a full-featured dashboard at `http://<iobroker>:8082/senec/` — no extra
 
 **Logs** — Browse device logs by date, filter by level/category, live mode, download.
 
+### External Energy Sources
+
+Integrate third-party PV inverters, consumers (wallbox, heat pump, etc.), and batteries from other ioBroker adapters into the SENEC dashboard. Values can be mapped directly from states or calculated via formulas (e.g. `{voltage.state} * {current.state}`). External sources appear in the energy flow diagram and live power chart — either added to SENEC totals or shown as separate nodes.
+
 ### Supported Systems
 
 * Senec Home 4.0, 6.0, 8.0, 10.0 / Blei
