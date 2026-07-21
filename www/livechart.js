@@ -170,43 +170,99 @@ var liveChart = {
 		}
 	},
 
-	_loadHistoryLocal: function (conn, namespace, instance, start, end) {
-		var keys = this._stateKeys.local;
-		var pending = { pv: null, battery: null, grid: null, house: null, wallbox: null };
-		var done = 0;
-		var total = 5;
+	/**
+	 * Query history for a list of fields, skipping states without history enabled.
+	 *
+	 * @param {object} conn - socket.io connection
+	 * @param {string} namespace - adapter namespace
+	 * @param {string} instance - history adapter instance
+	 * @param {number} start - query start timestamp
+	 * @param {number} end - query end timestamp
+	 * @param {Array<{name: string, key: string}>} fields - fields to query
+	 * @param {string} src - source type for _mergeHistory
+	 */
+	_queryHistoryFields: function (conn, namespace, instance, start, end, fields, src) {
+		var pending = {};
+		for (var pi = 0; pi < fields.length; pi++) {
+			pending[fields[pi].name] = null;
+		}
 
-		var queryOne = function (field, stateId) {
-			var fullId = `${namespace}.${stateId}`;
-			conn.emit(
-				"getHistory",
-				fullId,
-				{
-					instance: instance,
-					start: start,
-					end: end,
-					aggregate: "none",
-					returnNewestEntries: true,
-					removeBorderValues: true,
-					count: 2000,
-				},
-				function (err, result) {
-					if (!err && result) {
-						pending[field] = result;
+		// Check which states have history enabled, then query only those
+		var checked = 0;
+		var toQuery = [];
+
+		var checkOne = function (field) {
+			var fullId = `${namespace}.${field.key}`;
+			conn.emit("getObject", fullId, function (err, obj) {
+				if (
+					!err &&
+					obj &&
+					obj.common &&
+					obj.common.custom &&
+					obj.common.custom[instance] &&
+					obj.common.custom[instance].enabled
+				) {
+					toQuery.push(field);
+				}
+				checked++;
+				if (checked === fields.length) {
+					if (toQuery.length === 0) {
+						return;
 					}
-					done++;
-					if (done === total) {
-						liveChart._mergeHistory(pending, "local");
+					var done = 0;
+					var total = toQuery.length;
+					for (var qi = 0; qi < toQuery.length; qi++) {
+						(function (f) {
+							conn.emit(
+								"getHistory",
+								`${namespace}.${f.key}`,
+								{
+									instance: instance,
+									start: start,
+									end: end,
+									aggregate: "none",
+									returnNewestEntries: true,
+									removeBorderValues: true,
+									count: 2000,
+								},
+								function (histErr, result) {
+									if (!histErr && result) {
+										pending[f.name] = result;
+									}
+									done++;
+									if (done === total) {
+										liveChart._mergeHistory(pending, src);
+									}
+								},
+							);
+						})(toQuery[qi]);
 					}
-				},
-			);
+				}
+			});
 		};
 
-		queryOne("pv", keys.pv);
-		queryOne("battery", keys.battery);
-		queryOne("grid", keys.grid);
-		queryOne("house", keys.house);
-		queryOne("wallbox", keys.wallbox);
+		for (var fi = 0; fi < fields.length; fi++) {
+			checkOne(fields[fi]);
+		}
+	},
+
+	_loadHistoryLocal: function (conn, namespace, instance, start, end) {
+		var keys = this._stateKeys.local;
+		this._queryHistoryFields(
+			conn,
+			namespace,
+			instance,
+			start,
+			end,
+			[
+				{ name: "pv", key: keys.pv },
+				{ name: "battery", key: keys.battery },
+				{ name: "grid", key: keys.grid },
+				{ name: "house", key: keys.house },
+				{ name: "wallbox", key: keys.wallbox },
+			],
+			"local",
+		);
 	},
 
 	_loadHistoryApi: function (conn, namespace, instance, start, end) {
@@ -215,85 +271,44 @@ var liveChart = {
 			return;
 		}
 
-		// API has separate charge/discharge and draw/feedIn
 		var pfx = `_api.Anlagen.${energyFlow.apiAnlagenId}.Dashboard.currently.`;
-		var pending = { pv: null, house: null, charge: null, discharge: null, draw: null, feed: null, wallbox: null };
-		var done = 0;
-		var total = 7;
-
-		var queryOne = function (field, stateKey) {
-			var fullId = `${namespace}.${stateKey}`;
-			conn.emit(
-				"getHistory",
-				fullId,
-				{
-					instance: instance,
-					start: start,
-					end: end,
-					aggregate: "none",
-					returnNewestEntries: true,
-					removeBorderValues: true,
-					count: 2000,
-				},
-				function (err, result) {
-					if (!err && result) {
-						pending[field] = result;
-					}
-					done++;
-					if (done === total) {
-						liveChart._mergeHistory(pending, "api");
-					}
-				},
-			);
-		};
-
-		queryOne("pv", `${pfx}powerGenerationInW`);
-		queryOne("house", `${pfx}powerConsumptionInW`);
-		queryOne("charge", `${pfx}batteryChargeInW`);
-		queryOne("discharge", `${pfx}batteryDischargeInW`);
-		queryOne("draw", `${pfx}gridDrawInW`);
-		queryOne("feed", `${pfx}gridFeedInInW`);
-		queryOne("wallbox", `${pfx}wallboxInW`);
+		this._queryHistoryFields(
+			conn,
+			namespace,
+			instance,
+			start,
+			end,
+			[
+				{ name: "pv", key: `${pfx}powerGenerationInW` },
+				{ name: "house", key: `${pfx}powerConsumptionInW` },
+				{ name: "charge", key: `${pfx}batteryChargeInW` },
+				{ name: "discharge", key: `${pfx}batteryDischargeInW` },
+				{ name: "draw", key: `${pfx}gridDrawInW` },
+				{ name: "feed", key: `${pfx}gridFeedInInW` },
+				{ name: "wallbox", key: `${pfx}wallboxInW` },
+			],
+			"api",
+		);
 	},
 
 	_loadHistoryWeb: function (conn, namespace, instance, start, end) {
 		var wpfx = "_meinsenec.Status.";
-		var pending = { pv: null, house: null, charge: null, discharge: null, gridImport: null, gridExport: null };
-		var done = 0;
-		var total = 6;
-
-		var queryOne = function (field, stateKey) {
-			var fullId = `${namespace}.${stateKey}`;
-			conn.emit(
-				"getHistory",
-				fullId,
-				{
-					instance: instance,
-					start: start,
-					end: end,
-					aggregate: "none",
-					returnNewestEntries: true,
-					removeBorderValues: true,
-					count: 2000,
-				},
-				function (err, result) {
-					if (!err && result) {
-						pending[field] = result;
-					}
-					done++;
-					if (done === total) {
-						liveChart._mergeHistory(pending, "web");
-					}
-				},
-			);
-		};
-
-		queryOne("pv", `${wpfx}powergenerated.now`);
-		queryOne("house", `${wpfx}consumption.now`);
-		queryOne("charge", `${wpfx}accuexport.now`);
-		queryOne("discharge", `${wpfx}accuimport.now`);
-		queryOne("gridImport", `${wpfx}gridimport.now`);
-		queryOne("gridExport", `${wpfx}gridexport.now`);
+		this._queryHistoryFields(
+			conn,
+			namespace,
+			instance,
+			start,
+			end,
+			[
+				{ name: "pv", key: `${wpfx}powergenerated.now` },
+				{ name: "house", key: `${wpfx}consumption.now` },
+				{ name: "charge", key: `${wpfx}accuexport.now` },
+				{ name: "discharge", key: `${wpfx}accuimport.now` },
+				{ name: "gridImport", key: `${wpfx}gridimport.now` },
+				{ name: "gridExport", key: `${wpfx}gridexport.now` },
+			],
+			"web",
+		);
 	},
 
 	/**
@@ -327,8 +342,9 @@ var liveChart = {
 			return result;
 		};
 
-		// Merge all state timelines — pass through actual values, null for missing.
-		// The SVG renderer's monotone cubic spline handles interpolation between points.
+		// Merge all state timelines with linear interpolation for missing values.
+		// When a field has no data at a timestamp, linearly interpolate between
+		// its previous and next real values instead of flat carry-forward.
 		var mergeTimelines = function (fields) {
 			// Collect all timestamps
 			var allTs = {};
@@ -343,38 +359,69 @@ var liveChart = {
 					return a - b;
 				});
 
-			// Build value maps per field for exact lookup
-			var maps = [];
+			// Build sorted data arrays per field for interpolation lookups
+			var fieldData = [];
 			for (var mi = 0; mi < fields.length; mi++) {
-				var map = {};
+				var sorted = [];
 				for (var mdi = 0; mdi < fields[mi].data.length; mdi++) {
 					var d = fields[mi].data[mdi];
 					if (d && d.ts) {
-						map[d.ts] = Number(d.val) || 0;
+						sorted.push({ ts: d.ts, val: Number(d.val) || 0 });
 					}
 				}
-				maps.push(map);
+				sorted.sort(function (a, b) {
+					return a.ts - b.ts;
+				});
+				// Also build a quick lookup map for exact matches
+				var map = {};
+				for (var si = 0; si < sorted.length; si++) {
+					map[sorted[si].ts] = sorted[si].val;
+				}
+				fieldData.push({ sorted: sorted, map: map, ptr: 0 });
 			}
+
+			// Linear interpolation helper: find value for field at timestamp t
+			var interpolate = function (fd, t) {
+				// Exact match
+				if (fd.map[t] !== undefined) {
+					return fd.map[t];
+				}
+				var arr = fd.sorted;
+				if (arr.length === 0) {
+					return 0;
+				}
+				// Advance pointer to bracket t
+				while (fd.ptr < arr.length - 1 && arr[fd.ptr + 1].ts <= t) {
+					fd.ptr++;
+				}
+				var lo = fd.ptr;
+				// Before first data point
+				if (t <= arr[0].ts) {
+					return arr[0].val;
+				}
+				// After last data point
+				if (lo >= arr.length - 1) {
+					return arr[arr.length - 1].val;
+				}
+				// Interpolate between arr[lo] and arr[lo+1]
+				var t0 = arr[lo].ts,
+					t1 = arr[lo + 1].ts;
+				var v0 = arr[lo].val,
+					v1 = arr[lo + 1].val;
+				var frac = (t - t0) / (t1 - t0);
+				return v0 + (v1 - v0) * frac;
+			};
 
 			var points = [];
-			var lastVals = {};
-			for (var lvi = 0; lvi < fields.length; lvi++) {
-				lastVals[lvi] = null;
-			}
-
 			for (var ti = 0; ti < timestamps.length; ti++) {
 				var t = timestamps[ti];
 				var point = { ts: t };
 				var hasAny = false;
 				for (var fj = 0; fj < fields.length; fj++) {
-					if (maps[fj][t] !== undefined) {
-						point[fields[fj].name] = maps[fj][t];
-						lastVals[fj] = maps[fj][t];
+					if (fieldData[fj].map[t] !== undefined) {
 						hasAny = true;
-					} else {
-						// Use last known value to avoid gaps in non-primary fields
-						point[fields[fj].name] = lastVals[fj] !== null ? lastVals[fj] : 0;
 					}
+					point[fields[fj].name] = interpolate(fieldData[fj], t);
 				}
 				if (hasAny) {
 					points.push(point);
