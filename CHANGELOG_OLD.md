@@ -1,6 +1,21 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.9.2 (2026-07-16)
+- Fix: API energy flow discovery picked wrong Anlagen ID when stale states existed. Now prefers ID with Dashboard data.
+- Fix: Web AllTime measurements now update every slow tier cycle (default 24h) instead of only once per year.
+- Fix: Web poll loop could die silently if measurement polling threw an unhandled error.
+- Fix: Numeric string precision loss in ValueTyping (e.g. DEVICE_ID). Added `stringtype` support.
+- Dashboard: Grid quality card redesigned as table layout (Frequency, Total Power, per-phase Voltage/Power/Current). Support for EnFluRi 2 with automatic detection (non-zero voltage).
+- Dashboard: Battery tab — module status counts (active/charging/discharging), cycles & lifetime energy table per pack, per-pack voltage and current.
+- Dashboard: System tab — PV string details (MPP power/voltage/current), wallbox info (EV connected, smart charge, per-phase current), operating hours, installation date, installer contact.
+- Dashboard: Energy flow — live autarky badge (API native or calculated), week + lifetime autarky in period totals. Battery capacity auto-detected from API or Web (config as fallback). Fixed flow paths to show actual source/destination (e.g. battery→grid instead of PV→grid when PV is idle). Power labels on all flow paths. Tab switch now re-renders with latest state values.
+- Dashboard: Measurement charts — battery level (%) line overlay with comparison support and data table.
+- Web: Poll battery state (`getaccustate.php`) on medium tier — voltage, current, capacity, type, history.
+- Web: Secondary plant discovery and measurement polling. Control via `control.Plants.{id}.poll`.
+- AdaptiveRequestQueue: Optional per-request retry with configurable max attempts and logging.
+- Simplified `state_attr.js` from ~7000 to ~1080 lines (stripped redundant defaults, added type header comment).
+
 ## 2.9.1 (2026-07-16)
 - Fix: jsonConfig validation error (`collapsed` not allowed on panel type)
 - Fix: Welcome screen tile color changed from green to SENEC blue
