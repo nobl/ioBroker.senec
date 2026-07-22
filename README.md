@@ -92,7 +92,8 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
-- Fix: Web extension log proxy crash (ERR_HTTP_HEADERS_SENT) when SENEC device drops connection mid-request.
+- Fix: Web extension log proxy crash (ERR_HTTP_HEADERS_SENT / ERR_STREAM_WRITE_AFTER_END) when SENEC device drops connection or browser disconnects mid-request. Abort orphaned upstream requests on client disconnect.
+- Dashboard: Debounce rendering via requestAnimationFrame — prevents browser freezes from rapid state update bursts.
 
 ### 2.11.2 (2026-07-21)
 - Live chart: Linear interpolation for sparse history data instead of flat carry-forward. Smoother lines when SQL logs on change only.
