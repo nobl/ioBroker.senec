@@ -52,7 +52,6 @@
 					"type": "panel",
 					"label": "localPollingSettings",
 					"collapsable": true,
-					"collapsed": true,
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
