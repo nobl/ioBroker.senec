@@ -403,9 +403,7 @@ class Senec extends utils.Adapter {
 						.localPoll(this, false, 0)
 						.catch((e) => this.logError(e, "[Local] ❌ Initial local lowPrio poll failed"));
 				} else {
-					const retryDelay = this.config.interval * 1000 * 3; // 3x normal interval
-					this.log.warn(`[Local] Will retry connection in ${(retryDelay / 1000).toFixed(0)}s.`);
-					this.setTimeout(() => this.retryConnectorInit("local"), retryDelay);
+					this.retryConnectorInit("local");
 				}
 			} else {
 				this.log.warn("[Local] Usage of lala.cgi (local) not configured.");
@@ -417,11 +415,8 @@ class Senec extends utils.Adapter {
 				if (this.apiConnected) {
 					apiClient.apiPoll(this).catch((e) => this.logError(e, "[API] ❌ Initial API poll failed"));
 				} else {
-					const retryDelay = (this.config.api_interval || 6) * this.baseTime;
-					this.log.warn(
-						`[API] ❌ Initial connection failed. Will retry in ${(retryDelay / 1000).toFixed(0)}s. Check credentials.`,
-					);
-					this.setTimeout(() => this.retryConnectorInit("api"), retryDelay);
+					this.log.warn("[API] ❌ Initial connection failed. Check credentials.");
+					this.retryConnectorInit("api");
 				}
 			} else {
 				this.log.warn("[API] Usage of SENEC App API not configured.");
@@ -446,9 +441,7 @@ class Senec extends utils.Adapter {
 					await webClient.webInit(this);
 				} catch (e) {
 					this.logError(e, "[Web] ❌ mein-senec.de init failed");
-					const retryDelay = this.config.web_interval_status * this.baseTime;
-					this.log.warn(`[Web] Will retry in ${(retryDelay / 1000).toFixed(0)}s.`);
-					this.setTimeout(() => this.retryConnectorInit("web"), retryDelay);
+					this.retryConnectorInit("web");
 				}
 			}
 
@@ -589,7 +582,8 @@ class Senec extends utils.Adapter {
 				api: (this.config.api_interval || 6) * this.baseTime,
 				web: (this.config.web_interval_status || 6) * this.baseTime,
 			};
-			const delay = computeBackoffDelay(bases[connector], attempt);
+			// Floor: never retry faster than 10s (protect SENEC device from rapid requests)
+			const delay = Math.max(10000, computeBackoffDelay(bases[connector], attempt));
 			this.log.warn(`[${label}] Next retry (#${attempt + 2}) in ${(delay / 1000).toFixed(0)}s.`);
 			this.setTimeout(() => this.retryConnectorInit(connector, attempt + 1), delay);
 		}
