@@ -1225,7 +1225,20 @@
 				el.innerHTML = html;
 			},
 
+			_renderPending: false,
+
 			renderDashboard: function () {
+				// Debounce: coalesce rapid state updates into a single render per frame
+				if (this._renderPending) return;
+				this._renderPending = true;
+				var self = this;
+				requestAnimationFrame(function () {
+					self._renderPending = false;
+					self._doRender();
+				});
+			},
+
+			_doRender: function () {
 				var el = document.getElementById("dashboard");
 				energyFlow.update(this.states, this.connectors);
 				if (window._sim) window._sim.apply();
