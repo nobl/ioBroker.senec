@@ -24,6 +24,7 @@ const webClient = require(`${__dirname}/lib/web-client.js`);
 const localClient = require(`${__dirname}/lib/local-client.js`);
 const apiClient = require(`${__dirname}/lib/api-client.js`);
 const connectClient = require(`${__dirname}/lib/connect-client.js`);
+const { computeBackoffDelay } = require(`${__dirname}/lib/auth-helpers.js`);
 
 // process.on("unhandledRejection", (reason, _promise) => {
 // 	console.error("Unhandled Promise Rejection:", reason);
@@ -47,6 +48,7 @@ class Senec extends utils.Adapter {
 		this.apiConnected = false;
 		this.lalaConnected = false;
 		this.webConnected = false;
+		this.connectConnected = false;
 		this.connectVia = "https://";
 		this.unloaded = false;
 
@@ -148,6 +150,19 @@ class Senec extends utils.Adapter {
 		// Reset the connection indicators during startup
 		await this.setState("info.connection", false, true);
 		await this.setState("info.extension", false, true);
+		await this.setObjectNotExistsAsync("info.connectionStatus", {
+			type: "state",
+			common: {
+				role: "text",
+				name: "Connection status (all/partial/none)",
+				type: "string",
+				read: true,
+				write: false,
+				def: "none",
+			},
+			native: {},
+		});
+		await this.setState("info.connectionStatus", "none", true);
 		await this.setObjectNotExistsAsync("info.localConnected", {
 			type: "state",
 			common: {
@@ -373,7 +388,7 @@ class Senec extends utils.Adapter {
 					await localClient.localCheckConnection(this);
 				} catch (e) {
 					this.log.error(
-						`[Local] ❌ Initial connection failed: ${e.message || e}. Local polling disabled. Other connectors will continue.`,
+						`[Local] ❌ Initial connection failed: ${e.message || e}. Other connectors will continue.`,
 					);
 				}
 				if (this.lalaConnected) {
@@ -387,6 +402,10 @@ class Senec extends utils.Adapter {
 					localClient
 						.localPoll(this, false, 0)
 						.catch((e) => this.logError(e, "[Local] ❌ Initial local lowPrio poll failed"));
+				} else {
+					const retryDelay = this.config.interval * 1000 * 3; // 3x normal interval
+					this.log.warn(`[Local] Will retry connection in ${(retryDelay / 1000).toFixed(0)}s.`);
+					this.setTimeout(() => this.retryConnectorInit("local"), retryDelay);
 				}
 			} else {
 				this.log.warn("[Local] Usage of lala.cgi (local) not configured.");
@@ -396,12 +415,13 @@ class Senec extends utils.Adapter {
 				this.log.info("[API] Usage of SENEC App API configured.");
 				this.apiConnected = await apiClient.apiStartTokenManager(this);
 				if (this.apiConnected) {
-					await this.setState("info.apiConnected", true, true);
 					apiClient.apiPoll(this).catch((e) => this.logError(e, "[API] ❌ Initial API poll failed"));
 				} else {
+					const retryDelay = (this.config.api_interval || 6) * this.baseTime;
 					this.log.warn(
-						"[API] Usage of SENEC App API configured but initial connection failed. Check credentials and connection to SENEC App API. API Polling turned off automatically until restart.",
+						`[API] ❌ Initial connection failed. Will retry in ${(retryDelay / 1000).toFixed(0)}s. Check credentials.`,
 					);
+					this.setTimeout(() => this.retryConnectorInit("api"), retryDelay);
 				}
 			} else {
 				this.log.warn("[API] Usage of SENEC App API not configured.");
@@ -411,7 +431,6 @@ class Senec extends utils.Adapter {
 				this.log.info("[Connect] Usage of SENEC.Connect API configured.");
 				connectClient.connectPoll(this).catch((e) => this.logError(e, "[Connect] ❌ Initial poll failed"));
 				this.connectEnabled = true;
-				await this.setState("info.connectConnected", true, true);
 			}
 
 			// Web cleanup runs regardless of web_use — cleans up states from when features were enabled
@@ -427,16 +446,22 @@ class Senec extends utils.Adapter {
 					await webClient.webInit(this);
 				} catch (e) {
 					this.logError(e, "[Web] ❌ mein-senec.de init failed");
+					const retryDelay = this.config.web_interval_status * this.baseTime;
+					this.log.warn(`[Web] Will retry in ${(retryDelay / 1000).toFixed(0)}s.`);
+					this.setTimeout(() => this.retryConnectorInit("web"), retryDelay);
 				}
 			}
 
+			await this.updateConnectionStatus();
 			if (this.lalaConnected || this.apiConnected || this.connectEnabled || this.webConnected) {
-				await this.setState("info.connection", true, true);
 				await this.refreshGuiLangCache();
-			} else {
-				this.log.error(
-					"Neither local connection, API connection, nor SENEC.Connect configured. Please check config!",
-				);
+			} else if (
+				!this.config.lala_use &&
+				!this.config.api_use &&
+				!this.config.web_use &&
+				!this.config.connect_use
+			) {
+				this.log.error("No connectors configured. Please check config!");
 			}
 
 			if (this.config.control_active) {
@@ -454,7 +479,119 @@ class Senec extends utils.Adapter {
 			}
 		} catch (error) {
 			this.logError(error, "❌ Adapter startup failed");
-			await this.setState("info.connection", false, true);
+			await this.updateConnectionStatus();
+		}
+	}
+
+	/**
+	 * Recalculate and update connection indicators based on current connector states.
+	 * Sets info.connection (boolean), info.connectionStatus (all/partial/none),
+	 * and per-connector info.*Connected states.
+	 */
+	async updateConnectionStatus() {
+		const configured = {
+			local: !!this.config.lala_use,
+			api: !!this.config.api_use,
+			web: !!this.config.web_use,
+			connect: !!this.config.connect_use,
+		};
+		const connected = {
+			local: !!this.lalaConnected,
+			api: !!this.apiConnected,
+			web: !!this.webConnected,
+			connect: !!this.connectConnected,
+		};
+
+		// Update per-connector indicators
+		await this.setStateAsync("info.localConnected", connected.local, true);
+		await this.setStateAsync("info.apiConnected", connected.api, true);
+		await this.setStateAsync("info.webConnected", connected.web, true);
+		await this.setStateAsync("info.connectConnected", connected.connect, true);
+
+		// Count configured vs connected
+		const configuredCount = Object.values(configured).filter(Boolean).length;
+		const connectedCount = Object.keys(configured).filter((k) => configured[k] && connected[k]).length;
+
+		const anyConnected = connectedCount > 0;
+		let status = "none";
+		if (connectedCount === configuredCount && configuredCount > 0) {
+			status = "all";
+		} else if (connectedCount > 0) {
+			status = "partial";
+		}
+
+		await this.setStateAsync("info.connection", anyConnected, true);
+		await this.setStateAsync("info.connectionStatus", status, true);
+	}
+
+	/**
+	 * Retry a connector's initialization with exponential backoff and jitter.
+	 *
+	 * @param {"local" | "api" | "web"} connector - which connector to retry
+	 * @param {number} [attempt] - current attempt number (0-based)
+	 */
+	async retryConnectorInit(connector, attempt = 0) {
+		if (this.unloaded) {
+			return;
+		}
+
+		const labels = { local: "Local", api: "API", web: "Web" };
+		const label = labels[connector];
+
+		// Already connected — stop retrying
+		if (
+			(connector === "local" && this.lalaConnected) ||
+			(connector === "api" && this.apiConnected) ||
+			(connector === "web" && this.webConnected)
+		) {
+			return;
+		}
+
+		this.log.info(`[${label}] 🔄 Retry attempt ${attempt + 1}...`);
+
+		// Attempt connection
+		try {
+			if (connector === "local") {
+				await localClient.localCheckConnection(this);
+			} else if (connector === "api") {
+				this.apiConnected = await apiClient.apiStartTokenManager(this);
+			} else if (connector === "web") {
+				await webClient.webInit(this);
+			}
+		} catch (e) {
+			this.log.warn(`[${label}] ⚠️ Retry ${attempt + 1} failed: ${e.message || e}`);
+		}
+
+		// Check if now connected
+		const connected =
+			(connector === "local" && this.lalaConnected) ||
+			(connector === "api" && this.apiConnected) ||
+			(connector === "web" && this.webConnected);
+
+		if (connected) {
+			this.log.info(`[${label}] ✅ Connection established on retry.`);
+			if (connector === "local") {
+				await localClient.localDiscoverSections(this);
+				localClient
+					.localPoll(this, true, 0)
+					.catch((e) => this.logError(e, "[Local] ❌ Local highPrio poll failed"));
+				localClient
+					.localPoll(this, false, 0)
+					.catch((e) => this.logError(e, "[Local] ❌ Local lowPrio poll failed"));
+			} else if (connector === "api") {
+				apiClient.apiPoll(this).catch((e) => this.logError(e, "[API] ❌ API poll failed"));
+			}
+			// Web starts its own polling in webInit
+			await this.updateConnectionStatus();
+		} else {
+			const bases = {
+				local: this.config.interval * 1000 * 3,
+				api: (this.config.api_interval || 6) * this.baseTime,
+				web: (this.config.web_interval_status || 6) * this.baseTime,
+			};
+			const delay = computeBackoffDelay(bases[connector], attempt);
+			this.log.warn(`[${label}] Next retry (#${attempt + 2}) in ${(delay / 1000).toFixed(0)}s.`);
+			this.setTimeout(() => this.retryConnectorInit(connector, attempt + 1), delay);
 		}
 	}
 

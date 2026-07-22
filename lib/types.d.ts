@@ -17,6 +17,7 @@ export interface SenecAdapter extends AdapterClass {
     lalaConnected: boolean;
     webConnected: boolean;
     connectEnabled: boolean;
+    connectConnected: boolean;
     unloaded: boolean;
     connectVia: string;
 
@@ -121,6 +122,7 @@ export interface SenecAdapter extends AdapterClass {
     doState(name: string, value: any, description: string, unit: string, write: boolean, read?: boolean): Promise<void>;
     logError(e: Error | string, prefix?: string): void;
     updateLastPoll(stateId: string, description: string): Promise<void>;
+    updateConnectionStatus(): Promise<void>;
     delay(ms: number): Promise<void>;
     createSocketControlsForIndex(idx: number): Promise<void>;
     cleanupControlChannels(pattern: string, label: string): Promise<void>;
