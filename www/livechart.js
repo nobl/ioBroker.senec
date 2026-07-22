@@ -55,6 +55,9 @@ var liveChart = {
 	/** Whether history backfill has been attempted */
 	_historyLoaded: false,
 
+	/** Whether a history load is currently in progress */
+	_historyLoading: false,
+
 	/**
 	 * State keys per source for history queries
 	 */
@@ -156,6 +159,12 @@ var liveChart = {
 	 * @param {number} [endOverride] - custom end timestamp (for delta loading)
 	 */
 	_loadHistory: function (conn, namespace, src, startOverride, endOverride) {
+		// Prevent stacking: skip if a history load is already in progress
+		if (this._historyLoading) {
+			return;
+		}
+		this._historyLoading = true;
+
 		var windowMs = this.window * 60 * 1000;
 		var start = startOverride != null ? startOverride : Date.now() - windowMs;
 		var end = endOverride != null ? endOverride : Date.now();
@@ -207,6 +216,7 @@ var liveChart = {
 				checked++;
 				if (checked === fields.length) {
 					if (toQuery.length === 0) {
+						liveChart._historyLoading = false;
 						return;
 					}
 					var done = 0;
@@ -319,6 +329,8 @@ var liveChart = {
 	 * @param {string} src - Source type
 	 */
 	_mergeHistory: function (pending, src) {
+		this._historyLoading = false;
+
 		// Collect all unique timestamps from the primary state (house for reliability)
 		var primary = pending.house;
 		if (!primary || primary.length === 0) {

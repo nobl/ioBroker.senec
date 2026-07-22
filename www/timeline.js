@@ -53,6 +53,7 @@ var eventTimeline = {
 
 		var xhr = new XMLHttpRequest();
 		xhr.open("GET", `api/log?date=${encodeURIComponent(today)}`);
+		xhr.timeout = 15000;
 		xhr.onload = function () {
 			eventTimeline.loading = false;
 			eventTimeline._lastFetch = Date.now();
@@ -66,6 +67,11 @@ var eventTimeline = {
 			eventTimeline.renderSelf();
 		};
 		xhr.onerror = function () {
+			eventTimeline.loading = false;
+			eventTimeline.loaded = true;
+			eventTimeline.events = [];
+		};
+		xhr.ontimeout = function () {
 			eventTimeline.loading = false;
 			eventTimeline.loaded = true;
 			eventTimeline.events = [];

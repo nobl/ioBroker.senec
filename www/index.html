@@ -1299,6 +1299,7 @@
 			liveMode: false,
 			liveTimer: null,
 			liveIntervalMs: 30000,
+			_activeXhr: null,
 
 			onConfigLoaded: function () {
 				var ip = app.config.senecip;
@@ -1429,9 +1430,18 @@
 					this.renderLogViewer();
 				}
 
+				// Abort any in-flight request before starting a new one
+				if (this._activeXhr) {
+					this._activeXhr.abort();
+					this._activeXhr = null;
+				}
+
 				var xhr = new XMLHttpRequest();
+				this._activeXhr = xhr;
 				xhr.open("GET", "api/log?date=" + encodeURIComponent(dateEl.value));
+				xhr.timeout = 15000;
 				xhr.onload = function () {
+					logViewer._activeXhr = null;
 					logViewer.loading = false;
 					if (xhr.status === 200) {
 						logViewer.rawText = xhr.responseText;
@@ -1449,8 +1459,15 @@
 					logViewer.renderLogViewer();
 				};
 				xhr.onerror = function () {
+					logViewer._activeXhr = null;
 					logViewer.loading = false;
 					app.showError(t("log_network_error"));
+					logViewer.renderLogViewer();
+				};
+				xhr.ontimeout = function () {
+					logViewer._activeXhr = null;
+					logViewer.loading = false;
+					app.showError(t("log_load_failed", { error: "Request timed out" }));
 					logViewer.renderLogViewer();
 				};
 				xhr.send();
