@@ -369,7 +369,13 @@ class Senec extends utils.Adapter {
 
 			if (this.config.lala_use) {
 				this.log.info("[Local] Usage of lala.cgi (local) configured.");
-				await localClient.localCheckConnection(this);
+				try {
+					await localClient.localCheckConnection(this);
+				} catch (e) {
+					this.log.error(
+						`[Local] ❌ Initial connection failed: ${e.message || e}. Local polling disabled. Other connectors will continue.`,
+					);
+				}
 				if (this.lalaConnected) {
 					await localClient.localDiscoverSections(this);
 				}
