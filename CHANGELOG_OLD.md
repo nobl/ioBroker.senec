@@ -1,6 +1,9 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.9.3 (2026-07-17)
+- Fix: jsonConfig staticText missing size attributes (E5507)
+
 ## 2.9.2 (2026-07-16)
 - Fix: API energy flow discovery picked wrong Anlagen ID when stale states existed. Now prefers ID with Dashboard data.
 - Fix: Web AllTime measurements now update every slow tier cycle (default 24h) instead of only once per year.

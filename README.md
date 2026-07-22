@@ -91,7 +91,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.11.3 (2026-07-22)
 - Fix: Web extension log proxy crash (ERR_HTTP_HEADERS_SENT / ERR_STREAM_WRITE_AFTER_END) when SENEC device drops connection or browser disconnects mid-request. Abort orphaned upstream requests on client disconnect.
 - Fix: Local connection failure no longer crashes adapter startup — other connectors (API, Web, Connect) continue normally. All connectors retry with exponential backoff on init failure.
 - Local polling no longer gives up after max retries — backoff plateaus and polling continues indefinitely. Connection status updates on failure and recovery.
@@ -122,9 +122,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - Web connector now has its own `web_debug_states` and `web_debug_log` options (previously shared with API).
 - Fix: jsonConfig staticText responsive attributes (W5508).
 - Documentation: Complete rewrite of README, English and German user guides with screenshots. Dashboard `?lang=` URL parameter for language override.
-
-### 2.9.3 (2026-07-17)
-- Fix: jsonConfig staticText missing size attributes (E5507)
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
