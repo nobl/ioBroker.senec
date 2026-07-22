@@ -66,11 +66,16 @@ Enter your mein-senec.de credentials here. These are shared by the SENEC App API
 | Connect via lala.cgi | Enable local polling | On |
 | SENEC System IP | IP address or FQDN of your SENEC device | — |
 | Use HTTPS | Enable if your device uses HTTPS | Off |
+
+Expand **Polling Settings** to adjust timing:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
 | Polling interval (high priority) | How often to poll real-time data (seconds) | 10 |
 | Polling interval (low priority) | How often to poll slow-changing data (minutes) | 60 |
 | Request timeout | Timeout for HTTP requests (ms) | 5000 |
-| Retries | Number of retry attempts on failure | 10 |
-| Retry multiplier | Backoff factor between retries | 2 |
+
+The adapter retries automatically with exponential backoff on connection failures — no manual retry configuration needed. If the SENEC device is temporarily unreachable (reboot, firmware update), polling resumes automatically when the device comes back online.
 
 **Important**: Polling too frequently or requesting too many data points can overload your SENEC device. This may cause the device to restart, become unresponsive, or fail to synchronize with the SENEC cloud. If you experience issues, reduce the polling frequency or stop the adapter.
 

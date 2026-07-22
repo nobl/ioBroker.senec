@@ -93,7 +93,9 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 -->
 ### **WORK IN PROGRESS**
 - Fix: Web extension log proxy crash (ERR_HTTP_HEADERS_SENT / ERR_STREAM_WRITE_AFTER_END) when SENEC device drops connection or browser disconnects mid-request. Abort orphaned upstream requests on client disconnect.
-- Fix: Local connection failure no longer crashes adapter startup — other connectors (API, Web, Connect) continue normally.
+- Fix: Local connection failure no longer crashes adapter startup — other connectors (API, Web, Connect) continue normally. All connectors retry with exponential backoff on init failure.
+- Local polling no longer gives up after max retries — backoff plateaus and polling continues indefinitely. Connection status updates on failure and recovery.
+- New `info.connectionStatus` state (all/partial/none) for per-connector connection tracking.
 - Dashboard: Debounce rendering via requestAnimationFrame — prevents browser freezes from rapid state update bursts.
 - Dashboard: Rate limit log proxy (1 req/s), XHR timeouts, abort in-flight requests, prevent history load stacking.
 

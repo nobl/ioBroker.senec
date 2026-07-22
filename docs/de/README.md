@@ -66,11 +66,16 @@ Geben Sie hier Ihre mein-senec.de Zugangsdaten ein. Diese werden von der SENEC A
 | Über lala.cgi verbinden | Lokale Abfrage aktivieren | Ein |
 | SENEC System IP | IP-Adresse oder FQDN des SENEC Geräts | — |
 | HTTPS verwenden | Aktivieren wenn das Gerät HTTPS nutzt | Aus |
+
+**Abfrage-Einstellungen** aufklappen für Timing-Optionen:
+
+| Einstellung | Beschreibung | Standard |
+|-------------|-------------|----------|
 | Abfrageintervall (hohe Priorität) | Intervall für Echtzeitdaten (Sekunden) | 10 |
 | Abfrageintervall (niedrige Priorität) | Intervall für selten geänderte Daten (Minuten) | 60 |
-| Request-Timeout | Zeitlimit für HTTP-Anfragen (ms) | 5000 |
-| Wiederholungsversuche | Anzahl der Wiederholungen bei Fehlern | 10 |
-| Wiederholungsfaktor | Backoff-Faktor zwischen Wiederholungen | 2 |
+| Abfrage-Timeout | Zeitlimit für HTTP-Anfragen (ms) | 5000 |
+
+Der Adapter wiederholt automatisch mit exponentiellem Backoff bei Verbindungsfehlern — keine manuelle Konfiguration nötig. Wenn das SENEC Gerät vorübergehend nicht erreichbar ist (Neustart, Firmware-Update), wird die Abfrage automatisch fortgesetzt, sobald das Gerät wieder online ist.
 
 **Wichtig**: Zu häufige Abfragen oder zu viele Datenpunkte können das SENEC Gerät überlasten. Dies kann zu Neustarts, Nicht-Erreichbarkeit oder fehlender Cloud-Synchronisation führen. Bei Problemen die Abfragefrequenz reduzieren oder den Adapter stoppen.
 

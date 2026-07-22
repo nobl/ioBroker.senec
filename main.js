@@ -1135,23 +1135,6 @@ class Senec extends utils.Adapter {
 			);
 			this.config.pollingTimeout = 5000;
 		}
-		this.log.debug(`(checkConf) Configured num of retries: ${this.config.retries}`);
-		if (this.config.retries < 0 || this.config.retries > 999) {
-			this.log.warn(
-				`(checkConf) Config num of retries ${this.config.retries} not [0..999] seconds. Using default: 10`,
-			);
-			this.config.retries = 10;
-		}
-		this.log.debug(`(checkConf) Configured retry multiplier: ${this.config.retrymultiplier}`);
-		if (this.config.retrymultiplier < 1 || this.config.retrymultiplier > 10) {
-			this.log.warn(
-				`(checkConf) Config retry multiplier ${
-					this.config.retrymultiplier
-				} not [1..10] seconds. Using default: 2`,
-			);
-			this.config.retrymultiplier = 2;
-		}
-
 		this.log.debug(`(checkConf) Configured api polling interval dashboard: ${this.config.api_interval}`);
 		if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
 			this.log.warn(
