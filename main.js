@@ -1050,6 +1050,7 @@ class Senec extends utils.Adapter {
 			this.knownObjects.clear(); // empty objects cache
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
+			this.setState("info.connectionStatus", "none", true);
 			callback();
 		} catch (e) {
 			this.logError(e);
