@@ -318,19 +318,6 @@
         "def": false
       },
       "native": {}
-    },
-    {
-      "_id": "info.extension",
-      "type": "state",
-      "common": {
-        "role": "indicator",
-        "name": "Web extension loaded",
-        "type": "boolean",
-        "read": true,
-        "write": false,
-        "def": false
-      },
-      "native": {}
     }
   ]
 }

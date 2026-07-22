@@ -149,7 +149,6 @@ class Senec extends utils.Adapter {
 
 		// Reset the connection indicators during startup
 		await this.setState("info.connection", false, true);
-		await this.setState("info.extension", false, true);
 		await this.setObjectNotExistsAsync("info.connectionStatus", {
 			type: "state",
 			common: {
