@@ -91,7 +91,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.11.4 (2026-07-22)
 - Fix: jsonConfig validation error (`collapsed` not allowed on panel type).
 - Removed unused `info.extension` state.
 
@@ -114,18 +114,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 - External Sources: Add PV, consumer (wallbox, heat pump, etc.), and battery sources from other ioBroker adapters. Formula support for calculated values (e.g. V*A per phase). Integrate mode adds to SENEC totals, separate mode shows individual nodes in the energy flow diagram. Battery SOC and capacity support with time estimates. Dynamic diagram layout with summary nodes for multiple PV/battery sources.
 - Fix: ValueTyping type flip-flop between string/number for states with physical units.
 - Fix: Live chart history backfill now uses carry-forward merge instead of timestamp alignment. Handles sparse SQL data ("log only on change") correctly.
-
-### 2.10.0 (2026-07-20)
-- Dashboard: Live power curve on Overview tab — real-time SVG line chart with smooth monotone cubic interpolation. Shows PV, house, grid, battery, wallbox from any connector. Time windows 10m–24h, line toggles, pause, disable toggle. History adapter backfill on page load (InfluxDB, SQL, History). Source follows energy flow selector.
-- Dashboard: Cell voltage heatmap on Battery tab — SVG grid with color-coded per-cell voltages across all modules, per-module delta indicators, and legend bar.
-- Dashboard: Event timeline on Overview tab — 24h strip showing warnings, errors, and panics as colored markers with hover details. Auto-refreshes every 10 minutes.
-- Dashboard: Source badges added to Cell Voltage, Cycles, Grid Quality, and PV-Strings cards.
-- Dashboard: Async loading — energy flow renders immediately, live chart history and event timeline load independently.
-- Fix: Energy flow path allocation rewritten with proper priority-based logic (PV→House→Battery→Grid). Fixes missing flows in multi-source scenarios (e.g. PV→Grid while Battery→House, or Battery→Grid while PV active).
-- Debug & Logging: Per-connector matrix for all debug options (Local, API, mein-senec, Connect). Show polling, request/response logging, queue diagnostics, and diagnostic states can now be toggled independently per connector.
-- Web connector now has its own `web_debug_states` and `web_debug_log` options (previously shared with API).
-- Fix: jsonConfig staticText responsive attributes (W5508).
-- Documentation: Complete rewrite of README, English and German user guides with screenshots. Dashboard `?lang=` URL parameter for language override.
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
