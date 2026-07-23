@@ -1320,7 +1320,8 @@
 				}
 
 				var today = new Date().toISOString().slice(0, 10);
-				var dateVal = document.getElementById("log-date") ? document.getElementById("log-date").value : today;
+				var rawDate = document.getElementById("log-date") ? document.getElementById("log-date").value : today;
+				var dateVal = this.escapeHtml(rawDate);
 
 				var html =
 					'<div class="card">' +
