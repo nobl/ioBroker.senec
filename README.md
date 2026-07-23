@@ -91,7 +91,7 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.12.0 (2026-07-23)
 - Live chart: Drag to pan through history, scroll to zoom (5min–30 days). Lazy-loads history data on demand as you pan. Per-line downsampling preserves all metrics at any zoom level. Midnight date markers. View clamped to available data with progressive loading. Loading indicator and buffer stats.
 - Security: Multi-layer TLS certificate validation for local SENEC connections — user-uploaded CA, cached CA (auto-downloaded from mein-senec.de), TOFU fingerprint pinning. Dashboard upload for CA certificate (.pem/.zip). TLS state values stored encrypted. Eliminates blind certificate bypass.
 - Security: Fix polynomial ReDoS in formula regex, escape DOM-sourced values in log viewer, remove no-op string replace in charts.
@@ -115,11 +115,6 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
 
 ### 2.11.1 (2026-07-21)
 - Live chart: Delta history loading — expanding the time window only fetches the missing range instead of reloading all data.
-
-### 2.11.0 (2026-07-20)
-- External Sources: Add PV, consumer (wallbox, heat pump, etc.), and battery sources from other ioBroker adapters. Formula support for calculated values (e.g. V*A per phase). Integrate mode adds to SENEC totals, separate mode shows individual nodes in the energy flow diagram. Battery SOC and capacity support with time estimates. Dynamic diagram layout with summary nodes for multiple PV/battery sources.
-- Fix: ValueTyping type flip-flop between string/number for states with physical units.
-- Fix: Live chart history backfill now uses carry-forward merge instead of timestamp alignment. Handles sparse SQL data ("log only on change") correctly.
 
 ### [Former Updates](CHANGELOG_OLD.md)
 

@@ -1,6 +1,11 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.11.0 (2026-07-20)
+- External Sources: Add PV, consumer (wallbox, heat pump, etc.), and battery sources from other ioBroker adapters. Formula support for calculated values (e.g. V*A per phase). Integrate mode adds to SENEC totals, separate mode shows individual nodes in the energy flow diagram. Battery SOC and capacity support with time estimates. Dynamic diagram layout with summary nodes for multiple PV/battery sources.
+- Fix: ValueTyping type flip-flop between string/number for states with physical units.
+- Fix: Live chart history backfill now uses carry-forward merge instead of timestamp alignment. Handles sparse SQL data ("log only on change") correctly.
+
 ## 2.10.0 (2026-07-20)
 - Dashboard: Live power curve on Overview tab — real-time SVG line chart with smooth monotone cubic interpolation. Shows PV, house, grid, battery, wallbox from any connector. Time windows 10m–24h, line toggles, pause, disable toggle. History adapter backfill on page load (InfluxDB, SQL, History). Source follows energy flow selector.
 - Dashboard: Cell voltage heatmap on Battery tab — SVG grid with color-coded per-cell voltages across all modules, per-module delta indicators, and legend bar.
