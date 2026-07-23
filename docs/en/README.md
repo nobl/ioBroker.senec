@@ -77,6 +77,18 @@ Expand **Polling Settings** to adjust timing:
 
 The adapter retries automatically with exponential backoff on connection failures — no manual retry configuration needed. If the SENEC device is temporarily unreachable (reboot, firmware update), polling resumes automatically when the device comes back online.
 
+#### TLS Certificate Validation
+
+The adapter validates the SENEC device's HTTPS certificate using a multi-layer approach:
+
+1. **User CA** — Upload the SenecGui-Root CA certificate via the dashboard (System tab → TLS Certificate). Download it from mein-senec.de (Documents / General Documents / SenecGui-Root) and upload the .pem or .zip file. SENEC distributes this certificate behind a login, so the adapter cannot bundle it.
+2. **Cached CA** — If no user cert is provided, the adapter can automatically download the CA from mein-senec.de (requires the mein-senec.de connector to be enabled). The downloaded cert is cached in adapter state and persists across restarts.
+3. **TOFU (Trust On First Use)** — If no CA cert validates, the adapter pins the device's certificate fingerprint on first contact. Subsequent connections verify against this fingerprint. A warning is logged if the fingerprint changes (e.g. after firmware update), and the new fingerprint is accepted automatically.
+
+The adapter tries each layer in order and uses the first one that validates. Without any CA certificate, TOFU provides secure identity verification automatically — the upload is optional.
+
+If automatic CA download failed and you want to retry, set `_local.tls.certFetchFailed` to `false` — the adapter will attempt the download again on the next restart or immediately if running.
+
 **Important**: Polling too frequently or requesting too many data points can overload your SENEC device. This may cause the device to restart, become unresponsive, or fail to synchronize with the SENEC cloud. If you experience issues, reduce the polling frequency or stop the adapter.
 
 #### Additional High-Priority Polling Data Points
@@ -299,6 +311,16 @@ The adapter creates states organized by connector and data section. All states a
 | `info.lastPoll.HighPrio` | Timestamp of last high-priority local poll |
 | `info.lastPoll.LowPrio` | Timestamp of last low-priority local poll |
 
+### TLS States (`_local.tls.*`)
+
+| State | Type | Write | Description |
+|-------|------|:-----:|-------------|
+| `_local.tls.mode` | string | no | Active TLS validation mode: `user`, `cached`, `tofu`, or `none` |
+| `_local.tls.fingerprint` | string | no | SHA-256 fingerprint of the accepted device certificate (TOFU mode, encrypted) |
+| `_local.tls.userCaPem` | string | yes | User-uploaded CA certificate PEM (encrypted) |
+| `_local.tls.cachedCaPem` | string | no | CA certificate PEM downloaded from mein-senec.de (encrypted) |
+| `_local.tls.certFetchFailed` | boolean | yes | Set to `false` to trigger a new CA download attempt |
+
 ### Local States
 
 Data from lala.cgi polling is stored directly under the section name (e.g. `ENERGY.*`, `BMS.*`, `PV1.*`, `WIZARD.*`).
@@ -398,3 +420,5 @@ Control states are only created when the corresponding feature is enabled and av
 **Missing states**: Available states depend on your SENEC model, firmware version, and configured connectors. Not all states are available on all systems.
 
 **Control states not appearing**: Control features must be explicitly enabled in the Appliance Control settings tab. Each control requires a specific connector to be active.
+
+**TLS certificate errors on local connection**: The adapter handles certificate validation automatically. Check `_local.tls.mode` to see which validation method is active. If you see TOFU mode and want to upgrade to CA validation, enable the mein-senec.de connector — the adapter will attempt to download the CA cert automatically. If a previous download failed, set `_local.tls.certFetchFailed` to `false` to retry.

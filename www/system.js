@@ -1132,6 +1132,56 @@ var systemInfo = {
 	},
 
 	/**
+	 * Render TLS certificate status card with upload
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {string} HTML string
+	 */
+	renderTlsStatus: function (states) {
+		var mode = states["_local.tls.mode"] || "none";
+		var fingerprint = states["_local.tls.fingerprint"] || "";
+
+		var modeLabels = {
+			user: t("tls_mode_user"),
+			cached: t("tls_mode_cached"),
+			tofu: t("tls_mode_tofu"),
+			none: t("tls_mode_none"),
+		};
+		var modeColors = {
+			user: "#4caf50",
+			cached: "#4caf50",
+			tofu: "#ff9800",
+			none: "#90a4ae",
+		};
+		var modeLabel = modeLabels[mode] || mode;
+		var modeColor = modeColors[mode] || "#90a4ae";
+
+		var html = `<div class="card"><h2>${t("tls_title")}</h2>`;
+		html += '<div class="system-grid">';
+		html += this.renderMetric(t("tls_mode"), modeLabel, modeColor, "");
+		if (fingerprint && mode === "tofu") {
+			html += this.renderMetric(t("tls_fingerprint"), `${fingerprint.substring(0, 16)}...`, "#757575", "");
+		}
+		html += "</div>";
+
+		// Upload section
+		html += `<div class="tls-upload-section" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">`;
+		html += `<div style="margin-bottom:8px;font-weight:600">${t("tls_upload")}</div>`;
+		html += `<div style="margin-bottom:8px;font-size:13px;opacity:0.8">${t("tls_upload_hint")}</div>`;
+		html += `<div style="margin-bottom:12px;font-size:12px;opacity:0.6;font-style:italic">${t("tls_upload_why")}</div>`;
+		html += `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">`;
+		html += `<label class="tls-upload-btn" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:6px;cursor:pointer;background:var(--card-bg);border:1px solid var(--border);font-size:13px">`;
+		html += `<input type="file" accept=".pem,.zip,.crt,.cer" id="tls-cert-file" style="display:none">`;
+		html += `${t("tls_choose_file")}`;
+		html += `</label>`;
+		html += `<span id="tls-upload-status" style="font-size:13px"></span>`;
+		html += `</div></div>`;
+
+		html += "</div>";
+		return html;
+	},
+
+	/**
 	 * Render all system cards
 	 *
 	 * @param {object} states - ioBroker state values

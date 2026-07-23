@@ -137,5 +137,20 @@
     "wallbox_ev_connected": "EV Connected",
     "wallbox_smart_charge": "Smart Charge",
     "period_week": "Week",
-    "period_all": "All Time"
+    "period_all": "All Time",
+    "tls_title": "TLS Certificate",
+    "tls_mode": "Validation Mode",
+    "tls_mode_user": "User CA",
+    "tls_mode_cached": "Cached CA",
+    "tls_mode_tofu": "TOFU",
+    "tls_mode_none": "None",
+    "tls_fingerprint": "Fingerprint",
+    "tls_upload": "Upload CA Certificate",
+    "tls_upload_hint": "Download the SenecGui-Root certificate from mein-senec.de (Documents / General Documents / SenecGui-Root), then upload it here. Accepts .pem or .zip files.",
+    "tls_upload_why": "SENEC distributes their CA certificate behind a login, so we cannot bundle it. Without it the adapter uses TOFU (fingerprint pinning) which works fine — this upload is optional.",
+    "tls_uploading": "Validating...",
+    "tls_upload_success": "Certificate validated and activated.",
+    "tls_upload_failed": "Certificate did not validate the device.",
+    "tls_upload_error": "Upload failed: {error}",
+    "tls_choose_file": "Choose .pem or .zip"
 }

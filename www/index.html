@@ -974,6 +974,7 @@
 
 			<div class="tab-content" id="tab-system" role="tabpanel" aria-labelledby="tab-system" hidden>
 				<div id="system-container"></div>
+				<div id="tls-container"></div>
 			</div>
 
 			<div class="tab-content" id="tab-control" role="tabpanel" aria-labelledby="tab-control" hidden>
@@ -1174,6 +1175,7 @@
 					shortId.startsWith("TEMPMEASURE.") ||
 					shortId.startsWith("PV1.") ||
 					shortId.startsWith("WIZARD.") ||
+					shortId.startsWith("_local.tls.") ||
 					shortId.indexOf("SystemDetails.") !== -1 ||
 					shortId.indexOf("SystemStatus.") !== -1;
 
@@ -1271,9 +1273,102 @@
 						systemInfo.renderFeatureStatus(this.states) +
 						systemInfo.renderSystemDetails(this.states);
 				}
+				// TLS card lives in its own container — only re-render when not uploading
+				var tlsEl = document.getElementById("tls-container");
+				if (tlsEl && !this._tlsUploadActive) {
+					tlsEl.innerHTML = systemInfo.renderTlsStatus(this.states);
+					this.bindTlsUpload();
+				}
 
 				var controlEl = document.getElementById("control-container");
 				if (controlEl) controlEl.innerHTML = controls.render(this.states);
+			},
+
+			/**
+			 * Bind the TLS cert file upload handler after rendering the system tab.
+			 */
+			/**
+			 * Update the TLS upload status text in the DOM.
+			 *
+			 * @param {string} msg - Status message
+			 * @param {string} color - CSS color
+			 */
+			setTlsStatus: function (msg, color) {
+				var el = document.getElementById("tls-upload-status");
+				if (el) {
+					el.textContent = msg;
+					el.style.color = color;
+				}
+			},
+
+			bindTlsUpload: function () {
+				var fileInput = document.getElementById("tls-cert-file");
+				if (!fileInput || fileInput._bound) return;
+				fileInput._bound = true;
+				var self = this;
+
+				fileInput.addEventListener("change", function () {
+					var file = fileInput.files && fileInput.files[0];
+					if (!file) return;
+					self._tlsUploadActive = true;
+					self.setTlsStatus(t("tls_uploading"), "#ff9800");
+
+					// Send the raw file to the server — it handles both PEM and ZIP
+					var reader = new FileReader();
+					reader.onload = function () {
+						var xhr = new XMLHttpRequest();
+						xhr.open("POST", "/senec/api/tls/upload-ca");
+						xhr.setRequestHeader("Content-Type", "application/octet-stream");
+						xhr.timeout = 15000;
+						xhr.onload = function () {
+							if (xhr.status === 200) {
+								// Watch for mode change via socket.io state subscription
+								var checkCount = 0;
+								var checkInterval = setInterval(function () {
+									checkCount++;
+									var mode = self.states["_local.tls.mode"];
+									if (mode === "user") {
+										clearInterval(checkInterval);
+										self._tlsUploadActive = false;
+										self.setTlsStatus(t("tls_upload_success"), "#4caf50");
+										setTimeout(function () {
+											var tlsEl = document.getElementById("tls-container");
+											if (tlsEl) {
+												tlsEl.innerHTML = systemInfo.renderTlsStatus(self.states);
+												self.bindTlsUpload();
+											}
+										}, 3000);
+									} else if (checkCount > 20) {
+										clearInterval(checkInterval);
+										self._tlsUploadActive = false;
+										self.setTlsStatus(t("tls_upload_failed"), "#f44336");
+										setTimeout(function () {
+											var tlsEl = document.getElementById("tls-container");
+											if (tlsEl) {
+												tlsEl.innerHTML = systemInfo.renderTlsStatus(self.states);
+												self.bindTlsUpload();
+											}
+										}, 3000);
+									}
+								}, 500);
+							} else {
+								self._tlsUploadActive = false;
+								try {
+									var resp = JSON.parse(xhr.responseText);
+									self.setTlsStatus(t("tls_upload_error").replace("{error}", resp.error || xhr.status), "#f44336");
+								} catch (e) {
+									self.setTlsStatus(t("tls_upload_error").replace("{error}", xhr.status), "#f44336");
+								}
+							}
+						};
+						xhr.onerror = function () {
+							self._tlsUploadActive = false;
+							self.setTlsStatus(t("tls_upload_error").replace("{error}", "network error"), "#f44336");
+						};
+						xhr.send(new Uint8Array(reader.result));
+					};
+					reader.readAsArrayBuffer(file);
+				});
 			},
 
 			showError: function (msg) {

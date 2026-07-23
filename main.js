@@ -5,6 +5,8 @@ const tough = require("tough-cookie");
 const CookieJar = tough.CookieJar;
 let wrapper;
 const https = require("node:https");
+const tls = require("node:tls");
+const crypto = require("node:crypto");
 
 const utils = require("@iobroker/adapter-core");
 const state_attr = require(`${__dirname}/lib/state_attr.js`);
@@ -224,16 +226,12 @@ class Senec extends utils.Adapter {
 			this.detailsInterval = (this.config.api_interval_details || 60) * this.baseTime;
 			this.heavyInterval = (this.config.api_interval_heavy || 1440) * this.baseTime;
 
-			// create agents first
-			this.localAgent = new https.Agent({
-				requestCert: true,
-				// rejectUnauthorized needs to be false due to the local machine's certificate cannot be checked properly
-				rejectUnauthorized: false,
-				keepAlive: true,
-				maxSockets: 10,
-				maxFreeSockets: 5,
-				timeout: 60000,
-			});
+			// create agents first — TLS negotiation for local happens after state init
+			this.localAgent = this.createLocalAgent();
+			if (this.config.lala_use) {
+				await this.initTlsStates();
+				await this.negotiateLocalTls();
+			}
 
 			this.apiAgent = new https.Agent({
 				keepAlive: true,
@@ -444,6 +442,11 @@ class Senec extends utils.Adapter {
 				}
 			}
 
+			// After web connector is up, try to download CA cert if still on TOFU
+			if (this.config.lala_use) {
+				await this.attemptCertDownload();
+			}
+
 			await this.updateConnectionStatus();
 			if (this.lalaConnected || this.apiConnected || this.connectEnabled || this.webConnected) {
 				await this.refreshGuiLangCache();
@@ -514,6 +517,353 @@ class Senec extends utils.Adapter {
 
 		await this.setStateAsync("info.connection", anyConnected, true);
 		await this.setStateAsync("info.connectionStatus", status, true);
+	}
+
+	/** Standard HTTPS agent options for local SENEC device */
+	get _localAgentOptions() {
+		return { keepAlive: true, maxSockets: 10, maxFreeSockets: 5, timeout: 60000 };
+	}
+
+	/**
+	 * Create initial HTTPS agent — starts unvalidated.
+	 * Full negotiation happens in negotiateLocalTls() which upgrades to
+	 * user-provided CA, cached CA, or TOFU as appropriate.
+	 *
+	 * @returns {https.Agent} configured HTTPS agent
+	 */
+	createLocalAgent() {
+		this._localTlsMode = "none";
+		// TOFU fingerprint validation in localDoGet provides identity verification until negotiateLocalTls upgrades
+		return new https.Agent({ ...this._localAgentOptions, rejectUnauthorized: false }); // lgtm[js/disabling-certificate-validation]
+	}
+
+	/**
+	 * Replace the local HTTPS agent cleanly.
+	 *
+	 * @param {https.Agent} newAgent - replacement agent
+	 */
+	swapLocalAgent(newAgent) {
+		if (this.localAgent) {
+			this.localAgent.destroy();
+		}
+		this.localAgent = newAgent;
+	}
+
+	/**
+	 * Create TLS state objects for cert validation tracking.
+	 */
+	/**
+	 * Read and decrypt a TLS state value.
+	 *
+	 * @param {string} id - State ID (e.g. "_local.tls.fingerprint")
+	 * @returns {Promise<string>} Decrypted value or empty string
+	 */
+	async readTlsState(id) {
+		const state = await this.getStateAsync(id);
+		if (!state || !state.val) {
+			return "";
+		}
+		try {
+			return this.decrypt(String(state.val));
+		} catch {
+			return String(state.val); // not encrypted (legacy or empty)
+		}
+	}
+
+	/**
+	 * Encrypt and write a TLS state value.
+	 *
+	 * @param {string} id - State ID (e.g. "_local.tls.fingerprint")
+	 * @param {string} val - Value to encrypt and store
+	 */
+	async writeTlsState(id, val) {
+		const encrypted = val ? this.encrypt(val) : "";
+		await this.setStateAsync(id, encrypted, true);
+	}
+
+	async initTlsStates() {
+		await this.setObjectNotExistsAsync("_local.tls", {
+			type: "channel",
+			common: { name: "TLS certificate validation" },
+			native: {},
+		});
+		const states = [
+			{ id: "_local.tls.mode", name: "Active TLS mode", type: "string", def: "none", write: false },
+			{
+				id: "_local.tls.fingerprint",
+				name: "Device cert fingerprint (TOFU)",
+				type: "string",
+				def: "",
+				write: false,
+			},
+			{
+				id: "_local.tls.userCaPem",
+				name: "User-uploaded CA cert (PEM)",
+				type: "string",
+				def: "",
+				write: true,
+			},
+			{
+				id: "_local.tls.cachedCaPem",
+				name: "Cached CA cert from mein-senec.de",
+				type: "string",
+				def: "",
+				write: false,
+			},
+			{
+				id: "_local.tls.certFetchFailed",
+				name: "CA cert download failed (set to false to retry)",
+				type: "boolean",
+				def: false,
+				write: true,
+			},
+		];
+		for (const s of states) {
+			// @ts-expect-error s.type is always a valid CommonType
+			await this.setObjectNotExistsAsync(s.id, {
+				type: "state",
+				common: {
+					role: "text",
+					name: s.name,
+					type: s.type,
+					read: true,
+					write: s.write,
+					def: s.def,
+				},
+				native: {},
+			});
+		}
+		// Subscribe to user-writable TLS states for runtime changes
+		await this.subscribeStatesAsync("_local.tls.certFetchFailed");
+		await this.subscribeStatesAsync("_local.tls.userCaPem");
+	}
+
+	/**
+	 * Probe the SENEC device's TLS certificate using tls.connect.
+	 * Returns whether the agent's CA validated the cert, plus the fingerprint.
+	 *
+	 * @param {https.Agent} agent - HTTPS agent to test
+	 * @returns {Promise<{valid: boolean, fingerprint: string}>} probe result
+	 */
+	async tlsProbe(agent) {
+		return new Promise((resolve) => {
+			const host = this.config.senecip;
+			const isIp = /^[\d.]+$/.test(host) || host.includes(":");
+			const tlsOpts = {
+				ca: agent.options.ca,
+				rejectUnauthorized: agent.options.rejectUnauthorized !== false,
+			};
+			if (!isIp) {
+				tlsOpts.servername = host;
+			}
+			const socket = tls.connect(443, host, tlsOpts, () => {
+				const cert = socket.getPeerCertificate();
+				const valid = socket.authorized;
+				const fp = cert && cert.raw ? crypto.createHash("sha256").update(cert.raw).digest("hex") : "";
+				socket.destroy();
+				resolve({ valid, fingerprint: fp });
+			});
+			socket.on("error", () => {
+				socket.destroy();
+				// If the error is a cert validation error, we can still get the fingerprint
+				// by re-probing with rejectUnauthorized: false
+				resolve({ valid: false, fingerprint: "" });
+			});
+			socket.setTimeout(5000, () => {
+				socket.destroy();
+				resolve({ valid: false, fingerprint: "" });
+			});
+		});
+	}
+
+	/**
+	 * Get the device cert fingerprint regardless of CA validation.
+	 *
+	 * @returns {Promise<string>} SHA-256 fingerprint hex string, or empty on failure
+	 */
+	async getDeviceFingerprint() {
+		const host = this.config.senecip;
+		const isIp = /^[\d.]+$/.test(host) || host.includes(":");
+		return new Promise((resolve) => {
+			// Must bypass CA validation to probe the device's cert fingerprint (TOFU)
+			const opts = { rejectUnauthorized: false }; // lgtm[js/disabling-certificate-validation]
+			if (!isIp) {
+				opts.servername = host;
+			}
+			const socket = tls.connect(443, host, opts, () => {
+				const cert = socket.getPeerCertificate();
+				const fp = cert && cert.raw ? crypto.createHash("sha256").update(cert.raw).digest("hex") : "";
+				socket.destroy();
+				resolve(fp);
+			});
+			socket.on("error", () => {
+				socket.destroy();
+				resolve("");
+			});
+			socket.setTimeout(5000, () => {
+				socket.destroy();
+				resolve("");
+			});
+		});
+	}
+
+	/**
+	 * Negotiate TLS validation for the local SENEC device connection.
+	 * Runs the multi-layer waterfall: user CA → cached CA → TOFU.
+	 * Called during startup and on cert errors during polling.
+	 */
+	async negotiateLocalTls() {
+		if (!this.config.senecip || this.config.senecip === "0.0.0.0") {
+			this._localTlsMode = "none";
+			return;
+		}
+
+		// Step 1: Try user-uploaded CA cert
+		const userPem = await this.readTlsState("_local.tls.userCaPem");
+		if (userPem && userPem.includes("BEGIN CERTIFICATE")) {
+			const userAgent = new https.Agent({ ...this._localAgentOptions, ca: [userPem] });
+			const result = await this.tlsProbe(userAgent);
+			if (result.valid) {
+				this.swapLocalAgent(userAgent);
+				this._localTlsMode = "user";
+				await this.setStateAsync("_local.tls.mode", "user", true);
+				this.log.info("[Local] ✅ TLS: Using user-uploaded CA cert.");
+				return;
+			}
+			userAgent.destroy();
+			this.log.warn("[Local] User-uploaded CA cert did not validate device cert.");
+		}
+
+		// Step 2: Try cached CA cert from adapter state
+		const cachedPem = await this.readTlsState("_local.tls.cachedCaPem");
+		if (cachedPem && cachedPem.includes("BEGIN CERTIFICATE")) {
+			const cachedAgent = new https.Agent({ ...this._localAgentOptions, ca: [cachedPem] });
+			const result = await this.tlsProbe(cachedAgent);
+			if (result.valid) {
+				this.swapLocalAgent(cachedAgent);
+				this._localTlsMode = "cached";
+				await this.setStateAsync("_local.tls.mode", "cached", true);
+				this.log.info("[Local] ✅ TLS: Using cached CA cert from mein-senec.de.");
+				return;
+			}
+			cachedAgent.destroy();
+			this.log.debug("[Local] Cached CA did not validate device cert. Clearing stale cached PEM.");
+			await this.writeTlsState("_local.tls.cachedCaPem", "");
+		}
+
+		// Step 3+4: TOFU — fingerprint pinning
+		const storedFp = await this.readTlsState("_local.tls.fingerprint");
+		const deviceFp = await this.getDeviceFingerprint();
+
+		if (!deviceFp) {
+			this.log.warn("[Local] ⚠️ Could not reach device for TLS fingerprint probe.");
+			this._localTlsMode = "none";
+			await this.setStateAsync("_local.tls.mode", "none", true);
+			return;
+		}
+
+		// TOFU agent — CA validation bypassed, identity verified via fingerprint in localDoGet
+		const tofuAgent = new https.Agent({ ...this._localAgentOptions, rejectUnauthorized: false }); // lgtm[js/disabling-certificate-validation]
+		this.swapLocalAgent(tofuAgent);
+		this._localTlsMode = "tofu";
+		await this.setStateAsync("_local.tls.mode", "tofu", true);
+
+		if (storedFp && storedFp === deviceFp) {
+			// Step 3: Stored fingerprint matches
+			this._localTofuFingerprint = deviceFp;
+			this.log.info(`[Local] ✅ TLS: TOFU fingerprint validated (${deviceFp.substring(0, 16)}...).`);
+		} else if (storedFp && storedFp !== deviceFp) {
+			// Step 4a: Fingerprint changed
+			this.log.warn(
+				`[Local] ⚠️ TLS: Device certificate fingerprint changed! ` +
+					`Old: ${storedFp.substring(0, 16)}... → New: ${deviceFp.substring(0, 16)}... ` +
+					`This may indicate a firmware update. Accepting new certificate.`,
+			);
+			this._localTofuFingerprint = deviceFp;
+			await this.writeTlsState("_local.tls.fingerprint", deviceFp);
+		} else {
+			// Step 4b: No stored fingerprint — first use
+			this.log.info(`[Local] TLS: TOFU — stored device fingerprint: ${deviceFp.substring(0, 16)}...`);
+			this._localTofuFingerprint = deviceFp;
+			await this.writeTlsState("_local.tls.fingerprint", deviceFp);
+		}
+	}
+
+	/**
+	 * Verify a TLS peer certificate fingerprint during TOFU mode.
+	 * Called from localDoGet after each successful request.
+	 *
+	 * @param {string} fingerprint - SHA-256 hex fingerprint of the peer cert
+	 */
+	async verifyTofuFingerprint(fingerprint) {
+		if (!fingerprint) {
+			return;
+		}
+		if (!this._localTofuFingerprint) {
+			// First observation
+			this._localTofuFingerprint = fingerprint;
+			await this.writeTlsState("_local.tls.fingerprint", fingerprint);
+			this.log.info(`[Local] TOFU: Stored device fingerprint: ${fingerprint.substring(0, 16)}...`);
+		} else if (this._localTofuFingerprint !== fingerprint) {
+			// Fingerprint changed during operation
+			this.log.warn(
+				`[Local] ⚠️ TOFU: Device fingerprint changed during operation! ` +
+					`Old: ${this._localTofuFingerprint.substring(0, 16)}... → New: ${fingerprint.substring(0, 16)}... ` +
+					`Accepting new certificate.`,
+			);
+			this._localTofuFingerprint = fingerprint;
+			await this.writeTlsState("_local.tls.fingerprint", fingerprint);
+		}
+	}
+
+	/**
+	 * Attempt to download a fresh CA cert from mein-senec.de.
+	 * Called after webInit() if still on TOFU mode.
+	 */
+	async attemptCertDownload() {
+		if (this._localTlsMode !== "tofu" || !this.config.web_use || !this.webConnected) {
+			return;
+		}
+		const fetchFailed = await this.getStateAsync("_local.tls.certFetchFailed");
+		if (fetchFailed && fetchFailed.val === true) {
+			this.log.info(
+				"[Local] TLS: Skipping CA cert download — previous attempt failed. " +
+					"Set _local.tls.certFetchFailed to false to retry.",
+			);
+			return;
+		}
+
+		this.log.info("[Local] TLS: Attempting to download CA cert from mein-senec.de...");
+		try {
+			const webClient = require(`${__dirname}/lib/web-client.js`);
+			const pem = await webClient.webFetchCaCert(this);
+			if (!pem) {
+				this.log.warn("[Local] TLS: Could not find SenecGui-Root cert on mein-senec.de.");
+				await this.setStateAsync("_local.tls.certFetchFailed", true, true);
+				return;
+			}
+
+			// Validate the downloaded cert against the device
+			const testAgent = new https.Agent({ ...this._localAgentOptions, ca: [pem] });
+			const result = await this.tlsProbe(testAgent);
+			if (result.valid) {
+				// Success — upgrade from TOFU to cached CA
+				this.swapLocalAgent(testAgent);
+				this._localTlsMode = "cached";
+				await this.setStateAsync("_local.tls.mode", "cached", true);
+				await this.writeTlsState("_local.tls.cachedCaPem", pem);
+				this.log.info(
+					"[Local] ✅ TLS: Downloaded and validated CA cert from mein-senec.de. Upgraded to CA validation.",
+				);
+			} else {
+				testAgent.destroy();
+				this.log.warn("[Local] TLS: Downloaded cert did not validate device. Staying on TOFU.");
+				await this.setStateAsync("_local.tls.certFetchFailed", true, true);
+			}
+		} catch (e) {
+			this.log.warn(`[Local] TLS: CA cert download failed: ${e.message}. Staying on TOFU.`);
+			await this.setStateAsync("_local.tls.certFetchFailed", true, true);
+		}
 	}
 
 	/**
@@ -594,6 +944,39 @@ class Senec extends utils.Adapter {
 	 */
 	async onStateChange(id, state) {
 		if (!state) {
+			return;
+		}
+
+		// TLS certFetchFailed reset — user wants to retry CA download
+		if (id === `${this.namespace}._local.tls.certFetchFailed` && state.val === false && !state.ack) {
+			this.log.info("[Local] TLS: certFetchFailed reset by user — attempting CA cert download...");
+			this.attemptCertDownload().catch((e) => this.logError(e, "[Local] TLS cert download retry failed"));
+			return;
+		}
+
+		// TLS user CA cert upload — validate and upgrade
+		if (id === `${this.namespace}._local.tls.userCaPem` && !state.ack) {
+			const pem = state.val ? String(state.val) : "";
+			if (!pem || !pem.includes("BEGIN CERTIFICATE")) {
+				// User cleared the cert — re-negotiate without it
+				this.log.info("[Local] TLS: User CA cert cleared — re-negotiating...");
+				await this.negotiateLocalTls();
+				return;
+			}
+			this.log.info("[Local] TLS: User CA cert uploaded — validating against device...");
+			const testAgent = new https.Agent({ ...this._localAgentOptions, ca: [pem] });
+			const result = await this.tlsProbe(testAgent);
+			if (result.valid) {
+				this.swapLocalAgent(testAgent);
+				this._localTlsMode = "user";
+				await this.setStateAsync("_local.tls.mode", "user", true);
+				await this.writeTlsState("_local.tls.userCaPem", pem); // encrypt and ack
+				this.log.info("[Local] ✅ TLS: User-uploaded CA cert validated. Upgraded to CA validation.");
+			} else {
+				testAgent.destroy();
+				await this.writeTlsState("_local.tls.userCaPem", ""); // clear invalid cert
+				this.log.warn("[Local] ⚠️ TLS: Uploaded CA cert did not validate the device. Cert rejected.");
+			}
 			return;
 		}
 

@@ -18,6 +18,9 @@ export interface SenecAdapter extends AdapterClass {
     webConnected: boolean;
     connectEnabled: boolean;
     connectConnected: boolean;
+    _localTlsMode: "user" | "cached" | "tofu" | "none";
+    _localTofuFingerprint: string | null;
+    _localCertFetchFailed: boolean;
     unloaded: boolean;
     connectVia: string;
 
@@ -123,6 +126,12 @@ export interface SenecAdapter extends AdapterClass {
     logError(e: Error | string, prefix?: string): void;
     updateLastPoll(stateId: string, description: string): Promise<void>;
     updateConnectionStatus(): Promise<void>;
+    initTlsStates(): Promise<void>;
+    negotiateLocalTls(): Promise<void>;
+    attemptCertDownload(): Promise<void>;
+    tlsProbe(agent: import("node:https").Agent): Promise<{ valid: boolean; fingerprint: string }>;
+    swapLocalAgent(newAgent: import("node:https").Agent): void;
+    verifyTofuFingerprint(fingerprint: string): Promise<void>;
     delay(ms: number): Promise<void>;
     createSocketControlsForIndex(idx: number): Promise<void>;
     cleanupControlChannels(pattern: string, label: string): Promise<void>;
