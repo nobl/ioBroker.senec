@@ -933,7 +933,7 @@ class Senec extends utils.Adapter {
 			if (isFormula) {
 				// Parse {stateId} references from formula
 				const refs = [];
-				const regex = /\{([^}]+)\}/g;
+				const regex = /\{([^{}]+)\}/g;
 				let match;
 				while ((match = regex.exec(formulaStr)) !== null) {
 					refs.push(match[1]);
