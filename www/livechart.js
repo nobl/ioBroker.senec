@@ -253,9 +253,7 @@ var liveChart = {
 									start: start,
 									end: end,
 									aggregate: "none",
-									returnNewestEntries: true,
 									removeBorderValues: true,
-									count: 50000,
 								},
 								function (histErr, result) {
 									if (!histErr && result) {
@@ -745,6 +743,19 @@ var liveChart = {
 				`<span class="chart-toggle-dot" style="background:${this.colors[key]}"></span>${t(labelKeys[key])}</button>`;
 		}
 		html += "</div>";
+
+		// Loading / data range indicator
+		if (this._historyLoading) {
+			html +=
+				'<div style="text-align:center;padding:4px 0;font-size:12px;color:#ff9800">Loading history...</div>';
+		} else if (this.buffer.length > 0) {
+			var oldest = new Date(this.buffer[0].ts);
+			var newest = new Date(this.buffer[this.buffer.length - 1].ts);
+			var fmt = function (d) {
+				return `${d.getDate()}.${(d.getMonth() + 1).toString().padStart(2, "0")}. ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+			};
+			html += `<div style="text-align:center;padding:2px 0;font-size:11px;color:#999">${this.buffer.length} pts | ${fmt(oldest)} — ${fmt(newest)}</div>`;
+		}
 
 		// SVG chart
 		var data = this.getVisibleData();
