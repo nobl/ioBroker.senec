@@ -747,7 +747,7 @@ var liveChart = {
 		html += "</div>";
 
 		// SVG chart
-		var data = this.downsample(this.getVisibleData(), 400);
+		var data = this.getVisibleData();
 		if (data.length < 2 && this.viewOffset === 0) {
 			html += `<div class="stat-label">${t("livechart_waiting")}</div>`;
 		} else {
@@ -892,15 +892,46 @@ var liveChart = {
 	 * @returns {string} SVG path elements
 	 */
 	renderLine: function (data, key, tMin, tRange, yMin, range, padL, padT, plotW, plotH) {
-		var points = [];
+		// Extract non-null points for this specific line
+		var raw = [];
 		for (var i = 0; i < data.length; i++) {
 			var val = data[i][key];
-			if (val == null) {
-				continue;
+			if (val != null) {
+				raw.push({ ts: data[i].ts, val: val });
 			}
-			var x = padL + ((data[i].ts - tMin) / tRange) * plotW;
-			var y = padT + plotH - ((val - yMin) / range) * plotH;
-			points.push({ x: x, y: y, val: val });
+		}
+
+		// Downsample per line — max 400 points, preserving peaks/valleys
+		if (raw.length > 400) {
+			var sampled = [raw[0]];
+			var bucketSize = (raw.length - 2) / 398;
+			for (var b = 0; b < 398; b++) {
+				var bStart = Math.floor(b * bucketSize) + 1;
+				var bEnd = Math.floor((b + 1) * bucketSize) + 1;
+				if (bEnd > raw.length - 1) {
+					bEnd = raw.length - 1;
+				}
+				var best = bStart;
+				var bestMag = 0;
+				for (var bi = bStart; bi < bEnd; bi++) {
+					var mag = Math.abs(raw[bi].val);
+					if (mag > bestMag) {
+						bestMag = mag;
+						best = bi;
+					}
+				}
+				sampled.push(raw[best]);
+			}
+			sampled.push(raw[raw.length - 1]);
+			raw = sampled;
+		}
+
+		// Convert to screen coordinates
+		var points = [];
+		for (var pi = 0; pi < raw.length; pi++) {
+			var x = padL + ((raw[pi].ts - tMin) / tRange) * plotW;
+			var y = padT + plotH - ((raw[pi].val - yMin) / range) * plotH;
+			points.push({ x: x, y: y, val: raw[pi].val });
 		}
 
 		if (points.length < 2) {
