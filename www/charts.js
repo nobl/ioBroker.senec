@@ -198,7 +198,7 @@ var charts = {
 
 		// Battery level (%) — API only
 		if (hasApi && apiPfx) {
-			var blPfx = apiPfx.replace(".hourly.", ".hourly.");
+			var blPfx = apiPfx;
 			var blSeries = [];
 			var hasBl = false;
 			for (var blh = 0; blh < showHours; blh++) {
