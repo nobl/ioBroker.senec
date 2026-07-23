@@ -780,16 +780,21 @@ var systemInfo = {
 		html += '<div class="system-grid">';
 
 		if (product) {
-			html += this.renderMetric(t("system_product"), product, "#757575", this.sourceTag(states, prodKeys));
+			html += this.renderMetric(
+				t("system_product"),
+				String(product),
+				"#757575",
+				this.sourceTag(states, prodKeys),
+			);
 		}
 		if (fw) {
-			html += this.renderMetric(t("system_firmware"), fw, "#757575", this.sourceTag(states, fwKeys));
+			html += this.renderMetric(t("system_firmware"), String(fw), "#757575", this.sourceTag(states, fwKeys));
 		}
 		if (npu) {
 			html += this.renderMetric(t("system_npu_version"), String(npu), "#757575", this.sourceTag(states, npuKeys));
 		}
 		if (gui) {
-			html += this.renderMetric(t("system_gui_version"), gui, "#757575", this.sourceTag(states, guiKeys));
+			html += this.renderMetric(t("system_gui_version"), String(gui), "#757575", this.sourceTag(states, guiKeys));
 		}
 		if (invState) {
 			html += this.renderMetric(
@@ -934,11 +939,11 @@ var systemInfo = {
 
 		if (evConn !== null) {
 			var connected = this.toBool(evConn);
-			html += this.renderStatus(t("wallbox_ev_connected"), connected, "L");
+			html += this.renderStatus(t("wallbox_ev_connected"), connected === true, "L");
 		}
 		if (smartCharge !== null) {
 			var active = this.toBool(smartCharge);
-			html += this.renderStatus(t("wallbox_smart_charge"), active, "L");
+			html += this.renderStatus(t("wallbox_smart_charge"), active === true, "L");
 		}
 
 		html += "</div>";

@@ -10,7 +10,8 @@
  */
 
 var eventTimeline = {
-	/** Parsed warning/error/panic entries */
+	// eslint-disable-next-line jsdoc/check-tag-names
+	/** @type {TimelineEvent[]} Parsed warning/error/panic entries */
 	events: [],
 
 	/** Whether data has been loaded */

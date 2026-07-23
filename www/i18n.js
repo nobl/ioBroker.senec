@@ -164,7 +164,8 @@ var i18n = {
 		for (var j = 0; j < els.length; j++) {
 			var pKey = els[j].getAttribute("data-i18n-placeholder");
 			if (pKey) {
-				els[j].placeholder = this.translate(pKey);
+				// eslint-disable-next-line jsdoc/check-tag-names
+				/** @type {HTMLInputElement} */ (els[j]).placeholder = this.translate(pKey);
 			}
 		}
 
@@ -172,7 +173,8 @@ var i18n = {
 		for (var k = 0; k < els.length; k++) {
 			var tKey = els[k].getAttribute("data-i18n-title");
 			if (tKey) {
-				els[k].title = this.translate(tKey);
+				// eslint-disable-next-line jsdoc/check-tag-names
+				/** @type {HTMLElement} */ (els[k]).title = this.translate(tKey);
 			}
 		}
 	},

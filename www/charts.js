@@ -2,6 +2,7 @@
 
 /* global app, t, energyFlow, document, getComputedStyle, XMLSerializer, Image */
 /* exported charts */
+/* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
 /**
  * Measurement bar charts for the SENEC web dashboard.
@@ -74,6 +75,7 @@ var charts = {
 	},
 
 	getData: function (states) {
+		/** @type {{ current: {labels: string[], series: Record<string, number[]>} | null, comparison: {labels: string[], series: Record<string, number[]>} | null, compLabel: string }} */
 		var result = { current: null, comparison: null, compLabel: "" };
 		if (this.period === "today") {
 			result.current = this.getHourlyData(states, "today");
@@ -132,6 +134,7 @@ var charts = {
 
 	getHourlyData: function (states, dayKey) {
 		var wpfx = `_meinsenec.Measurements.Daily.${dayKey}.`;
+		/** @type {{labels: string[], series: Record<string, number[]>, batteryLevel?: (number|null)[]}} */
 		var data = { labels: [], series: {} };
 
 		var apiPfx = this.getApiMeasurementPrefix(states, `Daily.${dayKey}.hourly.`);
@@ -219,6 +222,7 @@ var charts = {
 
 	getDailyData: function (states, monthKey) {
 		var wpfx = `_meinsenec.Measurements.Monthly.${monthKey}.`;
+		/** @type {{labels: string[], series: Record<string, number[]>, batteryLevel?: (number|null)[]}} */
 		var data = { labels: [], series: {} };
 
 		var apiPfx = this.getApiMeasurementPrefix(states, `Monthly.${monthKey}.daily.`);
@@ -275,6 +279,7 @@ var charts = {
 
 	getMonthlyData: function (states, year) {
 		var wpfx = `_meinsenec.Measurements.Yearly.${year}.`;
+		/** @type {{labels: string[], series: Record<string, number[]>, batteryLevel?: (number|null)[]}} */
 		var data = { labels: [], series: {} };
 
 		var apiPfx = this.getApiMeasurementPrefix(states, `Yearly.${year}.monthly.`);
@@ -1003,7 +1008,7 @@ var charts = {
 		clone.insertBefore(rect, clone.firstChild);
 
 		// Resolve CSS variables in the clone for grid lines
-		var lines = clone.querySelectorAll("line");
+		var lines = /** @type {Element} */ (clone).querySelectorAll("line");
 		var borderColor =
 			getComputedStyle(document.documentElement).getPropertyValue("--color-border").trim() || "#e0e0e0";
 		for (var i = 0; i < lines.length; i++) {
@@ -1024,11 +1029,17 @@ var charts = {
 			canvas.width = img.width * scale;
 			canvas.height = img.height * scale;
 			var ctx = canvas.getContext("2d");
+			if (!ctx) {
+				return;
+			}
 			ctx.scale(scale, scale);
 			ctx.drawImage(img, 0, 0);
 			URL.revokeObjectURL(url);
 
 			canvas.toBlob(function (blob) {
+				if (!blob) {
+					return;
+				}
 				var pngUrl = URL.createObjectURL(blob);
 				var a = document.createElement("a");
 				a.href = pngUrl;
