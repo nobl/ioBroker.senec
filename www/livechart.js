@@ -42,8 +42,8 @@ var liveChart = {
 	/** Whether the chart is disabled (collapsed, no recording) */
 	disabled: false,
 
-	/** Maximum buffer size (points) — limit memory. At 10s intervals, 24h = 8640 points + margin */
-	maxPoints: 10000,
+	/** Maximum buffer size (points) — limit memory. At 10s intervals, 36h = 12960 points + margin */
+	maxPoints: 15000,
 
 	/** Last recorded timestamp to avoid duplicates */
 	_lastTs: 0,
@@ -60,6 +60,9 @@ var liveChart = {
 
 	/** Whether a history load is currently in progress */
 	_historyLoading: false,
+
+	/** Queued window expansion (minutes) — executed after current load finishes */
+	_pendingWindowLoad: 0,
 
 	/**
 	 * State keys per source for history queries
@@ -338,6 +341,31 @@ var liveChart = {
 	 */
 	_mergeHistory: function (pending, src) {
 		this._historyLoading = false;
+
+		// If a window expansion was queued while loading, execute it now
+		if (this._pendingWindowLoad) {
+			var queuedMinutes = this._pendingWindowLoad;
+			this._pendingWindowLoad = 0;
+			var queuedSrc = energyFlow.resolveSource(app.connectors);
+			if (queuedSrc) {
+				var now = Date.now();
+				var newStart = now - queuedMinutes * 60 * 1000;
+				var gapEnd = this._historyOldestTs < Infinity ? this._historyOldestTs : now;
+				if (newStart < gapEnd) {
+					// Don't return — still merge the current results first, then load the gap
+					setTimeout(
+						function (s, src2, t1, t2) {
+							s._loadHistory(app.conn, app.namespace, src2, t1, t2);
+						},
+						100,
+						this,
+						queuedSrc,
+						newStart,
+						gapEnd,
+					);
+				}
+			}
+		}
 
 		// Collect all unique timestamps from the primary state (house for reliability)
 		var primary = pending.house;
@@ -624,8 +652,8 @@ var liveChart = {
 		html += '<div class="day-totals-tabs">';
 
 		// Time window tabs
-		var windows = [10, 30, 60, 120, 360, 720, 1440];
-		var windowLabels = ["10m", "30m", "1h", "2h", "6h", "12h", "24h"];
+		var windows = [10, 30, 60, 120, 360, 720, 1440, 2160];
+		var windowLabels = ["10m", "30m", "1h", "2h", "6h", "12h", "24h", "36h"];
 		for (var i = 0; i < windows.length; i++) {
 			var cls = this.window === windows[i] ? "period-tab active" : "period-tab";
 			html += `<button class="${cls}" onclick="liveChart.setWindow(${windows[i]})">${windowLabels[i]}</button>`;
@@ -760,6 +788,22 @@ var liveChart = {
 			var d = new Date(xTs);
 			var timeStr = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 			svg += `<text x="${xPos.toFixed(1)}" y="${chartH - 5}" text-anchor="middle" fill="#999" font-size="10">${timeStr}</text>`;
+		}
+
+		// Midnight markers — vertical line + date label at each day boundary
+		var startDay = new Date(tMin);
+		startDay.setHours(0, 0, 0, 0);
+		if (startDay.getTime() < tMin) {
+			startDay.setDate(startDay.getDate() + 1);
+		}
+		for (var midnight = startDay.getTime(); midnight < tMax; midnight += 86400000) {
+			var mxPos = padL + ((midnight - tMin) / tRange) * plotW;
+			if (mxPos > padL + 30 && mxPos < chartW - padR - 30) {
+				svg += `<line x1="${mxPos.toFixed(1)}" y1="${padT}" x2="${mxPos.toFixed(1)}" y2="${padT + plotH}" stroke="#888" stroke-width="1" stroke-dasharray="6,3"/>`;
+				var mDate = new Date(midnight);
+				var dateStr = `${mDate.getDate()}.${(mDate.getMonth() + 1).toString().padStart(2, "0")}.`;
+				svg += `<text x="${mxPos.toFixed(1)}" y="${padT - 3}" text-anchor="middle" fill="#aaa" font-size="10" font-weight="bold">${dateStr}</text>`;
+			}
 		}
 
 		// Render lines
@@ -945,16 +989,21 @@ var liveChart = {
 	setWindow: function (minutes) {
 		var oldWindow = this.window;
 		this.window = minutes;
-		// Load only the delta when expanding to a larger window
+		// Load history when expanding to a larger window
 		if (minutes > oldWindow && this._historyInstance) {
 			var src = energyFlow.resolveSource(app.connectors);
 			if (src) {
-				var now = Date.now();
-				var newStart = now - minutes * 60 * 1000;
-				// Only fetch the gap: from new window start to the oldest data we already have
-				var gapEnd = this._historyOldestTs < Infinity ? this._historyOldestTs : now;
-				if (newStart < gapEnd) {
-					this._loadHistory(app.conn, app.namespace, src, newStart, gapEnd);
+				if (this._historyLoading) {
+					// A load is in progress — queue a full reload for the new window
+					this._pendingWindowLoad = minutes;
+				} else {
+					var now = Date.now();
+					var newStart = now - minutes * 60 * 1000;
+					// Delta: only fetch the gap between new start and oldest data we have
+					var gapEnd = this._historyOldestTs < Infinity ? this._historyOldestTs : now;
+					if (newStart < gapEnd) {
+						this._loadHistory(app.conn, app.namespace, src, newStart, gapEnd);
+					}
 				}
 			}
 		}

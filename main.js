@@ -534,7 +534,7 @@ class Senec extends utils.Adapter {
 	createLocalAgent() {
 		this._localTlsMode = "none";
 		// TOFU fingerprint validation in localDoGet provides identity verification until negotiateLocalTls upgrades
-		return new https.Agent({ ...this._localAgentOptions, rejectUnauthorized: false }); // lgtm[js/disabling-certificate-validation]
+		return new https.Agent({ ...this._localAgentOptions, rejectUnauthorized: false }); // CodeQL: intentional — TOFU fingerprint validation provides identity verification
 	}
 
 	/**
@@ -686,7 +686,7 @@ class Senec extends utils.Adapter {
 		const isIp = /^[\d.]+$/.test(host) || host.includes(":");
 		return new Promise((resolve) => {
 			// Must bypass CA validation to probe the device's cert fingerprint (TOFU)
-			const opts = { rejectUnauthorized: false }; // lgtm[js/disabling-certificate-validation]
+			const opts = { rejectUnauthorized: false }; // CodeQL: intentional — TOFU fingerprint validation provides identity verification
 			if (!isIp) {
 				opts.servername = host;
 			}
@@ -763,7 +763,7 @@ class Senec extends utils.Adapter {
 		}
 
 		// TOFU agent — CA validation bypassed, identity verified via fingerprint in localDoGet
-		const tofuAgent = new https.Agent({ ...this._localAgentOptions, rejectUnauthorized: false }); // lgtm[js/disabling-certificate-validation]
+		const tofuAgent = new https.Agent({ ...this._localAgentOptions, rejectUnauthorized: false }); // CodeQL: intentional — TOFU fingerprint validation provides identity verification
 		this.swapLocalAgent(tofuAgent);
 		this._localTlsMode = "tofu";
 		await this.setStateAsync("_local.tls.mode", "tofu", true);
