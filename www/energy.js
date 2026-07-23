@@ -2,6 +2,7 @@
 
 /* global app, t, liveChart */
 /* exported energyFlow */
+/* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
 /**
  * Energy flow data layer and visualization.
@@ -18,32 +19,35 @@ var energyFlow = {
 		battery: 0,
 		grid: 0,
 		house: 0,
-		soc: null,
-		todayPv: null,
-		todayConsumption: null,
-		todayGridImport: null,
-		todayGridExport: null,
-		todayBatteryCharge: null,
-		todayBatteryDischarge: null,
+		/** @type {number|null} */ soc: null,
+		/** @type {number|null} */ todayPv: null,
+		/** @type {number|null} */ todayConsumption: null,
+		/** @type {number|null} */ todayGridImport: null,
+		/** @type {number|null} */ todayGridExport: null,
+		/** @type {number|null} */ todayBatteryCharge: null,
+		/** @type {number|null} */ todayBatteryDischarge: null,
 		wallbox: 0,
-		todayWallbox: null,
-		autarkyCurrent: null, // % self-sufficiency right now (live)
-		autarky: null, // % self-sufficiency for current period
-		autarkyWeek: null, // % self-sufficiency this week (web only)
-		autarkyAll: null, // % self-sufficiency lifetime (web only)
-		batteryCapacity: null, // kWh — design capacity for time estimates
+		/** @type {number|null} */ todayWallbox: null,
+		/** @type {number|null} */ autarkyCurrent: null, // % self-sufficiency right now (live)
+		/** @type {number|null} */ autarky: null, // % self-sufficiency for current period
+		/** @type {number|null} */ autarkyWeek: null, // % self-sufficiency this week (web only)
+		/** @type {number|null} */ autarkyAll: null, // % self-sufficiency lifetime (web only)
+		/** @type {number|null} */ batteryCapacity: null, // kWh — design capacity for time estimates
 		// External sources (separate mode only — integrate mode values already added to pv/wallbox/battery)
-		externalPv: [], // array of { power, label }
-		externalConsumer: [], // array of { power, label }
+		/** @type {Array<{power: number, label: string}>} */ externalPv: [], // array of { power, label }
+		/** @type {Array<{power: number, label: string}>} */ externalConsumer: [], // array of { power, label }
+		/**
+		 * @type {Array<{power: number, label: string, soc?: number|null, capacity?: number|null}>}
+		 */
 		externalBattery: [], // array of { power, label } — signed: +charge/-discharge
 	},
 
 	source: "auto", // "auto", "local", "api", "web"
 	period: "today", // "today", "month", "year"
 
-	activeSource: null, // which source is actually providing data
+	/** @type {string|null} */ activeSource: null, // which source is actually providing data
 
-	apiAnlagenId: null, // discovered API system ID
+	/** @type {string|null} */ apiAnlagenId: null, // discovered API system ID
 	hasData: false,
 
 	// State ID mappings per connector
@@ -1200,7 +1204,7 @@ var energyFlow = {
 		liveChart._historyLoaded = false;
 		liveChart._historyInstance = null;
 		liveChart.record();
-		liveChart.initHistory(app.conn, "senec.0", app.connectors);
+		liveChart.initHistory(app.conn, app.namespace, app.connectors);
 		app.renderDashboard();
 	},
 

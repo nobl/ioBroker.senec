@@ -2,6 +2,7 @@
 
 /* global app, t, document */
 /* exported controls */
+/* eslint-disable jsdoc/check-tag-names */
 
 /**
  * Control panel for the SENEC web dashboard.
@@ -9,8 +10,8 @@
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 var controls = {
-	NAMESPACE: "senec.0",
 	confirmReboot: false,
+	/** @type {Record<string, {val: string|number|boolean, ts: number}>} */
 	pendingStates: {},
 	applyLockUntil: 0,
 
@@ -27,7 +28,7 @@ var controls = {
 	 */
 	setState: function (stateId, value) {
 		if (app.conn) {
-			app.conn.emit("setState", `${this.NAMESPACE}.${stateId}`, { val: value, ack: false });
+			app.conn.emit("setState", `${app.namespace}.${stateId}`, { val: value, ack: false });
 			// Store pending value to prevent UI snap-back before ack
 			this.pendingStates[stateId] = { val: value, ts: Date.now() };
 		}
@@ -36,7 +37,7 @@ var controls = {
 	/**
 	 * Show "sent" feedback on a button, disable for 3s
 	 *
-	 * @param {HTMLElement} btn - Button element for feedback
+	 * @param {HTMLButtonElement} btn - Button element for feedback
 	 */
 	showSent: function (btn) {
 		if (!btn) {
@@ -213,7 +214,7 @@ var controls = {
 	},
 
 	applyEmergency: function (btn) {
-		var el = document.getElementById("ctrl-emergency-reserve");
+		var el = /** @type {HTMLInputElement} */ (document.getElementById("ctrl-emergency-reserve"));
 		if (el) {
 			this.setState("control.EmergencyPower.ReserveInPercent", Number(el.value));
 			this.showSent(btn);
@@ -284,10 +285,10 @@ var controls = {
 	},
 
 	applyPeakShaving: function (btn) {
-		var mode = document.getElementById("ctrl-ps-mode");
-		var limit = document.getElementById("ctrl-ps-limit");
-		var endH = document.getElementById("ctrl-ps-endh");
-		var endM = document.getElementById("ctrl-ps-endm");
+		var mode = /** @type {HTMLSelectElement} */ (document.getElementById("ctrl-ps-mode"));
+		var limit = /** @type {HTMLInputElement} */ (document.getElementById("ctrl-ps-limit"));
+		var endH = /** @type {HTMLInputElement} */ (document.getElementById("ctrl-ps-endh"));
+		var endM = /** @type {HTMLInputElement} */ (document.getElementById("ctrl-ps-endm"));
 		if (mode) {
 			this.setState("control.PeakShaving.Mode", mode.value);
 		}
@@ -353,7 +354,7 @@ var controls = {
 	},
 
 	applySGReady: function (btn) {
-		var en = document.getElementById("ctrl-sg-enabled");
+		var en = /** @type {HTMLInputElement} */ (document.getElementById("ctrl-sg-enabled"));
 		if (en) {
 			this.setState("control.SGReady.Enabled", en.checked);
 		}
@@ -364,7 +365,7 @@ var controls = {
 			"ShutdownLevelInWatt",
 		];
 		for (var i = 0; i < fields.length; i++) {
-			var el = document.getElementById(`ctrl-sg-${fields[i]}`);
+			var el = /** @type {HTMLInputElement} */ (document.getElementById(`ctrl-sg-${fields[i]}`));
 			if (el) {
 				this.setState(`control.SGReady.${fields[i]}`, Number(el.value));
 			}
@@ -464,11 +465,11 @@ var controls = {
 	},
 
 	applySocket: function (idx, btn) {
-		var nameEl = document.getElementById(`ctrl-sock-${idx}-name`);
+		var nameEl = /** @type {HTMLInputElement} */ (document.getElementById(`ctrl-sock-${idx}-name`));
 		if (nameEl) {
 			this.setState(`control.Sockets.${idx}.Name`, nameEl.value);
 		}
-		var mode = document.getElementById(`ctrl-sock-${idx}-mode`);
+		var mode = /** @type {HTMLSelectElement} */ (document.getElementById(`ctrl-sock-${idx}-mode`));
 		if (mode) {
 			this.setState(`control.Sockets.${idx}.Mode`, mode.value);
 		}
@@ -479,7 +480,7 @@ var controls = {
 			"DauerSteckdoseAnInMin",
 		];
 		for (var i = 0; i < fields.length; i++) {
-			var el = document.getElementById(`ctrl-sock-${idx}-${fields[i]}`);
+			var el = /** @type {HTMLInputElement} */ (document.getElementById(`ctrl-sock-${idx}-${fields[i]}`));
 			if (el) {
 				this.setState(`control.Sockets.${idx}.${fields[i]}`, Number(el.value));
 			}
@@ -558,15 +559,15 @@ var controls = {
 	},
 
 	applyWallbox: function (idx, btn) {
-		var smart = document.getElementById(`ctrl-wb-${idx}-smart`);
+		var smart = /** @type {HTMLInputElement} */ (document.getElementById(`ctrl-wb-${idx}-smart`));
 		if (smart) {
 			this.setState(`control.Wallbox.${idx}.SmartCharge`, smart.checked);
 		}
-		var current = document.getElementById(`ctrl-wb-${idx}-current`);
+		var current = /** @type {HTMLInputElement} */ (document.getElementById(`ctrl-wb-${idx}-current`));
 		if (current) {
 			this.setState(`control.Wallbox.${idx}.ChargingCurrent`, Number(current.value));
 		}
-		var ic = document.getElementById(`ctrl-wb-${idx}-intercharge`);
+		var ic = /** @type {HTMLInputElement} */ (document.getElementById(`ctrl-wb-${idx}-intercharge`));
 		if (ic) {
 			this.setState(`control.Wallbox.${idx}.Intercharge`, ic.checked);
 		}

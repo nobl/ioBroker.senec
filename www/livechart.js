@@ -11,6 +11,8 @@
  */
 
 var liveChart = {
+	// eslint-disable-next-line jsdoc/check-tag-names
+	/** @type {LiveChartPoint[]} */
 	buffer: [],
 
 	/** Time window in minutes */
@@ -40,13 +42,14 @@ var liveChart = {
 	/** Whether the chart is disabled (collapsed, no recording) */
 	disabled: false,
 
-	/** Maximum buffer size (points) — limit memory. At 10s intervals, 24h = 8640 points */
-	maxPoints: 8640,
+	/** Maximum buffer size (points) — limit memory. At 10s intervals, 24h = 8640 points + margin */
+	maxPoints: 10000,
 
 	/** Last recorded timestamp to avoid duplicates */
 	_lastTs: 0,
 
-	/** History adapter instance (e.g. "influxdb.0") — discovered on init */
+	// eslint-disable-next-line jsdoc/check-tag-names
+	/** @type {string|null} History adapter instance (e.g. "influxdb.0") — discovered on init */
 	_historyInstance: null,
 
 	/** Oldest timestamp loaded from history — for delta loading on window expansion */
@@ -69,6 +72,8 @@ var liveChart = {
 			house: "ENERGY.GUI_HOUSE_POW",
 			wallbox: "WALLBOX.APPARENT_CHARGING_POWER.0",
 		},
+		// eslint-disable-next-line jsdoc/check-tag-names
+		/** @type {Record<string, string|null>} */
 		api: {
 			// Filled dynamically with discovered anlagenId prefix
 			pv: null,
@@ -77,6 +82,8 @@ var liveChart = {
 			house: null,
 			wallbox: null,
 		},
+		// eslint-disable-next-line jsdoc/check-tag-names
+		/** @type {Record<string, string|null>} */
 		web: {
 			pv: "_meinsenec.Status.powergenerated.now",
 			battery: null, // Web uses charge/discharge separately — handled in transform
@@ -144,7 +151,8 @@ var liveChart = {
 				return;
 			}
 			liveChart._historyInstance = instance;
-			liveChart._loadHistory(conn, namespace, src);
+			// eslint-disable-next-line jsdoc/check-tag-names
+			liveChart._loadHistory(conn, namespace, /** @type {string} */ (src));
 		});
 	},
 
@@ -233,7 +241,7 @@ var liveChart = {
 									aggregate: "none",
 									returnNewestEntries: true,
 									removeBorderValues: true,
-									count: 2000,
+									count: 10000,
 								},
 								function (histErr, result) {
 									if (!histErr && result) {
@@ -946,7 +954,7 @@ var liveChart = {
 				// Only fetch the gap: from new window start to the oldest data we already have
 				var gapEnd = this._historyOldestTs < Infinity ? this._historyOldestTs : now;
 				if (newStart < gapEnd) {
-					this._loadHistory(app.conn, "senec.0", src, newStart, gapEnd);
+					this._loadHistory(app.conn, app.namespace, src, newStart, gapEnd);
 				}
 			}
 		}
@@ -969,7 +977,7 @@ var liveChart = {
 			// Re-enable: record current state and try history backfill
 			this.record();
 			if (!this._historyLoaded) {
-				this.initHistory(app.conn, "senec.0", app.connectors);
+				this.initHistory(app.conn, app.namespace, app.connectors);
 			}
 		}
 		app.renderDashboard();
