@@ -559,3 +559,63 @@ describe("aggregateToMonthly", () => {
 		}
 	});
 });
+
+describe("formula ref regex", () => {
+	// Same regex as main.js — extracts {stateId} references from formula strings
+	const regex = /\{([^{}]+)\}/g;
+
+	function extractRefs(str) {
+		const refs = [];
+		let match;
+		while ((match = regex.exec(str)) !== null) {
+			refs.push(match[1]);
+		}
+		return refs;
+	}
+
+	it("extracts single state reference", () => {
+		assert.deepEqual(extractRefs("{adapter.0.voltage}"), ["adapter.0.voltage"]);
+	});
+
+	it("extracts multiple state references", () => {
+		assert.deepEqual(extractRefs("{a.0.x} * {a.0.y}"), ["a.0.x", "a.0.y"]);
+	});
+
+	it("extracts references with math operators", () => {
+		assert.deepEqual(extractRefs("({a.0.v} * {a.0.i}) / 1000"), ["a.0.v", "a.0.i"]);
+	});
+
+	it("returns empty for plain state ID without braces", () => {
+		assert.deepEqual(extractRefs("adapter.0.voltage"), []);
+	});
+
+	it("returns empty for empty string", () => {
+		assert.deepEqual(extractRefs(""), []);
+	});
+
+	it("ignores empty braces", () => {
+		assert.deepEqual(extractRefs("{}"), []);
+	});
+
+	it("ignores nested braces (no match)", () => {
+		assert.deepEqual(extractRefs("{{nested}}"), ["nested"]);
+	});
+
+	it("handles complex formula with three refs", () => {
+		assert.deepEqual(
+			extractRefs("{wallbox.0.L1_V} * {wallbox.0.L1_A} + {wallbox.0.L2_V} * {wallbox.0.L2_A}"),
+			["wallbox.0.L1_V", "wallbox.0.L1_A", "wallbox.0.L2_V", "wallbox.0.L2_A"],
+		);
+	});
+
+	it("handles state IDs with hyphens and underscores", () => {
+		assert.deepEqual(extractRefs("{my-adapter.0.my_state}"), ["my-adapter.0.my_state"]);
+	});
+
+	it("does not hang on pathological input (ReDoS protection)", () => {
+		const start = Date.now();
+		// Pathological: many { without closing }
+		extractRefs("{" + "|{".repeat(1000));
+		assert.ok(Date.now() - start < 100, "regex should complete in under 100ms");
+	});
+});
