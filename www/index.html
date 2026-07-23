@@ -1248,7 +1248,10 @@
 				el.innerHTML = energyFlow.render(systemInfo.renderOperatingMode(this.states));
 
 				var liveEl = document.getElementById("livechart-container");
-				if (liveEl) liveEl.innerHTML = liveChart.render();
+				if (liveEl && !liveChart._dragging) {
+					liveEl.innerHTML = liveChart.render();
+					liveChart.bindDrag();
+				}
 
 				var timelineEl = document.getElementById("timeline-container");
 				if (timelineEl) timelineEl.innerHTML = eventTimeline.render();

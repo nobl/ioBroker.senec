@@ -2,6 +2,7 @@
 
 /* exported i18n, t */
 /* global document, window */
+/* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
 /**
  * Lightweight i18n runtime for the SENEC web dashboard.
@@ -164,7 +165,6 @@ var i18n = {
 		for (var j = 0; j < els.length; j++) {
 			var pKey = els[j].getAttribute("data-i18n-placeholder");
 			if (pKey) {
-				// eslint-disable-next-line jsdoc/check-tag-names
 				/** @type {HTMLInputElement} */ (els[j]).placeholder = this.translate(pKey);
 			}
 		}
@@ -173,7 +173,6 @@ var i18n = {
 		for (var k = 0; k < els.length; k++) {
 			var tKey = els[k].getAttribute("data-i18n-title");
 			if (tKey) {
-				// eslint-disable-next-line jsdoc/check-tag-names
 				/** @type {HTMLElement} */ (els[k]).title = this.translate(tKey);
 			}
 		}

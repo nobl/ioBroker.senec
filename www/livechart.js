@@ -1,7 +1,8 @@
 "use strict";
 
-/* global app, t, energyFlow, document */
+/* global app, t, energyFlow, document, window */
 /* exported liveChart */
+/* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
 /**
  * Live power curve for the SENEC web dashboard.
@@ -11,7 +12,6 @@
  */
 
 var liveChart = {
-	// eslint-disable-next-line jsdoc/check-tag-names
 	/** @type {LiveChartPoint[]} */
 	buffer: [],
 
@@ -42,13 +42,12 @@ var liveChart = {
 	/** Whether the chart is disabled (collapsed, no recording) */
 	disabled: false,
 
-	/** Maximum buffer size (points) — limit memory. At 10s intervals, 36h = 12960 points + margin */
-	maxPoints: 15000,
+	/** Maximum buffer size (points) — limit memory. Downsampling keeps rendering fast */
+	maxPoints: 50000,
 
 	/** Last recorded timestamp to avoid duplicates */
 	_lastTs: 0,
 
-	// eslint-disable-next-line jsdoc/check-tag-names
 	/** @type {string|null} History adapter instance (e.g. "influxdb.0") — discovered on init */
 	_historyInstance: null,
 
@@ -64,6 +63,18 @@ var liveChart = {
 	/** Queued window expansion (minutes) — executed after current load finishes */
 	_pendingWindowLoad: 0,
 
+	/** View offset from now in ms (0 = live, >0 = panned back in time) */
+	viewOffset: 0,
+
+	/** Whether a drag is in progress */
+	_dragging: false,
+
+	/** X position at drag start */
+	_dragStartX: 0,
+
+	/** viewOffset at drag start */
+	_dragStartOffset: 0,
+
 	/**
 	 * State keys per source for history queries
 	 */
@@ -75,7 +86,7 @@ var liveChart = {
 			house: "ENERGY.GUI_HOUSE_POW",
 			wallbox: "WALLBOX.APPARENT_CHARGING_POWER.0",
 		},
-		// eslint-disable-next-line jsdoc/check-tag-names
+
 		/** @type {Record<string, string|null>} */
 		api: {
 			// Filled dynamically with discovered anlagenId prefix
@@ -85,7 +96,7 @@ var liveChart = {
 			house: null,
 			wallbox: null,
 		},
-		// eslint-disable-next-line jsdoc/check-tag-names
+
 		/** @type {Record<string, string|null>} */
 		web: {
 			pv: "_meinsenec.Status.powergenerated.now",
@@ -154,7 +165,7 @@ var liveChart = {
 				return;
 			}
 			liveChart._historyInstance = instance;
-			// eslint-disable-next-line jsdoc/check-tag-names
+
 			liveChart._loadHistory(conn, namespace, /** @type {string} */ (src));
 		});
 	},
@@ -244,7 +255,7 @@ var liveChart = {
 									aggregate: "none",
 									returnNewestEntries: true,
 									removeBorderValues: true,
-									count: 10000,
+									count: 50000,
 								},
 								function (histErr, result) {
 									if (!histErr && result) {
@@ -572,6 +583,7 @@ var liveChart = {
 		var el = document.getElementById("livechart-container");
 		if (el) {
 			el.innerHTML = this.render();
+			this.bindDrag();
 		}
 	},
 
@@ -624,13 +636,56 @@ var liveChart = {
 	 * Get visible data points within the current time window
 	 */
 	getVisibleData: function () {
-		var cutoff = Date.now() - this.window * 60 * 1000;
+		var windowMs = this.window * 60 * 1000;
+		var end = Date.now() - this.viewOffset;
+		var start = end - windowMs;
 		var result = [];
 		for (var i = 0; i < this.buffer.length; i++) {
-			if (this.buffer[i].ts >= cutoff) {
+			if (this.buffer[i].ts >= start && this.buffer[i].ts <= end) {
 				result.push(this.buffer[i]);
 			}
 		}
+		return result;
+	},
+
+	/**
+	 * Downsample data to at most maxPts points.
+	 * Uses min/max per bucket to preserve peaks and valleys.
+	 *
+	 * @param {LiveChartPoint[]} data - Input data points
+	 * @param {number} maxPts - Maximum output points
+	 * @returns {LiveChartPoint[]} Downsampled data
+	 */
+	downsample: function (data, maxPts) {
+		if (data.length <= maxPts) {
+			return data;
+		}
+		// Always keep first and last
+		var result = [data[0]];
+		var bucketSize = (data.length - 2) / (maxPts - 2);
+		for (var b = 0; b < maxPts - 2; b++) {
+			var start = Math.floor(b * bucketSize) + 1;
+			var end = Math.floor((b + 1) * bucketSize) + 1;
+			if (end > data.length - 1) {
+				end = data.length - 1;
+			}
+			// Find point with largest absolute power value in this bucket
+			var best = start;
+			var bestMag = 0;
+			for (var i = start; i < end; i++) {
+				var mag =
+					Math.abs(data[i].pv || 0) +
+					Math.abs(data[i].house || 0) +
+					Math.abs(data[i].grid || 0) +
+					Math.abs(data[i].battery || 0);
+				if (mag > bestMag) {
+					bestMag = mag;
+					best = i;
+				}
+			}
+			result.push(data[best]);
+		}
+		result.push(data[data.length - 1]);
 		return result;
 	},
 
@@ -652,16 +707,22 @@ var liveChart = {
 		html += '<div class="day-totals-tabs">';
 
 		// Time window tabs
-		var windows = [10, 30, 60, 120, 360, 720, 1440, 2160];
-		var windowLabels = ["10m", "30m", "1h", "2h", "6h", "12h", "24h", "36h"];
+		var windows = [10, 30, 60, 120, 360, 720, 1440];
+		var windowLabels = ["10m", "30m", "1h", "2h", "6h", "12h", "24h"];
 		for (var i = 0; i < windows.length; i++) {
-			var cls = this.window === windows[i] ? "period-tab active" : "period-tab";
+			var isActive = Math.abs(this.window - windows[i]) < 0.5;
+			var cls = isActive ? "period-tab active" : "period-tab";
 			html += `<button class="${cls}" onclick="liveChart.setWindow(${windows[i]})">${windowLabels[i]}</button>`;
 		}
 
 		// Pause button
 		var pauseCls = this.paused ? " active" : "";
 		html += `<button class="period-tab${pauseCls}" onclick="liveChart.togglePause()">${this.paused ? "▶" : "⏸"}</button>`;
+
+		// Live snap-back button (visible when panned away from now)
+		if (this.viewOffset > 0) {
+			html += `<button class="period-tab active" style="background:#4caf50;color:#fff;border-color:#4caf50" onclick="liveChart.goLive()">● Live</button>`;
+		}
 
 		html += "</div></div>";
 
@@ -686,8 +747,8 @@ var liveChart = {
 		html += "</div>";
 
 		// SVG chart
-		var data = this.getVisibleData();
-		if (data.length < 2) {
+		var data = this.downsample(this.getVisibleData(), 400);
+		if (data.length < 2 && this.viewOffset === 0) {
 			html += `<div class="stat-label">${t("livechart_waiting")}</div>`;
 		} else {
 			html += this.renderSvg(data);
@@ -748,17 +809,13 @@ var liveChart = {
 		yMin = this.niceAxis(yMin, false);
 		range = yMax - yMin;
 
-		// Time range
-		var tMin = data[0].ts;
-		var tMax = data[data.length - 1].ts;
-		// Extend to full window width if data doesn't fill it yet
+		// Time range — use viewOffset-based window, not data extent
 		var windowMs = this.window * 60 * 1000;
-		if (tMax - tMin < windowMs) {
-			tMin = tMax - windowMs;
-		}
+		var tMax = Date.now() - this.viewOffset;
+		var tMin = tMax - windowMs;
 		var tRange = tMax - tMin;
 
-		var svg = `<svg class="chart-svg" viewBox="0 0 ${chartW} ${chartH}" xmlns="http://www.w3.org/2000/svg">`;
+		var svg = `<svg class="chart-svg" id="livechart-svg" viewBox="0 0 ${chartW} ${chartH}" xmlns="http://www.w3.org/2000/svg" style="cursor:grab">`;
 
 		// Grid lines and Y axis labels
 		var gridLines = 5;
@@ -1030,5 +1087,164 @@ var liveChart = {
 			}
 		}
 		app.renderDashboard();
+	},
+
+	/** Snap back to live (rightmost edge = now) */
+	goLive: function () {
+		this.viewOffset = 0;
+		app.renderDashboard();
+	},
+
+	/** Whether document-level drag listeners are installed */
+	_dragBound: false,
+
+	/**
+	 * Bind drag start on the SVG element (re-called after each render).
+	 * Document-level move/end listeners are installed once.
+	 */
+	bindDrag: function () {
+		var svg = document.getElementById("livechart-svg");
+		if (!svg) {
+			return;
+		}
+
+		svg.addEventListener("mousedown", liveChart._onDragStart);
+		svg.addEventListener("touchstart", liveChart._onDragStart, { passive: false });
+		svg.addEventListener("wheel", liveChart._onWheel, { passive: false });
+
+		// Document-level listeners: install once, never re-add
+		if (!this._dragBound) {
+			this._dragBound = true;
+			document.addEventListener("mousemove", liveChart._onDragMove);
+			document.addEventListener("touchmove", liveChart._onDragMove, { passive: false });
+			document.addEventListener("mouseup", liveChart._onDragEnd);
+			document.addEventListener("touchend", liveChart._onDragEnd);
+		}
+	},
+
+	_onDragStart: function (/** @type {MouseEvent|TouchEvent} */ e) {
+		liveChart._dragging = true;
+		liveChart._dragStartX = liveChart._getEventX(e);
+		liveChart._dragStartOffset = liveChart.viewOffset;
+		var svg = document.getElementById("livechart-svg");
+		if (svg) {
+			svg.style.cursor = "grabbing";
+		}
+		e.preventDefault();
+	},
+
+	_onDragMove: function (/** @type {MouseEvent|TouchEvent} */ e) {
+		if (!liveChart._dragging) {
+			return;
+		}
+		var dx = liveChart._getEventX(e) - liveChart._dragStartX;
+		// Convert pixel delta to time delta
+		var plotW = 1400 - 55 - 15; // chartW - padL - padR
+		var windowMs = liveChart.window * 60 * 1000;
+		var dtMs = (dx / plotW) * windowMs;
+		liveChart.viewOffset = Math.max(0, liveChart._dragStartOffset + dtMs);
+
+		// Lazy-load: if panning past buffered data, trigger history load
+		var viewStart = Date.now() - liveChart.viewOffset - windowMs;
+		if (viewStart < liveChart._historyOldestTs && liveChart._historyInstance && !liveChart._historyLoading) {
+			var src = energyFlow.resolveSource(app.connectors);
+			if (src) {
+				liveChart._loadHistory(app.conn, app.namespace, src, viewStart, liveChart._historyOldestTs);
+			}
+		}
+
+		// Re-render chart only (not full dashboard — too slow during drag)
+		var el = document.getElementById("livechart-container");
+		if (el) {
+			var scrollX = window.scrollX;
+			var scrollY = window.scrollY;
+			el.innerHTML = liveChart.render();
+			window.scrollTo(scrollX, scrollY);
+			// Re-bind SVG listeners (innerHTML destroyed them), but NOT document listeners
+			var svg = document.getElementById("livechart-svg");
+			if (svg) {
+				svg.addEventListener("mousedown", liveChart._onDragStart);
+				svg.addEventListener("touchstart", liveChart._onDragStart, { passive: false });
+				svg.addEventListener("wheel", liveChart._onWheel, { passive: false });
+				svg.style.cursor = "grabbing";
+			}
+		}
+	},
+
+	_onDragEnd: function () {
+		if (!liveChart._dragging) {
+			return;
+		}
+		liveChart._dragging = false;
+		var svg = document.getElementById("livechart-svg");
+		if (svg) {
+			svg.style.cursor = "grab";
+		}
+		// Snap to live if very close to now
+		if (liveChart.viewOffset < 5000) {
+			liveChart.viewOffset = 0;
+		}
+		app.renderDashboard();
+	},
+
+	_getEventX: function (/** @type {MouseEvent|TouchEvent} */ e) {
+		var svg = document.getElementById("livechart-svg");
+		if (!svg) {
+			return 0;
+		}
+		var rect = svg.getBoundingClientRect();
+		var me = /** @type {MouseEvent} */ (e);
+		var te = /** @type {TouchEvent} */ (e);
+		var clientX = te.touches ? te.touches[0].clientX : me.clientX;
+		return ((clientX - rect.left) / rect.width) * 1400;
+	},
+
+	/** Minimum zoom in minutes */
+	_minZoom: 5,
+	/** Maximum zoom in minutes */
+	_maxZoom: 43200, // 30 days
+
+	_onWheel: function (/** @type {WheelEvent} */ e) {
+		e.preventDefault();
+		var factor = e.deltaY > 0 ? 1.3 : 1 / 1.3; // scroll down = zoom out
+		var oldWindow = liveChart.window;
+		var newWindow = Math.max(liveChart._minZoom, Math.min(liveChart._maxZoom, oldWindow * factor));
+
+		// Zoom centered on cursor position within the chart
+		var svg = document.getElementById("livechart-svg");
+		if (svg) {
+			var rect = svg.getBoundingClientRect();
+			var cursorRatio = (e.clientX - rect.left) / rect.width; // 0=left edge, 1=right edge
+			// Adjust viewOffset so the time under the cursor stays fixed
+			var oldWindowMs = oldWindow * 60 * 1000;
+			var newWindowMs = newWindow * 60 * 1000;
+			var cursorTimeFromRight = (1 - cursorRatio) * oldWindowMs;
+			var newCursorTimeFromRight = (1 - cursorRatio) * newWindowMs;
+			liveChart.viewOffset = Math.max(0, liveChart.viewOffset + (newCursorTimeFromRight - cursorTimeFromRight));
+		}
+
+		liveChart.window = newWindow;
+
+		// Load history if zooming out past what we have
+		if (newWindow > oldWindow && liveChart._historyInstance && !liveChart._historyLoading) {
+			var src = energyFlow.resolveSource(app.connectors);
+			if (src) {
+				var now = Date.now();
+				var newStart = now - liveChart.viewOffset - newWindow * 60 * 1000;
+				var gapEnd = liveChart._historyOldestTs < Infinity ? liveChart._historyOldestTs : now;
+				if (newStart < gapEnd) {
+					liveChart._loadHistory(app.conn, app.namespace, src, newStart, gapEnd);
+				}
+			}
+		}
+
+		var el = document.getElementById("livechart-container");
+		if (el) {
+			var scrollX = window.scrollX;
+			var scrollY = window.scrollY;
+			el.innerHTML = liveChart.render();
+			window.scrollTo(scrollX, scrollY);
+			liveChart.bindDrag();
+		}
 	},
 };

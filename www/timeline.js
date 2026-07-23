@@ -2,6 +2,7 @@
 
 /* global app, t, XMLHttpRequest, document */
 /* exported eventTimeline */
+/* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
 /**
  * Warning/event timeline for the SENEC web dashboard Overview tab.
@@ -10,7 +11,6 @@
  */
 
 var eventTimeline = {
-	// eslint-disable-next-line jsdoc/check-tag-names
 	/** @type {TimelineEvent[]} Parsed warning/error/panic entries */
 	events: [],
 
