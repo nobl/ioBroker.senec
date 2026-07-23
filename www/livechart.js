@@ -42,8 +42,8 @@ var liveChart = {
 	/** Whether the chart is disabled (collapsed, no recording) */
 	disabled: false,
 
-	/** Maximum buffer size (points) — limit memory. Downsampling keeps rendering fast */
-	maxPoints: 50000,
+	/** Maximum buffer size — derived from max zoom (30 days at 10s ≈ 260k points, with margin) */
+	maxPoints: 300000,
 
 	/** Last recorded timestamp to avoid duplicates */
 	_lastTs: 0,
@@ -254,6 +254,7 @@ var liveChart = {
 									end: end,
 									aggregate: "none",
 									removeBorderValues: true,
+									count: 999999,
 								},
 								function (histErr, result) {
 									if (!histErr && result) {
@@ -376,9 +377,19 @@ var liveChart = {
 			}
 		}
 
-		// Collect all unique timestamps from the primary state (house for reliability)
+		// Collect all unique timestamps — try house first, fall back to any field with data
 		var primary = pending.house;
 		if (!primary || primary.length === 0) {
+			for (var pk in pending) {
+				if (pending[pk] && pending[pk].length > 0) {
+					primary = pending[pk];
+					break;
+				}
+			}
+		}
+		if (!primary || primary.length === 0) {
+			// No data at all — mark oldest as -Infinity so no more queries fire
+			this._historyOldestTs = -Infinity;
 			return;
 		}
 
@@ -572,8 +583,8 @@ var liveChart = {
 
 		this.buffer = before.concat(points, after);
 
-		// Trim to max
-		if (this.buffer.length > this.maxPoints) {
+		// Trim to max — only at live view so panned-back data isn't lost
+		if (this.viewOffset === 0 && this.buffer.length > this.maxPoints) {
 			this.buffer = this.buffer.slice(this.buffer.length - this.maxPoints);
 		}
 
@@ -582,6 +593,25 @@ var liveChart = {
 		if (el) {
 			el.innerHTML = this.render();
 			this.bindDrag();
+		}
+
+		// After merge, check if current view still needs more data (user panned further during load)
+		var viewWindowMs = liveChart.window * 60 * 1000;
+		var viewStart = Date.now() - liveChart.viewOffset - viewWindowMs;
+		if (viewStart < liveChart._historyOldestTs && liveChart._historyInstance) {
+			var viewSrc = energyFlow.resolveSource(app.connectors);
+			if (viewSrc) {
+				setTimeout(
+					function (s, src2, t1, t2) {
+						s._loadHistory(app.conn, app.namespace, src2, t1, t2);
+					},
+					200,
+					liveChart,
+					viewSrc,
+					viewStart,
+					liveChart._historyOldestTs,
+				);
+			}
 		}
 	},
 
@@ -624,8 +654,8 @@ var liveChart = {
 			wallbox: d.wallbox || 0,
 		});
 
-		// Trim to max buffer size
-		if (this.buffer.length > this.maxPoints) {
+		// Trim to max buffer size — only when at live view, so panned-back data isn't lost
+		if (this.viewOffset === 0 && this.buffer.length > this.maxPoints) {
 			this.buffer = this.buffer.slice(this.buffer.length - this.maxPoints);
 		}
 	},
@@ -1134,6 +1164,7 @@ var liveChart = {
 	/** Snap back to live (rightmost edge = now) */
 	goLive: function () {
 		this.viewOffset = 0;
+		this._historyOldestTs = Infinity; // allow lazy-load again
 		app.renderDashboard();
 	},
 
@@ -1175,6 +1206,23 @@ var liveChart = {
 		e.preventDefault();
 	},
 
+	/** Clamp viewOffset so user can't pan far past buffered data */
+	_clampOffset: function () {
+		if (liveChart.buffer.length === 0) {
+			return;
+		}
+		var oldestTs = liveChart.buffer[0].ts;
+		// Allow panning until oldest data reaches the right edge of the view.
+		// The empty left side triggers lazy-load to fill it.
+		var maxOffset = Date.now() - oldestTs;
+		if (maxOffset < 0) {
+			maxOffset = 0;
+		}
+		if (liveChart.viewOffset > maxOffset) {
+			liveChart.viewOffset = maxOffset;
+		}
+	},
+
 	_onDragMove: function (/** @type {MouseEvent|TouchEvent} */ e) {
 		if (!liveChart._dragging) {
 			return;
@@ -1185,8 +1233,9 @@ var liveChart = {
 		var windowMs = liveChart.window * 60 * 1000;
 		var dtMs = (dx / plotW) * windowMs;
 		liveChart.viewOffset = Math.max(0, liveChart._dragStartOffset + dtMs);
+		liveChart._clampOffset();
 
-		// Lazy-load: if panning past buffered data, trigger history load
+		// Lazy-load: if view is near the edge of buffered data, trigger history load
 		var viewStart = Date.now() - liveChart.viewOffset - windowMs;
 		if (viewStart < liveChart._historyOldestTs && liveChart._historyInstance && !liveChart._historyLoading) {
 			var src = energyFlow.resolveSource(app.connectors);
@@ -1225,6 +1274,17 @@ var liveChart = {
 		// Snap to live if very close to now
 		if (liveChart.viewOffset < 5000) {
 			liveChart.viewOffset = 0;
+		}
+		// Lazy-load if view extends past buffered data
+		if (liveChart.viewOffset > 0 && liveChart._historyInstance && !liveChart._historyLoading) {
+			var windowMs = liveChart.window * 60 * 1000;
+			var viewStart = Date.now() - liveChart.viewOffset - windowMs;
+			if (viewStart < liveChart._historyOldestTs) {
+				var src = energyFlow.resolveSource(app.connectors);
+				if (src) {
+					liveChart._loadHistory(app.conn, app.namespace, src, viewStart, liveChart._historyOldestTs);
+				}
+			}
 		}
 		app.renderDashboard();
 	},
@@ -1266,6 +1326,7 @@ var liveChart = {
 		}
 
 		liveChart.window = newWindow;
+		liveChart._clampOffset();
 
 		// Load history if zooming out past what we have
 		if (newWindow > oldWindow && liveChart._historyInstance && !liveChart._historyLoading) {
