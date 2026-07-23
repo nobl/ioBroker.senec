@@ -31,3 +31,5 @@ updates:
     open-pull-requests-limit: 15
     assignees:
       - 'nobl'
+    cooldown:
+      default-days: 7
