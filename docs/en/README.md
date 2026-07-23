@@ -291,6 +291,7 @@ The adapter creates states organized by connector and data section. All states a
 | State | Description |
 |-------|-------------|
 | `info.connection` | Overall connection status (true if any connector is active) |
+| `info.connectionStatus` | Detailed connection status: `all` (all configured connectors connected), `partial` (some connected), `none` |
 | `info.localConnected` | Local (lala.cgi) connection status |
 | `info.apiConnected` | SENEC App API connection status |
 | `info.webConnected` | mein-senec.de connection status |

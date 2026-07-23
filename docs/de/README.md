@@ -293,6 +293,7 @@ Der Adapter erstellt States, organisiert nach Konnektor und Datenbereich. Alle S
 | State | Beschreibung |
 |-------|-------------|
 | `info.connection` | Gesamtverbindungsstatus (true wenn ein Konnektor aktiv) |
+| `info.connectionStatus` | Detaillierter Verbindungsstatus: `all` (alle konfigurierten Konnektoren verbunden), `partial` (teilweise verbunden), `none` |
 | `info.localConnected` | Lokal (lala.cgi) Verbindungsstatus |
 | `info.apiConnected` | SENEC App API Verbindungsstatus |
 | `info.webConnected` | mein-senec.de Verbindungsstatus |

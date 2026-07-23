@@ -91,6 +91,10 @@ Maintenance of this adapter can be quite time consuming. If you wish to thank th
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- Security: Fix polynomial ReDoS in formula regex, escape DOM-sourced values in log viewer, remove no-op string replace in charts.
+- CI: Add default read-only permissions to workflow, unit tests for formula regex.
+
 ### 2.11.4 (2026-07-22)
 - Fix: jsonConfig validation error (`collapsed` not allowed on panel type).
 - Removed unused `info.extension` state.
