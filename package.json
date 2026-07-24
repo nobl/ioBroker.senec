@@ -28,7 +28,7 @@
     "url": "https://github.com/nobl/ioBroker.senec.git"
   },
   "dependencies": {
-    "@iobroker/adapter-core": "^3.4.2",
+    "@iobroker/adapter-core": "^3.4.3",
     "axios": "^1.18.1",
     "axios-cookiejar-support": "^7.0.0",
     "tough-cookie": "^6.0.2"
