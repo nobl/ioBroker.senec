@@ -126,7 +126,7 @@
     "debugAndLogging": "Налагодження та журналювання",
     "extColCapacity": "Ємність кВт*год (акумулятор)",
     "extColLabel": "Мітка",
-    "extColMode": "Режим",
+    "extColMode": "Режим (PV/батарея)",
     "extColSoc": "Стан SOC (акумулятор)",
     "extColStateId": "Ідентифікатор штату (наприклад, solar.0.power)",
     "extColType": "Тип",

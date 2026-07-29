@@ -126,7 +126,7 @@
     "debugAndLogging": "Отладка и журналирование",
     "extColCapacity": "Емкость кВтч (аккумулятор)",
     "extColLabel": "Этикетка",
-    "extColMode": "Режим",
+    "extColMode": "Режим (PV/батарея)",
     "extColSoc": "Состояние SOC (батарея)",
     "extColStateId": "Идентификатор штата (например, Solar.0.power)",
     "extColType": "Тип",

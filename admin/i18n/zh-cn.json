@@ -126,7 +126,7 @@
     "debugAndLogging": "调试和日志记录",
     "extColCapacity": "容量kWh（电池）",
     "extColLabel": "标签",
-    "extColMode": "模式",
+    "extColMode": "模式（光伏/电池）",
     "extColSoc": "SOC状态（电池）",
     "extColStateId": "州ID（例如solar.0.power）",
     "extColType": "类型",

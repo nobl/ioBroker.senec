@@ -17,7 +17,7 @@
     "extColStateId": "State ID / Formula",
     "extColType": "Type",
     "extColUnit": "Unit",
-    "extColMode": "Mode",
+    "extColMode": "Mode (PV/battery)",
     "extColSoc": "SOC State (battery)",
     "extColCapacity": "Capacity kWh (battery)",
     "extColLabel": "Label",

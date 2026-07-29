@@ -126,7 +126,7 @@
     "debugAndLogging": "Debug & Logging",
     "extColCapacity": "Kapazität kWh (Batterie)",
     "extColLabel": "Bezeichnung",
-    "extColMode": "Modus",
+    "extColMode": "Modus (PV/Batterie)",
     "extColSoc": "SOC-State (Batterie)",
     "extColStateId": "State-ID / Formel",
     "extColType": "Typ",

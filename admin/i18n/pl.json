@@ -126,7 +126,7 @@
     "debugAndLogging": "Debugowanie i rejestrowanie",
     "extColCapacity": "Pojemność kWh (akumulator)",
     "extColLabel": "Etykieta",
-    "extColMode": "Tryb",
+    "extColMode": "Tryb (PV/akumulator)",
     "extColSoc": "Stan SOC (akumulator)",
     "extColStateId": "Identyfikator stanu (np. solar.0.power)",
     "extColType": "Typ",

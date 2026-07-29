@@ -126,7 +126,7 @@
     "debugAndLogging": "Foutopsporing en logboekregistratie",
     "extColCapacity": "Capaciteit kWh (batterij)",
     "extColLabel": "Label",
-    "extColMode": "Modus",
+    "extColMode": "Modus (PV/batterij)",
     "extColSoc": "SOC-status (batterij)",
     "extColStateId": "Staats-ID (bijv. solar.0.power)",
     "extColType": "Type",

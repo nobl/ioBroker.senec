@@ -126,7 +126,7 @@
     "debugAndLogging": "Depuración y registro",
     "extColCapacity": "Capacidad kWh (batería)",
     "extColLabel": "Etiqueta",
-    "extColMode": "Modo",
+    "extColMode": "Modo (PV/batería)",
     "extColSoc": "Estado SOC (batería)",
     "extColStateId": "ID del estado (por ejemplo, solar.0.power)",
     "extColType": "Tipo",
