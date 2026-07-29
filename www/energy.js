@@ -884,25 +884,38 @@ var energyFlow = {
 		if (hasWallbox && d.wallbox > 10) {
 			svg += this.renderCurvedFlow(nodes.house, nodes.wallbox, "#ab47bc", d.wallbox);
 		}
-		// House → External consumers (one flow per consumer)
+		// House ↔ External consumers (direction follows power sign)
 		for (var cfi = 0; cfi < consumers.length; cfi++) {
 			var conNode = nodes[`consumer_${cfi}`];
-			if (conNode) {
-				svg += this.renderCurvedFlow(nodes.house, conNode, "#ff7043", consumers[cfi].power);
+			if (conNode && Math.abs(consumers[cfi].power) > 10) {
+				if (consumers[cfi].power > 0) {
+					svg += this.renderCurvedFlow(nodes.house, conNode, "#ff7043", consumers[cfi].power);
+				} else {
+					svg += this.renderCurvedFlow(conNode, nodes.house, "#4caf50", -consumers[cfi].power);
+				}
 			}
 		}
 
-		// Battery summary flows — individual batteries ↔ summary node
+		// Battery summary flows — individual batteries ↔ summary node (direction follows power sign)
 		if (hasBatSummary) {
-			// SENEC battery → summary
+			// SENEC battery ↔ summary
 			if (Math.abs(d.battery) > 10) {
-				svg += this.renderCurvedFlow(nodes.battery, nodes.batSummary, "#4caf50", Math.abs(d.battery));
+				if (d.battery > 0) {
+					svg += this.renderCurvedFlow(nodes.batSummary, nodes.battery, "#4caf50", d.battery);
+				} else {
+					svg += this.renderCurvedFlow(nodes.battery, nodes.batSummary, "#4caf50", -d.battery);
+				}
 			}
-			// External batteries → summary
+			// External batteries ↔ summary
 			for (var bfi = 0; bfi < batSources.length; bfi++) {
 				var batNode = nodes[`extBat_${bfi}`];
-				if (batNode && Math.abs(batSources[bfi].power) > 10) {
-					svg += this.renderCurvedFlow(batNode, nodes.batSummary, "#4caf50", Math.abs(batSources[bfi].power));
+				var batPwr = batSources[bfi].power;
+				if (batNode && Math.abs(batPwr) > 10) {
+					if (batPwr > 0) {
+						svg += this.renderCurvedFlow(nodes.batSummary, batNode, "#4caf50", batPwr);
+					} else {
+						svg += this.renderCurvedFlow(batNode, nodes.batSummary, "#4caf50", -batPwr);
+					}
 				}
 			}
 		}
