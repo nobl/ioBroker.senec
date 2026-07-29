@@ -95,6 +95,7 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- Live chart: Canvas renderer replaces SVG — enables touch drag and pinch-to-zoom on tablets/mobile. Hover tooltips. requestAnimationFrame throttling for smooth interaction.
 - Special thanks to everyone supporting this project — see [SUPPORTERS.md](SUPPORTERS.md).
 
 ### 2.12.0 (2026-07-23)

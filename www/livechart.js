@@ -1,12 +1,12 @@
 "use strict";
 
-/* global app, t, energyFlow, document, window */
+/* global app, t, energyFlow, document, window, requestAnimationFrame */
 /* exported liveChart */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
 /**
  * Live power curve for the SENEC web dashboard.
- * Renders a real-time SVG line chart from rolling power data.
+ * Renders a real-time Canvas line chart from rolling power data.
  * Supports all connectors — uses whatever power data energyFlow provides.
  * Smooth monotone cubic interpolation between data points.
  */
@@ -74,6 +74,21 @@ var liveChart = {
 
 	/** viewOffset at drag start */
 	_dragStartOffset: 0,
+
+	/** Whether a requestAnimationFrame repaint is pending */
+	_rafPending: false,
+
+	/** Whether a pinch-to-zoom is in progress */
+	_pinching: false,
+
+	/** Distance between two touch points at pinch start */
+	_pinchStartDist: 0,
+
+	/** Window value at pinch start */
+	_pinchStartWindow: 0,
+
+	/** Midpoint X of two touch points at pinch start (logical canvas coords) */
+	_pinchStartMidX: 0,
 
 	/**
 	 * State keys per source for history queries
@@ -593,6 +608,7 @@ var liveChart = {
 		if (el) {
 			el.innerHTML = this.render();
 			this.bindDrag();
+			this.paintCanvas();
 		}
 
 		// After merge, check if current view still needs more data (user panned further during load)
@@ -787,24 +803,38 @@ var liveChart = {
 			html += `<div style="text-align:center;padding:2px 0;font-size:11px;color:#999">${this.buffer.length} pts | ${fmt(oldest)} — ${fmt(newest)}</div>`;
 		}
 
-		// SVG chart
+		// Canvas chart
 		var data = this.getVisibleData();
 		if (data.length < 2 && this.viewOffset === 0) {
 			html += `<div class="stat-label">${t("livechart_waiting")}</div>`;
 		} else {
-			html += this.renderSvg(data);
+			html +=
+				'<div class="chart-scroll"><canvas id="livechart-canvas" width="1400" height="350" style="width:100%;cursor:grab;touch-action:none"></canvas></div>';
 		}
 
 		html += "</div>";
 		return html;
 	},
 
-	/**
-	 * Render the SVG line chart
-	 *
-	 * @param {Array} data - Visible data points
-	 */
-	renderSvg: function (data) {
+	// Current tooltip point: {x, y, val, key} or null
+	/** @type {{x: number, y: number, val: number, key: string}|null} */
+	_tooltipPoint: null,
+
+	// Rendered line points per key for tooltip lookup
+	/** @type {Record<string, Array<{x: number, y: number, val: number}>>} */
+	_tooltipData: {},
+
+	// Paint the chart onto the canvas element
+	paintCanvas: function () {
+		var canvas = /** @type {HTMLCanvasElement|null} */ (document.getElementById("livechart-canvas"));
+		if (!canvas) {
+			return;
+		}
+		var ctx = canvas.getContext("2d");
+		if (!ctx) {
+			return;
+		}
+
 		var chartW = 1400,
 			chartH = 350;
 		var padL = 55,
@@ -813,6 +843,19 @@ var liveChart = {
 			padB = 35;
 		var plotW = chartW - padL - padR;
 		var plotH = chartH - padT - padB;
+
+		// High-DPI setup
+		var dpr = window.devicePixelRatio || 1;
+		canvas.width = chartW * dpr;
+		canvas.height = chartH * dpr;
+		canvas.style.width = "100%";
+		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+		// Clear
+		ctx.clearRect(0, 0, chartW, chartH);
+
+		// Get fresh visible data
+		var data = this.getVisibleData();
 
 		// Calculate Y range
 		var yMin = 0,
@@ -850,45 +893,72 @@ var liveChart = {
 		yMin = this.niceAxis(yMin, false);
 		range = yMax - yMin;
 
-		// Time range — use viewOffset-based window, not data extent
+		// Time range
 		var windowMs = this.window * 60 * 1000;
 		var tMax = Date.now() - this.viewOffset;
 		var tMin = tMax - windowMs;
 		var tRange = tMax - tMin;
 
-		var svg = `<svg class="chart-svg" id="livechart-svg" viewBox="0 0 ${chartW} ${chartH}" xmlns="http://www.w3.org/2000/svg" style="cursor:grab">`;
-
 		// Grid lines and Y axis labels
 		var gridLines = 5;
 		var useKw = Math.abs(yMax) >= 10000 || Math.abs(yMin) >= 10000;
+		ctx.strokeStyle = "#666";
+		ctx.lineWidth = 0.5;
+		ctx.font = "10px sans-serif";
+		ctx.fillStyle = "#999";
+		ctx.textBaseline = "middle";
 		for (var g = 0; g <= gridLines; g++) {
 			var yVal = yMin + (range / gridLines) * g;
 			var yPos = padT + plotH - ((yVal - yMin) / range) * plotH;
-			svg += `<line x1="${padL}" y1="${yPos.toFixed(1)}" x2="${chartW - padR}" y2="${yPos.toFixed(1)}" stroke="var(--color-border)" stroke-width="0.5"/>`;
-			var label = useKw ? (yVal / 1000).toFixed(1) : Math.round(yVal);
-			svg += `<text x="${padL - 5}" y="${yPos.toFixed(1)}" dy="4" text-anchor="end" fill="#999" font-size="10">${label}</text>`;
+			ctx.beginPath();
+			ctx.moveTo(padL, yPos);
+			ctx.lineTo(chartW - padR, yPos);
+			ctx.stroke();
+			var label = useKw ? (yVal / 1000).toFixed(1) : String(Math.round(yVal));
+			ctx.textAlign = "right";
+			ctx.fillText(label, padL - 5, yPos);
 		}
-		// Y axis unit label
+
+		// Y axis unit label (rotated)
 		var unitLabel = useKw ? "kW" : "W";
-		svg += `<text x="12" y="${padT + plotH / 2}" text-anchor="middle" fill="#999" font-size="10" transform="rotate(-90,12,${padT + plotH / 2})">${unitLabel}</text>`;
+		ctx.save();
+		ctx.translate(12, padT + plotH / 2);
+		ctx.rotate(-Math.PI / 2);
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillStyle = "#999";
+		ctx.fillText(unitLabel, 0, 0);
+		ctx.restore();
 
 		// Zero line if range spans zero
 		if (yMin < 0 && yMax > 0) {
 			var zeroY = padT + plotH - ((0 - yMin) / range) * plotH;
-			svg += `<line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${chartW - padR}" y2="${zeroY.toFixed(1)}" stroke="#666" stroke-width="1" stroke-dasharray="4,2"/>`;
+			ctx.save();
+			ctx.strokeStyle = "#666";
+			ctx.lineWidth = 1;
+			ctx.setLineDash([4, 2]);
+			ctx.beginPath();
+			ctx.moveTo(padL, zeroY);
+			ctx.lineTo(chartW - padR, zeroY);
+			ctx.stroke();
+			ctx.restore();
 		}
 
 		// X axis time labels
 		var xLabelCount = Math.min(8, Math.floor(plotW / 100));
+		ctx.fillStyle = "#999";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "alphabetic";
+		ctx.font = "10px sans-serif";
 		for (var xi = 0; xi <= xLabelCount; xi++) {
 			var xTs = tMin + (tRange / xLabelCount) * xi;
 			var xPos = padL + (plotW / xLabelCount) * xi;
 			var d = new Date(xTs);
 			var timeStr = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-			svg += `<text x="${xPos.toFixed(1)}" y="${chartH - 5}" text-anchor="middle" fill="#999" font-size="10">${timeStr}</text>`;
+			ctx.fillText(timeStr, xPos, chartH - 5);
 		}
 
-		// Midnight markers — vertical line + date label at each day boundary
+		// Midnight markers
 		var startDay = new Date(tMin);
 		startDay.setHours(0, 0, 0, 0);
 		if (startDay.getTime() < tMin) {
@@ -897,42 +967,83 @@ var liveChart = {
 		for (var midnight = startDay.getTime(); midnight < tMax; midnight += 86400000) {
 			var mxPos = padL + ((midnight - tMin) / tRange) * plotW;
 			if (mxPos > padL + 30 && mxPos < chartW - padR - 30) {
-				svg += `<line x1="${mxPos.toFixed(1)}" y1="${padT}" x2="${mxPos.toFixed(1)}" y2="${padT + plotH}" stroke="#888" stroke-width="1" stroke-dasharray="6,3"/>`;
+				ctx.save();
+				ctx.strokeStyle = "#888";
+				ctx.lineWidth = 1;
+				ctx.setLineDash([6, 3]);
+				ctx.beginPath();
+				ctx.moveTo(mxPos, padT);
+				ctx.lineTo(mxPos, padT + plotH);
+				ctx.stroke();
+				ctx.restore();
 				var mDate = new Date(midnight);
 				var dateStr = `${mDate.getDate()}.${(mDate.getMonth() + 1).toString().padStart(2, "0")}.`;
-				svg += `<text x="${mxPos.toFixed(1)}" y="${padT - 3}" text-anchor="middle" fill="#aaa" font-size="10" font-weight="bold">${dateStr}</text>`;
+				ctx.fillStyle = "#aaa";
+				ctx.font = "bold 10px sans-serif";
+				ctx.textAlign = "center";
+				ctx.textBaseline = "alphabetic";
+				ctx.fillText(dateStr, mxPos, padT - 3);
+				ctx.font = "10px sans-serif";
+				ctx.fillStyle = "#999";
 			}
 		}
 
-		// Render lines
+		// Data lines — clipped to plot area
+		ctx.save();
+		ctx.beginPath();
+		ctx.rect(padL, padT, plotW, plotH);
+		ctx.clip();
+
+		this._tooltipData = {};
 		for (var rl = 0; rl < lines.length; rl++) {
 			var lineKey = lines[rl];
 			if (!this.visible[lineKey]) {
 				continue;
 			}
-			svg += this.renderLine(data, lineKey, tMin, tRange, yMin, range, padL, padT, plotW, plotH);
+			this.paintLine(ctx, data, lineKey, tMin, tRange, yMin, range, padL, padT, plotW, plotH);
 		}
+		ctx.restore();
 
-		svg += "</svg>";
-		return `<div class="chart-scroll">${svg}</div>`;
+		// Tooltip overlay
+		if (this._tooltipPoint) {
+			var tp = this._tooltipPoint;
+			var tpKw = Math.abs(tp.val) >= 10000;
+			var tpStr = tpKw ? `${(tp.val / 1000).toFixed(2)} kW` : `${Math.round(tp.val)} W`;
+			var tpLabel = `${t(this.getLabelKey(tp.key))}: ${tpStr}`;
+
+			ctx.font = "12px sans-serif";
+			var tpWidth = ctx.measureText(tpLabel).width + 12;
+			var tpHeight = 22;
+			var tpX = tp.x + 10;
+			var tpY = tp.y - 10 - tpHeight;
+			// Keep tooltip within canvas bounds
+			if (tpX + tpWidth > chartW - padR) {
+				tpX = tp.x - 10 - tpWidth;
+			}
+			if (tpY < padT) {
+				tpY = tp.y + 10;
+			}
+
+			// Draw dot
+			ctx.beginPath();
+			ctx.arc(tp.x, tp.y, 4, 0, Math.PI * 2);
+			ctx.fillStyle = this.colors[tp.key];
+			ctx.fill();
+
+			// Draw tooltip box
+			ctx.fillStyle = "rgba(30,30,30,0.9)";
+			ctx.beginPath();
+			ctx.roundRect(tpX, tpY, tpWidth, tpHeight, 4);
+			ctx.fill();
+			ctx.fillStyle = "#fff";
+			ctx.textBaseline = "middle";
+			ctx.textAlign = "left";
+			ctx.fillText(tpLabel, tpX + 6, tpY + tpHeight / 2);
+		}
 	},
 
-	/**
-	 * Render a single line with monotone cubic interpolation
-	 *
-	 * @param {Array} data - Data points
-	 * @param {string} key - Data key (pv, house, grid, battery, wallbox)
-	 * @param {number} tMin - Time range start
-	 * @param {number} tRange - Time range span
-	 * @param {number} yMin - Y axis minimum
-	 * @param {number} range - Y axis range
-	 * @param {number} padL - Left padding
-	 * @param {number} padT - Top padding
-	 * @param {number} plotW - Plot width
-	 * @param {number} plotH - Plot height
-	 * @returns {string} SVG path elements
-	 */
-	renderLine: function (data, key, tMin, tRange, yMin, range, padL, padT, plotW, plotH) {
+	// Paint a single data line onto the canvas
+	paintLine: function (ctx, data, key, tMin, tRange, yMin, range, padL, padT, plotW, plotH) {
 		// Extract non-null points for this specific line
 		var raw = [];
 		for (var i = 0; i < data.length; i++) {
@@ -976,36 +1087,56 @@ var liveChart = {
 		}
 
 		if (points.length < 2) {
-			return "";
+			return;
 		}
 
-		// Monotone cubic spline path
-		var pathD = this.monotonePath(points);
+		// Store for tooltip lookup
+		this._tooltipData[key] = points;
+
 		var color = this.colors[key];
 
-		var svg = `<path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>`;
+		// Draw the line using monotone cubic bezier curves
+		var tangentData = this.monotoneTangents(points);
+		var tangents = tangentData.tangents;
+		var dx = tangentData.dx;
+
+		ctx.beginPath();
+		ctx.moveTo(points[0].x, points[0].y);
+		for (var p = 0; p < points.length - 1; p++) {
+			var dxi = dx[p] / 3;
+			var cp1x = points[p].x + dxi;
+			var cp1y = points[p].y + tangents[p] * dxi;
+			var cp2x = points[p + 1].x - dxi;
+			var cp2y = points[p + 1].y - tangents[p + 1] * dxi;
+			ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, points[p + 1].x, points[p + 1].y);
+		}
+		ctx.strokeStyle = color;
+		ctx.lineWidth = 2;
+		ctx.globalAlpha = 0.9;
+		ctx.lineJoin = "round";
+		ctx.lineCap = "round";
+		ctx.stroke();
+		ctx.globalAlpha = 1.0;
 
 		// Tooltip dots at actual data points (sparse — every Nth to avoid clutter)
 		var dotInterval = Math.max(1, Math.floor(points.length / 30));
 		for (var di = 0; di < points.length; di += dotInterval) {
-			var useKw = Math.abs(points[di].val) >= 10000;
-			var valStr = useKw ? `${(points[di].val / 1000).toFixed(2)} kW` : `${Math.round(points[di].val)} W`;
-			var tooltip = `${t(this.getLabelKey(key))}: ${valStr}`;
-			// Invisible larger hit area for tooltip
-			svg += `<circle cx="${points[di].x.toFixed(1)}" cy="${points[di].y.toFixed(1)}" r="10" fill="transparent" style="cursor:pointer"><title>${tooltip}</title></circle>`;
-			svg += `<circle cx="${points[di].x.toFixed(1)}" cy="${points[di].y.toFixed(1)}" r="2.5" fill="${color}" opacity="0.7" pointer-events="none"/>`;
+			ctx.beginPath();
+			ctx.arc(points[di].x, points[di].y, 2.5, 0, Math.PI * 2);
+			ctx.fillStyle = color;
+			ctx.globalAlpha = 0.7;
+			ctx.fill();
 		}
 		// Always show last point
 		if (points.length > 1) {
 			var last = points[points.length - 1];
-			var lastKw = Math.abs(last.val) >= 10000;
-			var lastStr = lastKw ? `${(last.val / 1000).toFixed(2)} kW` : `${Math.round(last.val)} W`;
-			var lastTooltip = `${t(this.getLabelKey(key))}: ${lastStr}`;
-			svg += `<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="12" fill="transparent" style="cursor:pointer"><title>${lastTooltip}</title></circle>`;
-			svg += `<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="3.5" fill="${color}" pointer-events="none"/>`;
+			ctx.beginPath();
+			ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
+			ctx.globalAlpha = 1.0;
+			ctx.fillStyle = color;
+			ctx.fill();
 		}
-
-		return svg;
+		ctx.globalAlpha = 1.0;
 	},
 
 	getLabelKey: function (key) {
@@ -1019,23 +1150,10 @@ var liveChart = {
 		return map[key] || key;
 	},
 
-	/**
-	 * Generate a monotone cubic Hermite spline SVG path.
-	 * Prevents overshoot — suitable for power data.
-	 *
-	 * @param {Array<{x: number, y: number}>} points - Point array
-	 * @returns {string} SVG path d attribute
-	 */
-	monotonePath: function (points) {
+	// Compute monotone cubic Hermite tangents (Fritsch-Carlson method).
+	// Returns {tangents, dx} arrays for use with bezierCurveTo.
+	monotoneTangents: function (points) {
 		var n = points.length;
-		if (n < 2) {
-			return "";
-		}
-		if (n === 2) {
-			return `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}L${points[1].x.toFixed(1)},${points[1].y.toFixed(1)}`;
-		}
-
-		// Calculate tangent slopes (Fritsch-Carlson method)
 		var dx = [],
 			dy = [],
 			m = [];
@@ -1043,6 +1161,10 @@ var liveChart = {
 			dx.push(points[i + 1].x - points[i].x);
 			dy.push(points[i + 1].y - points[i].y);
 			m.push(dx[i] === 0 ? 0 : dy[i] / dx[i]);
+		}
+
+		if (n === 2) {
+			return { tangents: [m[0], m[0]], dx: dx };
 		}
 
 		// Tangent at each point
@@ -1073,17 +1195,7 @@ var liveChart = {
 			}
 		}
 
-		// Build cubic Bézier path
-		var path = `M${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`;
-		for (var p = 0; p < n - 1; p++) {
-			var dxi = dx[p] / 3;
-			var cp1x = points[p].x + dxi;
-			var cp1y = points[p].y + tangents[p] * dxi;
-			var cp2x = points[p + 1].x - dxi;
-			var cp2y = points[p + 1].y - tangents[p + 1] * dxi;
-			path += `C${cp1x.toFixed(1)},${cp1y.toFixed(1)},${cp2x.toFixed(1)},${cp2y.toFixed(1)},${points[p + 1].x.toFixed(1)},${points[p + 1].y.toFixed(1)}`;
-		}
-		return path;
+		return { tangents: tangents, dx: dx };
 	},
 
 	/**
@@ -1171,39 +1283,117 @@ var liveChart = {
 	/** Whether document-level drag listeners are installed */
 	_dragBound: false,
 
-	/**
-	 * Bind drag start on the SVG element (re-called after each render).
-	 * Document-level move/end listeners are installed once.
-	 */
+	// Bind drag/touch/wheel on the canvas element (re-called after each render).
+	// Document-level move/end listeners are installed once.
 	bindDrag: function () {
-		var svg = document.getElementById("livechart-svg");
-		if (!svg) {
+		var canvas = document.getElementById("livechart-canvas");
+		if (!canvas) {
 			return;
 		}
 
-		svg.addEventListener("mousedown", liveChart._onDragStart);
-		svg.addEventListener("touchstart", liveChart._onDragStart, { passive: false });
-		svg.addEventListener("wheel", liveChart._onWheel, { passive: false });
+		// Mouse, touch, wheel, and mousemove on canvas (re-bound after each render)
+		canvas.addEventListener("mousedown", liveChart._onMouseDown);
+		canvas.addEventListener("touchstart", liveChart._onTouchStart, { passive: false });
+		canvas.addEventListener("wheel", liveChart._onWheel, { passive: false });
+		canvas.addEventListener("mousemove", liveChart._onMouseMove);
+		canvas.addEventListener("mouseleave", liveChart._onMouseLeave);
 
 		// Document-level listeners: install once, never re-add
 		if (!this._dragBound) {
 			this._dragBound = true;
 			document.addEventListener("mousemove", liveChart._onDragMove);
-			document.addEventListener("touchmove", liveChart._onDragMove, { passive: false });
+			document.addEventListener("touchmove", liveChart._onTouchMove, { passive: false });
 			document.addEventListener("mouseup", liveChart._onDragEnd);
-			document.addEventListener("touchend", liveChart._onDragEnd);
+			document.addEventListener("touchend", liveChart._onTouchEnd);
 		}
 	},
 
-	_onDragStart: function (/** @type {MouseEvent|TouchEvent} */ e) {
+	/** Timestamp of last touch event — to suppress compatibility mouse events on mobile */
+	_lastTouchTs: 0,
+
+	_onMouseDown: function (/** @type {MouseEvent} */ e) {
+		// Suppress compatibility mouse events generated by touch on mobile
+		if (Date.now() - liveChart._lastTouchTs < 500) {
+			return;
+		}
 		liveChart._dragging = true;
+		liveChart._tooltipPoint = null;
 		liveChart._dragStartX = liveChart._getEventX(e);
 		liveChart._dragStartOffset = liveChart.viewOffset;
-		var svg = document.getElementById("livechart-svg");
-		if (svg) {
-			svg.style.cursor = "grabbing";
+		var canvas = document.getElementById("livechart-canvas");
+		if (canvas) {
+			canvas.style.cursor = "grabbing";
 		}
 		e.preventDefault();
+	},
+
+	// Tooltip on hover — find nearest data point and repaint
+	_onMouseMove: function (/** @type {MouseEvent} */ e) {
+		if (liveChart._dragging) {
+			return;
+		}
+		var canvas = document.getElementById("livechart-canvas");
+		if (!canvas) {
+			return;
+		}
+		var rect = canvas.getBoundingClientRect();
+		var mx = ((e.clientX - rect.left) / rect.width) * 1400;
+		var my = ((e.clientY - rect.top) / rect.height) * 350;
+
+		// Find nearest point across all visible lines
+		var bestDist = Infinity;
+		var bestPoint = null;
+		var bestKey = "";
+		var keys = Object.keys(liveChart._tooltipData);
+		for (var ki = 0; ki < keys.length; ki++) {
+			var pts = liveChart._tooltipData[keys[ki]];
+			for (var pi = 0; pi < pts.length; pi++) {
+				var ddx = pts[pi].x - mx;
+				var ddy = pts[pi].y - my;
+				var dist = ddx * ddx + ddy * ddy;
+				if (dist < bestDist) {
+					bestDist = dist;
+					bestPoint = pts[pi];
+					bestKey = keys[ki];
+				}
+			}
+		}
+
+		// Show tooltip if within 30px (logical)
+		if (bestPoint && bestDist < 900) {
+			liveChart._tooltipPoint = { x: bestPoint.x, y: bestPoint.y, val: bestPoint.val, key: bestKey };
+		} else {
+			liveChart._tooltipPoint = null;
+		}
+		liveChart.paintCanvas();
+	},
+
+	// Clear tooltip when mouse leaves canvas
+	_onMouseLeave: function () {
+		if (liveChart._tooltipPoint) {
+			liveChart._tooltipPoint = null;
+			liveChart.paintCanvas();
+		}
+	},
+
+	/** Timestamp of last touch re-render — for throttling */
+	_touchRenderTs: 0,
+
+	_onTouchStart: function (/** @type {TouchEvent} */ e) {
+		liveChart._lastTouchTs = Date.now();
+		if (e.touches.length === 2) {
+			liveChart._pinching = true;
+			liveChart._dragging = false;
+			liveChart._pinchStartDist = liveChart._getTouchDist(e);
+			liveChart._pinchStartWindow = liveChart.window;
+			e.preventDefault();
+		} else if (e.touches.length === 1) {
+			liveChart._dragging = true;
+			liveChart._pinching = false;
+			liveChart._dragStartX = liveChart._getEventX(e);
+			liveChart._dragStartOffset = liveChart.viewOffset;
+			e.preventDefault();
+		}
 	},
 
 	/** Clamp viewOffset so user can't pan far past buffered data */
@@ -1223,13 +1413,55 @@ var liveChart = {
 		}
 	},
 
-	_onDragMove: function (/** @type {MouseEvent|TouchEvent} */ e) {
+	// Handle mouse move (drag pan)
+	_onDragMove: function (/** @type {MouseEvent} */ e) {
 		if (!liveChart._dragging) {
 			return;
 		}
-		var dx = liveChart._getEventX(e) - liveChart._dragStartX;
-		// Convert pixel delta to time delta
-		var plotW = 1400 - 55 - 15; // chartW - padL - padR
+		liveChart._applyDrag(liveChart._getEventX(e));
+	},
+
+	// Handle touch move — repaint canvas with updated offset
+	_onTouchMove: function (/** @type {TouchEvent} */ e) {
+		if (liveChart._pinching && e.touches.length >= 2) {
+			e.preventDefault();
+			var dist = liveChart._getTouchDist(e);
+			if (liveChart._pinchStartDist === 0) {
+				return;
+			}
+			var ratio = liveChart._pinchStartDist / dist;
+			liveChart.window = Math.max(
+				liveChart._minZoom,
+				Math.min(liveChart._maxZoom, liveChart._pinchStartWindow * ratio),
+			);
+			liveChart._clampOffset();
+			liveChart.paintCanvas();
+			return;
+		}
+		if (liveChart._dragging && e.touches.length === 1) {
+			e.preventDefault();
+			var currentX = liveChart._getEventX(e);
+			var dx = currentX - liveChart._dragStartX;
+			var plotW = 1400 - 55 - 15;
+			var windowMs = liveChart.window * 60 * 1000;
+			var dtMs = (dx / plotW) * windowMs;
+			liveChart.viewOffset = Math.max(0, liveChart._dragStartOffset + dtMs);
+			liveChart._clampOffset();
+			// Throttle repaint to screen refresh rate
+			if (!liveChart._rafPending) {
+				liveChart._rafPending = true;
+				requestAnimationFrame(function () {
+					liveChart._rafPending = false;
+					liveChart.paintCanvas();
+				});
+			}
+		}
+	},
+
+	// Common drag logic for mouse and touch
+	_applyDrag: function (currentX) {
+		var dx = currentX - liveChart._dragStartX;
+		var plotW = 1400 - 55 - 15;
 		var windowMs = liveChart.window * 60 * 1000;
 		var dtMs = (dx / plotW) * windowMs;
 		liveChart.viewOffset = Math.max(0, liveChart._dragStartOffset + dtMs);
@@ -1244,22 +1476,7 @@ var liveChart = {
 			}
 		}
 
-		// Re-render chart only (not full dashboard — too slow during drag)
-		var el = document.getElementById("livechart-container");
-		if (el) {
-			var scrollX = window.scrollX;
-			var scrollY = window.scrollY;
-			el.innerHTML = liveChart.render();
-			window.scrollTo(scrollX, scrollY);
-			// Re-bind SVG listeners (innerHTML destroyed them), but NOT document listeners
-			var svg = document.getElementById("livechart-svg");
-			if (svg) {
-				svg.addEventListener("mousedown", liveChart._onDragStart);
-				svg.addEventListener("touchstart", liveChart._onDragStart, { passive: false });
-				svg.addEventListener("wheel", liveChart._onWheel, { passive: false });
-				svg.style.cursor = "grabbing";
-			}
-		}
+		liveChart.paintCanvas();
 	},
 
 	_onDragEnd: function () {
@@ -1267,10 +1484,30 @@ var liveChart = {
 			return;
 		}
 		liveChart._dragging = false;
-		var svg = document.getElementById("livechart-svg");
-		if (svg) {
-			svg.style.cursor = "grab";
+		var canvas = document.getElementById("livechart-canvas");
+		if (canvas) {
+			canvas.style.cursor = "grab";
 		}
+		liveChart._finishInteraction();
+	},
+
+	_onTouchEnd: function (/** @type {TouchEvent} */ e) {
+		if (liveChart._pinching) {
+			if (e.touches.length >= 2) {
+				return;
+			}
+			liveChart._pinching = false;
+			liveChart._finishInteraction();
+			return;
+		}
+		if (liveChart._dragging) {
+			liveChart._dragging = false;
+			liveChart._finishInteraction();
+		}
+	},
+
+	// Common end-of-interaction logic
+	_finishInteraction: function () {
 		// Snap to live if very close to now
 		if (liveChart.viewOffset < 5000) {
 			liveChart.viewOffset = 0;
@@ -1289,16 +1526,35 @@ var liveChart = {
 		app.renderDashboard();
 	},
 
+	// Get X in logical canvas coords from mouse or single-touch event
 	_getEventX: function (/** @type {MouseEvent|TouchEvent} */ e) {
-		var svg = document.getElementById("livechart-svg");
-		if (!svg) {
+		var canvas = document.getElementById("livechart-canvas");
+		if (!canvas) {
 			return 0;
 		}
-		var rect = svg.getBoundingClientRect();
-		var me = /** @type {MouseEvent} */ (e);
+		var rect = canvas.getBoundingClientRect();
 		var te = /** @type {TouchEvent} */ (e);
-		var clientX = te.touches ? te.touches[0].clientX : me.clientX;
+		var me = /** @type {MouseEvent} */ (e);
+		var clientX = te.touches && te.touches.length > 0 ? te.touches[0].clientX : me.clientX;
 		return ((clientX - rect.left) / rect.width) * 1400;
+	},
+
+	// Get distance between two touch points
+	_getTouchDist: function (/** @type {TouchEvent} */ e) {
+		if (e.touches.length < 2) {
+			return 0;
+		}
+		var dx = e.touches[1].clientX - e.touches[0].clientX;
+		var dy = e.touches[1].clientY - e.touches[0].clientY;
+		return Math.sqrt(dx * dx + dy * dy);
+	},
+
+	// Get midpoint X of two touch points in screen coords
+	_getTouchMidX: function (/** @type {TouchEvent} */ e) {
+		if (e.touches.length < 2) {
+			return 0;
+		}
+		return (e.touches[0].clientX + e.touches[1].clientX) / 2;
 	},
 
 	/** Minimum zoom in minutes */
@@ -1313,9 +1569,9 @@ var liveChart = {
 		var newWindow = Math.max(liveChart._minZoom, Math.min(liveChart._maxZoom, oldWindow * factor));
 
 		// Zoom centered on cursor position within the chart
-		var svg = document.getElementById("livechart-svg");
-		if (svg) {
-			var rect = svg.getBoundingClientRect();
+		var canvas = document.getElementById("livechart-canvas");
+		if (canvas) {
+			var rect = canvas.getBoundingClientRect();
 			var cursorRatio = (e.clientX - rect.left) / rect.width; // 0=left edge, 1=right edge
 			// Adjust viewOffset so the time under the cursor stays fixed
 			var oldWindowMs = oldWindow * 60 * 1000;
@@ -1341,13 +1597,6 @@ var liveChart = {
 			}
 		}
 
-		var el = document.getElementById("livechart-container");
-		if (el) {
-			var scrollX = window.scrollX;
-			var scrollY = window.scrollY;
-			el.innerHTML = liveChart.render();
-			window.scrollTo(scrollX, scrollY);
-			liveChart.bindDrag();
-		}
+		liveChart.paintCanvas();
 	},
 };
