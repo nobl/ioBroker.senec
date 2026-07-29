@@ -664,11 +664,11 @@ var energyFlow = {
 		}
 		var hasSeparatePv = pvSources.length > 0;
 
-		// Individual consumers (each gets its own node)
+		// Individual consumers (each gets its own node — preserve sign for flow direction)
 		var consumers = [];
 		for (var ewi = 0; ewi < d.externalConsumer.length; ewi++) {
-			var conPower = Math.abs(d.externalConsumer[ewi].power);
-			if (conPower > 10) {
+			var conPower = d.externalConsumer[ewi].power;
+			if (Math.abs(conPower) > 10) {
 				consumers.push({
 					power: conPower,
 					label: d.externalConsumer[ewi].label || `Consumer ${ewi + 1}`,

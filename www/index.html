@@ -1884,10 +1884,14 @@
 					var s = this.sources[i];
 					html += '<div style="margin:6px 0;display:flex;align-items:center;gap:8px">';
 					html += '<span style="color:#ce93d8;min-width:70px">' + s.type + '</span>';
-					html += '<select onchange="window._sim.sources[' + i + '].mode=this.value;app.renderDashboard()" style="width:80px">';
-					html += '<option value="separate"' + (s.mode === "separate" ? " selected" : "") + '>Separate</option>';
-					html += '<option value="integrate"' + (s.mode === "integrate" ? " selected" : "") + '>Integrate</option>';
-					html += '</select>';
+					if (s.type === "consumer") {
+						html += '<span style="color:#aaa;min-width:80px">Separate</span>';
+					} else {
+						html += '<select onchange="window._sim.sources[' + i + '].mode=this.value;app.renderDashboard()" style="width:80px">';
+						html += '<option value="separate"' + (s.mode === "separate" ? " selected" : "") + '>Separate</option>';
+						html += '<option value="integrate"' + (s.mode === "integrate" ? " selected" : "") + '>Integrate</option>';
+						html += '</select>';
+					}
 					html += '<input value="' + s.label + '" style="width:80px" onchange="window._sim.sources[' + i + '].label=this.value;app.renderDashboard()">';
 					html += '<label style="color:#aaa">W:</label>';
 					html += '<input type="range" min="-5000" max="5000" value="' + s.power + '" oninput="window._sim.update(' + s.id + ',\'power\',this.value);this.nextElementSibling.textContent=this.value+\'W\'" style="width:120px">';
