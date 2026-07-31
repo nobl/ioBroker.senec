@@ -99,6 +99,7 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 - Fix: External battery and consumer energy flow direction now reflects actual power sign (charge vs discharge, feed-in vs consumption).
 - Admin UI: Clarified column headers in external sources table to indicate which fields apply to which source types.
 - Fix: API and web connector polling now auto-recovers after transient failures (timeout, server error) instead of permanently stopping. Connection status indicators flip correctly on failure and recovery.
+- Log proxy: Reuse pooled HTTPS connections to the device (keep-alive) instead of a new TLS handshake per request — noticeably lighter in log live mode. Connections are closed on TLS re-negotiation and on unload.
 - Special thanks to everyone supporting this project — see [SUPPORTERS.md](SUPPORTERS.md).
 
 ### 2.12.0 (2026-07-23)
