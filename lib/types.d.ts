@@ -4,6 +4,28 @@ import type { AdapterClass } from "@iobroker/types/build/types";
 import type AdaptiveRequestQueue from "./AdaptiveRequestQueue";
 
 /**
+ * Axios `jar` support for CommonJS type resolution.
+ *
+ * axios-cookiejar-support augments the ESM Axios declarations (index.d.ts), while this adapter's
+ * CommonJS require("axios") resolves through the exports map to index.d.cts — a separate
+ * declaration of AxiosRequestConfig that never receives that augmentation. Mirroring the `jar`
+ * augmentation here restores it; without this, lib/api-client.js and lib/web-client.js fail with
+ * TS2353 ("`jar` does not exist in type AxiosRequestConfig").
+ *
+ * Do not remove without verifying `npm run check`.
+ *
+ * Previously handled by a compilerOptions.paths mapping in tsconfig.json. That worked, but
+ * ioBroker's repochecker treats every key in `paths` as a local path-alias prefix and therefore
+ * stopped counting require("axios") as a real package usage, emitting a spurious
+ * "[W5060] Package axios ... might be unused".
+ */
+declare module "axios" {
+    interface AxiosRequestConfig<D = any> {
+        jar?: CookieJar;
+    }
+}
+
+/**
  * The Senec adapter instance type.
  *
  * Extends the ioBroker AdapterClass with every dynamic property that
