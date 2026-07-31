@@ -100,6 +100,8 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 - Admin UI: Clarified column headers in external sources table to indicate which fields apply to which source types.
 - Fix: API and web connector polling now auto-recovers after transient failures (timeout, server error) instead of permanently stopping. Connection status indicators flip correctly on failure and recovery.
 - Log proxy: Reuse pooled HTTPS connections to the device (keep-alive) instead of a new TLS handshake per request — noticeably lighter in log live mode. Connections are closed on TLS re-negotiation and on unload.
+- SENEC.Connect: Failed requests now log the reason reported by the server instead of only the HTTP status code — in particular when the monthly request quota is exhausted.
+- Admin UI: Clarified the SENEC.Connect polling interval help — explains why 60 seconds is the lowest quota-safe value, and that the request quota belongs to the subscription key, so running the same key in another system requires a longer interval.
 - Special thanks to everyone supporting this project — see [SUPPORTERS.md](SUPPORTERS.md).
 
 ### 2.12.0 (2026-07-23)

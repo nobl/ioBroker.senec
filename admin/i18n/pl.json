@@ -79,7 +79,7 @@
     "connectInclude": "Uwzględnij sekcje",
     "connectIncludeHelp": "Rozdzielana przecinkami lista sekcji danych obejmująca: baterię, licznik, evse, bessNameplate. Pozostaw ustawienie domyślne, aby uzyskać wszystkie dostępne dane.",
     "connectPollInterval": "Interwał odpytywania (sekundy)",
-    "connectPollIntervalHelp": "Tutaj możesz zdefiniować interwał odpytywania [min 60, max 86400 sekund]. Wartość domyślna = 300 (5 minut). SENEC.Connect umożliwia ok. 45 000 żądań miesięcznie (~1/min). Nie zaleca się skracania czasu poniżej 60 sekund i może to spowodować wyczerpanie limitu.",
+    "connectPollIntervalHelp": "Tutaj możesz zdefiniować interwał odpytywania [min 60, max 86400 sekund]. Wartość domyślna = 300 (5 minut). Subskrypcja SENEC.Data 45000 umożliwia 45 000 żądań miesięcznie — po 60 sekundach, czyli 44 640 żądań w 31-dniowym miesiącu, więc 60 to najniższa wartość bezpieczna przydziału i nie można jej dalej obniżać. Pamiętaj, że limit należy do Twojego klucza subskrypcji, a nie do tego adaptera: jeśli używasz tego samego klucza w innym miejscu (np. w innym systemie inteligentnego domu), zwiększ interwał, aby całość mieściła się w ramach limitu.",
     "connectPolling": "Ankieta",
     "connectSubscription": "Prenumerata",
     "connectSubscriptionInfo": "Aby uzyskać klucz subskrypcji:<br>1. Przejdź do <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Zaloguj się przy użyciu danych uwierzytelniających mein-senec.de<br>3. Przejdź do produktu SENEC.Connect i kliknij Subskrybuj<br>4. Znajdź swój klucz subskrypcji w obszarze Profil → Moje subskrypcje<br>5. Skopiuj klucz i wklej go powyżej",

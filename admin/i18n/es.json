@@ -79,7 +79,7 @@
     "connectInclude": "Incluir secciones",
     "connectIncludeHelp": "Lista separada por comas de secciones de datos que incluyen: batería, medidor, evse, bessNameplate. Déjelo como predeterminado para obtener todos los datos disponibles.",
     "connectPollInterval": "Intervalo de sondeo (segundos)",
-    "connectPollIntervalHelp": "Aquí puede definir el intervalo de sondeo [mínimo 60, máximo 86400 segundos]. Predeterminado = 300 (5 minutos). SENEC.Connect permite aprox. 45.000 solicitudes por mes (~1/minuto). No se recomienda bajar de 60 segundos y puede agotar su cuota.",
+    "connectPollIntervalHelp": "Aquí puede definir el intervalo de sondeo [mínimo 60, máximo 86400 segundos]. Predeterminado = 300 (5 minutos). Una suscripción a SENEC.Data 45000 permite 45 000 solicitudes por mes; en 60 segundos, son 44 640 solicitudes en un mes de 31 días, por lo que 60 es el valor de cuota más bajo seguro y no se puede reducir más. Tenga en cuenta que la cuota pertenece a su clave de suscripción, no a este adaptador: si usa la misma clave en otro lugar (por ejemplo, otro sistema doméstico inteligente), aumente el intervalo para que el total se mantenga dentro de su cuota.",
     "connectPolling": "Votación",
     "connectSubscription": "Suscripción",
     "connectSubscriptionInfo": "Para obtener una clave de suscripción:<br>1. Vaya a <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Inicie sesión con sus credenciales de mein-senec.de<br>3. Busque el producto SENEC.Connect y haga clic en Suscribirse<br>4. Encuentre su clave de suscripción en Perfil → Mis suscripciones<br>5. Copia la clave y pégala arriba.",

@@ -79,7 +79,7 @@
     "connectInclude": "Incluir seções",
     "connectIncludeHelp": "Lista separada por vírgulas de seções de dados que incluem: bateria, medidor, evse, bessNameplate. Deixe como padrão para obter todos os dados disponíveis.",
     "connectPollInterval": "Intervalo de pesquisa (segundos)",
-    "connectPollIntervalHelp": "Aqui você pode definir o intervalo de pesquisa [min 60, max 86400 segundos]. Padrão = 300 (5 minutos). SENEC.Connect permite aprox. 45.000 solicitações por mês (cerca de 1/minuto). Ir abaixo de 60 segundos não é recomendado e pode esgotar sua cota.",
+    "connectPollIntervalHelp": "Aqui você pode definir o intervalo de pesquisa [min 60, max 86400 segundos]. Padrão = 300 (5 minutos). Uma assinatura do SENEC.Data 45000 permite 45.000 solicitações por mês – em 60 segundos, ou seja, 44.640 solicitações em um mês de 31 dias, portanto, 60 é o valor mais baixo para cota segura e não pode ser reduzido ainda mais. Observe que a cota pertence à sua chave de assinatura, não a este adaptador: se você usar a mesma chave em outro lugar (por exemplo, outro sistema doméstico inteligente), aumente o intervalo para que o total permaneça dentro da sua cota.",
     "connectPolling": "Votação",
     "connectSubscription": "Subscrição",
     "connectSubscriptionInfo": "Para obter uma chave de assinatura:<br>1. Acesse <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Faça login com suas credenciais mein-senec.de<br>3. Navegue até o produto SENEC.Connect e clique em Assinar<br>4. Encontre sua chave de assinatura em Perfil → Minhas assinaturas<br>5. Copie a chave e cole acima",

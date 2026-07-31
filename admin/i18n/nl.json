@@ -79,7 +79,7 @@
     "connectInclude": "Voeg secties toe",
     "connectIncludeHelp": "Door komma's gescheiden lijst met gegevenssecties die moeten worden opgenomen: batterij, meter, evse, bessNameplate. Laat dit standaard staan ​​om alle beschikbare gegevens op te halen.",
     "connectPollInterval": "Polling-interval (seconden)",
-    "connectPollIntervalHelp": "Hier kunt u het polling-interval definiëren [min 60, max 86400 seconden]. Standaard = 300 (5 minuten). SENEC.Connect maakt ca. 45.000 verzoeken per maand (~1/minuut). Onder de 60 seconden gaan wordt niet aanbevolen en kan uw quotum uitputten.",
+    "connectPollIntervalHelp": "Hier kunt u het polling-interval definiëren [min 60, max 86400 seconden]. Standaard = 300 (5 minuten). Een SENEC.Data 45000-abonnement staat 45.000 verzoeken per maand toe - bij 60 seconden zijn dat 44.640 verzoeken in een maand van 31 dagen, dus 60 is de laagste veilige quotumwaarde en kan niet verder worden verlaagd. Houd er rekening mee dat het quotum bij uw abonnementssleutel hoort en niet bij deze adapter: als u dezelfde sleutel elders gebruikt (bijvoorbeeld een ander smart home-systeem), verhoog dan het interval zodat het totaal binnen uw quotum blijft.",
     "connectPolling": "Polling",
     "connectSubscription": "Abonnement",
     "connectSubscriptionInfo": "Een abonnementssleutel verkrijgen:<br>1. Ga naar <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Meld u aan met uw mein-senec.de-inloggegevens<br>3. Blader naar het SENEC.Connect-product en klik op Abonneren<br>4. Zoek uw abonnementssleutel onder Profiel → Mijn abonnementen<br>5. Kopieer de sleutel en plak deze hierboven",

@@ -79,7 +79,7 @@
     "connectInclude": "包括部分",
     "connectIncludeHelp": "以逗号分隔的数据部分列表，包括：电池、仪表、evse、bessNameplate。保留默认值以获取所有可用数据。",
     "connectPollInterval": "轮询间隔（秒）",
-    "connectPollIntervalHelp": "您可以在此处定义轮询间隔 [最小 60，最大 86400 秒]。默认 = 300（5 分钟）。 SENEC.Connect 允许大约每月 45,000 个请求（~1/分钟）。不建议低于 60 秒，这可能会耗尽您的配额。",
+    "connectPollIntervalHelp": "您可以在此处定义轮询间隔 [最小 60，最大 86400 秒]。默认 = 300（5 分钟）。 SENEC.Data 45000 订阅每月允许 45,000 个请求 - 在 60 秒内，即 31 天的一个月内有 44,640 个请求，因此 60 是最低的配额安全值，不能进一步降低。请注意，配额属于您的订阅密钥，而不属于此适配器：如果您在其他地方（例如另一个智能家居系统）使用相同的密钥，请提高间隔，使总数保持在您的配额范围内。",
     "connectPolling": "轮询",
     "connectSubscription": "订阅",
     "connectSubscriptionInfo": "要获取订阅密钥：<br>1.转到 <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2.使用您的 mein-senec.de 凭据登录<br>3。浏览至 SENEC.Connect 产品并单击订阅<br>4。在“个人资料”→“我的订阅”<br>5 下找到您的订阅密钥。复制密钥并将其粘贴到上面",

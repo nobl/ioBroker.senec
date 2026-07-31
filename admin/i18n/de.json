@@ -79,7 +79,7 @@
     "connectInclude": "Abschnitte einschließen",
     "connectIncludeHelp": "Durch Kommas getrennte Liste von Datenabschnitten, die Folgendes umfassen sollen: battery, meter, evse, bessNameplate. Behalten Sie die Standardeinstellung bei, um alle verfügbaren Daten zu erhalten.",
     "connectPollInterval": "Abfrageintervall (Sekunden)",
-    "connectPollIntervalHelp": "Hier können Sie das Abfrageintervall festlegen [min. 60, max. 86400 Sekunden]. Standard = 300 (5 Minuten). SENEC.Connect ermöglicht ca. 45.000 Anfragen pro Monat (~1/Minute). Eine Unterschreitung von 60 Sekunden wird nicht empfohlen und kann Ihr Kontingent erschöpfen.",
+    "connectPollIntervalHelp": "Hier können Sie das Abfrageintervall festlegen [min. 60, max. 86400 Sekunden]. Standard = 300 (5 Minuten). Ein SENEC.Data 45000-Abonnement erlaubt 45.000 Anfragen pro Monat — bei 60 Sekunden sind das 44.640 Anfragen in einem 31-Tage-Monat, womit 60 der niedrigste kontingentsichere Wert ist und nicht weiter gesenkt werden kann. Beachten Sie, dass das Kontingent zu Ihrem Abonnement-Schlüssel gehört und nicht zu diesem Adapter: Wenn Sie denselben Schlüssel anderweitig verwenden (z. B. in einem anderen Smart-Home-System), erhöhen Sie das Intervall entsprechend.",
     "connectPolling": "Abfrage",
     "connectSubscription": "Abonnement",
     "connectSubscriptionInfo": "So erhalten Sie einen Abonnementschlüssel:<br>1. Gehen Sie zu <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Melden Sie sich mit Ihren mein-senec.de-Zugangsdaten an<br>3. Navigieren Sie zum Produkt SENEC.Connect und klicken Sie auf Abonnieren<br>4. Finden Sie Ihren Abonnementschlüssel unter Profil → Meine Abonnements<br>5. Kopieren Sie den Schlüssel und fügen Sie ihn oben ein",

@@ -79,7 +79,7 @@
     "connectInclude": "Includi sezioni",
     "connectIncludeHelp": "Elenco separato da virgole delle sezioni dati da includere: batteria, contatore, evse, bessNameplate. Lascia come predefinito per ottenere tutti i dati disponibili.",
     "connectPollInterval": "Intervallo di polling (secondi)",
-    "connectPollIntervalHelp": "Qui è possibile definire l'intervallo di polling [min 60, max 86400 secondi]. Valore predefinito = 300 (5 minuti). SENEC.Connect consente ca. 45.000 richieste al mese (~1/minuto). Non è consigliabile scendere sotto i 60 secondi perché potrebbe esaurire la tua quota.",
+    "connectPollIntervalHelp": "Qui è possibile definire l'intervallo di polling [min 60, max 86400 secondi]. Valore predefinito = 300 (5 minuti). Un abbonamento SENEC.Data 45000 consente 45.000 richieste al mese, ovvero a 60 secondi, ovvero 44.640 richieste in un mese di 31 giorni, quindi 60 è il valore di sicurezza della quota più basso e non può essere ulteriormente ridotto. Tieni presente che la quota appartiene alla tua chiave di abbonamento, non a questo adattatore: se usi la stessa chiave altrove (ad esempio un altro sistema di casa intelligente), aumenta l'intervallo in modo che il totale rimanga entro la tua quota.",
     "connectPolling": "Sondaggio",
     "connectSubscription": "Sottoscrizione",
     "connectSubscriptionInfo": "Per ottenere una chiave di abbonamento:<br>1. Vai a <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Accedi con le tue credenziali mein-senec.de<br>3. Passare al prodotto SENEC.Connect e fare clic su Iscriviti<br>4. Trova la chiave di abbonamento in Profilo → I miei abbonamenti<br>5. Copia la chiave e incollala sopra",

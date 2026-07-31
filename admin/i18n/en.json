@@ -167,7 +167,7 @@
     "connectSubscriptionInfo": "To obtain a subscription key:<br>1. Go to <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Sign in with your mein-senec.de credentials<br>3. Browse to the SENEC.Connect product and click Subscribe<br>4. Find your subscription key under Profile → My Subscriptions<br>5. Copy the key and paste it above",
     "connectPolling": "Polling",
     "connectPollInterval": "Polling Interval (seconds)",
-    "connectPollIntervalHelp": "Here you can define the polling interval [min 60, max 86400 seconds]. Default = 300 (5 minutes). SENEC.Connect allows approx. 45,000 requests per month (~1/minute). Going below 60 seconds is not recommended and may exhaust your quota.",
+    "connectPollIntervalHelp": "Here you can define the polling interval [min 60, max 86400 seconds]. Default = 300 (5 minutes). A SENEC.Data 45000 subscription allows 45,000 requests per month — at 60 seconds that is 44,640 requests in a 31-day month, so 60 is the lowest quota-safe value and cannot be lowered further. Note that the quota belongs to your subscription key, not to this adapter: if you use the same key elsewhere (e.g. another smart home system), raise the interval so the total stays within your quota.",
     "connectInclude": "Include sections",
     "connectIncludeHelp": "Comma-separated list of data sections to include: battery, meter, evse, bessNameplate. Leave as default to get all available data."
 }
