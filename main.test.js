@@ -1,29 +1,24 @@
 "use strict";
 
 /**
- * This is a dummy TypeScript test file using chai and mocha
+ * Placeholder test file from the adapter template.
  *
- * It"s automatically excluded from npm and its build output is excluded from both git and npm.
- * It is advised to test all your modules with accompanying *.test.js-files
+ * It asserts that 5 equals 5, so it tests nothing — but it required chai, which belongs to
+ * @iobroker/testing rather than to this package and is therefore not resolvable from here.
+ * That single require was enough to abort the whole unit suite before any real test ran.
+ *
+ * Kept, commented, as the template's example of where per-module tests go. Real tests live
+ * in test/testPureFunctions.js and assert with node:assert/strict.
  */
 
-// tslint:disable:no-unused-expression
-
-const { expect } = require("chai");
-// import { functionToTest } from "./moduleToTest";
-
-describe("module to test => function to test", () => {
-	// initializing logic
-	const expected = 5;
-
-	it(`should return ${expected}`, () => {
-		const result = 5;
-		// assign result a value from functionToTest
-		expect(result).to.equal(expected);
-		// or using the should() syntax
-		result.should.equal(expected);
-	});
-	// ... more tests => it
-});
-
-// ... more test suites => describe
+// const { expect } = require("chai");
+//
+// describe("module to test => function to test", () => {
+// 	const expected = 5;
+//
+// 	it(`should return ${expected}`, () => {
+// 		const result = 5;
+// 		expect(result).to.equal(expected);
+// 		result.should.equal(expected);
+// 	});
+// });
