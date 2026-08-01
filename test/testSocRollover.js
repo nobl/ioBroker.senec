@@ -35,8 +35,6 @@ async function withClock(iso, tz, fn) {
 	const RealDate = Date;
 	const fixed = new RealDate(iso).getTime();
 
-	process.env.TZ = tz;
-
 	class FakeDate extends RealDate {
 		/** @param {any[]} args - Date constructor arguments */
 		constructor(...args) {
@@ -53,8 +51,9 @@ async function withClock(iso, tz, fn) {
 		}
 	}
 
-	global.Date = /** @type {any} */ (FakeDate);
 	try {
+		process.env.TZ = tz;
+		global.Date = /** @type {any} */ (FakeDate);
 		return await fn();
 	} finally {
 		global.Date = RealDate;

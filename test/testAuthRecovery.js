@@ -46,9 +46,14 @@ function makeAdapter(opts = {}) {
 		scheduledDelays: [],
 		refreshPosts: 0,
 		loginAttempts: 0,
+		clearedTimers: 0,
 		log: { info() {}, debug() {}, warn() {}, error() {}, silly() {} },
 		logError() {},
 		encrypt: (v) => v,
+		decrypt: (v) => v,
+		async getStateAsync() {
+			return adapter.refreshToken ? { val: adapter.refreshToken } : null;
+		},
 		async doState() {},
 		setTimeout(fn, ms) {
 			adapter.scheduledDelays.push(ms);
@@ -56,7 +61,9 @@ function makeAdapter(opts = {}) {
 			// retry was scheduled, not that it fires.
 			return { fn, ms };
 		},
-		clearTimeout() {},
+		clearTimeout() {
+			adapter.clearedTimers++;
+		},
 	};
 
 	adapter.authClient = {
@@ -211,6 +218,94 @@ describe("API auth recovery after invalid_grant", () => {
 
 		assert.equal(adapter.loginAttempts, 1, "the no-token path must be single-flighted too");
 		assert.equal(adapter.currentToken, "new-access-token");
+	});
+
+	describe("startup recovery through apiStartTokenManager", () => {
+		// apiStartTokenManager is what main.js calls at startup and on every connector retry.
+		// apiRefreshToken already owns invalid_grant recovery: it attempts one fallback login
+		// and, when that fails, schedules a backed-off retry. The token manager must not run
+		// a second login of its own on top of that, and must not report a failure that sets
+		// main.js retrying the connector in parallel with the token retry already pending.
+
+		it("a stored refresh token the SSO rejects causes exactly one full login", async () => {
+			const adapter = makeAdapter({ loginSucceeds: false });
+			rejectRefreshWithInvalidGrant(adapter);
+
+			await apiClient.apiStartTokenManager(adapter);
+
+			assert.equal(adapter.refreshPosts, 1, "one refresh attempt");
+			assert.equal(adapter.loginAttempts, 1, `full login ran ${adapter.loginAttempts} times, expected 1`);
+		});
+
+		it("leaves exactly one recovery mechanism armed", async () => {
+			// Ownership: at startup the connector retry is the recovery mechanism, because it
+			// re-runs the whole init and restarts polling, which a bare token refresh does
+			// not. So the token manager reports failure and stands the token-level retry down
+			// rather than letting both loops run and double every request.
+			const adapter = makeAdapter({ loginSucceeds: false });
+			rejectRefreshWithInvalidGrant(adapter);
+
+			const connected = await apiClient.apiStartTokenManager(adapter);
+
+			assert.equal(connected, false, "no token means the connector is not connected");
+			assert.equal(adapter.timerTokenRefresh, null, "the token-level retry must be stood down at startup");
+			assert.ok(adapter.clearedTimers > 0, "and its timer actually cancelled");
+		});
+
+		it("still reports failure when nothing is retrying", async () => {
+			// No stored token and a login that fails: there is no refresh path to own
+			// recovery, so the caller has to be told, and the connector retry is the
+			// mechanism that applies.
+			const adapter = makeAdapter({ loginSucceeds: false, refreshToken: null });
+
+			const connected = await apiClient.apiStartTokenManager(adapter);
+
+			assert.equal(connected, false);
+			assert.equal(adapter.loginAttempts, 1, "one login attempt, not two");
+		});
+
+		it("reports success when the fallback login works", async () => {
+			const adapter = makeAdapter({ loginSucceeds: true });
+			rejectRefreshWithInvalidGrant(adapter);
+
+			const connected = await apiClient.apiStartTokenManager(adapter);
+
+			assert.equal(connected, true);
+			assert.equal(adapter.currentToken, "new-access-token");
+			assert.equal(adapter.loginAttempts, 1);
+			assert.equal(adapter.tokenFailureCount, 0, "a recovered session carries no failure count");
+		});
+
+		it("reports success when the plain refresh works", async () => {
+			const adapter = makeAdapter({ loginSucceeds: true });
+
+			const connected = await apiClient.apiStartTokenManager(adapter);
+
+			assert.equal(connected, true);
+			assert.equal(adapter.loginAttempts, 0, "a working refresh needs no login at all");
+		});
+
+		it("a transient refresh error retries without a full login", async () => {
+			// A 503 is not invalid_grant: the stored token may still be good, so re-logging in
+			// would throw away a working credential over a momentary server problem.
+			const adapter = makeAdapter({ loginSucceeds: true });
+			const realPost = adapter.authClient.post;
+			adapter.authClient.post = async (url, body, cfg) => {
+				if (String(body || "").includes("grant_type=refresh_token")) {
+					adapter.refreshPosts++;
+					const err = new Error("Request failed with status code 503");
+					// @ts-expect-error test double mimicking an axios error
+					err.response = { status: 503, data: {} };
+					throw err;
+				}
+				return realPost(url, body, cfg);
+			};
+
+			await apiClient.apiStartTokenManager(adapter);
+
+			assert.equal(adapter.loginAttempts, 0, "a transient refresh failure must not force a full login");
+			assert.equal(adapter.timerTokenRefresh, null, "startup hands recovery to the connector retry");
+		});
 	});
 
 	it("an unloaded adapter neither logs in nor schedules anything", async () => {

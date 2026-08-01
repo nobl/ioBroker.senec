@@ -34,8 +34,6 @@ function withClock(iso, tz, fn) {
 	const RealDate = Date;
 	const fixed = new RealDate(iso).getTime();
 
-	process.env.TZ = tz;
-
 	class FakeDate extends RealDate {
 		/** @param {any[]} args - Date constructor arguments */
 		constructor(...args) {
@@ -52,8 +50,9 @@ function withClock(iso, tz, fn) {
 		}
 	}
 
-	global.Date = /** @type {any} */ (FakeDate);
 	try {
+		process.env.TZ = tz;
+		global.Date = /** @type {any} */ (FakeDate);
 		return fn();
 	} finally {
 		global.Date = RealDate;
@@ -130,6 +129,22 @@ describe("API poll context day boundaries", () => {
 			assert.equal(localDay(ctx.today, tz), expected);
 		});
 	}
+
+	it("restores the clock and the timezone even when the body throws", () => {
+		// The harness mutates two globals. Mocha runs serially here, so a leak would not race
+		// — it would silently corrupt every later test in the run instead.
+		const realDate = Date;
+		const previousTz = process.env.TZ;
+
+		assert.throws(() =>
+			withClock("2026-07-31T22:30:00Z", "Europe/Berlin", () => {
+				throw new Error("boom");
+			}),
+		);
+
+		assert.equal(global.Date, realDate, "global.Date was left replaced");
+		assert.equal(process.env.TZ, previousTz, "process.env.TZ was left changed");
+	});
 
 	it("today starts at local midnight, not at some other hour", () => {
 		const ctx = contextAt("2026-07-31T22:30:00Z", "Europe/Berlin");

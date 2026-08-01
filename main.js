@@ -930,6 +930,10 @@ class Senec extends utils.Adapter {
 			this.log.info(`[${label}] ✅ Connection established on retry.`);
 			if (connector === "local") {
 				await localClient.localDiscoverSections(this);
+				// The forms in place here were built at startup, while the device was still
+				// unreachable and discovery could not run. Rebuild them before polling starts,
+				// or a section this retry just discovered is not requested until a restart.
+				await localClient.localInitPollSettings(this);
 				localClient
 					.localPoll(this, true, 0)
 					.catch((e) => this.logError(e, "[Local] ❌ Local highPrio poll failed"));
@@ -1370,7 +1374,10 @@ class Senec extends utils.Adapter {
 	 */
 	async applyExternalConsumer(consumer, value) {
 		if (consumer.kind === "soc") {
-			await this.doState(`${consumer.pfx}.soc`, Number(value) || 0, "Battery SOC", "%", false);
+			// `|| 0` catches NaN but lets Infinity through, and a battery percentage of
+			// Infinity propagates into every chart drawn from it.
+			const soc = Number(value);
+			await this.doState(`${consumer.pfx}.soc`, isFinite(soc) ? soc : 0, "Battery SOC", "%", false);
 			return;
 		}
 
@@ -1381,6 +1388,11 @@ class Senec extends utils.Adapter {
 		}
 		if (target.unit === "kW") {
 			raw *= 1000;
+			// A value finite in kW can leave the range in W, so the check has to happen after
+			// the conversion as well as before it.
+			if (!isFinite(raw)) {
+				raw = 0;
+			}
 		}
 		const normalized = target.sourceType === "battery" ? raw : Math.abs(raw);
 		await this.doState(
@@ -1401,18 +1413,26 @@ class Senec extends utils.Adapter {
 	async loadExternalCurrentValues() {
 		const applied = new Set();
 		for (const [stateId, consumers] of Object.entries(this._externalSourceMap)) {
+			// A formula reads its own references when it is evaluated, so this state only has
+			// to be fetched for consumers that are handed the value directly.
+			const needsValue = consumers.some((consumer) => consumer.kind !== "formula");
 			let current = null;
-			try {
-				current = await this.getForeignStateAsync(stateId);
-			} catch (err) {
-				this.log.debug(`[External] Could not read ${stateId} at startup: ${err.message}`);
+			if (needsValue) {
+				try {
+					current = await this.getForeignStateAsync(stateId);
+				} catch (err) {
+					this.log.debug(`[External] Could not read ${stateId} at startup: ${err.message}`);
+				}
 			}
 			for (const consumer of consumers) {
-				// A formula is registered once per reference; evaluating it once is enough.
-				if (applied.has(consumer)) {
+				// A formula is registered once per reference, each time in its own wrapper, so
+				// deduplicating on the wrapper never matched and an N-reference formula was
+				// evaluated N times — re-reading all N references on every pass.
+				const key = consumer.kind === "formula" ? consumer.entry : consumer;
+				if (applied.has(key)) {
 					continue;
 				}
-				applied.add(consumer);
+				applied.add(key);
 				await this.applyExternalConsumer(consumer, current?.val);
 			}
 		}
