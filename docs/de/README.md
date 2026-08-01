@@ -1,5 +1,4 @@
-![Logo](/admin/senec.png)
-# ioBroker.senec
+# <img src="../../admin/senec.png" width="36" align="top" alt=""> ioBroker.senec
 
 ## SENEC Adapter für ioBroker
 
@@ -14,27 +13,20 @@ Es müssen nicht alle Konnektoren aktiviert werden. Wählen Sie je nach Bedarf �
 
 ### Unterstützte Systeme
 
-Systeme, die auf der lala.cgi-Schnittstelle basieren, sollten mit dem lokalen Konnektor funktionieren. Alle Systeme mit einem mein-senec.de-Konto können die API- und Web-Konnektoren nutzen. Die verfügbaren Datenpunkte können je nach Systemmodell variieren.
+Praktisch jedes SENEC-Speichersystem funktioniert: die Home-Reihe von den frühen Blei- und
+Lithium-Modellen über V2, V2.1 und V3 bis zur aktuellen Generation V4 | P4 | E4, die
+Business-Modelle sowie die Partnervarianten ADS Tec, OEM LG und Solarinvert.
 
-* Senec Home 4.0, 6.0, 8.0, 10.0 / Blei
-* Senec Home 5.0, 7.5, 10.0, 15.0 / Lithium
-* Senec Home V2 5.0, 7.5, 10.0
-* Senec Home V2.1
-* Senec.Home V3
-* Senec.Home V4
-* Senec Business 30.0 / Blei
-* Senec Business V2 30.0 / Blei
-* Senec Business 25.0 / Lithium
-* Senec Business V2_2ph / Lithium
-* Senec Business V2 3ph / Lithium
-* ADS Tec
-* OEM LG
-* Solarinvert Storage 10.0 / Blei
+Systeme mit lokalem Webinterface können alle vier Konnektoren nutzen. Systeme ohne — darunter die
+V4-Generation — laufen über die SENEC App API, mein-senec.de und SENEC.Connect. Welche Datenpunkte
+verfügbar sind, hängt vom Modell ab.
 
-Systeme ohne lokales Webinterface können möglicherweise über die API- und/oder Web-Konnektoren überwacht werden. Rückmeldungen zur Kompatibilität weiterer Systeme sind gerne gesehen.
+Die [vollständige Modellliste](../SUPPORTED_SYSTEMS.md) hilft beim Wiederfinden des eigenen Systems.
 
 ## Haftungsausschluss
 **Alle Produkt- und Firmennamen oder -logos sind Warenzeichen™ oder eingetragene® Warenzeichen der jeweiligen Inhaber. Ihre Verwendung impliziert keine Zugehörigkeit oder Befürwortung durch diese oder zugehörige Tochtergesellschaften! Dieses persönliche Projekt wird in der Freizeit gepflegt und hat kein geschäftliches Ziel.**
+
+**Keine Gewährleistung und keine Haftung.** Dieser Adapter ist ein Freizeitprojekt und wird wie besehen unter der MIT-Lizenz bereitgestellt. Er spricht mit einem teuren Gerät über Schnittstellen, die SENEC weder dokumentiert noch unterstützt, und er kann Befehle senden, die das Verhalten dieses Geräts verändern. Alles, was Sie damit tun, geschieht auf eigene Verantwortung. Der Autor haftet nicht für Schäden an Ihrer Anlage, für verlorene oder falsche Daten, entgangene Einspeisung oder sonstige Folgen der Nutzung — und kann Ihnen auch nicht sagen, ob die Nutzung Auswirkungen auf Gewährleistung oder Support durch SENEC oder Ihren Installateur hat. Wer das nicht akzeptieren möchte, sollte diesen Adapter nicht einsetzen.
 
 ## Voraussetzungen
 
@@ -56,6 +48,16 @@ Die Adaptereinstellungen sind in Tabs organisiert — je einer pro Konnektor sow
 ![SENEC Konto](media/admin-account.png)
 
 Geben Sie hier Ihre mein-senec.de Zugangsdaten ein. Diese werden von der SENEC App API und mein-senec.de gemeinsam genutzt. Hier lässt sich auch der User-Agent-Modus für ausgehende HTTP-Anfragen konfigurieren.
+
+#### Zwei-Faktor-Authentifizierung (2FA)
+
+Ist für das mein-senec.de-Konto eine Zwei-Faktor-Authentifizierung aktiv, kann sich der Adapter trotzdem selbstständig anmelden — es muss niemand danebensitzen und einen Code eintippen.
+
+Bei der Einrichtung wird ein QR-Code für die Authenticator-App angezeigt und daneben dasselbe Geheimnis als Text. Dieser Text gehört in das Feld **TOTP-Secret**. Notieren Sie ihn, solange die Einrichtungsseite offen ist: Nach dem Aktivieren wird das Geheimnis nicht erneut angezeigt, ein neues gibt es nur durch erneutes Einrichten. Leer- und Bindestriche darin spielen keine Rolle.
+
+Gemeint ist das dauerhafte Geheimnis, nicht der sechsstellige Code aus der App — der wechselt alle dreißig Sekunden und wäre längst abgelaufen, bevor der Adapter ihn verwenden könnte.
+
+Ein Geheimnis genügt für beide Cloud-Konnektoren, da sich beide am selben Konto anmelden. Fehlt der Eintrag, obwohl 2FA verlangt wird, weist der Adapter im Log ausdrücklich darauf hin, statt nur einen fehlgeschlagenen Login zu melden.
 
 ### Lokale Verbindung (lala.cgi)
 
@@ -131,6 +133,25 @@ Der API-Konnektor kann historische Messdaten (AllTime-Summen) komplett neu aufba
 | Parallelität / Max. Parallelität | Limits für parallele Anfragen | 1 / 2 |
 | Min. Anfrageintervall | Mindestzeit zwischen Anfragen (ms) | 500 |
 
+### Weitere Anlagen des Kontos
+
+Sind dem mein-senec.de-Konto mehrere Anlagen zugeordnet — ein ersetztes Gerät bleibt neben seinem Nachfolger sichtbar —, erkennt der Adapter beim Start alle und legt jede unter `_meinsenec.Plants.{steuereinheitnummer}.` an.
+
+Abgefragt wird standardmäßig nur die erste Anlage. Jede weitere erhält einen eigenen Schalter unter `control.Plants.{steuereinheitnummer}.poll`, der zunächst aus ist. Wird er gesetzt, nimmt die langsame Abfrage-Ebene diese Anlage mit auf und füllt dieselbe Messwertstruktur wie bei der Hauptanlage:
+
+| State | Inhalt |
+|-------|--------|
+| `_meinsenec.Plants.{sn}.System.*` | Produktname, Gerätenummer, Anlagennummer |
+| `_meinsenec.Plants.{sn}.Measurements.Daily.today` / `.yesterday` | Stundenwerte |
+| `_meinsenec.Plants.{sn}.Measurements.Monthly.*` | Tageswerte je Monat |
+| `_meinsenec.Plants.{sn}.Measurements.Yearly.*` | Monatswerte je Jahr |
+| `_meinsenec.Plants.{sn}.Measurements.AllTime.*` | Gesamtsummen |
+| `_meinsenec.Plants.{sn}.Autarky.*` | Autarkie je Zeitraum |
+
+Die Gesamtsummen werden einmal beim ersten Erkennen einer Anlage geholt, auch bei ausgeschaltetem Schalter — so liegen die Endwerte eines stillgelegten Geräts vor, ohne es dauerhaft abzufragen.
+
+Beachten Sie, dass jede zusätzlich aktivierte Anlage die Anzahl der Portal-Anfragen erhöht. Wer nur die historischen Summen eines Altgeräts braucht, lässt den Schalter am besten aus.
+
 ### SENEC.Connect
 
 ![SENEC.Connect](media/admin-connect.png)
@@ -191,6 +212,30 @@ Konfigurierbar pro Konnektor (Lokal, API, mein-senec.de, Connect):
 - **Requests & Responses loggen** — Loggt HTTP-Details auf Debug-Ebene (kann sensible Daten enthalten)
 - **Queue-Diagnose ins Info-Log** — Zeigt Queue-Statistiken im Info-Log (nur API + Web)
 - **Diagnose in States schreiben** — Schreibt Queue-Daten in dedizierte ioBroker-States (nur API + Web)
+
+#### Debug-Log erstellen
+
+Die meisten Probleme lassen sich aus einem Log ablesen, und fast keines ohne.
+
+1. Log-Level der Instanz auf **debug** setzen: ioBroker-Admin → Instanzen → senec-Instanz → Auswahlfeld für den Log-Level. `silly` gibt es auch, bringt aber selten mehr Erkenntnis und erzeugt sehr viel Rauschen.
+2. Im Adapter-Tab **Debug & Protokollierung** für den betroffenen Konnektor *Anfragen & Antworten protokollieren* aktivieren. Diese Einstellung macht aus „eine Anfrage ist fehlgeschlagen" ein „diese URL hat mit diesem Status geantwortet".
+3. Lange genug laufen lassen, damit das Problem mindestens einmal auftritt. Bei den langsamen Abfrage-Ebenen — Messwerte, Monats- oder Jahresdaten — kann das bedeuten, auf den nächsten Zyklus zu warten statt neu zu starten.
+4. Das Log aus dem ioBroker-Log-Tab kopieren oder die Datei aus `/opt/iobroker/log/` verwenden.
+5. Anschließend wieder auf **info** zurückstellen. Debug-Logging ist umfangreich und füllt über Wochen die Festplatte.
+
+**Vor dem Weitergeben bitte durchsehen.** Die Anfrage-Protokollierung enthält URLs und Antworten, darin können Anlagen-ID, Anlagennummer und Seriennummer stehen. Passwörter sind nicht dabei, aber es sind Ihre Daten. Ersetzen Sie, was nicht öffentlich werden soll.
+
+#### Fehler melden
+
+Meldungen bitte über [GitHub](https://github.com/nobl/ioBroker.senec/issues). Was eine Meldung schnell bearbeitbar macht:
+
+- **Welches System** — Modell und, falls bekannt, die Firmware-Version (`_local.FACTORY` und `_local.SYS_UPDATE` enthalten beides, sofern der lokale Konnektor läuft)
+- **Welche Konnektoren** aktiv sind, denn dasselbe Symptom hat lokal und in der Cloud unterschiedliche Ursachen
+- **Adapter- und ioBroker-Version** sowie die Node.js-Version
+- **Was erwartet wurde und was stattdessen passiert ist** — „der Batteriestand fehlt" lässt sich bearbeiten, „geht nicht" erfordert erst eine Rückfrage
+- **Der passende Log-Ausschnitt** auf Debug-Level, mit ein paar Zeilen vor und nach dem Fehler statt nur der Fehlerzeile
+
+Vorab noch: Unplausible Werte stammen meist vom Gerät und nicht vom Adapter. Er reicht Werte weitgehend durch, eine im Dashboard falsch wirkende Temperatur oder ein falscher Ladezustand sieht deshalb in der Weboberfläche des Geräts in der Regel genauso falsch aus. Ein Blick dorthin klärt die Frage oft schon — und wenn nicht, ist genau dieser Vergleich die nützlichste Angabe in der Meldung.
 
 ## Integriertes Dashboard
 

@@ -1,5 +1,4 @@
-![Logo](/admin/senec.png)
-# ioBroker.senec
+# <img src="../../admin/senec.png" width="36" align="top" alt=""> ioBroker.senec
 
 ## SENEC Adapter for ioBroker
 
@@ -14,27 +13,20 @@ Not all connectors are required. Choose based on your needs — local-only setup
 
 ### Supported Systems
 
-Systems based on the lala.cgi interface should work with the Local connector. All systems with a mein-senec.de account can use the API and Web connectors. Data points may vary between system models.
+Practically every SENEC storage system works: the Home range from the early lead-acid and lithium
+models through V2, V2.1 and V3, the current V4 | P4 | E4 generation, the Business models, and the
+partner variants ADS Tec, OEM LG and Solarinvert.
 
-* Senec Home 4.0, 6.0, 8.0, 10.0 / Blei
-* Senec Home 5.0, 7.5, 10.0, 15.0 / Lithium
-* Senec Home V2 5.0, 7.5, 10.0
-* Senec Home V2.1
-* Senec.Home V3
-* Senec.Home V4
-* Senec Business 30.0 / Blei
-* Senec Business V2 30.0 / Blei
-* Senec Business 25.0 / Lithium
-* Senec Business V2_2ph / Lithium
-* Senec Business V2 3ph / Lithium
-* ADS Tec
-* OEM LG
-* Solarinvert Storage 10.0 / Blei
+Systems with a local web interface can use all four connectors. Those without one — the V4
+generation among them — work through the SENEC App API, mein-senec.de and SENEC.Connect. Which
+data points appear varies by model.
 
-Systems without a local web interface can be monitored using the API and/or Web connectors only. Please contact the developer if you have any input on additional system compatibility.
+See the [full list of models](../SUPPORTED_SYSTEMS.md) to find your system by name.
 
 ## Disclaimer
 **All product and company names or logos are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them or any associated subsidiaries! This personal project is maintained in spare time and has no business goal.**
+
+**No warranty, and no liability.** This adapter is a spare-time project, provided as-is under the MIT license. It talks to an expensive appliance over interfaces SENEC neither documents nor supports, and it can send commands that change how that appliance behaves. Everything you do with it is your own responsibility. The author accepts no liability for damage to your system, lost or wrong data, missed feed-in, or any other consequence of using it — and cannot tell you whether using it affects your warranty or support arrangements with SENEC or your installer. If that is not acceptable to you, please do not use this adapter.
 
 ## Prerequisites
 
@@ -56,6 +48,16 @@ The adapter settings are organized in tabs — one per connector plus general se
 ![SENEC Account](media/admin-account.png)
 
 Enter your mein-senec.de credentials here. These are shared by the SENEC App API and mein-senec.de connectors. You can also configure the User-Agent mode for outbound HTTP requests.
+
+#### Two-Factor Authentication (2FA)
+
+If two-factor authentication is enabled on your mein-senec.de account, the adapter can log in on its own — it does not need you to be there to type a code.
+
+Enrolment shows a QR code for your authenticator app and, next to it, the same secret as text. That text secret is what goes into the **TOTP Secret** field. Take it from the setup screen while it is on display; once 2FA is active the secret is not shown again, and you would have to re-enrol to see a new one. Spaces and dashes in it do not matter.
+
+What belongs there is the permanent secret, not the six-digit code your app shows — that changes every thirty seconds and would be stale before the adapter ever used it.
+
+One secret covers both cloud connectors, since they authenticate against the same account. If 2FA is required and the field is empty, the adapter says so plainly in the log rather than reporting a failed login.
 
 ### Local Connection (lala.cgi)
 
@@ -130,6 +132,25 @@ The API connector can rebuild historical measurement data (AllTime totals) from 
 | Concurrency / Max concurrency | Parallel request limits | 1 / 2 |
 | Min request interval | Minimum time between requests (ms) | 500 |
 
+### Additional Systems on the Account
+
+If your mein-senec.de account holds more than one system — a replaced appliance still shows up alongside its successor — the adapter discovers all of them at startup and registers each under `_meinsenec.Plants.{steuereinheitnummer}.`.
+
+Only the first system is polled by default. Each additional one gets its own switch at `control.Plants.{steuereinheitnummer}.poll`, off until you set it. Turning it on adds that system to the slow polling tier, filling the same measurement structure the main system uses:
+
+| State | Contents |
+|-------|----------|
+| `_meinsenec.Plants.{sn}.System.*` | Product name, device number, plant number |
+| `_meinsenec.Plants.{sn}.Measurements.Daily.today` / `.yesterday` | Hourly measurement data |
+| `_meinsenec.Plants.{sn}.Measurements.Monthly.*` | Daily breakdown per month |
+| `_meinsenec.Plants.{sn}.Measurements.Yearly.*` | Monthly breakdown per year |
+| `_meinsenec.Plants.{sn}.Measurements.AllTime.*` | Lifetime totals |
+| `_meinsenec.Plants.{sn}.Autarky.*` | Autarky per period |
+
+Lifetime totals are fetched once when a system is first discovered, even with the switch off, so a decommissioned appliance's final figures are available without polling it continuously.
+
+Bear in mind that each enabled system multiplies the requests made to the portal. If you only want the historical totals of an old appliance, leaving its switch off is usually enough.
+
 ### SENEC.Connect
 
 ![SENEC.Connect](media/admin-connect.png)
@@ -190,6 +211,30 @@ Configurable per connector (Local, API, mein-senec.de, Connect):
 - **Log requests & responses** — Logs HTTP details at debug level (may log sensitive data)
 - **Queue diagnostics to info log** — Promotes queue statistics to info level (API + Web only)
 - **Write diagnostics to states** — Writes queue data to dedicated ioBroker states (API + Web only)
+
+#### Collecting a Debug Log
+
+Most problems become obvious from a log, and almost none are diagnosable without one.
+
+1. Set the instance log level to **debug**: ioBroker admin → Instances → the senec instance → the log level dropdown (the wrench icon opens the instance settings; the level sits in the row itself). `silly` exists too, but it is rarely more useful and produces a great deal of noise.
+2. In the adapter's **Debug & Logging** tab, enable *Log requests & responses* for the connector that is misbehaving. This is the setting that turns "a request failed" into "this URL answered with this status".
+3. Let it run long enough to catch the problem at least once. For anything on the slow tiers — measurements, monthly or yearly data — that can mean waiting for the next cycle rather than a restart.
+4. Collect the log from ioBroker's Log tab, or from `/opt/iobroker/log/` if you would rather have the file.
+5. Turn the level back to **info** afterwards. Debug logging is verbose and will fill a disk over weeks.
+
+**Before sharing a log, read through it.** Request logging includes URLs and responses, and those can contain your system ID, plant number and device serial. None of it is a password, but it is yours. Replace anything you would rather not publish.
+
+#### Reporting an Issue
+
+Issues go to [GitHub](https://github.com/nobl/ioBroker.senec/issues). What makes one quick to act on:
+
+- **Which system** — the model, and the firmware version if you have it (`_local.FACTORY` and `_local.SYS_UPDATE` hold both when the local connector runs)
+- **Which connectors** are enabled, since the same symptom has different causes on local and cloud
+- **Adapter and ioBroker version**, plus the Node.js version
+- **What you expected and what happened instead** — "the battery level is missing" is actionable; "it does not work" needs a round of questions first
+- **The relevant part of the log**, at debug level, with a few lines either side of the failure rather than the single error line
+
+Worth knowing before you file: implausible readings usually come from the appliance rather than from the adapter. It mostly passes values through, so a temperature or state of charge that looks wrong on the dashboard will generally look just as wrong in the appliance's own web interface. Checking there first often answers the question outright — and when it does not, that comparison is itself the most useful thing you can put in the report.
 
 ## Built-in Dashboard
 

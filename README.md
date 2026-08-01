@@ -1,5 +1,4 @@
-![Logo](admin/senec.png)
-# ioBroker.senec
+# <img src="admin/senec.png" width="36" align="top" alt=""> ioBroker.senec
 
 [![NPM version](http://img.shields.io/npm/v/iobroker.senec.svg)](https://www.npmjs.com/package/iobroker.senec)
 [![Downloads](https://img.shields.io/npm/dm/iobroker.senec.svg)](https://www.npmjs.com/package/iobroker.senec)
@@ -15,62 +14,114 @@
 
 [Dokumentation DE](docs/de/README.md) | [Documentation EN](docs/en/README.md)
 
-Monitor and control your SENEC home battery storage system from ioBroker. The adapter connects via four independent data sources — use one or combine them for maximum coverage:
-
-| Connector | Data source | Update speed | Key capabilities |
-|-----------|------------|-------------|-----------------|
-| **Local** | lala.cgi (LAN) | 10s real-time | Full BMS data, grid meter, wallbox, appliance control |
-| **SENEC App API** | Cloud API | 6 min | Dashboard, measurements, system details |
-| **mein-senec.de** | Web portal | 6 min | Measurements, emergency power, peak shaving, SG-Ready, sockets |
-| **SENEC.Connect** | Azure API | 5 min | Battery & meter data |
-
-### Built-in Dashboard
-
-Access a full-featured dashboard at `http://<iobroker>:8082/senec/` — no extra adapters needed. Dark/light theme, 11 languages.
+Your SENEC system knows a great deal about itself. This adapter brings all of it into ioBroker — down to individual cell voltages and per-phase grid quality — and comes with a dashboard you do not have to build.
 
 ![Dashboard Overview](docs/en/media/dashboard-overview.png)
 
-**Overview** — Live energy flow diagram with animated power paths, battery SOC gauge, operating mode, period totals with autarky. Live power curve chart with history backfill from InfluxDB/SQL/History. Event timeline showing today's warnings and errors.
+That screenshot is not a vis project someone assembled. It ships with the adapter, needs no extra adapters or widgets, and is running as soon as the instance is. Dark and light theme, 11 languages, usable on a phone.
 
-**Battery** — State of health per pack, charge cycles, cell voltage heatmap (spot imbalance at a glance), temperatures.
+### Four Ways In
 
-**Charts** — Measurement history (hourly/daily/monthly/yearly) with comparison mode, stacked view, battery level overlay, data table, PNG export.
+The appliance answers on your own network, and SENEC runs three cloud services. The adapter speaks all four, independently.
 
-**System** — Grid quality (frequency, per-phase voltage/power/current), PV string details, wallbox info, feature flags, firmware versions.
+**The local connector needs nothing but an IP address.** No account, no credentials, no request ever leaving your network — that is where this adapter started and it still works that way on its own. The cloud connectors are there when you want the measurement history and portal features that only exist online, or when your appliance has no local interface to talk to.
 
-**Control** — Force charge, appliance reboot, emergency power reserve, peak shaving, SG-Ready, switchable sockets, wallbox control. Available via Local and/or mein-senec.de.
+| Connector | Data source | Update speed | Key capabilities |
+|-----------|------------|-------------|-----------------|
+| **[Local](docs/en/README.md#local-connection-lalacgi)** | lala.cgi (LAN) | 10s real-time | Full BMS data, grid meter, wallbox, appliance control |
+| **[SENEC App API](docs/en/README.md#senec-app-api)** | Cloud API | 6 min | Dashboard, measurements, system details |
+| **[mein-senec.de](docs/en/README.md#mein-senecde)** | Web portal | 6 min | Measurements, emergency power, peak shaving, SG-Ready, sockets |
+| **[SENEC.Connect](docs/en/README.md#senecconnect)** | Azure API | 5 min | Battery & meter data |
 
-**Logs** — Browse device logs by date, filter by level/category, live mode, download.
+Replaced your appliance? Both systems stay on your mein-senec.de account, and the adapter finds [all of them](docs/en/README.md#additional-systems-on-the-account) — so the old one's history stays reachable next to the new one's live data.
 
-### External Energy Sources
+One is enough to get started. Combining them is where it gets interesting: the local connection gives ten-second resolution and the deepest detail, while the cloud services hold years of measurement history and features that exist nowhere else — emergency power reserve, peak shaving, SG-Ready, switchable sockets. And if one source is down, or your appliance has no local interface at all, the others carry on regardless.
+
+### Built-in Dashboard
+
+**[Overview](docs/en/README.md#overview-tab)** — Live energy flow diagram with animated power paths, battery SOC gauge, operating mode, period totals with autarky. Event timeline showing today's warnings and errors.
+
+**[Live power curve](docs/en/README.md#overview-tab)** — Drag through history and pinch to zoom, from a five-minute window out to thirty days, on a desktop or a tablet. If you log the power states with InfluxDB, SQL or History, the chart backfills from them and you can pan back through everything you have recorded.
+
+![Live power curve](docs/en/media/dashboard-live-chart.png)
+
+**[Battery](docs/en/README.md#battery-tab)** — State of health per pack, charge cycles, cell voltage heatmap (spot imbalance at a glance), temperatures.
+
+![Cell voltage heatmap](docs/en/media/dashboard-heatmap.png)
+
+**[Charts](docs/en/README.md#charts-tab)** — Measurement history (hourly/daily/monthly/yearly) with comparison mode, stacked view, battery level overlay, data table, PNG export.
+
+![Measurement history](docs/en/media/dashboard-charts-year.png)
+
+**[System](docs/en/README.md#system-tab)** — Grid quality (frequency, per-phase voltage/power/current), PV string details, wallbox info, feature flags, firmware versions.
+
+**[Control](docs/en/README.md#control-tab)** — Force charge, appliance reboot, emergency power reserve, peak shaving, SG-Ready, switchable sockets, wallbox control. Available via Local and/or mein-senec.de.
+
+**[Logs](docs/en/README.md#logs-tab)** — Browse device logs by date, filter by level/category, live mode, download.
+
+**[Statistics](docs/en/README.md#statistics-tab)** — Browse the weekly 5-minute exports mein-senec.de keeps, going back years. Filter by day, switch between hourly and 5-minute resolution, chart or table, and export what you select.
+
+### [External Energy Sources](docs/en/README.md#external-sources)
 
 Integrate third-party PV inverters, consumers (wallbox, heat pump, etc.), and batteries from other ioBroker adapters into the SENEC dashboard. Values can be mapped directly from states or calculated via formulas (e.g. `{voltage.state} * {current.state}`). External sources appear in the energy flow diagram and live power chart — either added to SENEC totals or shown as separate nodes.
 
+### Built to Keep Running
+
+An adapter polling a battery every ten seconds runs unattended for years, so most of the work is in the parts you never see.
+
+**It validates the connection to your appliance.** Local polling is HTTPS, and the certificate is actually checked — against the CA you upload, against one the adapter fetches from the portal for you, or by pinning the appliance's fingerprint on first contact and warning if it ever changes. No blanket "trust anything" shortcut. [How it works](docs/en/README.md#tls-certificate-validation)
+
+**It backs off instead of hammering.** Cloud requests run through a queue that watches success rates, widens the gap between requests when the server rate-limits or times out, and narrows it again once things recover.
+
+**It recovers on its own.** A failed poll does not end polling. Connectors retry with growing delays and pick up where they left off, and `info.connectionStatus` tells you at a glance which sources are currently live.
+
+**It can rebuild what it missed.** The App API connector can reconstruct lifetime measurement history from scratch, working backwards year by year in the background. [History rebuild](docs/en/README.md#history-rebuild)
+
 ### Supported Systems
 
-* Senec Home 4.0, 6.0, 8.0, 10.0 / Blei
-* Senec Home 5.0, 7.5, 10.0, 15.0 / Lithium
-* Senec Home V2 5.0, 7.5, 10.0
-* Senec Home V2.1
-* Senec.Home V3
-* Senec.Home V4
-* Senec Business 30.0 / Blei
-* Senec Business V2 30.0 / Blei
-* Senec Business 25.0 / Lithium
-* Senec Business V2_2ph / Lithium
-* Senec Business V2 3ph / Lithium
-* ADS Tec
-* OEM LG
-* Solarinvert Storage 10.0 / Blei
+Practically every SENEC storage system works: the Home range from the early lead-acid and lithium
+models through V2, V2.1 and V3, the current V4 | P4 | E4 generation, the Business models, and the
+partner variants ADS Tec, OEM LG and Solarinvert.
 
-Systems without a local web interface can be monitored using the API and/or Web connectors. Please contact the developer if you have input on additional system compatibility.
+Systems with a local web interface can use all four connectors. Those without one — the V4
+generation among them — work through the SENEC App API, mein-senec.de and SENEC.Connect. Which
+data points appear varies by model.
 
-### Getting Started
+See the [full list of models](docs/SUPPORTED_SYSTEMS.md) to find your system by name.
 
-See the [full documentation](docs/en/README.md) for installation, configuration, and feature details.
+### Requirements
+
+- ioBroker running on Node.js 22 or newer
+- For the local connector: the SENEC appliance reachable on your network, and its IP address
+- For the cloud connectors: a mein-senec.de account
+- For the dashboard: the ioBroker.web adapter (most installations already have it)
+
+### Quick Start
+
+Configure **at least one** connector on a new instance — you do not need all four, and you can add the others later.
+
+**Local, for real-time data.** Open the *[Local Connection](docs/en/README.md#local-connection-lalacgi)* tab and enter the appliance's IP address. That is the whole setup. This connector polls every 10 seconds and provides the most detail: full battery management data, per-phase grid values, wallbox information and appliance control.
+
+**Cloud, if the appliance has no local web interface** (the V4 generation, for example) **or you would rather not poll it directly.** Enter your mein-senec.de credentials in the *[SENEC Account](docs/en/README.md#senec-account)* tab, then enable the *[SENEC App API](docs/en/README.md#senec-app-api)* or *[mein-senec.de](docs/en/README.md#mein-senecde)* connector. Both use the same credentials, and both support accounts with [two-factor authentication](docs/en/README.md#two-factor-authentication-2fa). Data arrives every few minutes rather than in real time.
+
+Once an instance is running, the dashboard is at `http://<your-iobroker>:8082/senec/`. Running more than one system? Create an instance per system — each dashboard follows its own instance. States appear under `senec.0` — the [state reference](docs/en/README.md#state-reference) lists them all — and can be logged with any history adapter.
+
+Beyond that: [every setting explained](docs/en/README.md#configuration), the [complete state reference](docs/en/README.md#state-reference), [control features](docs/en/README.md#appliance-control) and [troubleshooting](docs/en/README.md#troubleshooting).
+
+### Reporting a Problem
+
+Please open an issue on [GitHub](https://github.com/nobl/ioBroker.senec/issues). It helps to include your system model, which connectors you have enabled, the adapter and ioBroker versions, and a debug-level log covering the failure — the documentation walks through [collecting one](docs/en/README.md#collecting-a-debug-log) and [what makes a report actionable](docs/en/README.md#reporting-an-issue).
+
+One thing worth checking first: implausible readings usually originate in the appliance rather than in the adapter, which mostly passes values through. A value that looks wrong on the dashboard will generally look just as wrong in the appliance's own web interface — and if it does not, that difference is exactly what to put in the report.
 
 ## Disclaimer
 **All product and company names or logos are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them or any associated subsidiaries! This personal project is maintained in spare time and has no business goal.**
+
+**Control features are used at your own risk.** Force charge, appliance reboot, emergency power reserve, peak shaving, SG-Ready, socket switching and wallbox control each have to be enabled deliberately and acknowledged in the settings before they appear. The adapter sends what it is asked to send; it does not arbitrate between conflicting commands arriving from different connectors, nor does it judge whether a command is sensible for your system.
+
+**Polling too aggressively can overload the appliance.** Shortening the local polling interval or adding extra high-priority data points can make the device restart, stop responding, or fail to synchronise with the SENEC cloud. If that happens, reduce the frequency or stop the adapter. The defaults are chosen to be safe.
+
+**No warranty, and no liability.** This adapter is a spare-time project, provided as-is under the MIT license. It talks to an expensive appliance over interfaces SENEC neither documents nor supports, and it can send commands that change how that appliance behaves. Everything you do with it is your own responsibility. The author accepts no liability for damage to your system, lost or wrong data, missed feed-in, or any other consequence of using it — and cannot tell you whether using it affects your warranty or support arrangements with SENEC or your installer. If that is not acceptable to you, please do not use this adapter.
 
 ### Deprecated / Removed states
 * STATISTIC
