@@ -1991,9 +1991,14 @@ const ValueTyping = (key, value) => {
 	if (state_attr[key]?.stringtype) {
 		return typeof value === "string" ? value : String(value);
 	}
-	// States with a physical unit or explicit numtype must always be numeric
+	// States with a physical unit or explicit numtype must always be numeric.
+	// Scaling has to happen here as well: this branch returns early, so the multiply
+	// handling further down is unreachable for anything carrying a unit — which is
+	// every entry that defines one.
 	if (state_attr[key]?.numtype || (state_attr[key]?.unit && !isNaN(value))) {
-		return Number(value) || 0;
+		const num = Number(value) || 0;
+		const factor = state_attr[key]?.multiply;
+		return factor ? parseFloat((num * factor).toFixed(2)) : num;
 	}
 	if (!isNaN(value)) {
 		const num = Number(value);
