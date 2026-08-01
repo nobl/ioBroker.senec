@@ -18,3 +18,5 @@ admin/i18n/*/flat.txt
 #ignore .commitinfo created by ioBroker release script
 .commitinfo
 .dev-server
+# Local sample data — never commit (may contain device serials)
+samples/
