@@ -26,6 +26,8 @@
     "HighPrioWALLEmptyHelp": "Automatisch hinzugefügt:",
     "IP": "IP/FQDN des SENEC-Systems",
     "IPHelp": "Hier geben Sie die IP oder den FQDN Ihres SENEC-Systems ein",
+    "MeasurementTimeout": "Zeitlimit für Messwertabfragen [ms]",
+    "MeasurementTimeoutHelp": "Wie lange auf eine Messwertabfrage gewartet wird, bevor sie abgebrochen wird [min 10000, max 300000 ms]. Standard = 60000 (60 Sekunden). Diese Abfragen sind keine einfachen Abrufe: Der SENEC-Server aggregiert die Daten erst bei der Anfrage, und eine Jahres- oder Monatsabfrage über einen langen Zeitraum kann deutlich länger dauern als die schnellen Dashboard-Aufrufe. Wenn im Log „Heavy poll failed ... timeout exceeded“ erscheint, erhöhen Sie diesen Wert. Er gilt nur für den Messverlauf; die übrigen API-Anfragen behalten ihr eigenes, deutlich kürzeres Zeitlimit, damit echte Fehler weiterhin schnell erkannt werden.",
     "Off": "Aus",
     "Password": "Passwort",
     "Password_Help:": "Passwort für die Anmeldung bei mein-senec.de",

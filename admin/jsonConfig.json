@@ -324,6 +324,20 @@
 							"min": 400,
 							"max": 5000,
 							"newLine": false
+						},
+						"api_measurement_timeout": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "MeasurementTimeout",
+							"help": "MeasurementTimeoutHelp",
+							"default": 60000,
+							"min": 10000,
+							"max": 300000,
+							"newLine": true
 						}
 					}
 				},

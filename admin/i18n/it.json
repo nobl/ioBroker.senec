@@ -26,6 +26,8 @@
     "HighPrioWALLEmptyHelp": "Aggiunto automaticamente:",
     "IP": "IP/FQDN del sistema SENEC",
     "IPHelp": "Qui inserisci l'IP o FQDN del tuo Sistema SENEC",
+    "MeasurementTimeout": "Timeout richiesta di misura [ms]",
+    "MeasurementTimeoutHelp": "Quanto tempo attendere una richiesta di misura prima di rinunciare [min 10000, max 300000 ms]. Valore predefinito = 60000 (60 secondi). Queste richieste non sono semplici letture: il server SENEC aggrega i dati quando richiesto e una query annuale o mensile che copre un lungo periodo può richiedere molto più tempo rispetto alle chiamate rapide alla dashboard. Se il tuo registro mostra \"Sondaggio pesante non riuscito... timeout superato\", aumenta questo valore. Si applica solo alla cronologia delle misurazioni; le altre richieste API mantengono il proprio timeout molto più breve in modo che gli errori autentici vengano comunque rilevati rapidamente.",
     "Off": "Spento",
     "Password": "Password",
     "Password_Help:": "Password utilizzata per accedere a mein-senec.de",

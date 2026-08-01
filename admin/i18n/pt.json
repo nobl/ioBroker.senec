@@ -26,6 +26,8 @@
     "HighPrioWALLEmptyHelp": "Adicionado automaticamente:",
     "IP": "IP/FQDN do Sistema SENEC",
     "IPHelp": "Aqui você insere o IP ou FQDN do seu Sistema SENEC",
+    "MeasurementTimeout": "Tempo limite da solicitação de medição [ms]",
+    "MeasurementTimeoutHelp": "Quanto tempo esperar por uma solicitação de medição antes de desistir [min 10.000, max 300.000 ms]. Padrão = 60.000 (60 segundos). Estas solicitações não são simples leituras: o servidor SENEC agrega os dados quando solicitado, e uma consulta anual ou mensal que cubra um longo período pode demorar consideravelmente mais do que as chamadas rápidas ao painel. Se o seu log mostrar \"Falha na pesquisa pesada... tempo limite excedido\", aumente esse valor. Aplica-se apenas ao histórico de medições; as outras solicitações de API mantêm seu próprio tempo limite muito mais curto para que falhas genuínas ainda sejam detectadas rapidamente.",
     "Off": "Desligado",
     "Password": "Senha",
     "Password_Help:": "Senha usada para fazer login em mein-senec.de",

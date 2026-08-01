@@ -26,6 +26,8 @@
     "HighPrioWALLEmptyHelp": "Agregado automáticamente:",
     "IP": "IP / FQDN del sistema SENEC",
     "IPHelp": "Aquí ingresas la IP o FQDN de tu Sistema SENEC",
+    "MeasurementTimeout": "Tiempo de espera de solicitud de medición [ms]",
+    "MeasurementTimeoutHelp": "Cuánto tiempo esperar por una solicitud de medición antes de darse por vencido [mínimo 10000, máximo 300000 ms]. Predeterminado = 60000 (60 segundos). Estas solicitudes no son simples lecturas: el servidor SENEC agrega los datos cuando se le solicita, y una consulta de un año o un mes que cubra un período largo puede tardar considerablemente más que las llamadas rápidas al panel. Si su registro muestra \"Error en la encuesta intensa... se excedió el tiempo de espera\", aumente este valor. Se aplica únicamente al historial de mediciones; las otras solicitudes de API mantienen su propio tiempo de espera, mucho más corto, por lo que las fallas genuinas aún se detectan rápidamente.",
     "Off": "Apagado",
     "Password": "Contraseña",
     "Password_Help:": "Contraseña utilizada para iniciar sesión en mein-senec.de",

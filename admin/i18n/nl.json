@@ -26,6 +26,8 @@
     "HighPrioWALLEmptyHelp": "Automatisch toegevoegd:",
     "IP": "IP / FQDN van SENEC-systeem",
     "IPHelp": "Hier voert u het IP-adres of de FQDN van uw SENEC-systeem in",
+    "MeasurementTimeout": "Time-out meetverzoek [ms]",
+    "MeasurementTimeoutHelp": "Hoe lang u moet wachten op een meetverzoek voordat u het opgeeft [min. 10.000, max. 300.000 ms]. Standaard = 60000 (60 seconden). Deze verzoeken zijn niet eenvoudig te lezen: de SENEC-server verzamelt de gegevens wanneer daarom wordt gevraagd, en een zoekopdracht van een jaar of maand over een lange periode kan aanzienlijk langer duren dan de snelle dashboardoproepen. Als uw logboek de melding \"Zware poll mislukt... time-out overschreden\" weergeeft, verhoogt u deze waarde. Het is alleen van toepassing op de meetgeschiedenis; de andere API-verzoeken behouden hun eigen, veel kortere time-out, zodat echte fouten nog steeds snel worden gedetecteerd.",
     "Off": "Uit",
     "Password": "Wachtwoord",
     "Password_Help:": "Wachtwoord gebruikt om in te loggen op mein-senec.de",

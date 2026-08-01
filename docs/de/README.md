@@ -109,6 +109,7 @@ Sie können zusätzliche Datenbereiche (z.B. BMS, PV1, WALLBOX) zum hochpriorit�
 | Heavy-Intervall | Abfrageintervall für Monats-/Jahresmesswerte (Minuten) | 1440 (24h) |
 | Parallelität / Max. Parallelität | Limits für parallele API-Anfragen | 1 / 1 |
 | Min. Anfrageintervall | Mindestzeit zwischen API-Anfragen (ms) | 400 |
+| Zeitlimit für Messwertabfragen | Wie lange auf eine Messwert-Aggregation gewartet wird (ms). Erhöhen, wenn im Log Heavy-Polls in Timeouts laufen | 60000 |
 
 #### History Rebuild
 

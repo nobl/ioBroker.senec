@@ -26,6 +26,8 @@
     "HighPrioWALLEmptyHelp": "Ajout automatique :",
     "IP": "IP/FQDN du système SENEC",
     "IPHelp": "Ici, vous entrez l'IP ou le FQDN de votre système SENEC",
+    "MeasurementTimeout": "Délai d'expiration de la demande de mesure [ms]",
+    "MeasurementTimeoutHelp": "Combien de temps attendre une demande de mesure avant d'abandonner [min 10 000, max 300 000 ms]. Par défaut = 60 000 (60 secondes). Ces requêtes ne sont pas de simples lectures : le serveur SENEC agrège les données lorsqu'on le lui demande, et une requête annuelle ou mensuelle couvrant une longue période peut prendre beaucoup plus de temps que les appels rapides du tableau de bord. Si votre journal affiche « Échec de l'interrogation intensive... délai d'attente dépassé », augmentez cette valeur. Cela s'applique uniquement à l'historique des mesures ; les autres requêtes API conservent leur propre délai d'attente, beaucoup plus court, afin que les véritables échecs soient toujours détectés rapidement.",
     "Off": "Désactivé",
     "Password": "Mot de passe",
     "Password_Help:": "Mot de passe utilisé pour vous connecter à mein-senec.de",

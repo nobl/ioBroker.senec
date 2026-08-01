@@ -26,6 +26,8 @@
     "HighPrioWALLEmptyHelp": "Dodano automatycznie:",
     "IP": "IP/FQDN systemu SENEC",
     "IPHelp": "Tutaj wprowadzasz adres IP lub nazwę FQDN swojego systemu SENEC",
+    "MeasurementTimeout": "Limit czasu żądania pomiaru [ms]",
+    "MeasurementTimeoutHelp": "Jak długo czekać na żądanie pomiaru przed rezygnacją [min 10000, max 300000 ms]. Wartość domyślna = 60000 (60 sekund). Żądania te nie są prostym odczytem: serwer SENEC agreguje dane, gdy zostanie o to poproszony, a zapytanie dotyczące roku lub miesiąca obejmujące długi okres może zająć znacznie dłużej niż szybkie wywołania panelu kontrolnego. Jeśli w dzienniku pojawia się komunikat „Niepowodzenie ciężkiego odpytywania... przekroczono limit czasu”, zwiększ tę wartość. Dotyczy tylko historii pomiarów; pozostałe żądania API mają swój własny, znacznie krótszy limit czasu, dzięki czemu rzeczywiste awarie są nadal szybko wykrywane.",
     "Off": "Wyłączony",
     "Password": "Hasło",
     "Password_Help:": "Hasło używane do logowania się na mein-senec.de",
