@@ -109,7 +109,10 @@ var i18n = {
 		var self = this;
 		var url = new URL(`i18n/${lang}.json`, baseUrl).href;
 
-		return fetch(url)
+		// Always revalidate. Nothing under www/ is version-stamped, so a browser is free to
+		// keep serving the dictionary it cached before an adapter update — which resolves any
+		// key added by that update to its raw name. Unchanged files still answer 304.
+		return fetch(url, { cache: "no-cache" })
 			.then(function (res) {
 				if (!res.ok) {
 					throw new Error(`HTTP ${res.status}`);
@@ -119,12 +122,31 @@ var i18n = {
 			.then(function (data) {
 				self.dictionaries[lang] = data;
 			})
-			.catch(function () {
+			.catch(function (err) {
 				// Non-English fetch failure is fine — falls back to English
 				if (lang !== "en") {
 					self.dictionaries[lang] = {};
+					return;
 				}
+				// English is the last fallback, so losing it leaves every key unresolved.
+				// Say so rather than letting the page quietly render raw key names.
+				console.warn(`senec: could not load ${url} (${err.message}) — labels stay untranslated`);
 			});
+	},
+
+	/**
+	 * Whether a key exists in the active or the English dictionary.
+	 *
+	 * Tested by presence rather than by comparing translate()'s result against the key, so
+	 * an entry whose value happens to equal its own key still counts as translated.
+	 *
+	 * @param {string} key - Translation key
+	 * @returns {boolean} True when the key resolves to a real entry
+	 */
+	has: function (key) {
+		var dict = this.dictionaries[this.lang] || {};
+		var enDict = this.dictionaries.en || {};
+		return dict[key] !== undefined || enDict[key] !== undefined;
 	},
 
 	/**
@@ -151,12 +173,15 @@ var i18n = {
 	/**
 	 * Scan DOM for data-i18n attributes and apply translations.
 	 * Supports: data-i18n (textContent), data-i18n-placeholder, data-i18n-title
+	 *
+	 * Elements carrying an unknown key are left untouched. Each one ships English text in
+	 * the markup, so keeping that beats overwriting it with the key name.
 	 */
 	applyAll: function () {
 		var els = document.querySelectorAll("[data-i18n]");
 		for (var i = 0; i < els.length; i++) {
 			var key = els[i].getAttribute("data-i18n");
-			if (key) {
+			if (key && this.has(key)) {
 				els[i].textContent = this.translate(key);
 			}
 		}
@@ -164,7 +189,7 @@ var i18n = {
 		els = document.querySelectorAll("[data-i18n-placeholder]");
 		for (var j = 0; j < els.length; j++) {
 			var pKey = els[j].getAttribute("data-i18n-placeholder");
-			if (pKey) {
+			if (pKey && this.has(pKey)) {
 				/** @type {HTMLInputElement} */ (els[j]).placeholder = this.translate(pKey);
 			}
 		}
@@ -172,7 +197,7 @@ var i18n = {
 		els = document.querySelectorAll("[data-i18n-title]");
 		for (var k = 0; k < els.length; k++) {
 			var tKey = els[k].getAttribute("data-i18n-title");
-			if (tKey) {
+			if (tKey && this.has(tKey)) {
 				/** @type {HTMLElement} */ (els[k]).title = this.translate(tKey);
 			}
 		}

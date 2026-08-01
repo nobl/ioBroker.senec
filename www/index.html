@@ -1167,6 +1167,9 @@
 					// Load i18n, config, and states — render once all are ready
 					i18n.init(app.conn).then(function () {
 						i18n.applyAll();
+						// Anything a tab click asked for while the dictionaries were loading
+						// was skipped by _doRender — draw it now that the text is available.
+						app.renderDashboard();
 						app.loadConfig();
 						app.subscribe();
 					});
@@ -1321,6 +1324,12 @@
 			},
 
 			_doRender: function () {
+				// The view modules build their markup with t(), so rendering before the
+				// dictionaries are in produces raw key names. Tabs are clickable from the
+				// moment the page parses, well ahead of that — hold off and let the render
+				// that follows i18n.init() do the work.
+				if (!i18n.ready) return;
+
 				var el = document.getElementById("dashboard");
 				energyFlow.update(this.states, this.connectors);
 				if (window._sim) window._sim.apply();
