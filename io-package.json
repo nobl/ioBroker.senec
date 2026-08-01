@@ -175,7 +175,7 @@
     ]
   },
   "native": {
-    "lala_use": true,
+    "lala_use": false,
     "control_active": false,
     "control_reboot": false,
     "control_wallbox_connector": "off",
@@ -183,7 +183,7 @@
     "control_sockets_force": false,
     "control_api_active": false,
     "control_web_active": false,
-    "senecip": "0.0.0.0",
+    "senecip": "",
     "interval": 10,
     "intervalLow": 60,
     "pollingTimeout": 5000,

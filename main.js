@@ -395,32 +395,7 @@ class Senec extends utils.Adapter {
 			 * - Better stability under load
 			 */
 
-			if (this.config.lala_use) {
-				this.log.info("[Local] Usage of lala.cgi (local) configured.");
-				try {
-					await localClient.localCheckConnection(this);
-				} catch (e) {
-					this.log.error(
-						`[Local] ❌ Initial connection failed: ${e.message || e}. Other connectors will continue.`,
-					);
-				}
-				if (this.lalaConnected) {
-					await localClient.localDiscoverSections(this);
-				}
-				await localClient.localInitPollSettings(this);
-				if (this.lalaConnected) {
-					localClient
-						.localPoll(this, true, 0)
-						.catch((e) => this.logError(e, "[Local] ❌ Initial local highPrio poll failed"));
-					localClient
-						.localPoll(this, false, 0)
-						.catch((e) => this.logError(e, "[Local] ❌ Initial local lowPrio poll failed"));
-				} else {
-					this.retryConnectorInit("local");
-				}
-			} else {
-				this.log.warn("[Local] Usage of lala.cgi (local) not configured.");
-			}
+			await this.startLocalConnector();
 
 			if (this.config.api_use) {
 				this.log.info("[API] Usage of SENEC App API configured.");
@@ -463,17 +438,7 @@ class Senec extends utils.Adapter {
 				await this.attemptCertDownload();
 			}
 
-			await this.updateConnectionStatus();
-			if (this.lalaConnected || this.apiConnected || this.connectEnabled || this.webConnected) {
-				await this.refreshGuiLangCache();
-			} else if (
-				!this.config.lala_use &&
-				!this.config.api_use &&
-				!this.config.web_use &&
-				!this.config.connect_use
-			) {
-				this.log.error("No connectors configured. Please check config!");
-			}
+			await this.reportConnectorStatus();
 
 			if (this.config.control_active) {
 				this.log.info("Active appliance control (local) activated!");
@@ -883,6 +848,92 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Publish the connection state and, if nothing is set up at all, say so.
+	 *
+	 * Logged at warning level rather than as an error: since a new instance ships with no
+	 * connector preselected, "nothing enabled" is its deliberate starting state and something
+	 * for the user to complete, not a fault the adapter ran into. A connector that was
+	 * configured and then failed still reports that as an error, where it belongs.
+	 *
+	 * @returns {Promise<void>}
+	 */
+	async reportConnectorStatus() {
+		await this.updateConnectionStatus();
+
+		if (this.lalaConnected || this.apiConnected || this.connectEnabled || this.webConnected) {
+			await this.refreshGuiLangCache();
+			return;
+		}
+
+		// Only when nothing is even switched on. If a connector is enabled but has not come
+		// up, it has already reported that itself — repeating it here would say it twice.
+		if (!this.config.lala_use && !this.config.api_use && !this.config.web_use && !this.config.connect_use) {
+			this.log.warn("No connectors are enabled yet. Open the adapter settings and choose which ones to use.");
+		}
+	}
+
+	/**
+	 * Whether the local connector has an address it could actually reach.
+	 *
+	 * `senecip` ships as "0.0.0.0", which is the absence of a setting rather than a host — the
+	 * same reading negotiateLocalTls() already applies before it declines to negotiate.
+	 *
+	 * @returns {boolean} True when a usable host is configured
+	 */
+	localHostConfigured() {
+		const host = String(this.config.senecip || "").trim();
+		return host !== "" && host !== "0.0.0.0";
+	}
+
+	/**
+	 * Bring up the local connector, or explain why it stays down.
+	 *
+	 * Extracted from onReady so the "enabled but unconfigured" case can be exercised without
+	 * standing up the whole adapter.
+	 *
+	 * @returns {Promise<void>}
+	 */
+	async startLocalConnector() {
+		if (!this.config.lala_use) {
+			this.log.warn("[Local] Usage of lala.cgi (local) not configured.");
+			return;
+		}
+
+		// A fresh instance has lala_use on and senecip still at its default, so without this
+		// the adapter opened a connection to 0.0.0.0:443, failed, and handed the failure to
+		// the retry loop — which then kept trying with growing backoff and logged an error
+		// every cycle, for a setting the user simply had not filled in yet.
+		if (!this.localHostConfigured()) {
+			this.log.warn(
+				"[Local] lala.cgi is enabled but no SENEC IP is configured. No local connection will be " +
+					"attempted — enter the address of your appliance in the adapter settings.",
+			);
+			return;
+		}
+
+		this.log.info("[Local] Usage of lala.cgi (local) configured.");
+		try {
+			await localClient.localCheckConnection(this);
+		} catch (e) {
+			this.log.error(`[Local] ❌ Initial connection failed: ${e.message || e}. Other connectors will continue.`);
+		}
+		if (this.lalaConnected) {
+			await localClient.localDiscoverSections(this);
+		}
+		await localClient.localInitPollSettings(this);
+		if (this.lalaConnected) {
+			localClient
+				.localPoll(this, true, 0)
+				.catch((e) => this.logError(e, "[Local] ❌ Initial local highPrio poll failed"));
+			localClient
+				.localPoll(this, false, 0)
+				.catch((e) => this.logError(e, "[Local] ❌ Initial local lowPrio poll failed"));
+		} else {
+			this.retryConnectorInit("local");
+		}
+	}
+
+	/**
 	 * Retry a connector's initialization with exponential backoff and jitter.
 	 *
 	 * @param {"local" | "api" | "web"} connector - which connector to retry
@@ -895,6 +946,13 @@ class Senec extends utils.Adapter {
 
 		const labels = { local: "Local", api: "API", web: "Web" };
 		const label = labels[connector];
+
+		// Defensive: nothing should reach here without an address, but retrying one can only
+		// fail, so return without arming another timer rather than looping for ever.
+		if (connector === "local" && !this.localHostConfigured()) {
+			this.log.warn("[Local] No SENEC IP configured — not retrying the local connection.");
+			return;
+		}
 
 		// Already connected — stop retrying
 		if (

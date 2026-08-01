@@ -18,7 +18,7 @@
 					"xl": 4,
 					"label": "usaLala",
 					"help": "useLalaHelp",
-					"default": true,
+					"default": false,
 					"newLine": true
 				},
 				"senecip": {
@@ -30,7 +30,7 @@
 					"xl": 4,
 					"label": "IP",
 					"help": "IPHelp",
-					"default": "0.0.0.0",
+					"default": "",
 					"hidden": "data.lala_use !== true",
 					"newLine": true
 				},

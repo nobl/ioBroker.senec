@@ -70,8 +70,21 @@ function makeAdapter() {
 	adapter.lalaConnected = false;
 	adapter.apiConnected = false;
 	adapter.webConnected = false;
-	adapter.config = { interval: 10, api_interval: 6, web_interval_status: 6 };
-	adapter.log = { info() {}, debug() {}, warn() {}, error() {}, silly() {} };
+	adapter.config = { interval: 10, api_interval: 6, web_interval_status: 6, lala_use: true, senecip: "192.0.2.1" };
+	adapter.logs = [];
+	adapter.log = {
+		info(msg) {
+			adapter.logs.push(["info", msg]);
+		},
+		debug() {},
+		warn(msg) {
+			adapter.logs.push(["warn", msg]);
+		},
+		error(msg) {
+			adapter.logs.push(["error", msg]);
+		},
+		silly() {},
+	};
 	adapter.logError = () => {};
 	adapter.updateConnectionStatus = async () => {};
 	adapter.scheduled = [];
