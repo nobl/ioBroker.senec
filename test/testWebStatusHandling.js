@@ -254,7 +254,12 @@ describe("mein-senec.de status handling", () => {
 			const adapter = makeQueuedAdapter([{ status: 500, data: { message: "boom" } }]);
 
 			await webClient
-				.webPost(adapter, "https://mein-senec.de/endkunde/api/senec/1/sgready", { on: true }, { rawStatus: true })
+				.webPost(
+					adapter,
+					"https://mein-senec.de/endkunde/api/senec/1/sgready",
+					{ on: true },
+					{ rawStatus: true },
+				)
 				.catch(() => {});
 
 			const posts = adapter.calls.filter((c) => c.startsWith("POST"));
@@ -291,7 +296,12 @@ describe("mein-senec.de status handling", () => {
 				clearTimeout: (id) => clearTimeout(id),
 			});
 			const res = await webClient
-				.webPost(adapter, "https://mein-senec.de/endkunde/api/senec/1/sgready", { on: true }, { rawStatus: true })
+				.webPost(
+					adapter,
+					"https://mein-senec.de/endkunde/api/senec/1/sgready",
+					{ on: true },
+					{ rawStatus: true },
+				)
 				.catch(() => null);
 			return { adapter, res };
 		}
@@ -342,7 +352,11 @@ describe("mein-senec.de status handling", () => {
 			const { adapter, res } = await controlPost({ status: 400, data: { message: "bad request" } });
 
 			assert.equal(res.status, 400);
-			assert.equal(adapter.calls.filter((c) => c.startsWith("POST")).length, 1, "a 400 cannot be fixed by retrying");
+			assert.equal(
+				adapter.calls.filter((c) => c.startsWith("POST")).length,
+				1,
+				"a 400 cannot be fixed by retrying",
+			);
 			assert.equal(
 				adapter.webQueue.getStats().cooldownCount,
 				0,
@@ -370,7 +384,12 @@ describe("mein-senec.de status handling", () => {
 		}
 
 		it("a 401 on a GET re-authenticates once and retries once", async () => {
-			const adapter = makeAdapter({ responses: [{ status: 401, data: "" }, { status: 200, data: { ok: true } }] });
+			const adapter = makeAdapter({
+				responses: [
+					{ status: 401, data: "" },
+					{ status: 200, data: { ok: true } },
+				],
+			});
 			let logins = 0;
 
 			const res = await withLogin(

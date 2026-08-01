@@ -151,10 +151,7 @@ describe("control subscription coverage", () => {
 			[],
 			"web controls must be covered by the web connector's own subscriptions",
 		);
-		assert.ok(
-			adapter.subscribed.includes("control.EmergencyPower.*"),
-			"web connector subscribes its own controls",
-		);
+		assert.ok(adapter.subscribed.includes("control.EmergencyPower.*"), "web connector subscribes its own controls");
 	});
 
 	it("web-only: no local or API controls leak in", async () => {

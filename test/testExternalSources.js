@@ -54,8 +54,7 @@ function makeAdapter(foreignValues = {}) {
 	adapter.subscribeForeignStatesAsync = async (id) => {
 		adapter.subscribedForeign.push(id);
 	};
-	adapter.getForeignStateAsync = async (id) =>
-		id in foreignValues ? { val: foreignValues[id], ack: true } : null;
+	adapter.getForeignStateAsync = async (id) => (id in foreignValues ? { val: foreignValues[id], ack: true } : null);
 
 	return adapter;
 }
@@ -153,7 +152,11 @@ describe("external energy sources", () => {
 			{ stateId: "bat.0.power", socStateId: "bat.0.soc", sourceType: "battery", unit: "W", label: "Battery" },
 		]);
 
-		assert.equal(lastWrite(adapter, "_external.pv.0.power"), 2200, "a steady source must not read 0 until it moves");
+		assert.equal(
+			lastWrite(adapter, "_external.pv.0.power"),
+			2200,
+			"a steady source must not read 0 until it moves",
+		);
 		assert.equal(lastWrite(adapter, "_external.battery.0.power"), -300, "battery sign is preserved");
 		assert.equal(lastWrite(adapter, "_external.battery.0.soc"), 65);
 	});
@@ -254,7 +257,11 @@ describe("external energy sources", () => {
 			]);
 
 			await change(adapter, "meter.0.current", 4);
-			assert.equal(lastWrite(adapter, "_external.consumer.0.power"), 920, "the second reference must also drive it");
+			assert.equal(
+				lastWrite(adapter, "_external.consumer.0.power"),
+				920,
+				"the second reference must also drive it",
+			);
 
 			await change(adapter, "meter.0.voltage", 230);
 			assert.equal(lastWrite(adapter, "_external.consumer.0.power"), 920, "and so must the first");

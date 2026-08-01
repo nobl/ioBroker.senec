@@ -366,7 +366,9 @@ describe("AdaptiveRequestQueue", () => {
 		const task = () =>
 			new Promise((resolve) => {
 				running++;
-				if (running > maxRunning) maxRunning = running;
+				if (running > maxRunning) {
+					maxRunning = running;
+				}
 				setTimeout(() => {
 					running--;
 					resolve();
@@ -446,7 +448,7 @@ describe("resolveStateAttrKey", () => {
 	});
 
 	it("strips trailing numeric index", () => {
-		const attrs = { "batteryModules": { name: "Battery Modules" } };
+		const attrs = { batteryModules: { name: "Battery Modules" } };
 		assert.equal(resolve("batteryModules.0", attrs), "batteryModules");
 	});
 
@@ -602,10 +604,12 @@ describe("formula ref regex", () => {
 	});
 
 	it("handles complex formula with three refs", () => {
-		assert.deepEqual(
-			extractRefs("{wallbox.0.L1_V} * {wallbox.0.L1_A} + {wallbox.0.L2_V} * {wallbox.0.L2_A}"),
-			["wallbox.0.L1_V", "wallbox.0.L1_A", "wallbox.0.L2_V", "wallbox.0.L2_A"],
-		);
+		assert.deepEqual(extractRefs("{wallbox.0.L1_V} * {wallbox.0.L1_A} + {wallbox.0.L2_V} * {wallbox.0.L2_A}"), [
+			"wallbox.0.L1_V",
+			"wallbox.0.L1_A",
+			"wallbox.0.L2_V",
+			"wallbox.0.L2_A",
+		]);
 	});
 
 	it("handles state IDs with hyphens and underscores", () => {
@@ -615,7 +619,7 @@ describe("formula ref regex", () => {
 	it("does not hang on pathological input (ReDoS protection)", () => {
 		const start = Date.now();
 		// Pathological: many { without closing }
-		extractRefs("{" + "|{".repeat(1000));
+		extractRefs(`{${"|{".repeat(1000)}`);
 		assert.ok(Date.now() - start < 100, "regex should complete in under 100ms");
 	});
 });

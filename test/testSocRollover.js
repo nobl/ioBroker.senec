@@ -53,7 +53,7 @@ async function withClock(iso, tz, fn) {
 
 	try {
 		process.env.TZ = tz;
-		global.Date = /** @type {any} */ (FakeDate);
+		global.Date = FakeDate;
 		return await fn();
 	} finally {
 		global.Date = RealDate;

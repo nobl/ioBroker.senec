@@ -52,7 +52,7 @@ function withClock(iso, tz, fn) {
 
 	try {
 		process.env.TZ = tz;
-		global.Date = /** @type {any} */ (FakeDate);
+		global.Date = FakeDate;
 		return fn();
 	} finally {
 		global.Date = RealDate;
@@ -95,11 +95,9 @@ function localDay(d, tz) {
 	const previousTz = process.env.TZ;
 	process.env.TZ = tz;
 	try {
-		return [
-			d.getFullYear(),
-			String(d.getMonth() + 1).padStart(2, "0"),
-			String(d.getDate()).padStart(2, "0"),
-		].join("-");
+		return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join(
+			"-",
+		);
 	} finally {
 		if (previousTz === undefined) {
 			delete process.env.TZ;
