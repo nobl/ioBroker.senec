@@ -243,7 +243,7 @@ Features:
 - Toggle individual measurement types (PV, consumption, grid import/export, battery charge/discharge)
 - Stacked view (production vs. consumption)
 - Comparison mode (yesterday, previous month, selectable year)
-- Battery level (%) line overlay (API only)
+- Battery level (%) line overlay. The API connector reads it from the measurement history. mein-senec.de offers no such history, so the web connector samples the live charge level instead: hourly averages for the day view, daily averages for the month view. Those values therefore start when the adapter does — a day it was not running over midnight has no daily average, and none can be fetched retroactively. The year view has no battery level on the web connector.
 - Data source selector (Auto/API/Web)
 - Data table view
 - PNG image export

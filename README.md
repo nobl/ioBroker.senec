@@ -107,6 +107,7 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 - Fix: Live chart no longer queries the history adapter every 200 ms without end. Whenever the selected time window reached further back than the recorded data (a fresh install, a newly enabled history adapter, or any window longer than the available history), the "load older data" check re-armed itself indefinitely for as long as the dashboard was open. Delta loading now tracks the range already requested instead of the oldest data received.
 - Live chart: The loading indicator and the buffer statistics line are now translated instead of English-only.
 - Fix: The TLS certificate upload error message showed a literal placeholder instead of the actual error in French, Italian, Dutch, Polish, Russian, Ukrainian and Chinese.
+- Charts: Battery level overlay now also works with the mein-senec.de connector, not only the App API. The portal offers no charge-level history, so the adapter samples the live value into hourly averages for the day view; the daily figures behind the month view are the portal's own daily average. Hourly values only exist for the time the adapter was running, and cannot be filled in afterwards.
 - Special thanks to everyone supporting this project — see [SUPPORTERS.md](SUPPORTERS.md).
 
 ### 2.12.0 (2026-07-23)

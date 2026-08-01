@@ -135,6 +135,14 @@ export interface SenecAdapter extends AdapterClass {
     _webLastMeasurementsSlowPoll: number | undefined;
     webSocketData: object[] | null;
     webSocketControlsCreated: boolean;
+    /** Day tag the sampled SOC values belong to; undefined until read from state */
+    _webSocDay: string | null | undefined;
+    /** Running mean of the current hour's SOC samples */
+    _webSocBucket: { day: string; hour: number; sum: number; count: number } | null | undefined;
+    /** The portal's running daily mean SOC (acculevel.today), kept for the rollover */
+    _webSocDayMean: number | null | undefined;
+    /** The running day's 24 hourly SOC means, cached to keep the status poll free of state reads */
+    _webSocHours: Array<number | null> | undefined;
 
     // ── SENEC.Connect state ───────────────────────────────────────────
     connectClient: AxiosInstance | null;
@@ -143,7 +151,7 @@ export interface SenecAdapter extends AdapterClass {
     guiLang: string;
 
     // ── Shared adapter methods (defined in main.js class body) ────────
-    evalPoll(obj: Record<string, any>, pfx: string, keyPrefix?: string): Promise<void>;
+    evalPoll(obj: Record<string, any> | Record<number, any>, pfx: string, keyPrefix?: string): Promise<void>;
     doState(name: string, value: any, description: string, unit: string, write: boolean, read?: boolean): Promise<void>;
     logError(e: Error | string, prefix?: string): void;
     updateLastPoll(stateId: string, description: string): Promise<void>;

@@ -245,7 +245,7 @@ Funktionen:
 - Einzelne Messtypen ein-/ausblendbar (PV, Verbrauch, Netzbezug/-einspeisung, Batterieladung/-entladung)
 - Gestapelte Ansicht (Erzeugung vs. Verbrauch)
 - Vergleichsmodus (Gestern, Vormonat, wählbares Jahr)
-- Batteriestand (%) Linienoverlay (nur API)
+- Batteriestand (%) Linienoverlay. Der API-Konnektor liest ihn aus der Messwert-Historie. mein-senec.de bietet keine solche Historie, daher tastet der Web-Konnektor stattdessen den Live-Ladezustand ab: Stundenmittel für die Tagesansicht, Tagesmittel für die Monatsansicht. Diese Werte beginnen folglich erst mit dem Adapterbetrieb — für einen Tag, an dem der Adapter über Mitternacht nicht lief, existiert kein Tagesmittel, und es lässt sich auch nicht nachträglich abrufen. Die Jahresansicht hat beim Web-Konnektor keinen Batteriestand.
 - Datenquellen-Auswahl (Auto/API/Web)
 - Datentabelle
 - PNG-Bildexport

@@ -199,13 +199,14 @@ var charts = {
 			data.series[tKey] = fullSeries[tKey].slice(0, showHours);
 		}
 
-		// Battery level (%) — API only
-		if (hasApi && apiPfx) {
-			var blPfx = apiPfx;
+		// Battery level (%) — from API measurements, or sampled by the web connector
+		var blKey =
+			hasApi && apiPfx ? `${apiPfx}BATTERY_LEVEL_IN_PERCENT.` : hasWeb ? `${wpfx}acculevel.hourly.` : null;
+		if (blKey) {
 			var blSeries = [];
 			var hasBl = false;
 			for (var blh = 0; blh < showHours; blh++) {
-				var blVal = states[`${blPfx}BATTERY_LEVEL_IN_PERCENT.${blh}`];
+				var blVal = states[blKey + blh];
 				if (blVal !== undefined && blVal !== null) {
 					hasBl = true;
 				}
@@ -257,12 +258,13 @@ var charts = {
 			this.loadApiDaily(states, apiPfx, data, daysInMonth);
 		}
 
-		// Battery level (%) — API only
-		if (hasApi && apiPfx) {
+		// Battery level (%) — from API measurements, or sampled by the web connector
+		var blKey = hasApi && apiPfx ? `${apiPfx}BATTERY_LEVEL_IN_PERCENT.` : hasWeb ? `${wpfx}acculevel.daily.` : null;
+		if (blKey) {
 			var blSeries = [];
 			var hasBl = false;
 			for (var bld = 1; bld <= daysInMonth; bld++) {
-				var blVal = states[`${apiPfx}BATTERY_LEVEL_IN_PERCENT.${bld}`];
+				var blVal = states[blKey + bld];
 				if (blVal !== undefined && blVal !== null) {
 					hasBl = true;
 				}
