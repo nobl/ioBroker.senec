@@ -61,9 +61,9 @@
   ],
   "scripts": {
     "test:js": "mocha --config test/mocharc.custom.json \"{!(node_modules|test)/**/*.test.js,*.test.js,test/**/test!(PackageFiles|Startup|PureFunctions).js}\"",
-    "test:unit": "mocha test/testPureFunctions.js --exit",
-    "test:package": "mocha test/package --exit",
-    "test:integration": "mocha test/integration --exit",
+    "test:unit": "mocha --config test/mocharc.custom.json test/testPureFunctions.js --exit --fail-zero",
+    "test:package": "mocha test/package --exit --fail-zero",
+    "test:integration": "mocha test/integration --exit --fail-zero",
     "test": "npm run test:unit && npm run test:js && npm run test:package",
     "check": "tsc --noEmit -p tsconfig.check.json",
     "lint": "eslint -c eslint.config.mjs .",

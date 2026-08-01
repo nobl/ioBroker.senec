@@ -113,6 +113,13 @@ export interface SenecAdapter extends AdapterClass {
     lowPrioForm: string;
     highPrioForm: string;
     knownObjects: Map<string, object>;
+    /** Sections to poll on this device: the shipped baseline plus anything discovery added. Unset until discovery has run. */
+    knownSections?: Set<string>;
+
+    // ── External energy sources ───────────────────────────────────────
+    /** Foreign state id → every consumer of it. A state may legitimately feed several. */
+    _externalSourceMap: Record<string, Array<{ kind: "simple" | "soc" | "formula"; [key: string]: any }>>;
+    _externalFormulas: Array<Record<string, any>>;
 
     // ── Web (mein-senec.de) state ─────────────────────────────────────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

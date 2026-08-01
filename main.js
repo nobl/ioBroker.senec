@@ -71,6 +71,12 @@ class Senec extends utils.Adapter {
 		this.detailsInterval = 0;
 		this.heavyInterval = 0;
 
+		// Foreign state id → every consumer of it, and the parsed formula entries.
+		// Created here so they exist before onReady, which is when a stateChange can first
+		// arrive, and reset by initExternalSources on each configuration load.
+		this._externalSourceMap = {};
+		this._externalFormulas = [];
+
 		this.apiKnownSystems = new Set();
 		this.highPrioObjects = new Map();
 		this.lowPrioForm = "";
@@ -983,47 +989,10 @@ class Senec extends utils.Adapter {
 
 		// External energy source updates (ack=true from foreign adapters)
 		if (state.ack && this._externalSourceMap && this._externalSourceMap[id]) {
-			const ext = this._externalSourceMap[id];
-
-			// SOC state update
-			if (ext.isSoc) {
-				await this.doState(`${ext.pfx}.soc`, Number(state.val) || 0, "Battery SOC", "%", false);
-				return;
+			// One foreign state can feed several consumers; every one of them updates.
+			for (const consumer of this._externalSourceMap[id]) {
+				await this.applyExternalConsumer(consumer, state.val);
 			}
-
-			// Formula reference — re-evaluate all formulas that use this state
-			if (ext.formulas) {
-				for (const f of ext.formulas) {
-					const result = await this.evaluateFormula(f.formula, f.refs);
-					let value = result;
-					if (f.unit === "kW") {
-						value *= 1000;
-					}
-					const normalized = f.sourceType === "battery" ? value : Math.abs(value);
-					await this.doState(
-						`_external.${f.sourceType}.${f.index}.power`,
-						normalized,
-						`${f.label || f.sourceType} power`,
-						"W",
-						false,
-					);
-				}
-				return;
-			}
-
-			// Simple single state
-			let value = Number(state.val) || 0;
-			if (ext.unit === "kW") {
-				value *= 1000;
-			}
-			const normalized = ext.sourceType === "battery" ? value : Math.abs(value);
-			await this.doState(
-				`_external.${ext.sourceType}.${ext.index}.power`,
-				normalized,
-				`${ext.label || ext.sourceType} power`,
-				"W",
-				false,
-			);
 			return;
 		}
 
@@ -1249,7 +1218,7 @@ class Senec extends utils.Adapter {
 	 * @param {Array<{stateId: string, sourceType: string, unit: string, mode: string, label: string, socStateId?: string, capacity?: number}>} sources - external source configurations
 	 */
 	async initExternalSources(sources) {
-		this._externalSourceMap = {}; // single stateId → config
+		this._externalSourceMap = {}; // foreign stateId → every consumer of it
 		this._externalFormulas = []; // formula entries with parsed refs
 		const counters = { pv: 0, consumer: 0, battery: 0 };
 		const validTypes = ["pv", "consumer", "battery"];
@@ -1292,16 +1261,8 @@ class Senec extends utils.Adapter {
 			if (src.sourceType === "battery") {
 				if (src.socStateId) {
 					await this.doState(`${pfx}.soc`, 0, `${src.label || "Battery"} SOC`, "%", false);
-					this._externalSourceMap[src.socStateId] = {
-						isSoc: true,
-						pfx: pfx,
-					};
-					try {
-						await this.subscribeForeignStatesAsync(src.socStateId);
-						this.log.info(`[External] SOC subscribed: ${src.socStateId} → ${pfx}.soc`);
-					} catch (err) {
-						this.log.warn(`[External] Failed to subscribe to SOC state ${src.socStateId}: ${err.message}`);
-					}
+					await this.addExternalConsumer(src.socStateId, { kind: "soc", pfx: pfx });
+					this.log.info(`[External] SOC subscribed: ${src.socStateId} → ${pfx}.soc`);
 				}
 				if (src.capacity && src.capacity > 0) {
 					await this.doState(
@@ -1315,12 +1276,16 @@ class Senec extends utils.Adapter {
 			}
 
 			if (isFormula) {
-				// Parse {stateId} references from formula
+				// Parse {stateId} references from formula. A state named twice in one formula
+				// is one reference — registering it twice would evaluate the formula twice
+				// for every change of it.
 				const refs = [];
 				const regex = /\{([^{}]+)\}/g;
 				let match;
 				while ((match = regex.exec(formulaStr)) !== null) {
-					refs.push(match[1]);
+					if (!refs.includes(match[1])) {
+						refs.push(match[1]);
+					}
 				}
 
 				const formulaEntry = {
@@ -1334,45 +1299,114 @@ class Senec extends utils.Adapter {
 				};
 				this._externalFormulas.push(formulaEntry);
 
-				// Subscribe to all referenced states and map them to this formula
+				// Every referenced state gets this formula as one of its consumers.
 				for (const ref of refs) {
-					try {
-						await this.subscribeForeignStatesAsync(ref);
-						// Map each ref to the formula entry for recalculation
-						if (!this._externalSourceMap[ref]) {
-							this._externalSourceMap[ref] = { formulas: [] };
-						}
-						if (this._externalSourceMap[ref].formulas) {
-							this._externalSourceMap[ref].formulas.push(formulaEntry);
-						}
-					} catch (err) {
-						this.log.warn(`[External] Failed to subscribe to formula ref ${ref}: ${err.message}`);
-					}
+					await this.addExternalConsumer(ref, { kind: "formula", entry: formulaEntry });
 				}
 				this.log.info(`[External] Formula → ${pfx}: ${src.stateId} (${refs.length} refs)`);
 			} else {
-				// Simple single state
-				this._externalSourceMap[src.stateId] = {
+				await this.addExternalConsumer(src.stateId, {
+					kind: "simple",
 					sourceType: src.sourceType,
 					index: idx,
 					unit: src.unit || "W",
 					label: src.label || "",
-				};
-
-				try {
-					await this.subscribeForeignStatesAsync(src.stateId);
-					this.log.info(
-						`[External] Subscribed to ${src.stateId} → ${pfx} (${src.sourceType}, ${src.unit}, ${src.mode})`,
-					);
-				} catch (err) {
-					this.log.warn(`[External] Failed to subscribe to ${src.stateId}: ${err.message}`);
-				}
+				});
+				this.log.info(
+					`[External] Subscribed to ${src.stateId} → ${pfx} (${src.sourceType}, ${src.unit}, ${src.mode})`,
+				);
 			}
 		}
+
+		// Subscriptions only deliver changes. Without this pass a source whose foreign state
+		// happens to be steady reads 0 — its initialised value — until it next moves, which
+		// on a quiet consumer can be hours after startup.
+		await this.loadExternalCurrentValues();
 
 		this.log.info(
 			`[External] Initialized ${counters.pv} PV, ${counters.consumer} consumer, ${counters.battery} battery external sources`,
 		);
+	}
+
+	/**
+	 * Register one consumer of a foreign state, subscribing on first use.
+	 *
+	 * A foreign state can legitimately feed several things at once: two sources reading the
+	 * same meter, a state used directly and again inside a formula, a battery SOC that a
+	 * formula also references. Keeping a list rather than a single entry per state is what
+	 * lets all of them update — previously the last registration silently replaced the rest.
+	 *
+	 * @param {string} stateId - Foreign state id
+	 * @param {{ kind: "simple" | "soc" | "formula", [key: string]: unknown }} consumer - What to update when it changes
+	 * @returns {Promise<void>}
+	 */
+	async addExternalConsumer(stateId, consumer) {
+		if (!this._externalSourceMap[stateId]) {
+			this._externalSourceMap[stateId] = [];
+			try {
+				await this.subscribeForeignStatesAsync(stateId);
+			} catch (err) {
+				this.log.warn(`[External] Failed to subscribe to ${stateId}: ${err.message}`);
+			}
+		}
+		this._externalSourceMap[stateId].push(consumer);
+	}
+
+	/**
+	 * Update one consumer of a foreign state.
+	 *
+	 * @param {object} consumer - Consumer registered by addExternalConsumer
+	 * @param {string|number|boolean|null|undefined} value - Current value of the foreign state (unused for formulas, which read their own refs)
+	 * @returns {Promise<void>}
+	 */
+	async applyExternalConsumer(consumer, value) {
+		if (consumer.kind === "soc") {
+			await this.doState(`${consumer.pfx}.soc`, Number(value) || 0, "Battery SOC", "%", false);
+			return;
+		}
+
+		const target = consumer.kind === "formula" ? consumer.entry : consumer;
+		let raw = consumer.kind === "formula" ? await this.evaluateFormula(target.formula, target.refs) : Number(value);
+		if (!isFinite(raw)) {
+			raw = 0;
+		}
+		if (target.unit === "kW") {
+			raw *= 1000;
+		}
+		const normalized = target.sourceType === "battery" ? raw : Math.abs(raw);
+		await this.doState(
+			`_external.${target.sourceType}.${target.index}.power`,
+			normalized,
+			`${target.label || target.sourceType} power`,
+			"W",
+			false,
+		);
+	}
+
+	/**
+	 * Read every subscribed foreign state once and apply it, so the external states hold real
+	 * values from startup rather than waiting for the first change.
+	 *
+	 * @returns {Promise<void>}
+	 */
+	async loadExternalCurrentValues() {
+		const applied = new Set();
+		for (const [stateId, consumers] of Object.entries(this._externalSourceMap)) {
+			let current = null;
+			try {
+				current = await this.getForeignStateAsync(stateId);
+			} catch (err) {
+				this.log.debug(`[External] Could not read ${stateId} at startup: ${err.message}`);
+			}
+			for (const consumer of consumers) {
+				// A formula is registered once per reference; evaluating it once is enough.
+				if (applied.has(consumer)) {
+					continue;
+				}
+				applied.add(consumer);
+				await this.applyExternalConsumer(consumer, current?.val);
+			}
+		}
 	}
 
 	/**
@@ -1401,7 +1435,15 @@ class Senec extends utils.Adapter {
 
 		try {
 			// Use Function constructor (safer than eval, no access to scope)
-			return Number(new Function(`"use strict"; return (${expr})`)()) || 0;
+			const result = Number(new Function(`"use strict"; return (${expr})`)());
+			// NaN already collapses to 0 through the check below, but a division by zero
+			// yields Infinity, which is truthy — it used to be written to a power state and
+			// then propagated into every total and chart built from it.
+			if (!isFinite(result)) {
+				this.log.warn(`[External] Formula "${formula}" produced ${result}; using 0.`);
+				return 0;
+			}
+			return result;
 		} catch (err) {
 			this.log.warn(`[External] Formula evaluation error: ${err.message}`);
 			return 0;

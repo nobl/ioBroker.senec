@@ -85,9 +85,11 @@ Der Adapter validiert das HTTPS-Zertifikat des SENEC Geräts mit einem mehrstufi
 
 1. **Benutzer-CA** — Laden Sie das SenecGui-Root CA-Zertifikat über das Dashboard hoch (System-Tab → TLS-Zertifikat). Herunterladen von mein-senec.de (Dokumente / Allgemeine Dokumente / SenecGui-Root), dann die .pem- oder .zip-Datei hochladen. SENEC verteilt dieses Zertifikat hinter einem Login, daher kann der Adapter es nicht mitliefern.
 2. **Zwischengespeichertes CA-Zertifikat** — Falls kein Benutzer-Zertifikat vorhanden ist, kann der Adapter das CA-Zertifikat automatisch von mein-senec.de herunterladen (setzt voraus, dass der mein-senec.de-Connector aktiviert ist). Das heruntergeladene Zertifikat wird im Adapter-State gespeichert und bleibt über Neustarts erhalten.
-3. **TOFU (Trust On First Use)** — Falls kein CA-Zertifikat validiert, pinnt der Adapter den Fingerabdruck des Gerätezertifikats beim ersten Kontakt. Folgende Verbindungen werden gegen diesen Fingerabdruck geprüft. Bei Änderung (z.B. nach Firmware-Update) wird eine Warnung protokolliert und der neue Fingerabdruck automatisch übernommen.
+3. **TOFU (Trust On First Use)** — Falls kein CA-Zertifikat validiert, merkt sich der Adapter den Fingerabdruck des Gerätezertifikats beim ersten Kontakt und vergleicht jede weitere Verbindung damit. Bei einer Änderung (z.B. nach einem Firmware-Update) wird eine Warnung protokolliert und der neue Fingerabdruck anschließend automatisch übernommen.
 
-Der Adapter probiert jede Stufe der Reihe nach und verwendet die erste, die validiert. Ohne CA-Zertifikat bietet TOFU automatisch sichere Identitätsverifikation — der Upload ist optional.
+Der Adapter probiert jede Stufe der Reihe nach und verwendet die erste, die validiert.
+
+TOFU ist eine Kontinuitätsprüfung, kein Certificate Pinning: Es meldet Ihnen, dass sich das Zertifikat des Geräts geändert hat, weist das neue aber nicht zurück und prüft auch die Zertifikatskette nicht. Das ist eine bewusste Abwägung für ein Gerät im eigenen Netz — eine legitime Zertifikatsänderung darf den Adapter nicht so lange abkoppeln, bis jemand eine Logzeile bemerkt. Für die vollständige Prüfung hinterlegen Sie die CA: Der Upload ist optional, aber die stärkere Variante.
 
 Falls der automatische CA-Download fehlgeschlagen ist und Sie es erneut versuchen möchten, setzen Sie `_local.tls.certFetchFailed` auf `false` — der Adapter versucht den Download beim nächsten Neustart oder sofort, falls er läuft.
 

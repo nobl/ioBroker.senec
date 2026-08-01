@@ -85,9 +85,11 @@ The adapter validates the SENEC device's HTTPS certificate using a multi-layer a
 
 1. **User CA** — Upload the SenecGui-Root CA certificate via the dashboard (System tab → TLS Certificate). Download it from mein-senec.de (Documents / General Documents / SenecGui-Root) and upload the .pem or .zip file. SENEC distributes this certificate behind a login, so the adapter cannot bundle it.
 2. **Cached CA** — If no user cert is provided, the adapter can automatically download the CA from mein-senec.de (requires the mein-senec.de connector to be enabled). The downloaded cert is cached in adapter state and persists across restarts.
-3. **TOFU (Trust On First Use)** — If no CA cert validates, the adapter pins the device's certificate fingerprint on first contact. Subsequent connections verify against this fingerprint. A warning is logged if the fingerprint changes (e.g. after firmware update), and the new fingerprint is accepted automatically.
+3. **TOFU (Trust On First Use)** — If no CA cert validates, the adapter records the device's certificate fingerprint on first contact and compares every later connection against it. A warning is logged if the fingerprint changes (e.g. after a firmware update), and the new fingerprint is then accepted automatically.
 
-The adapter tries each layer in order and uses the first one that validates. Without any CA certificate, TOFU provides secure identity verification automatically — the upload is optional.
+The adapter tries each layer in order and uses the first one that validates.
+
+TOFU is continuity monitoring, not certificate pinning: it tells you that the appliance's certificate changed, but it does not refuse the new one, and it does not verify the certificate chain. It is a deliberate trade-off for a device on your own network — a legitimate certificate change must never leave the adapter disconnected until you notice a log line. For full verification, supply the CA: uploading it is optional but it is the stronger option.
 
 If automatic CA download failed and you want to retry, set `_local.tls.certFetchFailed` to `false` — the adapter will attempt the download again on the next restart or immediately if running.
 
