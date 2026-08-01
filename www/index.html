@@ -666,6 +666,18 @@
 			font-size: 11px;
 		}
 
+		.stats-note {
+			border: 1px solid var(--color-border);
+			border-left: 3px solid var(--color-warning);
+			border-radius: 4px;
+			background: var(--color-bg);
+			color: var(--color-text-secondary);
+			font-size: 12px;
+			line-height: 1.55;
+			padding: 10px 12px;
+			margin-bottom: 12px;
+		}
+
 		.chart-compare-select {
 			padding: 3px 8px;
 			border: 1px solid var(--color-border);
@@ -1007,6 +1019,7 @@
 		<button class="nav-tab" data-tab="system" data-i18n="system_details" role="tab" aria-selected="false" aria-controls="tab-system" tabindex="-1">System</button>
 		<button class="nav-tab" data-tab="control" data-i18n="control_title" role="tab" aria-selected="false" aria-controls="tab-control" tabindex="-1">Control</button>
 		<button class="nav-tab" data-tab="logs" data-i18n="tab_logs" role="tab" aria-selected="false" aria-controls="tab-logs" tabindex="-1">Appliance Logs</button>
+		<button class="nav-tab" data-tab="statistics" data-i18n="stats_title" role="tab" aria-selected="false" aria-controls="tab-statistics" tabindex="-1">Statistics</button>
 	</nav>
 
 	<main class="container">
@@ -1045,6 +1058,10 @@
 			<div class="tab-content" id="tab-logs" role="tabpanel" aria-labelledby="tab-logs" hidden>
 				<div id="log-viewer"></div>
 			</div>
+
+			<div class="tab-content" id="tab-statistics" role="tabpanel" aria-labelledby="tab-statistics" hidden>
+				<div id="statistics-container"></div>
+			</div>
 		</div>
 	</main>
 
@@ -1055,6 +1072,7 @@
 	<script src="charts.js"></script>
 	<script src="system.js"></script>
 	<script src="control.js"></script>
+	<script src="statistics.js"></script>
 	<script>
 		"use strict";
 
@@ -1329,6 +1347,12 @@
 
 				var chartsEl = document.getElementById("charts-container");
 				if (chartsEl) chartsEl.innerHTML = charts.render(this.states);
+
+				var statsEl = document.getElementById("statistics-container");
+				if (statsEl) {
+					statsEl.innerHTML = statsViewer.render(this.states);
+					statsViewer.paintChart();
+				}
 
 				var systemEl = document.getElementById("system-container");
 				if (systemEl) {

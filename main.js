@@ -136,6 +136,7 @@ class Senec extends utils.Adapter {
 
 		this.on("ready", this.onReady.bind(this));
 		this.on("stateChange", this.onStateChange.bind(this));
+		this.on("message", this.onMessage.bind(this));
 		this.on("unload", this.onUnload.bind(this));
 	}
 
@@ -1883,6 +1884,53 @@ class Senec extends utils.Adapter {
 		const desc = attrKey ? state_attr[attrKey].name : fullKey;
 		const unit = attrKey ? state_attr[attrKey].unit || "" : "";
 		await this.doState(pfx + fullKey, ValueTyping(attrKey || fullKey, value), desc, unit, false);
+	}
+
+	/**
+	 * Handle a sendTo message.
+	 *
+	 * The dashboard runs in the browser with no way to authenticate against mein-senec.de,
+	 * so for data that is fetched on demand rather than polled into states it asks the
+	 * adapter to make the request on its behalf. Nothing is stored — the response goes
+	 * straight back to the caller.
+	 *
+	 * @param {ioBroker.Message} obj - Incoming message
+	 * @returns {Promise<void>}
+	 */
+	async onMessage(obj) {
+		if (!obj?.command) {
+			return;
+		}
+		const reply = (payload) => {
+			if (obj.callback) {
+				this.sendTo(obj.from, obj.command, payload, obj.callback);
+			}
+		};
+
+		if (obj.command === "statsCsv") {
+			if (!this.config.web_use) {
+				return reply({ error: "mein-senec.de connector is not enabled" });
+			}
+			if (!this.webAuthenticated) {
+				return reply({ error: "mein-senec.de is not connected" });
+			}
+			const msg = obj.message || {};
+			const pn = Number(msg.anlageNummer);
+			const week = Number(msg.woche);
+			const year = Number(msg.jahr);
+			if (!isFinite(pn) || !isFinite(week) || !isFinite(year)) {
+				return reply({ error: "anlageNummer, woche and jahr are required" });
+			}
+			try {
+				const data = await webClient.webFetchStatisticsWeek(this, pn, week, year);
+				return reply({ result: data });
+			} catch (e) {
+				this.logError(e, "[Web] ❌ Statistics download failed");
+				return reply({ error: e?.message || String(e) });
+			}
+		}
+
+		reply({ error: `Unknown command: ${obj.command}` });
 	}
 
 	/**

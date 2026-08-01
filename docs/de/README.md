@@ -280,6 +280,22 @@ Interaktive Steuerung passend zu den Steuerungsfähigkeiten des Adapters:
 
 Steuerungen prüfen die Konnektor-Verfügbarkeit und zeigen Warnungen wenn der benötigte Konnektor nicht aktiv ist. Die Übernehmen-Schaltfläche gibt "Gesendet"-Feedback.
 
+### Statistik-Tab
+
+mein-senec.de bietet einen wöchentlichen CSV-Export mit 5-Minuten-Auflösung, der Jahre zurückreicht — weit mehr Daten, als in ioBroker-States gehören. Daher wird nichts dauerhaft gespeichert: Der Adapter hält nur die einmal täglich aktualisierte Liste der verfügbaren Wochen vor und lädt eine einzelne Woche erst auf Anforderung. Die Daten bestehen nur, solange der Tab geöffnet ist.
+
+- Anlagenauswahl, die auch frühere Geräte des Kontos aufführt (entfällt bei nur einer Anlage). Die von dieser Instanz abgefragte Anlage ist vorausgewählt.
+- Wochenauswahl mit Datumsbereich je Woche
+- Tagesfilter — grenzt eine Woche mit ~2.000 Zeilen auf einen Tag ein
+- Auflösung — Stundenmittel oder 5-Minuten-Rohwerte
+- Spaltenschalter für die zehn exportierten Spalten, inklusive Akkuspannung, -strom und -füllstand
+- Sortierbare Spaltenköpfe; ein dritter Klick stellt die chronologische Reihenfolge wieder her
+- Zusammenfassungszeile mit Minimum, Mittelwert und Maximum der angezeigten Zeilen
+- Tabellen- oder Diagrammansicht; im Diagramm teilen sich die Leistungsspalten eine linke kW-Achse, Prozentwerte erhalten eine eigene rechte 0–100-%-Achse, und Lücken in einer Reihe unterbrechen die Linie, statt überbrückt zu werden
+- Download der aktuellen Auswahl als CSV
+
+Erfordert einen aktivierten und verbundenen mein-senec.de-Konnektor.
+
 ### Protokolle-Tab
 
 ![Protokolle-Tab](media/dashboard-logs.png)

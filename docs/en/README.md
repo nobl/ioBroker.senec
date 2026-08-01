@@ -278,6 +278,22 @@ Interactive controls matching the adapter's control capabilities:
 
 Controls check connector availability and show warnings if the required connector is not active. Apply button provides "Sent" confirmation feedback.
 
+### Statistics Tab
+
+mein-senec.de keeps a weekly CSV export at 5-minute resolution going back years — far more data than belongs in ioBroker states. So nothing is persisted: the adapter stores only the list of available weeks, refreshed once a day, and downloads a single week on demand when you ask for it. The data lives only as long as the tab is open.
+
+- Plant selector, listing previous appliances on the account as well (hidden when there is only one). The plant this instance polls is preselected.
+- Week selector showing each week's date range
+- Day filter — narrow a ~2,000-row week to a single day
+- Resolution — hourly means or raw 5-minute rows
+- Column toggles for the ten exported columns, including battery voltage, current and charge level
+- Sortable headers; a third click restores chronological order
+- Summary row with minimum, mean and maximum of the rows shown
+- Table or chart view; in the chart, power columns share a left kW axis while percentages get their own right-hand 0–100 % axis, and gaps in a series break the line rather than being bridged
+- Download the current selection as CSV
+
+Requires the mein-senec.de connector to be enabled and connected.
+
 ### Logs Tab
 
 ![Logs Tab](media/dashboard-logs.png)

@@ -144,6 +144,7 @@
     "readme": "https://github.com/nobl/ioBroker.senec/blob/master/README.md",
     "loglevel": "info",
     "mode": "daemon",
+    "messagebox": true,
     "type": "energy",
     "compact": true,
     "connectionType": "cloud",
