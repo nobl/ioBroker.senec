@@ -145,7 +145,7 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.14.0 (2026-08-01)
 - Fix: With the local connection switched on but no IP address entered, the adapter repeatedly tried to reach 0.0.0.0 and logged a connection error on every attempt. It now says once that no address is configured and waits for one.
 - Change: A new instance now starts with no connector preselected — pick the ones you want in the settings. The local connection is no longer switched on in advance, and its address field starts empty instead of showing 0.0.0.0. Existing instances keep their settings unchanged.
 - Fix: When the SENEC sign-in service rejected the stored token and was itself unreachable, the adapter attempted a full login twice and then kept two recovery loops running side by side, doubling every request. It now makes one attempt and retries on a single schedule.
@@ -209,14 +209,6 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 ### 2.11.4 (2026-07-22)
 - Fix: jsonConfig validation error (`collapsed` not allowed on panel type).
 - Removed unused `info.extension` state.
-
-### 2.11.3 (2026-07-22)
-- Fix: Web extension log proxy crash (ERR_HTTP_HEADERS_SENT / ERR_STREAM_WRITE_AFTER_END) when SENEC device drops connection or browser disconnects mid-request. Abort orphaned upstream requests on client disconnect.
-- Fix: Local connection failure no longer crashes adapter startup — other connectors (API, Web, Connect) continue normally. All connectors retry with exponential backoff on init failure.
-- Local polling no longer gives up after max retries — backoff plateaus and polling continues indefinitely. Connection status updates on failure and recovery.
-- New `info.connectionStatus` state (all/partial/none) for per-connector connection tracking.
-- Dashboard: Debounce rendering via requestAnimationFrame — prevents browser freezes from rapid state update bursts.
-- Dashboard: Rate limit log proxy (1 req/s), XHR timeouts, abort in-flight requests, prevent history load stacking.
 
 ### [Former Updates](CHANGELOG_OLD.md)
 

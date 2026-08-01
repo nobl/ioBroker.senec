@@ -1,6 +1,14 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.11.3 (2026-07-22)
+- Fix: Web extension log proxy crash (ERR_HTTP_HEADERS_SENT / ERR_STREAM_WRITE_AFTER_END) when SENEC device drops connection or browser disconnects mid-request. Abort orphaned upstream requests on client disconnect.
+- Fix: Local connection failure no longer crashes adapter startup — other connectors (API, Web, Connect) continue normally. All connectors retry with exponential backoff on init failure.
+- Local polling no longer gives up after max retries — backoff plateaus and polling continues indefinitely. Connection status updates on failure and recovery.
+- New `info.connectionStatus` state (all/partial/none) for per-connector connection tracking.
+- Dashboard: Debounce rendering via requestAnimationFrame — prevents browser freezes from rapid state update bursts.
+- Dashboard: Rate limit log proxy (1 req/s), XHR timeouts, abort in-flight requests, prevent history load stacking.
+
 ## 2.11.2 (2026-07-21)
 - Live chart: Linear interpolation for sparse history data instead of flat carry-forward. Smoother lines when SQL logs on change only.
 - Live chart: Skip history queries for states without a history adapter enabled (no more SQL warnings).
