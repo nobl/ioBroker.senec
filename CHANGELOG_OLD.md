@@ -1,6 +1,10 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.11.2 (2026-07-21)
+- Live chart: Linear interpolation for sparse history data instead of flat carry-forward. Smoother lines when SQL logs on change only.
+- Live chart: Skip history queries for states without a history adapter enabled (no more SQL warnings).
+
 ## 2.11.1 (2026-07-21)
 - Live chart: Delta history loading — expanding the time window only fetches the missing range instead of reloading all data.
 

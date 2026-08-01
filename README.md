@@ -145,7 +145,7 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.13.1 (2026-08-01)
 - Fix: A failed API read is now retried instead of being dropped until the next poll cycle. Retries apply to transient failures only — timeout, rate limiting, server error, dropped connection. Control commands are never retried, so none can reach the appliance twice.
 - API: A poll tier that could not complete now says so in the log, along with the fact that it is picked up again on the next cycle. Previously only the failure was logged, which read as if the data were lost.
 - Fix: Rate limiting by mein-senec.de went unnoticed. Its responses are read directly rather than raised as errors, so a "too many requests" reply counted as a success and the adapter kept its request rate up instead of easing off. It now backs off, honours the server's own retry delay, logs the event, and reports it under the connector's rate-limit diagnostics. Most noticeable when stepping through statistics weeks quickly. The same applies to a request repeated after a session expired, which previously skipped this handling altogether.
@@ -197,10 +197,6 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 - New `info.connectionStatus` state (all/partial/none) for per-connector connection tracking.
 - Dashboard: Debounce rendering via requestAnimationFrame — prevents browser freezes from rapid state update bursts.
 - Dashboard: Rate limit log proxy (1 req/s), XHR timeouts, abort in-flight requests, prevent history load stacking.
-
-### 2.11.2 (2026-07-21)
-- Live chart: Linear interpolation for sparse history data instead of flat carry-forward. Smoother lines when SQL logs on change only.
-- Live chart: Skip history queries for states without a history adapter enabled (no more SQL warnings).
 
 ### [Former Updates](CHANGELOG_OLD.md)
 
