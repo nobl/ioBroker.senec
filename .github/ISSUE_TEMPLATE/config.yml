@@ -6,6 +6,6 @@ contact_links:
   - name: Dokumentation (Deutsch)
     url: https://github.com/nobl/ioBroker.senec/blob/master/docs/de/README.md
     about: Alle Einstellungen, die vollständige State-Referenz, Steuerfunktionen und Fehlerbehebung.
-  - name: ioBroker forum
-    url: https://forum.iobroker.net/
-    about: For questions about ioBroker itself, or to ask other SENEC users.
+  - name: Adapter thread in the ioBroker forum
+    url: https://forum.iobroker.net/topic/30620/neuer-adapter-senec-home-adapter
+    about: Questions, setups and experiences from other SENEC users — often the quickest way to an answer. Mainly German.
