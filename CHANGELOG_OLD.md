@@ -1,6 +1,9 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.11.1 (2026-07-21)
+- Live chart: Delta history loading — expanding the time window only fetches the missing range instead of reloading all data.
+
 ## 2.11.0 (2026-07-20)
 - External Sources: Add PV, consumer (wallbox, heat pump, etc.), and battery sources from other ioBroker adapters. Formula support for calculated values (e.g. V*A per phase). Integrate mode adds to SENEC totals, separate mode shows individual nodes in the energy flow diagram. Battery SOC and capacity support with time estimates. Dynamic diagram layout with summary nodes for multiple PV/battery sources.
 - Fix: ValueTyping type flip-flop between string/number for states with physical units.
