@@ -108,6 +108,22 @@ var liveChart = {
 	_pinchStartMidX: 0,
 
 	/**
+	 * Chart lines in display order, mapped to their i18n label key.
+	 *
+	 * Single source of truth for the toggles, the tooltip and the history info panel —
+	 * these used to keep their own copies, and a line added to one was missing from
+	 * the others.
+	 */
+	_lineLabels: {
+		pv: "total_pv",
+		house: "total_consumption",
+		grid: "livechart_grid",
+		battery: "livechart_battery",
+		wallbox: "livechart_wallbox",
+		soc: "livechart_soc",
+	},
+
+	/**
 	 * State keys feeding each chart line, per source.
 	 *
 	 * Single source of truth for the history loader and the history info panel —
@@ -235,14 +251,8 @@ var liveChart = {
 	 * @returns {string} Panel HTML
 	 */
 	renderHistoryInfo: function () {
-		var labelKeys = {
-			pv: "total_pv",
-			house: "total_consumption",
-			grid: "livechart_grid",
-			battery: "livechart_battery",
-			wallbox: "livechart_wallbox",
-		};
-		var order = ["pv", "house", "grid", "battery", "wallbox"];
+		var labelKeys = this._lineLabels;
+		var order = Object.keys(labelKeys);
 		var names = Object.keys(this._historyStatus);
 
 		var html = '<div class="history-info">';
@@ -869,15 +879,8 @@ var liveChart = {
 
 		// Line toggles
 		html += '<div class="chart-toggles">';
-		var lines = ["pv", "house", "grid", "battery", "wallbox", "soc"];
-		var labelKeys = {
-			pv: "total_pv",
-			house: "total_consumption",
-			grid: "livechart_grid",
-			battery: "livechart_battery",
-			wallbox: "livechart_wallbox",
-			soc: "livechart_soc",
-		};
+		var labelKeys = this._lineLabels;
+		var lines = Object.keys(labelKeys);
 		for (var li = 0; li < lines.length; li++) {
 			var key = lines[li];
 			var active = this.visible[key] ? " active" : "";
@@ -1263,15 +1266,7 @@ var liveChart = {
 	},
 
 	getLabelKey: function (key) {
-		var map = {
-			soc: "livechart_soc",
-			pv: "total_pv",
-			house: "total_consumption",
-			grid: "livechart_grid",
-			battery: "livechart_battery",
-			wallbox: "livechart_wallbox",
-		};
-		return map[key] || key;
+		return this._lineLabels[key] || key;
 	},
 
 	// Compute monotone cubic Hermite tangents (Fritsch-Carlson method).
