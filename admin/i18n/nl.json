@@ -1,5 +1,7 @@
 {
     "Active_Appliance_Control": "Apparaatcontrole",
+    "ApiTimeout": "Time-out van API-verzoek [ms]",
+    "ApiTimeoutHelp": "Hoe lang je moet wachten op een gewoon SENEC API-verzoek voordat je het opgeeft [min. 5000, max. 120.000 ms]. Standaard = 30000 (30 seconden). Dit omvat het dashboard, de systeemstatus en detailverzoeken. De SENEC API is regelmatig traag, en een time-out van een verzoek kost de hele meting tot de volgende poll-cyclus, dus iets langer wachten is meestal goedkoper dan het verliezen van de waarden. Verhoog dit als het logboek een time-out voor dashboard- of systeemstatusverzoeken rapporteert. De meetgeschiedenis heeft hieronder een eigen, langere limiet.",
     "Email": "E-mailadres",
     "Email-Help": "E-mailadres gebruikt om in te loggen op mein-senec.de",
     "Full": "Vol",
@@ -27,7 +29,7 @@
     "IP": "IP / FQDN van SENEC-systeem",
     "IPHelp": "Hier voert u het IP-adres of de FQDN van uw SENEC-systeem in",
     "MeasurementTimeout": "Time-out meetverzoek [ms]",
-    "MeasurementTimeoutHelp": "Hoe lang u moet wachten op een meetverzoek voordat u het opgeeft [min. 10.000, max. 300.000 ms]. Standaard = 60000 (60 seconden). Deze verzoeken zijn niet eenvoudig te lezen: de SENEC-server verzamelt de gegevens wanneer daarom wordt gevraagd, en een zoekopdracht van een jaar of maand over een lange periode kan aanzienlijk langer duren dan de snelle dashboardoproepen. Als uw logboek de melding \"Zware poll mislukt... time-out overschreden\" weergeeft, verhoogt u deze waarde. Het is alleen van toepassing op de meetgeschiedenis; de andere API-verzoeken behouden hun eigen, veel kortere time-out, zodat echte fouten nog steeds snel worden gedetecteerd.",
+    "MeasurementTimeoutHelp": "Hoe lang u moet wachten op een meetverzoek voordat u het opgeeft [min. 10.000, max. 300.000 ms]. Standaard = 60000 (60 seconden). Deze verzoeken zijn niet eenvoudig te lezen: de SENEC-server verzamelt de gegevens wanneer daarom wordt gevraagd, en een zoekopdracht van een jaar of maand over een lange periode kan aanzienlijk langer duren dan de snelle dashboardoproepen. Verhoog deze waarde als het logboek zware polls of een time-out voor meetverzoeken rapporteert. Het is alleen van toepassing op de meetgeschiedenis; de andere API-verzoeken gebruiken de kortere limiet hierboven.",
     "Off": "Uit",
     "Password": "Wachtwoord",
     "Password_Help:": "Wachtwoord gebruikt om in te loggen op mein-senec.de",

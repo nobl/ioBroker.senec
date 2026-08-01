@@ -283,8 +283,17 @@ class Senec extends utils.Adapter {
 				signal: this.abortController?.signal,
 			});
 
+			// The SENEC API is regularly slow enough that 10s cost whole readings — Dashboard
+			// and SystemStatus time out on a bad day and the tier is lost until the next
+			// cycle. The dashboard tier runs every 6 minutes, so waiting longer for an answer
+			// costs nothing that a lost reading does not cost more. Measurements keep their
+			// own, longer budget via api_measurement_timeout.
+			//
+			// Clamped rather than trusted: the value reaches us from a config field that an
+			// older instance may not have at all, and an out-of-range entry should be pulled
+			// into range instead of disabling the timeout or making it useless.
 			this.apiClient = axios.create({
-				timeout: 10000,
+				timeout: resolveApiTimeout(this.config.api_timeout),
 				signal: this.abortController?.signal,
 				httpsAgent: this.apiAgent,
 			});
@@ -2148,6 +2157,7 @@ if (require.main !== module) {
 	// Export pure functions for unit testing
 	module.exports._testing = {
 		normalizeRebuildMode,
+		resolveApiTimeout,
 		HexToFloat32,
 		DecToIP,
 		reviverNumParse,
@@ -2156,6 +2166,30 @@ if (require.main !== module) {
 } else {
 	// otherwise start the instance directly
 	new Senec();
+}
+
+/** Bounds for api_timeout, mirroring the min/max the admin field enforces. */
+const API_TIMEOUT_MIN_MS = 5000;
+const API_TIMEOUT_MAX_MS = 120000;
+const API_TIMEOUT_DEFAULT_MS = 30000;
+
+/**
+ * Resolve the timeout for ordinary API requests.
+ *
+ * An instance created before this setting existed has no value at all, so the default has to
+ * survive undefined, null and empty string. Anything outside the range the admin field allows
+ * is pulled back into it rather than honoured: a zero would disable the timeout entirely and
+ * hang the poll cycle, and an hour-long value would do much the same.
+ *
+ * @param {unknown} value - Configured value, if any
+ * @returns {number} Timeout in milliseconds
+ */
+function resolveApiTimeout(value) {
+	const requested = Number(value);
+	if (!isFinite(requested) || requested <= 0) {
+		return API_TIMEOUT_DEFAULT_MS;
+	}
+	return Math.min(API_TIMEOUT_MAX_MS, Math.max(API_TIMEOUT_MIN_MS, Math.round(requested)));
 }
 
 function normalizeRebuildMode(value) {

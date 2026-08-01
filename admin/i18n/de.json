@@ -1,5 +1,7 @@
 {
     "Active_Appliance_Control": "Gerätesteuerung",
+    "ApiTimeout": "Zeitlimit für API-Anfragen [ms]",
+    "ApiTimeoutHelp": "Wie lange auf eine normale SENEC-API-Anfrage gewartet wird, bevor sie abgebrochen wird [min 5000, max 120000 ms]. Standard = 30000 (30 Sekunden). Das betrifft Dashboard-, Systemstatus- und Detailabfragen. Die SENEC-API ist regelmäßig langsam, und eine abgebrochene Anfrage kostet den kompletten Messwert bis zum nächsten Abfragezyklus — etwas länger zu warten ist meist günstiger, als die Werte zu verlieren. Erhöhen Sie den Wert, wenn das Log Zeitüberschreitungen bei Dashboard- oder Systemstatus-Abfragen meldet. Für den Messverlauf gilt das eigene, längere Zeitlimit weiter unten.",
     "Email": "E-Mail-Adresse",
     "Email-Help": "E-Mail-Adresse, mit der Sie sich bei mein-senec.de anmelden",
     "Full": "Vollständig",
@@ -27,7 +29,7 @@
     "IP": "IP/FQDN des SENEC-Systems",
     "IPHelp": "Hier geben Sie die IP oder den FQDN Ihres SENEC-Systems ein",
     "MeasurementTimeout": "Zeitlimit für Messwertabfragen [ms]",
-    "MeasurementTimeoutHelp": "Wie lange auf eine Messwertabfrage gewartet wird, bevor sie abgebrochen wird [min 10000, max 300000 ms]. Standard = 60000 (60 Sekunden). Diese Abfragen sind keine einfachen Abrufe: Der SENEC-Server aggregiert die Daten erst bei der Anfrage, und eine Jahres- oder Monatsabfrage über einen langen Zeitraum kann deutlich länger dauern als die schnellen Dashboard-Aufrufe. Wenn im Log „Heavy poll failed ... timeout exceeded“ erscheint, erhöhen Sie diesen Wert. Er gilt nur für den Messverlauf; die übrigen API-Anfragen behalten ihr eigenes, deutlich kürzeres Zeitlimit, damit echte Fehler weiterhin schnell erkannt werden.",
+    "MeasurementTimeoutHelp": "Wie lange auf eine Messwertabfrage gewartet wird, bevor sie abgebrochen wird [min 10000, max 300000 ms]. Standard = 60000 (60 Sekunden). Diese Abfragen sind keine einfachen Abrufe: Der SENEC-Server aggregiert die Daten erst bei der Anfrage, und eine Jahres- oder Monatsabfrage über einen langen Zeitraum kann deutlich länger dauern als die schnellen Dashboard-Aufrufe. Erhöhen Sie diesen Wert, wenn das Log Zeitüberschreitungen bei Heavy-Polls oder Messwertabfragen meldet. Er gilt nur für den Messverlauf; die übrigen API-Anfragen verwenden das kürzere Zeitlimit weiter oben.",
     "Off": "Aus",
     "Password": "Passwort",
     "Password_Help:": "Passwort für die Anmeldung bei mein-senec.de",

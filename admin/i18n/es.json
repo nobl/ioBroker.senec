@@ -1,5 +1,7 @@
 {
     "Active_Appliance_Control": "Control de electrodomésticos",
+    "ApiTimeout": "Tiempo de espera de solicitud de API [ms]",
+    "ApiTimeoutHelp": "Cuánto tiempo esperar por una solicitud API SENEC ordinaria antes de darse por vencido [mínimo 5000, máximo 120000 ms]. Predeterminado = 30000 (30 segundos). Esto cubre el tablero, el estado del sistema y las solicitudes detalladas. La API de SENEC suele ser lenta y una solicitud que se agota cuesta toda la lectura hasta el siguiente ciclo de encuesta, por lo que esperar un poco más suele ser más barato que perder los valores. Aumente esto si el panel de informes de registro o el estado del sistema solicitan que se agote el tiempo de espera. El historial de mediciones tiene su propio límite más largo a continuación.",
     "Email": "Dirección de correo electrónico",
     "Email-Help": "Dirección de correo electrónico utilizada para iniciar sesión en mein-senec.de",
     "Full": "Lleno",
@@ -27,7 +29,7 @@
     "IP": "IP / FQDN del sistema SENEC",
     "IPHelp": "Aquí ingresas la IP o FQDN de tu Sistema SENEC",
     "MeasurementTimeout": "Tiempo de espera de solicitud de medición [ms]",
-    "MeasurementTimeoutHelp": "Cuánto tiempo esperar por una solicitud de medición antes de darse por vencido [mínimo 10000, máximo 300000 ms]. Predeterminado = 60000 (60 segundos). Estas solicitudes no son simples lecturas: el servidor SENEC agrega los datos cuando se le solicita, y una consulta de un año o un mes que cubra un período largo puede tardar considerablemente más que las llamadas rápidas al panel. Si su registro muestra \"Error en la encuesta intensa... se excedió el tiempo de espera\", aumente este valor. Se aplica únicamente al historial de mediciones; las otras solicitudes de API mantienen su propio tiempo de espera, mucho más corto, por lo que las fallas genuinas aún se detectan rápidamente.",
+    "MeasurementTimeoutHelp": "Cuánto tiempo esperar por una solicitud de medición antes de darse por vencido [mínimo 10000, máximo 300000 ms]. Predeterminado = 60000 (60 segundos). Estas solicitudes no son simples lecturas: el servidor SENEC agrega los datos cuando se le solicita, y una consulta de un año o un mes que cubra un período largo puede tardar considerablemente más que las llamadas rápidas al panel. Aumente este valor si el registro informa que el tiempo de espera de las solicitudes de medición o sondeos intensos ha expirado. Se aplica únicamente al historial de mediciones; las otras solicitudes de API utilizan el límite más corto anterior.",
     "Off": "Apagado",
     "Password": "Contraseña",
     "Password_Help:": "Contraseña utilizada para iniciar sesión en mein-senec.de",

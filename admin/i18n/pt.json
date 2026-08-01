@@ -1,5 +1,7 @@
 {
     "Active_Appliance_Control": "Controle de aparelhos",
+    "ApiTimeout": "Tempo limite de solicitação de API [ms]",
+    "ApiTimeoutHelp": "Quanto tempo esperar por uma solicitação normal da API SENEC antes de desistir [min 5.000, max 120.000 ms]. Padrão = 30.000 (30 segundos). Isso abrange o painel, o status do sistema e as solicitações detalhadas. A API do SENEC é regularmente lenta e uma solicitação que expira custa toda a leitura até o próximo ciclo de votação, portanto esperar um pouco mais costuma ser mais barato do que perder os valores. Aumente isso se o painel de relatórios de log ou as solicitações de status do sistema atingirem o tempo limite. O histórico de medições tem seu próprio limite mais longo abaixo.",
     "Email": "Endereço de email",
     "Email-Help": "Endereço de e-mail usado para fazer login em mein-senec.de",
     "Full": "Completo",
@@ -27,7 +29,7 @@
     "IP": "IP/FQDN do Sistema SENEC",
     "IPHelp": "Aqui você insere o IP ou FQDN do seu Sistema SENEC",
     "MeasurementTimeout": "Tempo limite da solicitação de medição [ms]",
-    "MeasurementTimeoutHelp": "Quanto tempo esperar por uma solicitação de medição antes de desistir [min 10.000, max 300.000 ms]. Padrão = 60.000 (60 segundos). Estas solicitações não são simples leituras: o servidor SENEC agrega os dados quando solicitado, e uma consulta anual ou mensal que cubra um longo período pode demorar consideravelmente mais do que as chamadas rápidas ao painel. Se o seu log mostrar \"Falha na pesquisa pesada... tempo limite excedido\", aumente esse valor. Aplica-se apenas ao histórico de medições; as outras solicitações de API mantêm seu próprio tempo limite muito mais curto para que falhas genuínas ainda sejam detectadas rapidamente.",
+    "MeasurementTimeoutHelp": "Quanto tempo esperar por uma solicitação de medição antes de desistir [min 10.000, max 300.000 ms]. Padrão = 60.000 (60 segundos). Estas solicitações não são simples leituras: o servidor SENEC agrega os dados quando solicitado, e uma consulta anual ou mensal que cubra um longo período pode demorar consideravelmente mais do que as chamadas rápidas ao painel. Aumente esse valor se o log relatar pesquisas pesadas ou solicitações de medição atingirem o tempo limite. Aplica-se apenas ao histórico de medições; as outras solicitações de API usam o limite menor acima.",
     "Off": "Desligado",
     "Password": "Senha",
     "Password_Help:": "Senha usada para fazer login em mein-senec.de",

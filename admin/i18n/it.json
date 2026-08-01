@@ -1,5 +1,7 @@
 {
     "Active_Appliance_Control": "Controllo degli elettrodomestici",
+    "ApiTimeout": "Timeout richiesta API [ms]",
+    "ApiTimeoutHelp": "Quanto tempo attendere una richiesta API SENEC ordinaria prima di rinunciare [min 5000, max 120000 ms]. Valore predefinito = 30000 (30 secondi). Ciò copre la dashboard, lo stato del sistema e le richieste di dettagli. L'API SENEC è regolarmente lenta e una richiesta che scade costa l'intera lettura fino al ciclo di poll successivo, quindi attendere un po' più a lungo è solitamente più economico che perdere i valori. Sollevarlo se il registro segnala il timeout delle richieste del dashboard o dello stato del sistema. La cronologia delle misurazioni ha il proprio limite più lungo riportato di seguito.",
     "Email": "Indirizzo e-mail",
     "Email-Help": "Indirizzo e-mail utilizzato per accedere a mein-senec.de",
     "Full": "Pieno",
@@ -27,7 +29,7 @@
     "IP": "IP/FQDN del sistema SENEC",
     "IPHelp": "Qui inserisci l'IP o FQDN del tuo Sistema SENEC",
     "MeasurementTimeout": "Timeout richiesta di misura [ms]",
-    "MeasurementTimeoutHelp": "Quanto tempo attendere una richiesta di misura prima di rinunciare [min 10000, max 300000 ms]. Valore predefinito = 60000 (60 secondi). Queste richieste non sono semplici letture: il server SENEC aggrega i dati quando richiesto e una query annuale o mensile che copre un lungo periodo può richiedere molto più tempo rispetto alle chiamate rapide alla dashboard. Se il tuo registro mostra \"Sondaggio pesante non riuscito... timeout superato\", aumenta questo valore. Si applica solo alla cronologia delle misurazioni; le altre richieste API mantengono il proprio timeout molto più breve in modo che gli errori autentici vengano comunque rilevati rapidamente.",
+    "MeasurementTimeoutHelp": "Quanto tempo attendere una richiesta di misura prima di rinunciare [min 10000, max 300000 ms]. Valore predefinito = 60000 (60 secondi). Queste richieste non sono semplici letture: il server SENEC aggrega i dati quando richiesto e una query annuale o mensile che copre un lungo periodo può richiedere molto più tempo rispetto alle chiamate rapide alla dashboard. Aumentare questo valore se il registro segnala polling pesanti o richieste di misurazione che scadono. Si applica solo alla cronologia delle misurazioni; le altre richieste API utilizzano il limite più breve riportato sopra.",
     "Off": "Spento",
     "Password": "Password",
     "Password_Help:": "Password utilizzata per accedere a mein-senec.de",

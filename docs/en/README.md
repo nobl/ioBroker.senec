@@ -113,6 +113,7 @@ You can add additional data sections (e.g. BMS, PV1, WALLBOX) to the high-priori
 | Heavy interval | Polling interval for month/year measurements (minutes) | 1440 (24h) |
 | Concurrency / Max concurrency | Parallel API request limits | 1 / 1 |
 | Min request interval | Minimum time between API requests (ms) | 400 |
+| API request timeout | How long to wait for an ordinary API request — dashboard, system status, details (ms). Raise it if the log shows those requests timing out | 30000 |
 | Measurement request timeout | How long to wait for a measurement aggregation (ms). Raise it if the log shows heavy polls timing out | 60000 |
 
 #### History Rebuild

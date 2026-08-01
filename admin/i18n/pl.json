@@ -1,5 +1,7 @@
 {
     "Active_Appliance_Control": "Kontrola urządzenia",
+    "ApiTimeout": "Limit czasu żądania API [ms]",
+    "ApiTimeoutHelp": "Jak długo czekać na zwykłe żądanie SENEC API przed rezygnacją [min 5000, max 120000 ms]. Wartość domyślna = 30000 (30 sekund). Dotyczy to panelu kontrolnego, statusu systemu i żądań szczegółowych. Interfejs API SENEC jest regularnie powolny, a żądanie, które przekroczyło limit czasu, kosztuje cały odczyt aż do następnego cyklu odpytywania, więc czekanie nieco dłużej jest zwykle tańsze niż utrata wartości. Podnieś tę opcję, jeśli panel dziennika zgłasza komunikat lub status systemu żąda przekroczenia limitu czasu. Historia pomiarów ma swój własny, dłuższy limit poniżej.",
     "Email": "Adres e-mail",
     "Email-Help": "Adres e-mail używany do logowania się na mein-senec.de",
     "Full": "Pełny",
@@ -27,7 +29,7 @@
     "IP": "IP/FQDN systemu SENEC",
     "IPHelp": "Tutaj wprowadzasz adres IP lub nazwę FQDN swojego systemu SENEC",
     "MeasurementTimeout": "Limit czasu żądania pomiaru [ms]",
-    "MeasurementTimeoutHelp": "Jak długo czekać na żądanie pomiaru przed rezygnacją [min 10000, max 300000 ms]. Wartość domyślna = 60000 (60 sekund). Żądania te nie są prostym odczytem: serwer SENEC agreguje dane, gdy zostanie o to poproszony, a zapytanie dotyczące roku lub miesiąca obejmujące długi okres może zająć znacznie dłużej niż szybkie wywołania panelu kontrolnego. Jeśli w dzienniku pojawia się komunikat „Niepowodzenie ciężkiego odpytywania... przekroczono limit czasu”, zwiększ tę wartość. Dotyczy tylko historii pomiarów; pozostałe żądania API mają swój własny, znacznie krótszy limit czasu, dzięki czemu rzeczywiste awarie są nadal szybko wykrywane.",
+    "MeasurementTimeoutHelp": "Jak długo czekać na żądanie pomiaru przed rezygnacją [min 10000, max 300000 ms]. Wartość domyślna = 60000 (60 sekund). Żądania te nie są prostym odczytem: serwer SENEC agreguje dane, gdy zostanie o to poproszony, a zapytanie dotyczące roku lub miesiąca obejmujące długi okres może zająć znacznie dłużej niż szybkie wywołania panelu kontrolnego. Zwiększ tę wartość, jeśli dziennik zgłasza liczne ankiety lub przekroczono limit czasu żądań pomiaru. Dotyczy tylko historii pomiarów; pozostałe żądania API korzystają z krótszego limitu podanego powyżej.",
     "Off": "Wyłączony",
     "Password": "Hasło",
     "Password_Help:": "Hasło używane do logowania się na mein-senec.de",

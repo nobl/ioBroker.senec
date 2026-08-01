@@ -217,6 +217,7 @@
     "api_concurrency_start": 1,
     "api_concurrency_max": 1,
     "api_min_request_interval": 400,
+    "api_timeout": 30000,
     "api_measurement_timeout": 60000,
     "api_debug_states": false,
     "api_debug_log": false,
