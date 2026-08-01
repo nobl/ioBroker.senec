@@ -78,6 +78,7 @@
     "livechart_history_pending": "Określanie stanu nagrywania…",
     "livechart_loading_history": "Ładowanie historii…",
     "livechart_points": "{count} punktów",
+    "livechart_soc": "Poziom baterii",
     "livechart_title": "Żywa moc",
     "livechart_waiting": "Oczekiwanie na dane… Wykres wypełnia się automatycznie po nadejściu nowych danych. Aby uzyskać natychmiastowe uzupełnienie podczas ładowania strony, włącz adapter historii (InfluxDB, SQL lub History) dla stanów zasilania — przycisk ⓘ pokazuje, które stany są rejestrowane.",
     "livechart_wallbox": "Wallbox",

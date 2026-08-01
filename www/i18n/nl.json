@@ -78,6 +78,7 @@
     "livechart_history_pending": "Opnamestatus bepalen…",
     "livechart_loading_history": "Geschiedenis laden…",
     "livechart_points": "{count} punten",
+    "livechart_soc": "Batterijniveau",
     "livechart_title": "Levende kracht",
     "livechart_waiting": "Wachten op gegevens… Het diagram wordt automatisch gevuld zodra er nieuwe gegevens binnenkomen. Voor onmiddellijke aanvulling bij het laden van de pagina schakelt u een geschiedenisadapter (InfluxDB, SQL of History) in voor de energiestatussen. De ⓘ-knop laat zien welke statussen zijn vastgelegd.",
     "livechart_wallbox": "Wanddoos",

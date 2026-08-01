@@ -78,6 +78,7 @@
     "livechart_history_pending": "Aufzeichnungsstatus wird ermittelt…",
     "livechart_loading_history": "Historie wird geladen…",
     "livechart_points": "{count} Punkte",
+    "livechart_soc": "Ladezustand",
     "livechart_title": "Live-Power",
     "livechart_waiting": "Warte auf Daten… Das Diagramm füllt sich automatisch, sobald neue Daten eintreffen. Für sofortige Vorbefüllung beim Laden der Seite aktivieren Sie einen History-Adapter (InfluxDB, SQL oder History) auf den Leistungs-States — der ⓘ-Button zeigt, welche States aufgezeichnet werden.",
     "livechart_wallbox": "Wallbox",

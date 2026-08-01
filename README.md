@@ -115,6 +115,7 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 
   These now report their true values. History recorded before this change keeps the old scale, so logged series will step at the moment of the update.
 - Charts: Battery level overlay now also works with the mein-senec.de connector, not only the App API. The portal offers no charge-level history, so the adapter samples the live value into hourly averages for the day view; the daily figures behind the month view are the portal's own daily average. Hourly values only exist for the time the adapter was running, and cannot be filled in afterwards.
+- Live chart: Optional battery level line, off by default. It uses its own right-hand 0–100 % axis so it can share the chart with the power curves, and it is backfilled from a history adapter like every other line.
 - Special thanks to everyone supporting this project — see [SUPPORTERS.md](SUPPORTERS.md).
 
 ### 2.12.0 (2026-07-23)

@@ -78,6 +78,7 @@
     "livechart_history_pending": "Determinazione dello stato della registrazione…",
     "livechart_loading_history": "Caricamento cronologia…",
     "livechart_points": "{count} punti",
+    "livechart_soc": "Livello della batteria",
     "livechart_title": "Potenza viva",
     "livechart_waiting": "In attesa dei dati... Il grafico si riempie automaticamente all'arrivo di nuovi dati. Per il backfill istantaneo al caricamento della pagina, abilita un adattatore della cronologia (InfluxDB, SQL o History) sugli stati di alimentazione: il pulsante ⓘ mostra quali stati sono registrati.",
     "livechart_wallbox": "Scatola a muro",

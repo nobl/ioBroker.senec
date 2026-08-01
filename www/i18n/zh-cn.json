@@ -78,6 +78,7 @@
     "livechart_history_pending": "正在确定录音状态...",
     "livechart_loading_history": "加载历史记录...",
     "livechart_points": "{count} 点",
+    "livechart_soc": "电池电量",
     "livechart_title": "实时电源",
     "livechart_waiting": "等待数据...新数据到达时图表会自动填充。要在页面加载时即时回填，请在电源状态上启用历史适配器（InfluxDB、SQL 或 History） - ⓘ 按钮显示记录了哪些状态。",
     "livechart_wallbox": "壁箱",

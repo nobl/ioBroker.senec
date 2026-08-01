@@ -78,6 +78,7 @@
     "livechart_history_pending": "Determinando el estado de la grabación...",
     "livechart_loading_history": "Cargando historial…",
     "livechart_points": "{count} puntos",
+    "livechart_soc": "Nivel de batería",
     "livechart_title": "Poder en vivo",
     "livechart_waiting": "Esperando datos... El gráfico se completa automáticamente a medida que llegan nuevos datos. Para un reabastecimiento instantáneo al cargar la página, habilite un adaptador de historial (InfluxDB, SQL o History) en los estados de energía: el botón ⓘ muestra qué estados se registran.",
     "livechart_wallbox": "Caja de empotrar",

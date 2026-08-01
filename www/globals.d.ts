@@ -42,6 +42,8 @@ interface LiveChartPoint {
 	grid: number | null;
 	house: number | null;
 	wallbox: number | null;
+	/** Battery state of charge in percent — drawn on its own right-hand axis */
+	soc?: number | null;
 }
 
 /** Timeline event entry */

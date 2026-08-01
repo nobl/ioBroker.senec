@@ -78,6 +78,7 @@
     "livechart_history_pending": "Визначення статусу запису…",
     "livechart_loading_history": "Завантаження історії…",
     "livechart_points": "{count} балів",
+    "livechart_soc": "Рівень заряду батареї",
     "livechart_title": "Жива сила",
     "livechart_waiting": "Очікування даних… Діаграма заповнюється автоматично, коли надходять нові дані. Для миттєвого заповнення під час завантаження сторінки ввімкніть адаптер історії (InfluxDB, SQL або History) для станів живлення — кнопка ⓘ показує, які стани записуються.",
     "livechart_wallbox": "Wallbox",

@@ -61,6 +61,7 @@
     "livechart_grid": "Grid",
     "livechart_battery": "Battery",
     "livechart_wallbox": "Wallbox",
+    "livechart_soc": "Battery Level",
     "livechart_waiting": "Waiting for data… The chart fills automatically as new data arrives. For instant backfill on page load, enable a history adapter (InfluxDB, SQL, or History) on the power states — the ⓘ button shows which states are recorded.",
     "livechart_history_info": "History recording",
     "livechart_history_intro": "The chart backfills past data from history adapters. Every state is looked up on its own — states may be recorded by different adapters, and a state without recording only affects its own line.",

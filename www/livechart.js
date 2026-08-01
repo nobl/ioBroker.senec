@@ -25,6 +25,7 @@ var liveChart = {
 		grid: true,
 		battery: true,
 		wallbox: true,
+		soc: false,
 	},
 
 	/** Line colors — match energy flow diagram */
@@ -34,6 +35,7 @@ var liveChart = {
 		grid: "#1565c0",
 		battery: "#2e7d32",
 		wallbox: "#7e57c2",
+		soc: "#00897b",
 	},
 
 	/** Whether the chart is paused */
@@ -124,6 +126,7 @@ var liveChart = {
 				{ name: "grid", key: "ENERGY.GUI_GRID_POW", line: "grid" },
 				{ name: "battery", key: "ENERGY.GUI_BAT_DATA_POWER", line: "battery" },
 				{ name: "wallbox", key: "WALLBOX.APPARENT_CHARGING_POWER.0", line: "wallbox" },
+				{ name: "soc", key: "ENERGY.GUI_BAT_DATA_FUEL_CHARGE", line: "soc" },
 			];
 		}
 		if (src === "api") {
@@ -139,6 +142,7 @@ var liveChart = {
 				{ name: "charge", key: `${pfx}batteryChargeInW`, line: "battery" },
 				{ name: "discharge", key: `${pfx}batteryDischargeInW`, line: "battery" },
 				{ name: "wallbox", key: `${pfx}wallboxInW`, line: "wallbox" },
+				{ name: "soc", key: `${pfx}batteryLevelInPercent`, line: "soc" },
 			];
 		}
 		if (src === "web") {
@@ -150,6 +154,7 @@ var liveChart = {
 				{ name: "gridExport", key: `${wpfx}gridexport.now`, line: "grid" },
 				{ name: "charge", key: `${wpfx}accuexport.now`, line: "battery" },
 				{ name: "discharge", key: `${wpfx}accuimport.now`, line: "battery" },
+				{ name: "soc", key: `${wpfx}acculevel.now`, line: "soc" },
 			];
 		}
 		return [];
@@ -578,6 +583,7 @@ var liveChart = {
 				{ name: "battery", data: toSorted(pending.battery) },
 				{ name: "grid", data: toSorted(pending.grid) },
 				{ name: "wallbox", data: toSorted(pending.wallbox) },
+				{ name: "soc", data: toSorted(pending.soc) },
 			]);
 			for (var i = 0; i < merged.length; i++) {
 				points.push({
@@ -587,6 +593,7 @@ var liveChart = {
 					grid: merged[i].grid,
 					house: nAbs(merged[i].house),
 					wallbox: merged[i].wallbox,
+					soc: merged[i].soc,
 				});
 			}
 		} else if (src === "api") {
@@ -598,6 +605,7 @@ var liveChart = {
 				{ name: "draw", data: toSorted(pending.draw) },
 				{ name: "feed", data: toSorted(pending.feed) },
 				{ name: "wallbox", data: toSorted(pending.wallbox) },
+				{ name: "soc", data: toSorted(pending.soc) },
 			]);
 			for (var ai = 0; ai < apiMerged.length; ai++) {
 				var am = apiMerged[ai];
@@ -608,6 +616,7 @@ var liveChart = {
 					grid: nSub(am.draw, am.feed),
 					house: am.house,
 					wallbox: am.wallbox,
+					soc: am.soc,
 				});
 			}
 		} else if (src === "web") {
@@ -618,6 +627,7 @@ var liveChart = {
 				{ name: "discharge", data: toSorted(pending.discharge) },
 				{ name: "gridImport", data: toSorted(pending.gridImport) },
 				{ name: "gridExport", data: toSorted(pending.gridExport) },
+				{ name: "soc", data: toSorted(pending.soc) },
 			]);
 			for (var wi = 0; wi < webMerged.length; wi++) {
 				var wm = webMerged[wi];
@@ -628,6 +638,7 @@ var liveChart = {
 					grid: nSubMul(wm.gridImport, wm.gridExport, 1000),
 					house: nMul(wm.house, 1000),
 					wallbox: null,
+					soc: wm.soc,
 				});
 			}
 		}
@@ -648,7 +659,9 @@ var liveChart = {
 			(points[0].battery == null || points[0].battery === 0) &&
 			(points[0].grid == null || points[0].grid === 0) &&
 			(points[0].house == null || points[0].house === 0) &&
-			(points[0].wallbox == null || points[0].wallbox === 0)
+			(points[0].wallbox == null || points[0].wallbox === 0) &&
+			// SOC too, or an idle night with real charge level would be stripped as an artifact
+			(points[0].soc == null || points[0].soc === 0)
 		) {
 			points.shift();
 		}
@@ -742,6 +755,7 @@ var liveChart = {
 			grid: d.grid || 0, // signed: + import, - export
 			house: d.house || 0,
 			wallbox: d.wallbox || 0,
+			soc: d.soc, // percent, null when the source does not report it
 		});
 
 		// Trim to max buffer size — only when at live view, so panned-back data isn't lost
@@ -855,13 +869,14 @@ var liveChart = {
 
 		// Line toggles
 		html += '<div class="chart-toggles">';
-		var lines = ["pv", "house", "grid", "battery", "wallbox"];
+		var lines = ["pv", "house", "grid", "battery", "wallbox", "soc"];
 		var labelKeys = {
 			pv: "total_pv",
 			house: "total_consumption",
 			grid: "livechart_grid",
 			battery: "livechart_battery",
 			wallbox: "livechart_wallbox",
+			soc: "livechart_soc",
 		};
 		for (var li = 0; li < lines.length; li++) {
 			var key = lines[li];
@@ -926,7 +941,7 @@ var liveChart = {
 		var chartW = 1400,
 			chartH = 350;
 		var padL = 55,
-			padR = 15,
+			padR = this.visible.soc ? 42 : 15,
 			padT = 15,
 			padB = 35;
 		var plotW = chartW - padL - padR;
@@ -948,6 +963,7 @@ var liveChart = {
 		// Calculate Y range
 		var yMin = 0,
 			yMax = 0;
+		// SOC is excluded deliberately: it is a percentage on its own right-hand axis
 		var lines = ["pv", "house", "grid", "battery", "wallbox"];
 		for (var di = 0; di < data.length; di++) {
 			for (var li = 0; li < lines.length; li++) {
@@ -1090,13 +1106,32 @@ var liveChart = {
 			}
 			this.paintLine(ctx, data, lineKey, tMin, tRange, yMin, range, padL, padT, plotW, plotH);
 		}
+		// SOC rides its own fixed 0-100% scale over the same plot area
+		if (this.visible.soc) {
+			this.paintLine(ctx, data, "soc", tMin, tRange, 0, 100, padL, padT, plotW, plotH);
+		}
 		ctx.restore();
+
+		if (this.visible.soc) {
+			ctx.font = "10px sans-serif";
+			ctx.fillStyle = this.colors.soc;
+			ctx.textAlign = "left";
+			ctx.textBaseline = "middle";
+			for (var pct = 0; pct <= 100; pct += 25) {
+				ctx.fillText(`${pct}%`, chartW - padR + 5, padT + plotH - (pct / 100) * plotH);
+			}
+		}
 
 		// Tooltip overlay
 		if (this._tooltipPoint) {
 			var tp = this._tooltipPoint;
 			var tpKw = Math.abs(tp.val) >= 10000;
-			var tpStr = tpKw ? `${(tp.val / 1000).toFixed(2)} kW` : `${Math.round(tp.val)} W`;
+			var tpStr =
+				tp.key === "soc"
+					? `${Math.round(tp.val)}%`
+					: tpKw
+						? `${(tp.val / 1000).toFixed(2)} kW`
+						: `${Math.round(tp.val)} W`;
 			var tpLabel = `${t(this.getLabelKey(tp.key))}: ${tpStr}`;
 
 			ctx.font = "12px sans-serif";
@@ -1229,6 +1264,7 @@ var liveChart = {
 
 	getLabelKey: function (key) {
 		var map = {
+			soc: "livechart_soc",
 			pv: "total_pv",
 			house: "total_consumption",
 			grid: "livechart_grid",
