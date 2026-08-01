@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest something the adapter should be able to do
+labels: []
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like the adapter to do?
+      placeholder: Expose the wallbox charging schedule so it can be changed from a script.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: What would you use it for?
+      description: The use case matters more than the implementation — it often turns out something existing already covers it, or that a different shape fits better.
+    validations:
+      required: true
+
+  - type: input
+    id: system
+    attributes:
+      label: Your SENEC system
+      description: Helpful when a feature depends on hardware or on a particular connector being available.
+      placeholder: SENEC.Home V3 hybrid LFP
+
+  - type: checkboxes
+    id: source
+    attributes:
+      label: Do you know where the data comes from?
+      description: Entirely optional — but if you have seen the value somewhere, that is a considerable head start.
+      options:
+        - label: I have seen it in the appliance's own web interface
+        - label: I have seen it in the SENEC app or on mein-senec.de
+        - label: I do not know where it comes from

@@ -1,0 +1,76 @@
+name: Bug report
+description: Something is not working as it should
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **One thing worth checking first:** implausible readings usually come from the appliance
+        rather than from the adapter, which mostly passes values through. If a value looks wrong
+        on the dashboard, it is worth comparing against the appliance's own web interface — and
+        if the two differ, saying so below is the single most useful thing in the report.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you saw, and what you expected instead.
+      placeholder: The battery level stays empty on the Charts tab, although the dashboard shows it correctly.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: connectors
+    attributes:
+      label: Which connectors are enabled?
+      description: The same symptom often has a different cause depending on where the data comes from.
+      options:
+        - label: Local (lala.cgi)
+        - label: SENEC App API
+        - label: mein-senec.de
+        - label: SENEC.Connect
+
+  - type: input
+    id: system
+    attributes:
+      label: SENEC system
+      description: The model. `_local.FACTORY.SYS_TYPE_Text` has it when the local connector runs, otherwise the appliance's own web interface or mein-senec.de.
+      placeholder: SENEC.Home V3 hybrid LFP
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+      description: Optional, but often decisive — states come and go between firmware releases. See `_local.SYS_UPDATE` or the appliance's web interface.
+      placeholder: "838"
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Adapter, js-controller (`iobroker -v`), Node.js (`node -v`) and the operating system.
+      placeholder: "adapter 2.12.0, js-controller 7.0.6, Node 22.11.0, Debian 12"
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        A debug-level excerpt covering the failure, with a few lines either side rather than the single error line.
+        The documentation walks through [collecting one](https://github.com/nobl/ioBroker.senec/blob/master/docs/en/README.md#collecting-a-debug-log).
+
+        **Please read it before pasting.** Request logging includes URLs and responses, which can contain your
+        system ID, plant number and device serial. Replace anything you would rather not publish.
+      render: text
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: Screenshots, when it started, whether it happens every time or occasionally.
