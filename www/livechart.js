@@ -48,11 +48,26 @@ var liveChart = {
 	/** Last recorded timestamp to avoid duplicates */
 	_lastTs: 0,
 
-	/** @type {string|null} History adapter instance (e.g. "influxdb.0") — discovered on init */
-	_historyInstance: null,
+	/**
+	 * History adapter instance per state, discovered on init.
+	 * Each state is resolved independently — states may be logged by different
+	 * adapters, or by none at all, without affecting the others.
+	 *
+	 * @type {Record<string, {key: string, line: string, instance: string|null}>}
+	 */
+	_historyStatus: {},
 
-	/** Oldest timestamp loaded from history — for delta loading on window expansion */
-	_historyOldestTs: Infinity,
+	/**
+	 * Oldest timestamp we have *asked* history for — the boundary for delta loading.
+	 *
+	 * Deliberately the requested start, not the oldest timestamp actually received.
+	 * A query that comes back short (history does not reach that far back yet) still
+	 * marks the range as attempted, so nothing re-requests it. Tracking the received
+	 * timestamp instead makes the "need more data" condition self-perpetuating: the
+	 * follow-up query returns only the boundary point already held, the value never
+	 * moves, and the retry re-arms every 200 ms for as long as the page is open.
+	 */
+	_historyRequestedTs: Infinity,
 
 	/** Whether history backfill has been attempted */
 	_historyLoaded: false,
@@ -91,39 +106,231 @@ var liveChart = {
 	_pinchStartMidX: 0,
 
 	/**
-	 * State keys per source for history queries
+	 * State keys feeding each chart line, per source.
+	 *
+	 * Single source of truth for the history loader and the history info panel —
+	 * the two must not drift apart. `name` is the internal field name used by
+	 * _mergeHistory, `line` is the chart line the field contributes to (several
+	 * fields may feed one line, e.g. charge + discharge → battery).
+	 *
+	 * @param {string} src - Active source ("local", "api", "web")
+	 * @returns {Array<{name: string, key: string, line: string}>} Field definitions
 	 */
-	_stateKeys: {
-		local: {
-			pv: "ENERGY.GUI_INVERTER_POWER",
-			battery: "ENERGY.GUI_BAT_DATA_POWER",
-			grid: "ENERGY.GUI_GRID_POW",
-			house: "ENERGY.GUI_HOUSE_POW",
-			wallbox: "WALLBOX.APPARENT_CHARGING_POWER.0",
-		},
-
-		/** @type {Record<string, string|null>} */
-		api: {
-			// Filled dynamically with discovered anlagenId prefix
-			pv: null,
-			battery: null,
-			grid: null,
-			house: null,
-			wallbox: null,
-		},
-
-		/** @type {Record<string, string|null>} */
-		web: {
-			pv: "_meinsenec.Status.powergenerated.now",
-			battery: null, // Web uses charge/discharge separately — handled in transform
-			grid: null, // Web uses import/export separately — handled in transform
-			house: "_meinsenec.Status.consumption.now",
-			wallbox: null,
-		},
+	_historyFields: function (src) {
+		if (src === "local") {
+			return [
+				{ name: "pv", key: "ENERGY.GUI_INVERTER_POWER", line: "pv" },
+				{ name: "house", key: "ENERGY.GUI_HOUSE_POW", line: "house" },
+				{ name: "grid", key: "ENERGY.GUI_GRID_POW", line: "grid" },
+				{ name: "battery", key: "ENERGY.GUI_BAT_DATA_POWER", line: "battery" },
+				{ name: "wallbox", key: "WALLBOX.APPARENT_CHARGING_POWER.0", line: "wallbox" },
+			];
+		}
+		if (src === "api") {
+			if (!energyFlow.apiAnlagenId) {
+				return [];
+			}
+			var pfx = `_api.Anlagen.${energyFlow.apiAnlagenId}.Dashboard.currently.`;
+			return [
+				{ name: "pv", key: `${pfx}powerGenerationInW`, line: "pv" },
+				{ name: "house", key: `${pfx}powerConsumptionInW`, line: "house" },
+				{ name: "draw", key: `${pfx}gridDrawInW`, line: "grid" },
+				{ name: "feed", key: `${pfx}gridFeedInInW`, line: "grid" },
+				{ name: "charge", key: `${pfx}batteryChargeInW`, line: "battery" },
+				{ name: "discharge", key: `${pfx}batteryDischargeInW`, line: "battery" },
+				{ name: "wallbox", key: `${pfx}wallboxInW`, line: "wallbox" },
+			];
+		}
+		if (src === "web") {
+			var wpfx = "_meinsenec.Status.";
+			return [
+				{ name: "pv", key: `${wpfx}powergenerated.now`, line: "pv" },
+				{ name: "house", key: `${wpfx}consumption.now`, line: "house" },
+				{ name: "gridImport", key: `${wpfx}gridimport.now`, line: "grid" },
+				{ name: "gridExport", key: `${wpfx}gridexport.now`, line: "grid" },
+				{ name: "charge", key: `${wpfx}accuexport.now`, line: "battery" },
+				{ name: "discharge", key: `${wpfx}accuimport.now`, line: "battery" },
+			];
+		}
+		return [];
 	},
 
 	/**
-	 * Initialize history backfill — discover history adapter and load past data.
+	 * Whether at least one state has a history adapter enabled.
+	 *
+	 * @returns {boolean} True if any state can be backfilled
+	 */
+	_hasHistory: function () {
+		for (var name in this._historyStatus) {
+			if (this._historyStatus[name].instance) {
+				return true;
+			}
+		}
+		return false;
+	},
+
+	/** Whether the history info panel is expanded */
+	_infoOpen: false,
+
+	/**
+	 * Signature of the current recording status — used to detect changes on re-probe.
+	 *
+	 * @returns {string} Stable "field=instance" signature
+	 */
+	_historySignature: function () {
+		var parts = [];
+		for (var name in this._historyStatus) {
+			parts.push(`${name}=${this._historyStatus[name].instance || ""}`);
+		}
+		return parts.sort().join("|");
+	},
+
+	/** Toggle the history info panel */
+	toggleInfo: function () {
+		this._infoOpen = !this._infoOpen;
+		if (this._infoOpen) {
+			// Re-probe on every open, not just the first. The panel's job is to point at
+			// unrecorded states, so a user who just enabled logging must see it here —
+			// and get the backfill — without reloading the page. Also covers the disabled
+			// chart, where initHistory never runs at all.
+			var before = this._historySignature();
+			this.discoverHistory(app.conn, app.namespace, app.connectors, function (src) {
+				if (liveChart._historySignature() !== before && liveChart._hasHistory()) {
+					// Recording changed — refetch the visible window so new states catch up
+					liveChart._historyRequestedTs = Infinity;
+					liveChart._loadHistory(app.conn, app.namespace, src);
+				}
+				app.renderDashboard();
+			});
+		}
+		app.renderDashboard();
+	},
+
+	/**
+	 * Escape a value for HTML output. State IDs and adapter instance names come
+	 * from the object database, so they are not trusted markup.
+	 *
+	 * @param {string} str - Raw value
+	 * @returns {string} Escaped value
+	 */
+	_esc: function (str) {
+		return String(str == null ? "" : str)
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;");
+	},
+
+	/**
+	 * Render the history info panel: which states feed which chart line, and
+	 * whether each one is recorded by a history adapter.
+	 *
+	 * Indicators are read-only — enabling logging happens in the object settings.
+	 *
+	 * @returns {string} Panel HTML
+	 */
+	renderHistoryInfo: function () {
+		var labelKeys = {
+			pv: "total_pv",
+			house: "total_consumption",
+			grid: "livechart_grid",
+			battery: "livechart_battery",
+			wallbox: "livechart_wallbox",
+		};
+		var order = ["pv", "house", "grid", "battery", "wallbox"];
+		var names = Object.keys(this._historyStatus);
+
+		var html = '<div class="history-info">';
+		html += `<div class="history-info-intro">${t("livechart_history_intro")}</div>`;
+
+		if (names.length === 0) {
+			html += `<div class="history-info-intro">${t("livechart_history_pending")}</div></div>`;
+			return html;
+		}
+
+		for (var oi = 0; oi < order.length; oi++) {
+			var line = order[oi];
+			var rows = "";
+			for (var ni = 0; ni < names.length; ni++) {
+				var st = this._historyStatus[names[ni]];
+				if (st.line !== line) {
+					continue;
+				}
+				var ok = !!st.instance;
+				rows +=
+					'<div class="history-info-state">' +
+					`<span class="history-info-mark" style="color:${ok ? "#2e7d32" : "#c62828"}">${ok ? "✓" : "✗"}</span>` +
+					`<code>${this._esc(st.key)}</code>` +
+					`<span class="history-info-inst">${ok ? this._esc(st.instance) : t("livechart_history_not_recorded")}</span>` +
+					"</div>";
+			}
+			if (!rows) {
+				continue;
+			}
+			html +=
+				`<div class="history-info-line">` +
+				`<div class="history-info-title"><span class="chart-toggle-dot" style="background:${this.colors[line]}"></span>${t(labelKeys[line])}</div>` +
+				`${rows}</div>`;
+		}
+
+		html += `<div class="history-info-hint">${t(this._hasHistory() ? "livechart_history_hint" : "livechart_history_none")}</div>`;
+		html += "</div>";
+		return html;
+	},
+
+	/**
+	 * Discover which history adapter records each state, filling _historyStatus.
+	 *
+	 * Every state is probed independently: states may be recorded by different
+	 * history adapters, and a state without recording only costs its own line.
+	 *
+	 * @param {object} conn - socket.io connection
+	 * @param {string} namespace - adapter namespace (e.g. "senec.0")
+	 * @param {object} connectors - connector status
+	 * @param {function(string): void} [onDone] - called with the resolved source once all states are probed
+	 */
+	discoverHistory: function (conn, namespace, connectors, onDone) {
+		var src = energyFlow.resolveSource(connectors);
+		if (!src) {
+			return;
+		}
+
+		var fields = this._historyFields(src);
+		if (fields.length === 0) {
+			// Source not resolvable yet (e.g. API plant id still unknown) — retry on next call
+			return;
+		}
+
+		this._historyStatus = {};
+		var checked = 0;
+
+		var checkOne = function (field) {
+			liveChart._historyStatus[field.name] = { key: field.key, line: field.line, instance: null };
+			conn.emit("getObject", `${namespace}.${field.key}`, function (err, obj) {
+				if (!err && obj && obj.common && obj.common.custom) {
+					// First enabled instance wins — history/sql/influxdb are equivalent here
+					for (var inst in obj.common.custom) {
+						if (obj.common.custom[inst] && obj.common.custom[inst].enabled) {
+							liveChart._historyStatus[field.name].instance = inst;
+							break;
+						}
+					}
+				}
+				checked++;
+				if (checked === fields.length && onDone) {
+					onDone(/** @type {string} */ (src));
+				}
+			});
+		};
+
+		for (var fi = 0; fi < fields.length; fi++) {
+			checkOne(fields[fi]);
+		}
+		return;
+	},
+
+	/**
+	 * Initialize history backfill — discover recording status, then load past data.
 	 * Called once after initial state load.
 	 *
 	 * @param {object} conn - socket.io connection
@@ -134,54 +341,20 @@ var liveChart = {
 		if (this._historyLoaded || this.disabled) {
 			return;
 		}
+		var src = energyFlow.resolveSource(connectors);
+		if (!src || this._historyFields(src).length === 0) {
+			// Source not resolvable yet (e.g. API plant id still unknown) — retry on next call
+			return;
+		}
 		this._historyLoaded = true;
 
-		// Determine which source to use
-		var src = energyFlow.resolveSource(connectors);
-		if (!src) {
-			return;
-		}
-
-		// Build API state keys if needed
-		if (src === "api" && energyFlow.apiAnlagenId) {
-			var pfx = `_api.Anlagen.${energyFlow.apiAnlagenId}.Dashboard.currently.`;
-			this._stateKeys.api.pv = `${pfx}powerGenerationInW`;
-			this._stateKeys.api.battery = `${pfx}batteryChargeInW`; // will need discharge too
-			this._stateKeys.api.grid = `${pfx}gridDrawInW`; // will need feedIn too
-			this._stateKeys.api.house = `${pfx}powerConsumptionInW`;
-			this._stateKeys.api.wallbox = `${pfx}wallboxInW`;
-		}
-
-		// Pick a representative state to check for history
-		var checkState;
-		if (src === "local") {
-			checkState = `${namespace}.ENERGY.GUI_HOUSE_POW`;
-		} else if (src === "api" && this._stateKeys.api.house) {
-			checkState = `${namespace}.${this._stateKeys.api.house}`;
-		} else if (src === "web") {
-			checkState = `${namespace}.${this._stateKeys.web.house}`;
-		} else {
-			return;
-		}
-
-		conn.emit("getObject", checkState, function (err, obj) {
-			if (err || !obj || !obj.common || !obj.common.custom) {
-				return;
+		this.discoverHistory(conn, namespace, connectors, function (src) {
+			if (liveChart._hasHistory()) {
+				liveChart._loadHistory(conn, namespace, src);
 			}
-			// Find first enabled history instance
-			var instance = null;
-			for (var key in obj.common.custom) {
-				if (obj.common.custom[key] && obj.common.custom[key].enabled) {
-					instance = key;
-					break;
-				}
+			if (liveChart._infoOpen) {
+				app.renderDashboard();
 			}
-			if (!instance) {
-				return;
-			}
-			liveChart._historyInstance = instance;
-
-			liveChart._loadHistory(conn, namespace, /** @type {string} */ (src));
 		});
 	},
 
@@ -200,161 +373,68 @@ var liveChart = {
 		if (this._historyLoading) {
 			return;
 		}
+
+		var fields = this._historyFields(src);
+		if (fields.length === 0) {
+			return;
+		}
+
+		// Query only states that actually have a history adapter — each with its own instance
+		var toQuery = [];
+		/** @type {Record<string, object|null>} */
+		var pending = {};
+		for (var fi = 0; fi < fields.length; fi++) {
+			pending[fields[fi].name] = null;
+			var status = this._historyStatus[fields[fi].name];
+			if (status && status.instance) {
+				toQuery.push({ field: fields[fi], instance: status.instance });
+			}
+		}
+		if (toQuery.length === 0) {
+			return;
+		}
+
 		this._historyLoading = true;
 
 		var windowMs = this.window * 60 * 1000;
 		var start = startOverride != null ? startOverride : Date.now() - windowMs;
-		var end = endOverride != null ? endOverride : Date.now();
-		var instance = this._historyInstance;
+		// Infinity means "nothing requested yet" — a delta caller may pass it through as the gap end
+		var end = endOverride != null && isFinite(endOverride) ? endOverride : Date.now();
 
-		if (src === "local") {
-			this._loadHistoryLocal(conn, namespace, instance, start, end);
-		} else if (src === "api") {
-			this._loadHistoryApi(conn, namespace, instance, start, end);
-		} else if (src === "web") {
-			this._loadHistoryWeb(conn, namespace, instance, start, end);
-		}
-	},
-
-	/**
-	 * Query history for a list of fields, skipping states without history enabled.
-	 *
-	 * @param {object} conn - socket.io connection
-	 * @param {string} namespace - adapter namespace
-	 * @param {string} instance - history adapter instance
-	 * @param {number} start - query start timestamp
-	 * @param {number} end - query end timestamp
-	 * @param {Array<{name: string, key: string}>} fields - fields to query
-	 * @param {string} src - source type for _mergeHistory
-	 */
-	_queryHistoryFields: function (conn, namespace, instance, start, end, fields, src) {
-		var pending = {};
-		for (var pi = 0; pi < fields.length; pi++) {
-			pending[fields[pi].name] = null;
+		// Mark the range as attempted before the results arrive, so a short or empty
+		// response cannot make the callers re-request it
+		if (start < this._historyRequestedTs) {
+			this._historyRequestedTs = start;
 		}
 
-		// Check which states have history enabled, then query only those
-		var checked = 0;
-		var toQuery = [];
-
-		var checkOne = function (field) {
-			var fullId = `${namespace}.${field.key}`;
-			conn.emit("getObject", fullId, function (err, obj) {
-				if (
-					!err &&
-					obj &&
-					obj.common &&
-					obj.common.custom &&
-					obj.common.custom[instance] &&
-					obj.common.custom[instance].enabled
-				) {
-					toQuery.push(field);
-				}
-				checked++;
-				if (checked === fields.length) {
-					if (toQuery.length === 0) {
-						liveChart._historyLoading = false;
-						return;
-					}
-					var done = 0;
-					var total = toQuery.length;
-					for (var qi = 0; qi < toQuery.length; qi++) {
-						(function (f) {
-							conn.emit(
-								"getHistory",
-								`${namespace}.${f.key}`,
-								{
-									instance: instance,
-									start: start,
-									end: end,
-									aggregate: "none",
-									removeBorderValues: true,
-									count: 999999,
-								},
-								function (histErr, result) {
-									if (!histErr && result) {
-										pending[f.name] = result;
-									}
-									done++;
-									if (done === total) {
-										liveChart._mergeHistory(pending, src);
-									}
-								},
-							);
-						})(toQuery[qi]);
-					}
-				}
-			});
-		};
-
-		for (var fi = 0; fi < fields.length; fi++) {
-			checkOne(fields[fi]);
+		var done = 0;
+		var total = toQuery.length;
+		for (var qi = 0; qi < toQuery.length; qi++) {
+			(function (q) {
+				conn.emit(
+					"getHistory",
+					`${namespace}.${q.field.key}`,
+					{
+						instance: q.instance,
+						start: start,
+						end: end,
+						aggregate: "none",
+						removeBorderValues: true,
+						count: 999999,
+					},
+					function (histErr, result) {
+						// A failing state only loses its own line — the rest still merge
+						if (!histErr && result) {
+							pending[q.field.name] = result;
+						}
+						done++;
+						if (done === total) {
+							liveChart._mergeHistory(pending, src);
+						}
+					},
+				);
+			})(toQuery[qi]);
 		}
-	},
-
-	_loadHistoryLocal: function (conn, namespace, instance, start, end) {
-		var keys = this._stateKeys.local;
-		this._queryHistoryFields(
-			conn,
-			namespace,
-			instance,
-			start,
-			end,
-			[
-				{ name: "pv", key: keys.pv },
-				{ name: "battery", key: keys.battery },
-				{ name: "grid", key: keys.grid },
-				{ name: "house", key: keys.house },
-				{ name: "wallbox", key: keys.wallbox },
-			],
-			"local",
-		);
-	},
-
-	_loadHistoryApi: function (conn, namespace, instance, start, end) {
-		var keys = this._stateKeys.api;
-		if (!keys.house) {
-			return;
-		}
-
-		var pfx = `_api.Anlagen.${energyFlow.apiAnlagenId}.Dashboard.currently.`;
-		this._queryHistoryFields(
-			conn,
-			namespace,
-			instance,
-			start,
-			end,
-			[
-				{ name: "pv", key: `${pfx}powerGenerationInW` },
-				{ name: "house", key: `${pfx}powerConsumptionInW` },
-				{ name: "charge", key: `${pfx}batteryChargeInW` },
-				{ name: "discharge", key: `${pfx}batteryDischargeInW` },
-				{ name: "draw", key: `${pfx}gridDrawInW` },
-				{ name: "feed", key: `${pfx}gridFeedInInW` },
-				{ name: "wallbox", key: `${pfx}wallboxInW` },
-			],
-			"api",
-		);
-	},
-
-	_loadHistoryWeb: function (conn, namespace, instance, start, end) {
-		var wpfx = "_meinsenec.Status.";
-		this._queryHistoryFields(
-			conn,
-			namespace,
-			instance,
-			start,
-			end,
-			[
-				{ name: "pv", key: `${wpfx}powergenerated.now` },
-				{ name: "house", key: `${wpfx}consumption.now` },
-				{ name: "charge", key: `${wpfx}accuexport.now` },
-				{ name: "discharge", key: `${wpfx}accuimport.now` },
-				{ name: "gridImport", key: `${wpfx}gridimport.now` },
-				{ name: "gridExport", key: `${wpfx}gridexport.now` },
-			],
-			"web",
-		);
 	},
 
 	/**
@@ -375,7 +455,7 @@ var liveChart = {
 			if (queuedSrc) {
 				var now = Date.now();
 				var newStart = now - queuedMinutes * 60 * 1000;
-				var gapEnd = this._historyOldestTs < Infinity ? this._historyOldestTs : now;
+				var gapEnd = this._historyRequestedTs < Infinity ? this._historyRequestedTs : now;
 				if (newStart < gapEnd) {
 					// Don't return — still merge the current results first, then load the gap
 					setTimeout(
@@ -403,8 +483,7 @@ var liveChart = {
 			}
 		}
 		if (!primary || primary.length === 0) {
-			// No data at all — mark oldest as -Infinity so no more queries fire
-			this._historyOldestTs = -Infinity;
+			// Nothing came back — _loadHistory already marked the range as requested
 			return;
 		}
 
@@ -577,11 +656,6 @@ var liveChart = {
 			return;
 		}
 
-		// Track oldest loaded timestamp for delta loading
-		if (points[0].ts < this._historyOldestTs) {
-			this._historyOldestTs = points[0].ts;
-		}
-
 		// Merge history into buffer — avoid duplicates, maintain sort order
 		var latestHistoryTs = points[points.length - 1].ts;
 		var oldestHistoryTs = points[0].ts;
@@ -614,7 +688,7 @@ var liveChart = {
 		// After merge, check if current view still needs more data (user panned further during load)
 		var viewWindowMs = liveChart.window * 60 * 1000;
 		var viewStart = Date.now() - liveChart.viewOffset - viewWindowMs;
-		if (viewStart < liveChart._historyOldestTs && liveChart._historyInstance) {
+		if (viewStart < liveChart._historyRequestedTs && liveChart._hasHistory()) {
 			var viewSrc = energyFlow.resolveSource(app.connectors);
 			if (viewSrc) {
 				setTimeout(
@@ -625,7 +699,7 @@ var liveChart = {
 					liveChart,
 					viewSrc,
 					viewStart,
-					liveChart._historyOldestTs,
+					liveChart._historyRequestedTs,
 				);
 			}
 		}
@@ -740,12 +814,21 @@ var liveChart = {
 		var html = '<div class="card">';
 		html += '<div class="energy-header">';
 		html += `<h2>${t("livechart_title")}</h2>`;
+		// History info toggle
+		var infoCls = this._infoOpen ? " active" : "";
+		html +=
+			`<button class="chart-toggle${infoCls}" style="--toggle-color:#757575;margin-left:auto;margin-right:8px" ` +
+			`title="${t("livechart_history_info")}" onclick="liveChart.toggleInfo()">ⓘ</button>`;
 		// Enable/disable toggle
 		var disabledCls = this.disabled ? "" : " active";
-		html += `<button class="chart-toggle${disabledCls}" style="--toggle-color:#757575;margin-left:auto;margin-right:8px" onclick="liveChart.toggleDisabled()">`;
+		html += `<button class="chart-toggle${disabledCls}" style="--toggle-color:#757575;margin-right:8px" onclick="liveChart.toggleDisabled()">`;
 		html += `<span class="chart-toggle-dot" style="background:#757575"></span>${this.disabled ? "▶" : "●"}</button>`;
 		if (this.disabled) {
-			html += "</div></div>";
+			html += "</div>";
+			if (this._infoOpen) {
+				html += this.renderHistoryInfo();
+			}
+			html += "</div>";
 			return html;
 		}
 		html += '<div class="day-totals-tabs">';
@@ -790,17 +873,22 @@ var liveChart = {
 		}
 		html += "</div>";
 
+		if (this._infoOpen) {
+			html += this.renderHistoryInfo();
+		}
+
 		// Loading / data range indicator
 		if (this._historyLoading) {
-			html +=
-				'<div style="text-align:center;padding:4px 0;font-size:12px;color:#ff9800">Loading history...</div>';
+			html += `<div style="text-align:center;padding:4px 0;font-size:12px;color:#ff9800">${t("livechart_loading_history")}</div>`;
 		} else if (this.buffer.length > 0) {
 			var oldest = new Date(this.buffer[0].ts);
 			var newest = new Date(this.buffer[this.buffer.length - 1].ts);
 			var fmt = function (d) {
 				return `${d.getDate()}.${(d.getMonth() + 1).toString().padStart(2, "0")}. ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 			};
-			html += `<div style="text-align:center;padding:2px 0;font-size:11px;color:#999">${this.buffer.length} pts | ${fmt(oldest)} — ${fmt(newest)}</div>`;
+			html +=
+				`<div style="text-align:center;padding:2px 0;font-size:11px;color:#999">` +
+				`${t("livechart_points", { count: this.buffer.length })} | ${fmt(oldest)} — ${fmt(newest)}</div>`;
 		}
 
 		// Canvas chart
@@ -1231,7 +1319,7 @@ var liveChart = {
 		var oldWindow = this.window;
 		this.window = minutes;
 		// Load history when expanding to a larger window
-		if (minutes > oldWindow && this._historyInstance) {
+		if (minutes > oldWindow && this._hasHistory()) {
 			var src = energyFlow.resolveSource(app.connectors);
 			if (src) {
 				if (this._historyLoading) {
@@ -1241,7 +1329,7 @@ var liveChart = {
 					var now = Date.now();
 					var newStart = now - minutes * 60 * 1000;
 					// Delta: only fetch the gap between new start and oldest data we have
-					var gapEnd = this._historyOldestTs < Infinity ? this._historyOldestTs : now;
+					var gapEnd = this._historyRequestedTs < Infinity ? this._historyRequestedTs : now;
 					if (newStart < gapEnd) {
 						this._loadHistory(app.conn, app.namespace, src, newStart, gapEnd);
 					}
@@ -1276,7 +1364,8 @@ var liveChart = {
 	/** Snap back to live (rightmost edge = now) */
 	goLive: function () {
 		this.viewOffset = 0;
-		this._historyOldestTs = Infinity; // allow lazy-load again
+		// _historyRequestedTs is deliberately kept: snapping forward needs no older data,
+		// and the range it covers has already been fetched
 		app.renderDashboard();
 	},
 
@@ -1469,10 +1558,10 @@ var liveChart = {
 
 		// Lazy-load: if view is near the edge of buffered data, trigger history load
 		var viewStart = Date.now() - liveChart.viewOffset - windowMs;
-		if (viewStart < liveChart._historyOldestTs && liveChart._historyInstance && !liveChart._historyLoading) {
+		if (viewStart < liveChart._historyRequestedTs && liveChart._hasHistory() && !liveChart._historyLoading) {
 			var src = energyFlow.resolveSource(app.connectors);
 			if (src) {
-				liveChart._loadHistory(app.conn, app.namespace, src, viewStart, liveChart._historyOldestTs);
+				liveChart._loadHistory(app.conn, app.namespace, src, viewStart, liveChart._historyRequestedTs);
 			}
 		}
 
@@ -1513,13 +1602,13 @@ var liveChart = {
 			liveChart.viewOffset = 0;
 		}
 		// Lazy-load if view extends past buffered data
-		if (liveChart.viewOffset > 0 && liveChart._historyInstance && !liveChart._historyLoading) {
+		if (liveChart.viewOffset > 0 && liveChart._hasHistory() && !liveChart._historyLoading) {
 			var windowMs = liveChart.window * 60 * 1000;
 			var viewStart = Date.now() - liveChart.viewOffset - windowMs;
-			if (viewStart < liveChart._historyOldestTs) {
+			if (viewStart < liveChart._historyRequestedTs) {
 				var src = energyFlow.resolveSource(app.connectors);
 				if (src) {
-					liveChart._loadHistory(app.conn, app.namespace, src, viewStart, liveChart._historyOldestTs);
+					liveChart._loadHistory(app.conn, app.namespace, src, viewStart, liveChart._historyRequestedTs);
 				}
 			}
 		}
@@ -1585,12 +1674,12 @@ var liveChart = {
 		liveChart._clampOffset();
 
 		// Load history if zooming out past what we have
-		if (newWindow > oldWindow && liveChart._historyInstance && !liveChart._historyLoading) {
+		if (newWindow > oldWindow && liveChart._hasHistory() && !liveChart._historyLoading) {
 			var src = energyFlow.resolveSource(app.connectors);
 			if (src) {
 				var now = Date.now();
 				var newStart = now - liveChart.viewOffset - newWindow * 60 * 1000;
-				var gapEnd = liveChart._historyOldestTs < Infinity ? liveChart._historyOldestTs : now;
+				var gapEnd = liveChart._historyRequestedTs < Infinity ? liveChart._historyRequestedTs : now;
 				if (newStart < gapEnd) {
 					liveChart._loadHistory(app.conn, app.namespace, src, newStart, gapEnd);
 				}

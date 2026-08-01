@@ -1215,7 +1215,8 @@ var energyFlow = {
 		// Reset live chart buffer for new source
 		liveChart.buffer = [];
 		liveChart._historyLoaded = false;
-		liveChart._historyInstance = null;
+		liveChart._historyStatus = {};
+		liveChart._historyRequestedTs = Infinity;
 		liveChart.record();
 		liveChart.initHistory(app.conn, app.namespace, app.connectors);
 		app.renderDashboard();
