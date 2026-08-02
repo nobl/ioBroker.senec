@@ -115,51 +115,66 @@ describe("AdaptiveRequestQueue result classification", () => {
 
 describe("AdaptiveRequestQueue Retry-After handling", () => {
 	/**
+	 * A fixed instant to measure cooldowns against. Whole seconds, because HTTP-date has
+	 * one-second resolution and the round trip through toUTCString() must be exact.
+	 */
+	const NOW = Date.parse("2026-01-01T00:00:00Z");
+
+	/**
 	 * Cooldown length the queue adopted for a given Retry-After value.
 	 *
+	 * The clock is frozen for the call. Reading Date.now() before it and letting the queue read
+	 * it again inside measured the cooldown plus however long the two reads were apart, so any
+	 * upper bound here was really "the cap, unless this machine was busy". A loaded CI runner
+	 * needs only one millisecond to push a capped hour to 3600001 and fail the assertion.
+	 *
 	 * @param {any} retryAfter - Header value
-	 * @returns {number} Milliseconds from now
+	 * @returns {number} Milliseconds the queue decided to wait
 	 */
 	function cooldownFor(retryAfter) {
 		const queue = makeQueue();
-		const before = Date.now();
-		queue.noteOverloadResponse(429, retryAfter);
-		return queue.cooldownUntil - before;
+		const realNow = Date.now;
+		Date.now = () => NOW;
+		try {
+			queue.noteOverloadResponse(429, retryAfter);
+		} finally {
+			Date.now = realNow;
+		}
+		return queue.cooldownUntil - NOW;
 	}
 
 	it("honours delay-seconds", () => {
-		const waited = cooldownFor("30");
-		assert.ok(waited > 29000 && waited <= 31000, `expected about 30s, got ${waited}ms`);
+		assert.equal(cooldownFor("30"), 30000);
 	});
 
 	it("honours a future HTTP-date", () => {
-		const future = new Date(Date.now() + 45000).toUTCString();
-		const waited = cooldownFor(future);
-		assert.ok(waited > 40000 && waited <= 47000, `expected about 45s, got ${waited}ms`);
+		const future = new Date(NOW + 45000).toUTCString();
+
+		assert.equal(cooldownFor(future), 45000);
 	});
 
 	it("falls back to the generic cooldown for an expired HTTP-date", () => {
-		const past = new Date(Date.now() - 60000).toUTCString();
+		const past = new Date(NOW - 60000).toUTCString();
 		const waited = cooldownFor(past);
-		assert.ok(waited > 0, "a date in the past must not produce a cooldown in the past");
-		assert.ok(waited <= 5000, `expected the generic 5s cooldown, got ${waited}ms`);
+
+		assert.equal(waited, 5000, "a date in the past must fall back, not wait a negative time");
+		assert.ok(waited > 0, "and must never schedule a cooldown in the past");
 	});
 
 	it("falls back for malformed values", () => {
 		for (const bad of ["soon", "", null, undefined, "NaN", {}]) {
-			const waited = cooldownFor(bad);
-			assert.ok(waited > 0 && waited <= 5000, `value ${JSON.stringify(bad)} produced ${waited}ms`);
+			assert.equal(cooldownFor(bad), 5000, `value ${JSON.stringify(bad)} should fall back`);
 		}
 	});
 
 	it("caps an absurdly distant Retry-After rather than stalling for hours", () => {
 		const waited = cooldownFor(String(60 * 60 * 24 * 7));
-		assert.ok(waited <= 3600000, `a week-long Retry-After was adopted verbatim (${waited}ms)`);
+
+		assert.equal(waited, 3600000, "a week-long Retry-After must be capped at an hour");
 		assert.ok(waited >= 5000, "but it must still be a real backoff");
 	});
 
 	it("honours a short delay-seconds value verbatim", () => {
-		const waited = cooldownFor("1");
-		assert.ok(waited >= 1000, `expected at least the requested second, got ${waited}ms`);
+		assert.equal(cooldownFor("1"), 1000, "a wait shorter than the generic cooldown is not raised to it");
 	});
 });
