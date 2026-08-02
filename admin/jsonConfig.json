@@ -952,7 +952,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_BMS === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_BMS"],
+						"calculateFunc": "(data.highPrio_BMS || '').trim() === '' ? false : data.highPrio_BMS_active",
+						"ignoreOwnChanges": true
+					}
 				},
 				"highPrio_ENERGY": {
 					"type": "text",
@@ -977,7 +982,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_ENERGY === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_ENERGY"],
+						"calculateFunc": "(data.highPrio_ENERGY || '').trim() === '' ? false : data.highPrio_ENERGY_active",
+						"ignoreOwnChanges": true
+					}
 				},
 				"highPrio_PV1": {
 					"type": "text",
@@ -1002,7 +1012,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_PV1 === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_PV1"],
+						"calculateFunc": "(data.highPrio_PV1 || '').trim() === '' ? false : data.highPrio_PV1_active",
+						"ignoreOwnChanges": true
+					}
 				},
 				"highPrio_PWR_UNIT": {
 					"type": "text",
@@ -1027,7 +1042,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_PWR_UNIT === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_PWR_UNIT"],
+						"calculateFunc": "(data.highPrio_PWR_UNIT || '').trim() === '' ? false : data.highPrio_PWR_UNIT_active",
+						"ignoreOwnChanges": true
+					}
 				},
 				"highPrio_PM1OBJ1": {
 					"type": "text",
@@ -1052,7 +1072,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_PM1OBJ1 === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_PM1OBJ1"],
+						"calculateFunc": "(data.highPrio_PM1OBJ1 || '').trim() === '' ? false : data.highPrio_PM1OBJ1_active",
+						"ignoreOwnChanges": true
+					}
 				},
 				"highPrio_PM1OBJ2": {
 					"type": "text",
@@ -1077,7 +1102,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_PM1OBJ2 === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_PM1OBJ2"],
+						"calculateFunc": "(data.highPrio_PM1OBJ2 || '').trim() === '' ? false : data.highPrio_PM1OBJ2_active",
+						"ignoreOwnChanges": true
+					}
 				},
 				"highPrio_WALLBOX": {
 					"type": "text",
@@ -1102,7 +1132,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_WALLBOX === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_WALLBOX"],
+						"calculateFunc": "(data.highPrio_WALLBOX || '').trim() === '' ? false : data.highPrio_WALLBOX_active",
+						"ignoreOwnChanges": true
+					}
 				},
 				"highPrio_BAT1": {
 					"type": "text",
@@ -1127,7 +1162,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_BAT1 === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_BAT1"],
+						"calculateFunc": "(data.highPrio_BAT1 || '').trim() === '' ? false : data.highPrio_BAT1_active",
+						"ignoreOwnChanges": true
+					}
 				},
 				"highPrio_BAT1OBJ1": {
 					"type": "text",
@@ -1152,7 +1192,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_BAT1OBJ1 === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_BAT1OBJ1"],
+						"calculateFunc": "(data.highPrio_BAT1OBJ1 || '').trim() === '' ? false : data.highPrio_BAT1OBJ1_active",
+						"ignoreOwnChanges": true
+					}
 				},
 				"highPrio_TEMPMEASURE": {
 					"type": "text",
@@ -1177,7 +1222,12 @@
 					"label": "HighPrioDataPointsActive",
 					"default": false,
 					"hidden": "data.disclaimer !== true || data.highPrio_TEMPMEASURE === ''",
-					"newLine": false
+					"newLine": false,
+					"onChange": {
+						"alsoDependsOn": ["highPrio_TEMPMEASURE"],
+						"calculateFunc": "(data.highPrio_TEMPMEASURE || '').trim() === '' ? false : data.highPrio_TEMPMEASURE_active",
+						"ignoreOwnChanges": true
+					}
 				}
 			}
 		},
