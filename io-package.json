@@ -1,9 +1,9 @@
 {
   "common": {
     "name": "senec",
-    "version": "2.14.0",
+    "version": "2.14.1",
     "news": {
-      "NEXT": {
+      "2.14.1": {
         "en": "Fix: Emptying one of the additional high-priority datapoint fields left its polling checkbox ticked, and the adapter then reported a faulty configuration on every start although nothing was configured. Such a field is no longer treated as an error, and clearing it now also unticks the box. A blank after a comma no longer discards the whole entry, and a trailing comma no longer sends a nameless datapoint to the appliance.",
         "de": "Fix: Wurde eines der zusätzlichen Highprio-Datenpunktfelder geleert, blieb das zugehörige Häkchen gesetzt und der Adapter meldete bei jedem Start eine fehlerhafte Konfiguration, obwohl nichts konfiguriert war. Ein leeres Feld gilt jetzt nicht mehr als Fehler, und beim Leeren wird auch das Häkchen entfernt. Ein Leerzeichen nach dem Komma verwirft nicht mehr den ganzen Eintrag, und ein abschließendes Komma sendet keinen namenlosen Datenpunkt mehr an das Gerät.",
         "ru": "Исправление: при очистке одного из дополнительных полей точек данных с высоким приоритетом флажок опроса оставался отмеченным, и адаптер затем сообщал об ошибочной конфигурации при каждом запуске, хотя ничего не было настроено. Такое поле больше не рассматривается как ошибка, и его очистка также снимает флажок. Пробел после запятой больше не отбрасывает всю запись, а завершающая запятая больше не отправляет на устройство безымянную точку данных.",
@@ -93,19 +93,6 @@
         "pl": "Poprawka: awaria rozszerzenia web gdy urządzenie SENEC zrywa połączenie. Anulowanie osieroconych żądań przy rozłączeniu klienta.\nOdporność połączenia: wszystkie konektory ponawiają próby z wykładniczym backoff. Lokalne odpytywanie nigdy się nie poddaje.\nNowy stan info.connectionStatus (all/partial/none) do śledzenia konektorów.\nPanel: debounce renderowania, limit częstotliwości proxy logów, timeouty XHR.",
         "uk": "Виправлення: збій веб-розширення при розриві з'єднання пристроєм SENEC. Скасування залишених запитів при відключенні клієнта.\nСтійкість з'єднання: всі конектори повторюють спроби з експоненційним backoff. Локальне опитування ніколи не здається.\nНовий стан info.connectionStatus (all/partial/none) для відстеження конекторів.\nПанель: дебаунс рендерингу, обмеження частоти проксі логів, таймаути XHR.",
         "zh-cn": "修复：SENEC设备中断连接时Web扩展崩溃。客户端断开时中止孤立请求。\n连接弹性：所有连接器使用指数退避重试。本地轮询永不放弃。\n新增info.connectionStatus状态(all/partial/none)用于连接器跟踪。\n仪表板：渲染防抖、日志代理速率限制、XHR超时。"
-      },
-      "2.11.2": {
-        "en": "Live chart: Linear interpolation for sparse history data instead of flat carry-forward. Smoother lines when SQL logs on change only.\nLive chart: Skip history queries for states without a history adapter enabled (no more SQL warnings).",
-        "de": "Live-Chart: Lineare Interpolation für spärliche Historiendaten anstelle von flachem Carry-Forward. Glattere Zeilen, wenn sich SQL nur bei Änderungen anmeldet.\nLive-Diagramm: Überspringen von Verlaufsabfragen für Zustände ohne aktivierten Verlaufsadapter (keine SQL-Warnungen mehr).",
-        "ru": "Живая диаграмма: линейная интерполяция для скудных исторических данных вместо плоского переноса вперед. Другие линии, когда SQL регистрируется только при изменении.\nЖивая диаграмма: пропустите запросы истории для состояний без включенного адаптера истории (больше никаких предупреждений SQL).",
-        "pt": "Gráfico ao vivo: Interpolação linear para dados de histórico esparsos em vez de transporte plano. Melhorar as linhas quando SQL loga somente na mudança.\nGráfico ao vivo: Pular consultas de histórico para estados sem um adaptador de histórico habilitado (sem mais avisos SQL).",
-        "nl": "Live chart: Lineaire interpolatie voor schaarse historische gegevens in plaats van platte carry-forward. SQL logt alleen in op verandering.\nLive grafiek: Skip geschiedenisvragen voor toestanden zonder geschiedenisadapter (geen SQL waarschuwingen meer).",
-        "fr": "Graphique en direct : Interpolation linéaire pour des données d'historique clairsemées au lieu d'un report plat. Des lignes plus lisses lorsque SQL se connecte sur le changement seulement.\nCharte en direct : Passez les requêtes d'historique pour les états sans adaptateur d'historique activé (plus d'avertissements SQL).",
-        "it": "Live chart: Interpolazione lineare per dati di storia rada invece di porta-forward piatto. Linee morbide quando SQL accede solo al cambiamento.\nLive chart: Salta le query di storia per gli stati senza un adattatore di storia abilitato (non più avvisi SQL).",
-        "es": "Gráfico en vivo: Interpolación lineal para datos de historia escasa en lugar de transporte plano. Smoother lines cuando SQL logs on change only.\nGráfico en vivo: Saltar consultas de historia para estados sin un adaptador de historia habilitado (no más advertencias SQL).",
-        "pl": "Wykres na żywo: Interpolacja liniowa w przypadku braku danych historycznych zamiast transmisji płaskiej. Wygładzanie linii, gdy SQL loguje się tylko przy zmianie.\nWykres na żywo: Pomiń pytania o historię stanów bez włączonego adaptera historii (żadnych więcej ostrzeżeń SQL).",
-        "uk": "Жива графіка: Лінійний інтерполяція для даних історії про спаржу замість плоских носіїв. Розсувні лінії при переадресації тільки в SQL.\nЖива графіка: пошуки історії для штатів без ввімкненого історичного адаптера.",
-        "zh-cn": "生活图:线性插图,用于稀疏的历史数据而不是平面承载前传. SQL 只记录更改时更平滑的行 .\nLive图:没有历史适配器启用的状态跳过历史查询(不再 SQL 警告) ."
       }
     },
     "docs": {
