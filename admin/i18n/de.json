@@ -81,7 +81,7 @@
     "batteryCapacity": "Batteriekapazität (kWh)",
     "batteryCapacityHelp": "Gesamtbatteriekapazität in kWh. Wird für Zeitschätzungen im Web-Dashboard verwendet. Für die automatische Erkennung von der API auf 0 setzen (erfordert SENEC App API-Connector). Manuell festlegen, wenn nur der lokale oder der Web-Connector verwendet wird.",
     "connectInclude": "Abschnitte einschließen",
-    "connectIncludeHelp": "Durch Kommas getrennte Liste von Datenabschnitten, die Folgendes umfassen sollen: battery, meter, evse, bessNameplate. Behalten Sie die Standardeinstellung bei, um alle verfügbaren Daten zu erhalten.",
+    "connectIncludeHelp": "Kommagetrennte Liste der abzurufenden Datenabschnitte: battery, meter, evse, bessNameplate. Für alle verfügbaren Daten die Voreinstellung beibehalten. bessNameplate wird unabhängig von dieser Angabe immer abgefragt, weil die States eines Systems unter der darin enthaltenen System-ID abgelegt werden.",
     "connectPollInterval": "Abfrageintervall (Sekunden)",
     "connectPollIntervalHelp": "Hier können Sie das Abfrageintervall festlegen [min. 60, max. 86400 Sekunden]. Standard = 300 (5 Minuten). Ein SENEC.Data 45000-Abonnement erlaubt 45.000 Anfragen pro Monat — bei 60 Sekunden sind das 44.640 Anfragen in einem 31-Tage-Monat, womit 60 der niedrigste kontingentsichere Wert ist und nicht weiter gesenkt werden kann. Beachten Sie, dass das Kontingent zu Ihrem Abonnement-Schlüssel gehört und nicht zu diesem Adapter: Wenn Sie denselben Schlüssel anderweitig verwenden (z. B. in einem anderen Smart-Home-System), erhöhen Sie das Intervall entsprechend.",
     "connectPolling": "Abfrage",

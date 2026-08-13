@@ -81,7 +81,7 @@
     "batteryCapacity": "Pojemność baterii (kWh)",
     "batteryCapacityHelp": "Całkowita pojemność akumulatora w kWh. Używany do szacowania czasu w panelu internetowym. Ustaw na 0, aby automatycznie wykryć z API (wymaga łącznika API aplikacji SENEC). Ustaw ręcznie, jeśli używasz tylko łącznika lokalnego lub internetowego.",
     "connectInclude": "Uwzględnij sekcje",
-    "connectIncludeHelp": "Rozdzielana przecinkami lista sekcji danych obejmująca: baterię, licznik, evse, bessNameplate. Pozostaw ustawienie domyślne, aby uzyskać wszystkie dostępne dane.",
+    "connectIncludeHelp": "Rozdzielana przecinkami lista sekcji danych obejmująca: akumulator, licznik, evse, bessNameplate. Pozostaw ustawienie domyślne, aby uzyskać wszystkie dostępne dane. bessNameplate jest zawsze wymagane, bez względu na to, co jest tutaj wymienione, ponieważ stany systemu są przechowywane pod identyfikatorem systemu, który niesie.",
     "connectPollInterval": "Interwał odpytywania (sekundy)",
     "connectPollIntervalHelp": "Tutaj możesz zdefiniować interwał odpytywania [min 60, max 86400 sekund]. Wartość domyślna = 300 (5 minut). Subskrypcja SENEC.Data 45000 umożliwia 45 000 żądań miesięcznie — po 60 sekundach, czyli 44 640 żądań w 31-dniowym miesiącu, więc 60 to najniższa wartość bezpieczna przydziału i nie można jej dalej obniżać. Pamiętaj, że limit należy do Twojego klucza subskrypcji, a nie do tego adaptera: jeśli używasz tego samego klucza w innym miejscu (np. w innym systemie inteligentnego domu), zwiększ interwał, aby całość mieściła się w ramach limitu.",
     "connectPolling": "Ankieta",

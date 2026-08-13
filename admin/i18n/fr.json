@@ -81,7 +81,7 @@
     "batteryCapacity": "Capacité de la batterie (kWh)",
     "batteryCapacityHelp": "Capacité totale de la batterie en kWh. Utilisé pour les estimations de temps dans le tableau de bord Web. Réglé sur 0 pour la détection automatique à partir de l'API (nécessite le connecteur API SENEC App). Définir manuellement si vous utilisez uniquement un connecteur local ou Web.",
     "connectInclude": "Inclure des sections",
-    "connectIncludeHelp": "Liste de sections de données séparées par des virgules à inclure : batterie, compteur, evse, bessNameplate. Laissez par défaut pour obtenir toutes les données disponibles.",
+    "connectIncludeHelp": "Liste de sections de données séparées par des virgules à inclure : batterie, compteur, evse, bessNameplate. Laissez par défaut pour obtenir toutes les données disponibles. bessNameplate est toujours demandé, peu importe ce qui est répertorié ici, car les états d'un système sont stockés sous l'identifiant système qu'il porte.",
     "connectPollInterval": "Intervalle d'interrogation (secondes)",
     "connectPollIntervalHelp": "Ici, vous pouvez définir l'intervalle d'interrogation [min 60, max 86 400 secondes]. Par défaut = 300 (5 minutes). Un abonnement SENEC.Data 45000 autorise 45 000 requêtes par mois – à 60 secondes, soit 44 640 requêtes sur un mois de 31 jours, donc 60 est la valeur de quota la plus basse et ne peut pas être abaissée davantage. Notez que le quota appartient à votre clé d'abonnement, pas à cet adaptateur : si vous utilisez la même clé ailleurs (par exemple, un autre système de maison intelligente), augmentez l'intervalle pour que le total reste dans votre quota.",
     "connectPolling": "Vote",

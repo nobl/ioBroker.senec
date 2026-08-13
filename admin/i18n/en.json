@@ -169,7 +169,7 @@
     "connectPollInterval": "Polling Interval (seconds)",
     "connectPollIntervalHelp": "Here you can define the polling interval [min 60, max 86400 seconds]. Default = 300 (5 minutes). A SENEC.Data 45000 subscription allows 45,000 requests per month — at 60 seconds that is 44,640 requests in a 31-day month, so 60 is the lowest quota-safe value and cannot be lowered further. Note that the quota belongs to your subscription key, not to this adapter: if you use the same key elsewhere (e.g. another smart home system), raise the interval so the total stays within your quota.",
     "connectInclude": "Include sections",
-    "connectIncludeHelp": "Comma-separated list of data sections to include: battery, meter, evse, bessNameplate. Leave as default to get all available data.",
+    "connectIncludeHelp": "Comma-separated list of data sections to include: battery, meter, evse, bessNameplate. Leave as default to get all available data. bessNameplate is always requested no matter what is listed here, because the states of a system are stored under the system id it carries.",
     "ApiTimeout": "API request timeout [ms]",
     "ApiTimeoutHelp": "How long to wait for an ordinary SENEC API request before giving up [min 5000, max 120000 ms]. Default = 30000 (30 seconds). This covers the dashboard, system status and detail requests. The SENEC API is regularly slow, and a request that times out costs the whole reading until the next poll cycle, so waiting a little longer is usually cheaper than losing the values. Raise this if the log reports dashboard or system status requests timing out. Measurement history has its own, longer limit below.",
     "MeasurementTimeout": "Measurement request timeout [ms]",

@@ -81,7 +81,7 @@
     "batteryCapacity": "电池容量（千瓦时）",
     "batteryCapacityHelp": "电池总容量（kWh）。用于网络仪表板中的时间估计。设置为 0 以从 API 自动检测（需要 SENEC 应用 API 连接器）。如果仅使用本地或 Web 连接器，请手动设置。",
     "connectInclude": "包括部分",
-    "connectIncludeHelp": "以逗号分隔的数据部分列表，包括：电池、仪表、evse、bessNameplate。保留默认值以获取所有可用数据。",
+    "connectIncludeHelp": "以逗号分隔的数据部分列表，包括：电池、仪表、evse、bessNameplate。保留默认值以获取所有可用数据。无论此处列出什么，始终会请求 bessNameplate，因为系统的状态存储在其携带的系统 ID 下。",
     "connectPollInterval": "轮询间隔（秒）",
     "connectPollIntervalHelp": "您可以在此处定义轮询间隔 [最小 60，最大 86400 秒]。默认 = 300（5 分钟）。 SENEC.Data 45000 订阅每月允许 45,000 个请求 - 在 60 秒内，即 31 天的一个月内有 44,640 个请求，因此 60 是最低的配额安全值，不能进一步降低。请注意，配额属于您的订阅密钥，而不属于此适配器：如果您在其他地方（例如另一个智能家居系统）使用相同的密钥，请提高间隔，使总数保持在您的配额范围内。",
     "connectPolling": "轮询",

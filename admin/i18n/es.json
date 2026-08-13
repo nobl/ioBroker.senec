@@ -81,7 +81,7 @@
     "batteryCapacity": "Capacidad de la batería (kWh)",
     "batteryCapacityHelp": "Capacidad total de la batería en kWh. Se utiliza para estimaciones de tiempo en el panel web. Establezca en 0 para la detección automática de la API (requiere el conector API de la aplicación SENEC). Configure manualmente si solo utiliza el conector local o web.",
     "connectInclude": "Incluir secciones",
-    "connectIncludeHelp": "Lista separada por comas de secciones de datos que incluyen: batería, medidor, evse, bessNameplate. Déjelo como predeterminado para obtener todos los datos disponibles.",
+    "connectIncludeHelp": "Lista separada por comas de secciones de datos que incluyen: batería, medidor, evse, bessNameplate. Déjelo como predeterminado para obtener todos los datos disponibles. bessNameplate siempre se solicita sin importar lo que se indique aquí, porque los estados de un sistema se almacenan bajo la identificación del sistema que lleva.",
     "connectPollInterval": "Intervalo de sondeo (segundos)",
     "connectPollIntervalHelp": "Aquí puede definir el intervalo de sondeo [mínimo 60, máximo 86400 segundos]. Predeterminado = 300 (5 minutos). Una suscripción a SENEC.Data 45000 permite 45 000 solicitudes por mes; en 60 segundos, son 44 640 solicitudes en un mes de 31 días, por lo que 60 es el valor de cuota más bajo seguro y no se puede reducir más. Tenga en cuenta que la cuota pertenece a su clave de suscripción, no a este adaptador: si usa la misma clave en otro lugar (por ejemplo, otro sistema doméstico inteligente), aumente el intervalo para que el total se mantenga dentro de su cuota.",
     "connectPolling": "Votación",

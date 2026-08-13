@@ -81,7 +81,7 @@
     "batteryCapacity": "Batterijcapaciteit (kWh)",
     "batteryCapacityHelp": "Totale batterijcapaciteit in kWh. Wordt gebruikt voor tijdschattingen in het webdashboard. Stel in op 0 voor automatische detectie van API (vereist SENEC App API-connector). Handmatig instellen als u alleen een lokale of webconnector gebruikt.",
     "connectInclude": "Voeg secties toe",
-    "connectIncludeHelp": "Door komma's gescheiden lijst met gegevenssecties die moeten worden opgenomen: batterij, meter, evse, bessNameplate. Laat dit standaard staan ​​om alle beschikbare gegevens op te halen.",
+    "connectIncludeHelp": "Door komma's gescheiden lijst met gegevenssecties die moeten worden opgenomen: batterij, meter, evse, bessNameplate. Laat dit standaard staan ​​om alle beschikbare gegevens op te halen. bessNameplate wordt altijd opgevraagd, ongeacht wat hier wordt vermeld, omdat de statussen van een systeem worden opgeslagen onder de systeem-ID die het draagt.",
     "connectPollInterval": "Polling-interval (seconden)",
     "connectPollIntervalHelp": "Hier kunt u het polling-interval definiëren [min 60, max 86400 seconden]. Standaard = 300 (5 minuten). Een SENEC.Data 45000-abonnement staat 45.000 verzoeken per maand toe - bij 60 seconden zijn dat 44.640 verzoeken in een maand van 31 dagen, dus 60 is de laagste veilige quotumwaarde en kan niet verder worden verlaagd. Houd er rekening mee dat het quotum bij uw abonnementssleutel hoort en niet bij deze adapter: als u dezelfde sleutel elders gebruikt (bijvoorbeeld een ander smart home-systeem), verhoog dan het interval zodat het totaal binnen uw quotum blijft.",
     "connectPolling": "Polling",

@@ -81,7 +81,7 @@
     "batteryCapacity": "Capacità della batteria (kWh)",
     "batteryCapacityHelp": "Capacità totale della batteria in kWh. Utilizzato per le stime temporali nel dashboard Web. Impostato su 0 per il rilevamento automatico dall'API (richiede il connettore API dell'app SENEC). Impostato manualmente se si utilizza solo il connettore locale o Web.",
     "connectInclude": "Includi sezioni",
-    "connectIncludeHelp": "Elenco separato da virgole delle sezioni dati da includere: batteria, contatore, evse, bessNameplate. Lascia come predefinito per ottenere tutti i dati disponibili.",
+    "connectIncludeHelp": "Elenco separato da virgole delle sezioni dati da includere: batteria, contatore, evse, bessNameplate. Lascia come predefinito per ottenere tutti i dati disponibili. bessNameplate viene sempre richiesto indipendentemente da ciò che è elencato qui, poiché gli stati di un sistema sono archiviati sotto l'ID di sistema che trasporta.",
     "connectPollInterval": "Intervallo di polling (secondi)",
     "connectPollIntervalHelp": "Qui è possibile definire l'intervallo di polling [min 60, max 86400 secondi]. Valore predefinito = 300 (5 minuti). Un abbonamento SENEC.Data 45000 consente 45.000 richieste al mese, ovvero a 60 secondi, ovvero 44.640 richieste in un mese di 31 giorni, quindi 60 è il valore di sicurezza della quota più basso e non può essere ulteriormente ridotto. Tieni presente che la quota appartiene alla tua chiave di abbonamento, non a questo adattatore: se usi la stessa chiave altrove (ad esempio un altro sistema di casa intelligente), aumenta l'intervallo in modo che il totale rimanga entro la tua quota.",
     "connectPolling": "Sondaggio",
