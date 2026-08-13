@@ -89,6 +89,8 @@
     "connectSubscriptionInfo": "Aby uzyskać klucz subskrypcji:<br>1. Przejdź do <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Zaloguj się przy użyciu danych uwierzytelniających mein-senec.de<br>3. Przejdź do produktu SENEC.Connect i kliknij Subskrybuj<br>4. Znajdź swój klucz subskrypcji w obszarze Profil → Moje subskrypcje<br>5. Skopiuj klucz i wklej go powyżej",
     "connectSubscriptionKey": "Klucz subskrypcji",
     "connectSubscriptionKeyHelp": "Twój klucz subskrypcji SENEC.Connect (Ocp-Apim-Subscription-Key). Znaleziono pod Twoim profilem na stronie developer.senec.com po subskrypcji produktu SENEC.Connect.",
+    "connectTimeout": "Limit czasu żądania (ms)",
+    "connectTimeoutHelp": "Jak długo czekać na odpowiedź SENEC.Connect przed rezygnacją [min. 5000, maks. 120000 ms]. Wartość domyślna = 30000 (30 sekund). Jest to usługa w chmurze dostępna przez Internet, dlatego potrzebuje dłuższego limitu niż urządzenie lokalne we własnej sieci.",
     "connectorWarnApi": "⚠ Interfejs API aplikacji SENEC nie jest włączony! Najpierw włącz ją w zakładce API aplikacji SENEC.",
     "connectorWarnLocal": "⚠ Połączenie lokalne (lala.cgi) nie jest włączone! Najpierw włącz tę opcję w zakładce Połączenie lokalne.",
     "connectorWarnWeb": "⚠ mein-senec.de nie jest włączony! Najpierw włącz go w zakładce mein-senec.de.",

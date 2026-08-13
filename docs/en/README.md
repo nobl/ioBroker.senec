@@ -162,8 +162,9 @@ Bear in mind that each enabled system multiplies the requests made to the portal
 |---------|-------------|---------|
 | Use SENEC.Connect | Enable Azure API polling | Off |
 | Polling interval | How often to poll (seconds) | 300 |
+| Request timeout | How long to wait for a response (ms) | 30000 |
 | Subscription key | Azure API subscription key | — |
-| Include sections | Which data sections to request | battery,meter |
+| Include sections | Which data sections to request | battery,meter,evse,bessNameplate |
 
 ### External Sources
 
@@ -443,6 +444,8 @@ mein-senec.de data is stored under `_meinsenec.*`:
 SENEC.Connect data is stored under `_connect.Systems.{system_id}.*` with battery and meter subsections. An account can hold more than one system; each one gets its own channel, named after its model and keyed on the system id reported in `bessNameplate` — so a system keeps its states even when the API returns the systems in a different order. `_connect.info.systemCount` reports how many systems the API sees.
 
 The `bessNameplate` section is always requested, regardless of the configured sections, because it carries that id.
+
+Wallboxes are stored the same way, under the `id` each one reports: `_connect.Systems.{system_id}.evse.{wallbox_id}.*`. A wallbox that disappears from the response has its states removed rather than left behind at their last values.
 
 If a system reports no `system_id`, its serial number is used instead, and a system is remembered by every identifier it has ever reported — so a response that omits one of them does not move the system to a new path. If a response carries no identity at all, that system falls back to its position in the response, exactly as before 2.15.0, and cleanup is suspended for as long as this lasts.
 

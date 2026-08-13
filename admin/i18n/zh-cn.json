@@ -89,6 +89,8 @@
     "connectSubscriptionInfo": "要获取订阅密钥：<br>1.转到 <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2.使用您的 mein-senec.de 凭据登录<br>3。浏览至 SENEC.Connect 产品并单击订阅<br>4。在“个人资料”→“我的订阅”<br>5 下找到您的订阅密钥。复制密钥并将其粘贴到上面",
     "connectSubscriptionKey": "订阅密钥",
     "connectSubscriptionKeyHelp": "您的 SENEC.Connect 订阅密钥 (Ocp-Apim-Subscription-Key)。订阅 SENEC.Connect 产品后，可在developer.senec.com 上的您的个人资料下找到。",
+    "connectTimeout": "请求超时（毫秒）",
+    "connectTimeoutHelp": "放弃之前等待 SENEC.Connect 响应的时间 [最短 5000，最长 120000 毫秒]。默认 = 30000（30 秒）。这是通过互联网访问的云服务，因此它需要比您自己网络上的本地设备更长的配额。",
     "connectorWarnApi": "⚠ SENEC App API 未启用！首先在 SENEC App API 选项卡中启用它。",
     "connectorWarnLocal": "⚠ 本地连接（lala.cgi）未启用！首先在“本地连接”选项卡中启用它。",
     "connectorWarnWeb": "⚠ mein-senec.de 未启用！首先在 mein-senec.de 选项卡中启用它。",

@@ -89,6 +89,8 @@
     "connectSubscriptionInfo": "Para obter uma chave de assinatura:<br>1. Acesse <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Faça login com suas credenciais mein-senec.de<br>3. Navegue até o produto SENEC.Connect e clique em Assinar<br>4. Encontre sua chave de assinatura em Perfil → Minhas assinaturas<br>5. Copie a chave e cole acima",
     "connectSubscriptionKey": "Chave de assinatura",
     "connectSubscriptionKeyHelp": "Sua chave de assinatura SENEC.Connect (Ocp-Apim-Subscription-Key). Encontrado em seu perfil em developer.senec.com após assinar o produto SENEC.Connect.",
+    "connectTimeout": "Tempo limite da solicitação (ms)",
+    "connectTimeoutHelp": "Quanto tempo esperar por uma resposta do SENEC.Connect antes de desistir [min 5.000, max 120.000 ms]. Padrão = 30.000 (30 segundos). Este é um serviço de nuvem acessado pela Internet, portanto, precisa de uma permissão mais longa do que o dispositivo local em sua própria rede.",
     "connectorWarnApi": "⚠ API do aplicativo SENEC não está habilitada! Ative-o primeiro na guia API do aplicativo SENEC.",
     "connectorWarnLocal": "⚠ A conexão local (lala.cgi) não está habilitada! Ative-o primeiro na guia Conexão local.",
     "connectorWarnWeb": "⚠ mein-senec.de não está habilitado! Ative-o primeiro na guia mein-senec.de.",

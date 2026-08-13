@@ -89,6 +89,8 @@
     "connectSubscriptionInfo": "Щоб отримати ключ підписки:<br>1. Перейдіть на <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Увійдіть за допомогою облікових даних mein-senec.de<br>3. Перейдіть до продукту SENEC.Connect і натисніть «Підписатися»<br>4. Знайдіть свій ключ підписки в розділі Профіль → Мої підписки<br>5. Скопіюйте ключ і вставте його вище",
     "connectSubscriptionKey": "Ключ підписки",
     "connectSubscriptionKeyHelp": "Ваш ключ підписки SENEC.Connect (Ocp-Apim-Subscription-Key). Знайдено у вашому профілі на developer.senec.com після підписки на продукт SENEC.Connect.",
+    "connectTimeout": "Час очікування запиту (мс)",
+    "connectTimeoutHelp": "Як довго чекати відповіді SENEC.Connect, перш ніж відмовитися [мінімум 5000, максимум 120000 мс]. За замовчуванням = 30000 (30 секунд). Це хмарна служба, яка доступна через Інтернет, тому їй потрібен довший час, ніж локальному пристрою у вашій власній мережі.",
     "connectorWarnApi": "⚠ API програми SENEC не ввімкнено! Спочатку ввімкніть його на вкладці SENEC App API.",
     "connectorWarnLocal": "⚠ Локальне підключення (lala.cgi) не ввімкнено! Спочатку увімкніть його на вкладці «Локальне підключення».",
     "connectorWarnWeb": "⚠ mein-senec.de не ввімкнено! Спочатку ввімкніть його на вкладці mein-senec.de.",

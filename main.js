@@ -1654,6 +1654,20 @@ class Senec extends utils.Adapter {
 			);
 			this.config.pollingTimeout = 5000;
 		}
+		// The admin field enforces these bounds, but a value written straight into
+		// system.adapter.senec.N.native — by a script, a restored backup or a hand edit — never
+		// passes through it. A negative interval would make setTimeout fire immediately and poll
+		// a per-request-billed API in a tight loop.
+		this.log.debug(`(checkConf) Configured SENEC.Connect polling interval: ${this.config.connect_interval}s`);
+		if (this.config.connect_interval < 60 || this.config.connect_interval > 86400) {
+			this.log.warn(
+				`(checkConf) Config SENEC.Connect interval ${
+					this.config.connect_interval
+				} not [60..86400] seconds. Using default: 300`,
+			);
+			this.config.connect_interval = 300;
+		}
+
 		this.log.debug(`(checkConf) Configured api polling interval dashboard: ${this.config.api_interval}`);
 		if (this.config.api_interval < 3 || this.config.api_interval > 1440) {
 			this.log.warn(
@@ -2143,6 +2157,8 @@ class Senec extends utils.Adapter {
  * 1. Exact match (e.g. "batteryModules.0.serialNumber")
  * 2. Strip trailing numeric index (e.g. "batteryModules.0" → "batteryModules")
  * 3. Strip all numeric indices (e.g. "batteryModules.0.serialNumber" → "batteryModules.serialNumber")
+ * 4. Drop one interior segment (e.g. "evse.wb-1.charging_power" → "evse.charging_power"), for
+ *    trees keyed on a dynamic identifier rather than an index
  *
  * @param {string} fullKey - The full dotted key
  * @param {object} attrs - The state_attr lookup object
@@ -2159,6 +2175,17 @@ function resolveStateAttrKey(fullKey, attrs) {
 	const strippedAll = fullKey.replace(/\.\d+\./g, ".");
 	if (attrs[strippedAll] !== undefined) {
 		return strippedAll;
+	}
+	// A dynamic identifier used as a path segment, e.g. a wallbox stored under its own id in
+	// "evse.<wallbox id>.charging_power". Only interior segments are dropped, and only while at
+	// least two remain, so a two-part key like "battery.state" can never collapse to "state"
+	// and pick up an unrelated definition.
+	const parts = fullKey.split(".");
+	for (let i = 1; i < parts.length - 1; i++) {
+		const candidate = [...parts.slice(0, i), ...parts.slice(i + 1)].join(".");
+		if (attrs[candidate] !== undefined) {
+			return candidate;
+		}
 	}
 	return null;
 }

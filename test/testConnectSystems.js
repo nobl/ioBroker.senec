@@ -151,10 +151,15 @@ describe("SENEC.Connect: multiple systems", () => {
 			assert.equal(buildInclude("battery,meter,evse,bessNameplate"), "battery,meter,evse,bessNameplate");
 		});
 
-		it("tolerates padding, empty entries and an unset field", () => {
+		it("tolerates padding and empty entries", () => {
 			assert.equal(buildInclude(" battery , , meter "), "battery,meter,bessNameplate");
-			assert.equal(buildInclude(""), "battery,meter,bessNameplate");
-			assert.equal(buildInclude(undefined), "battery,meter,bessNameplate");
+		});
+
+		it("falls back to the same default the admin field offers", () => {
+			// These had diverged: clearing the field in Admin silently dropped evse instead of
+			// restoring the documented default.
+			assert.equal(buildInclude(""), "battery,meter,evse,bessNameplate");
+			assert.equal(buildInclude(undefined), "battery,meter,evse,bessNameplate");
 		});
 	});
 
@@ -565,6 +570,80 @@ describe("SENEC.Connect: multiple systems", () => {
 
 			assert.deepEqual(prefixes(adapter), ["_connect.Systems.0."]);
 			assert.deepEqual(adapter.deleted, [], "and nothing is retired while the identity is missing");
+		});
+	});
+
+	describe("wallboxes", () => {
+		it("stores each wallbox under its own id rather than its position", async () => {
+			const adapter = makeAdapter();
+			respondWith(adapter, [TWO_SYSTEMS]);
+
+			await connectPoll(adapter);
+
+			const [, first] = adapter.polled[0];
+			assert.deepEqual(Object.keys(first.evse), ["wb-1"], "the array became an object keyed by wallbox id");
+			assert.equal(first.evse["wb-1"].charging_power, 6900);
+		});
+
+		it("keeps a wallbox on its own path when the response order changes", async () => {
+			const twoBoxes = (order) => [
+				{
+					...TWO_SYSTEMS[1],
+					evse: order.map((id) => ({ id, ev_connected: id === "wb-a", charging_power: 0 })),
+				},
+			];
+			const adapter = makeAdapter();
+			respondWith(adapter, [twoBoxes(["wb-a", "wb-b"]), twoBoxes(["wb-b", "wb-a"])]);
+
+			await connectPoll(adapter);
+			adapter.polled = [];
+			await connectPoll(adapter);
+
+			const [, system] = adapter.polled[0];
+			assert.deepEqual(Object.keys(system.evse).sort(), ["wb-a", "wb-b"]);
+			assert.equal(system.evse["wb-a"].ev_connected, true, "wb-a keeps its own states after the reorder");
+			assert.deepEqual(adapter.deleted, [], "a reorder is not a removal");
+		});
+
+		it("retires a wallbox that leaves the array", async () => {
+			// Without this its states stay behind at their last values, indistinguishable from a
+			// wallbox that is simply idle.
+			const withBoxes = (ids) => [{ ...TWO_SYSTEMS[1], evse: ids.map((id) => ({ id, charging_power: 0 })) }];
+			const adapter = makeAdapter({
+				objects: {
+					"_connect.Systems.P4H1-222.evse.wb-b.charging_power": { type: "state" },
+				},
+			});
+			respondWith(adapter, [withBoxes(["wb-a", "wb-b"]), withBoxes(["wb-a"])]);
+
+			await connectPoll(adapter);
+			await connectPoll(adapter);
+
+			assert.deepEqual(adapter.deleted, ["_connect.Systems.P4H1-222.evse.wb-b.charging_power"]);
+		});
+
+		it("falls back to the position for a wallbox that reports no id", async () => {
+			const adapter = makeAdapter();
+			respondWith(adapter, [[{ ...TWO_SYSTEMS[1], evse: [{ charging_power: 0 }] }]]);
+
+			await connectPoll(adapter);
+
+			const [, system] = adapter.polled[0];
+			assert.deepEqual(Object.keys(system.evse), ["0"]);
+		});
+	});
+
+	describe("connection state", () => {
+		it("reports the connector as down when a 200 carries something other than the systems array", async () => {
+			// A captive portal or an APIM fault object served with HTTP 200 would otherwise leave
+			// the connector reporting "connected" forever while nothing is ingested.
+			const adapter = makeAdapter();
+			adapter.connectConnected = true;
+			respondWith(adapter, [{ statusCode: 403, message: "quota exceeded" }]);
+
+			await connectPoll(adapter);
+
+			assert.equal(adapter.connectConnected, false);
 		});
 	});
 

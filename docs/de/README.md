@@ -163,8 +163,9 @@ Beachten Sie, dass jede zusätzlich aktivierte Anlage die Anzahl der Portal-Anfr
 |-------------|-------------|----------|
 | SENEC.Connect nutzen | Azure-API-Abfrage aktivieren | Aus |
 | Abfrageintervall | Abfragefrequenz (Sekunden) | 300 |
+| Anfrage-Timeout | Wartezeit auf eine Antwort (ms) | 30000 |
 | Subscription Key | Azure API Subscription Key | — |
-| Enthaltene Bereiche | Welche Datenbereiche abgefragt werden | battery,meter |
+| Enthaltene Bereiche | Welche Datenbereiche abgefragt werden | battery,meter,evse,bessNameplate |
 
 ### Externe Quellen
 
@@ -445,6 +446,8 @@ mein-senec.de Daten werden unter `_meinsenec.*` gespeichert:
 SENEC.Connect Daten werden unter `_connect.Systems.{system_id}.*` mit Batterie- und Zähler-Unterbereichen gespeichert. Ein Konto kann mehrere Systeme umfassen; jedes erhält einen eigenen Kanal, benannt nach seinem Modell und adressiert über die in `bessNameplate` gemeldete System-ID — dadurch behält ein System seine States auch dann, wenn die API die Systeme in anderer Reihenfolge zurückgibt. `_connect.info.systemCount` meldet, wie viele Systeme die API sieht.
 
 Der Abschnitt `bessNameplate` wird unabhängig von den konfigurierten Abschnitten immer abgefragt, weil er diese ID enthält.
+
+Wallboxen werden genauso abgelegt, unter der jeweils gemeldeten `id`: `_connect.Systems.{system_id}.evse.{wallbox_id}.*`. Verschwindet eine Wallbox aus der Antwort, werden ihre States entfernt, statt mit den letzten Werten stehen zu bleiben.
 
 Meldet ein System keine `system_id`, wird stattdessen seine Seriennummer verwendet. Ein System wird über jede jemals gemeldete Kennung wiedererkannt — eine Antwort, in der eine davon fehlt, verschiebt das System also nicht auf einen neuen Pfad. Enthält eine Antwort überhaupt keine Kennung, greift für dieses System die Position in der Antwort, genau wie vor 2.15.0, und die Bereinigung wird währenddessen ausgesetzt.
 

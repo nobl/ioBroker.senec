@@ -89,6 +89,8 @@
     "connectSubscriptionInfo": "Para obtener una clave de suscripción:<br>1. Vaya a <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Inicie sesión con sus credenciales de mein-senec.de<br>3. Busque el producto SENEC.Connect y haga clic en Suscribirse<br>4. Encuentre su clave de suscripción en Perfil → Mis suscripciones<br>5. Copia la clave y pégala arriba.",
     "connectSubscriptionKey": "Clave de suscripción",
     "connectSubscriptionKeyHelp": "Su clave de suscripción a SENEC.Connect (Ocp-Apim-Subscription-Key). Se encuentra en su perfil en desarrollador.senec.com después de suscribirse al producto SENEC.Connect.",
+    "connectTimeout": "Solicitar tiempo de espera (ms)",
+    "connectTimeoutHelp": "Cuánto tiempo esperar una respuesta de SENEC.Connect antes de darse por vencido [mínimo 5000, máximo 120000 ms]. Predeterminado = 30000 (30 segundos). Este es un servicio en la nube al que se accede a través de Internet, por lo que necesita una asignación más larga que el dispositivo local en su propia red.",
     "connectorWarnApi": "⚠ ¡La API de la aplicación SENEC no está habilitada! Habilítelo primero en la pestaña API de la aplicación SENEC.",
     "connectorWarnLocal": "⚠ ¡La conexión local (lala.cgi) no está habilitada! Habilítelo primero en la pestaña Conexión local.",
     "connectorWarnWeb": "⚠ ¡mein-senec.de no está habilitado! Habilítelo primero en la pestaña mein-senec.de.",

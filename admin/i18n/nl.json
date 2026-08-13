@@ -89,6 +89,8 @@
     "connectSubscriptionInfo": "Een abonnementssleutel verkrijgen:<br>1. Ga naar <a href=\"https://developer.senec.com\" target=\"_blank\">developer.senec.com</a><br>2. Meld u aan met uw mein-senec.de-inloggegevens<br>3. Blader naar het SENEC.Connect-product en klik op Abonneren<br>4. Zoek uw abonnementssleutel onder Profiel → Mijn abonnementen<br>5. Kopieer de sleutel en plak deze hierboven",
     "connectSubscriptionKey": "Abonnementssleutel",
     "connectSubscriptionKeyHelp": "Uw SENEC.Connect-abonnementssleutel (Ocp-Apim-Subscription-Key). Te vinden onder uw profiel op developer.senec.com nadat u zich heeft geabonneerd op het SENEC.Connect-product.",
+    "connectTimeout": "Time-out aanvragen (ms)",
+    "connectTimeoutHelp": "Hoe lang wachten op een SENEC.Connect-antwoord voordat u het opgeeft [min. 5000, max. 120.000 ms]. Standaard = 30000 (30 seconden). Dit is een cloudservice die via internet wordt bereikt en heeft dus een langere vergoeding nodig dan het lokale apparaat op uw eigen netwerk.",
     "connectorWarnApi": "⚠ SENEC App API is niet ingeschakeld! Schakel het eerst in op het tabblad SENEC App API.",
     "connectorWarnLocal": "⚠ Lokale verbinding (lala.cgi) is niet ingeschakeld! Schakel het eerst in op het tabblad Lokale verbinding.",
     "connectorWarnWeb": "⚠ mein-senec.de is niet ingeschakeld! Schakel het eerst in op het tabblad mein-senec.de.",

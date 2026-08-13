@@ -1,4 +1,14 @@
 {
+    // Not wired into any npm script or CI step, and it will not run as written: the inherited
+    // "exclude" from ../tsconfig.json contains "test/**", which cancels the "include" below, so
+    // `tsc -p test/tsconfig.json` reports TS18003 "No inputs were found".
+    //
+    // That is deliberate. The test suites are not type-checked — they build deliberately partial
+    // adapter doubles, and requiring those to satisfy the full SenecAdapter interface would cost
+    // far more than it catches. `npm run check` type-checks the shipped code via
+    // tsconfig.check.json, which excludes test/ for the same reason.
+    //
+    // Kept only so editors opening a file under test/ find a config with noImplicitAny relaxed.
     "extends": "../tsconfig.json",
     "compilerOptions": {
         "noImplicitAny": false

@@ -620,6 +620,20 @@
 							"max": 86400,
 							"newLine": true
 						},
+						"connect_timeout": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "connectTimeout",
+							"help": "connectTimeoutHelp",
+							"default": 30000,
+							"min": 5000,
+							"max": 120000,
+							"newLine": false
+						},
 						"connect_include": {
 							"type": "text",
 							"xs": 12,

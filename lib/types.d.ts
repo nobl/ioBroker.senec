@@ -35,9 +35,16 @@ export interface ConnectNameplate {
     model?: string;
 }
 
+/** One wallbox of a SENEC.Connect system. `id` is what the states are keyed on. */
+export interface ConnectWallbox {
+    id?: string;
+}
+
 /** One entry of the SENEC.Connect device-data array — one system of the account. */
 export interface ConnectSystem {
     bessNameplate?: ConnectNameplate;
+    /** As delivered it is an array; it is re-keyed by wallbox id before the states are written */
+    evse?: ConnectWallbox[] | Record<string, unknown>;
 }
 
 /**
