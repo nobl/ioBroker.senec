@@ -1,6 +1,12 @@
 # Older changes
 
 The newest change log is [README.md](README.md)
+## 2.12.0 (2026-07-23)
+- Live chart: Drag to pan through history, scroll to zoom (5min–30 days). Lazy-loads history data on demand as you pan. Per-line downsampling preserves all metrics at any zoom level. Midnight date markers. View clamped to available data with progressive loading. Loading indicator and buffer stats.
+- Security: Multi-layer TLS certificate validation for local SENEC connections — user-uploaded CA, cached CA (auto-downloaded from mein-senec.de), TOFU fingerprint pinning. Dashboard upload for CA certificate (.pem/.zip). TLS state values stored encrypted. Eliminates blind certificate bypass.
+- Security: Fix polynomial ReDoS in formula regex, escape DOM-sourced values in log viewer, remove no-op string replace in charts.
+- Dashboard: Multi-instance namespace support.
+
 ## 2.11.4 (2026-07-22)
 - Fix: jsonConfig validation error (`collapsed` not allowed on panel type).
 - Removed unused `info.extension` state.
