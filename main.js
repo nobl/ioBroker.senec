@@ -131,6 +131,12 @@ class Senec extends utils.Adapter {
 		this.webSlowIntervalMs = 86400000; // default 24h
 		this.webQueue = null; // created in onReady when web_use is true
 
+		// SENEC.Connect
+		this.connectSystemNames = new Map(); // system key -> channel name, keeps object reads off the poll
+		this.connectKnownKeys = null; // system keys of the last reconciled poll, null until one succeeded
+		this.connectIdentityAliases = new Map(); // every identifier a system answers to -> its key
+		this.connectLoggedConditions = new Set(); // conditions already warned about, so they log on entry only
+
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
 		this.lastLoggedRecommendedConcurrency = null;

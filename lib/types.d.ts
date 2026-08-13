@@ -25,6 +25,21 @@ declare module "axios" {
     }
 }
 
+/** Nameplate section of a SENEC.Connect system — the identity the state tree is keyed on. */
+export interface ConnectNameplate {
+    /** Identifier of the system, stable across polls */
+    system_id?: string;
+    /** Serial number of the appliance */
+    serial_number?: string;
+    /** Marketing name, e.g. "SENEC.Home P4 hybrid / 11.8" */
+    model?: string;
+}
+
+/** One entry of the SENEC.Connect device-data array — one system of the account. */
+export interface ConnectSystem {
+    bessNameplate?: ConnectNameplate;
+}
+
 /**
  * The Senec adapter instance type.
  *
@@ -153,6 +168,14 @@ export interface SenecAdapter extends AdapterClass {
 
     // ── SENEC.Connect state ───────────────────────────────────────────
     connectClient: AxiosInstance | null;
+    /** System key → channel name, so the poll does not read the object of every system */
+    connectSystemNames: Map<string, string>;
+    /** System keys of the last reconciled poll; null until one succeeded this session */
+    connectKnownKeys: Set<string> | null;
+    /** Every identifier a system answers to → its path segment, so a partial response still resolves */
+    connectIdentityAliases: Map<string, string>;
+    /** Conditions already warned about, so a persistent one logs on entry instead of every poll */
+    connectLoggedConditions: Set<string>;
 
     // ── GUI / misc ────────────────────────────────────────────────────
     guiLang: string;

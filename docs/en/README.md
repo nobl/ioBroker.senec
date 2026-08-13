@@ -440,7 +440,15 @@ mein-senec.de data is stored under `_meinsenec.*`:
 
 ### Connect States (`_connect.*`)
 
-SENEC.Connect data is stored under `_connect.Systems.{n}.*` with battery and meter subsections.
+SENEC.Connect data is stored under `_connect.Systems.{system_id}.*` with battery and meter subsections. An account can hold more than one system; each one gets its own channel, named after its model and keyed on the system id reported in `bessNameplate` — so a system keeps its states even when the API returns the systems in a different order. `_connect.info.systemCount` reports how many systems the API sees.
+
+The `bessNameplate` section is always requested, regardless of the configured sections, because it carries that id.
+
+If a system reports no `system_id`, its serial number is used instead, and a system is remembered by every identifier it has ever reported — so a response that omits one of them does not move the system to a new path. If a response carries no identity at all, that system falls back to its position in the response, exactly as before 2.15.0, and cleanup is suspended for as long as this lasts.
+
+States of a system the API no longer reports are removed. Adapters before 2.15.0 numbered the systems by their position in the response (`_connect.Systems.0.*`); those states are deleted on the first poll after the update, once the systems have been identified.
+
+**If you record SENEC.Connect states with a history adapter** (History, InfluxDB, SQL), that setting lives on the state itself and is lost when the old state is deleted. Recording does not resume by itself — switch logging back on for the states under the new paths after updating.
 
 ### External States (`_external.*`)
 

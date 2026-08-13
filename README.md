@@ -14,6 +14,18 @@
 
 [Dokumentation DE](docs/de/README.md) | [Documentation EN](docs/en/README.md)
 
+> [!IMPORTANT]
+> ### 🔎 Wanted: testers for the SENEC.Connect connector
+>
+> SENEC.Connect is the newest of the four connectors, and it is the one I have the least real-world data for — I cannot see what your subscription returns. **If SENEC.Connect reports anything at all for your account, please get in touch:** in the [ioBroker forum thread](https://forum.iobroker.net/topic/30620/neuer-adapter-senec-home-adapter) or via a [GitHub issue](https://github.com/nobl/ioBroker.senec/issues).
+>
+> Especially valuable:
+> - **accounts holding more than one system** — a replaced appliance, or two systems at one address;
+> - responses containing **more than `battery` and `meter`**, for instance `evse` (wallbox) or `bessNameplate`;
+> - anything the adapter logs as `REPORT_TO_DEV`.
+>
+> The most useful thing you can send is the raw response: switch on *Log requests and responses* under the SENEC.Connect debug settings, set the log level to debug, and copy what the adapter writes out. **Please replace serial numbers and system ids with `***` before posting** — the rest is what matters.
+
 Your SENEC system knows a great deal about itself. This adapter brings all of it into ioBroker — down to individual cell voltages and per-phase grid quality — and comes with a dashboard you do not have to build.
 
 ![Dashboard Overview](docs/en/media/dashboard-overview.png)
@@ -146,6 +158,11 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- 🔎 **Wanted: testers for the SENEC.Connect connector.** I cannot see what your subscription returns, and real responses are what this connector is missing — especially from accounts holding more than one system, and from responses containing more than `battery` and `meter` (`evse`, `bessNameplate`). If SENEC.Connect reports anything at all for your account, please get in touch in the [ioBroker forum thread](https://forum.iobroker.net/topic/30620/neuer-adapter-senec-home-adapter) or via a [GitHub issue](https://github.com/nobl/ioBroker.senec/issues).
+- **Breaking (SENEC.Connect only):** The systems of a SENEC.Connect account were stored by their position in the API response, as `_connect.Systems.0.*`, `_connect.Systems.1.*` and so on. The API does not promise an order, so on an account with more than one system that position can change from one poll to the next — two systems then swap their states inside the same history, with nothing in the values to show it happened. Each system is now stored under the system id from its `bessNameplate` section instead, for example `_connect.Systems.P4H1-1234567.*`, and gets a channel named after its model. A system is remembered by every identifier it has ever reported, so a response that omits one of them does not move it; a system that reports no identity at all keeps its old position-based path and is left alone. The old numbered states are deleted on the first poll after the update; scripts, charts and visualisations that refer to them have to be pointed at the new paths, and the history recorded under the old paths ends there. **If you log these states with a history adapter, that setting is stored on the state and does not survive the move — switch logging back on for the new paths, or recording stops silently.** Accounts with a single system are affected the same way, but nothing else changes for them.
+- New: `_connect.info.systemCount` reports how many systems SENEC.Connect returns, and the states of a system the API stops reporting are removed.
+- Change: The `bessNameplate` section is now always requested from SENEC.Connect regardless of the configured sections, because it carries the id the states are stored under. The API is billed per request, not per section, so this costs nothing.
+- Fix: When mein-senec.de measurement detail states were cleared at the daily rollover and written again in the same cycle, they came back as bare values — the name, unit and role were gone, because the adapter still believed the deleted definitions existed.
 
 ### 2.14.2 (2026-08-13)
 - Dependency updates
