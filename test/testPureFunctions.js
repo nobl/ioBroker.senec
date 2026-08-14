@@ -20,6 +20,7 @@ const t = mainExport._testing;
 const authHelpers = require("../lib/auth-helpers");
 const AdaptiveRequestQueue = require("../lib/AdaptiveRequestQueue");
 const webClient = require("../lib/web-client");
+const { isDeviceSentinel } = require("../lib/constants");
 
 describe("extractFormAction", () => {
 	it("extracts action URL from a form tag", () => {
@@ -304,6 +305,20 @@ describe("reviverNumParse", () => {
 		assert.equal(t.reviverNumParse("key", "FILE_VARIABLE_NOT_READABLE"), "");
 	});
 
+	it("passes through the remaining device sentinels", () => {
+		assert.equal(t.reviverNumParse("key", "FORBIDDEN"), "FORBIDDEN");
+		assert.equal(t.reviverNumParse("key", "OBJECT_NOT_FOUND"), "OBJECT_NOT_FOUND");
+		assert.equal(t.reviverNumParse("key", "MALFORMED_VALUE"), "MALFORMED_VALUE");
+	});
+
+	it("decodes ch_ without truncating at embedded underscores", () => {
+		assert.equal(t.reviverNumParse("key", "ch_ABC_DEF"), "ABC_DEF");
+	});
+
+	it("keeps er_ whole so an error cannot pass as a reading", () => {
+		assert.equal(t.reviverNumParse("key", "er_0042"), "er_0042");
+	});
+
 	it("passes through non-string values", () => {
 		assert.equal(t.reviverNumParse("key", 42), 42);
 		assert.equal(t.reviverNumParse("key", true), true);
@@ -313,6 +328,114 @@ describe("reviverNumParse", () => {
 	it("flags unknown string formats", () => {
 		const result = t.reviverNumParse("testKey", "zz_unknown");
 		assert.ok(typeof result === "string" && result.startsWith("REPORT TO DEV:"));
+	});
+
+	// The appliance appends detail to a sentinel ("FORBIDDEN <variable>"), so an equality test
+	// downstream missed it and the suffixed form was published as if it were a reading.
+	it("normalises a sentinel that carries a suffix to its bare name", () => {
+		assert.equal(t.reviverNumParse("key", "FORBIDDEN junk"), "FORBIDDEN");
+		assert.equal(t.reviverNumParse("key", "VARIABLE_NOT_FOUND junk"), "VARIABLE_NOT_FOUND");
+		assert.equal(t.reviverNumParse("key", "OBJECT_NOT_FOUND junk"), "OBJECT_NOT_FOUND");
+		assert.equal(t.reviverNumParse("key", "MALFORMED_VALUE junk"), "MALFORMED_VALUE");
+	});
+
+	// A bare leading "u" used to select the unsigned-int branch, so the word "under_voltage"
+	// was hex-parsed into the number 14 and published as a reading.
+	it("does not decode a plain word starting with u as an unsigned int", () => {
+		const result = t.reviverNumParse("key", "under_voltage");
+		assert.equal(result, "REPORT TO DEV: key:under_voltage");
+	});
+
+	// An empty payload after the prefix parses to NaN, which used to reach setState as a number.
+	it("never returns NaN for an empty unsigned-int payload", () => {
+		const result = t.reviverNumParse("key", "u8_");
+		assert.ok(typeof result === "string" && result.startsWith("REPORT TO DEV:"));
+		assert.notEqual(typeof result, "number");
+	});
+
+	// ValueTyping asks isDeviceSentinel before coercing to number/boolean/date/IP; a sentinel
+	// slipping past that check turns into a plausible-looking reading (NaN, true, garbage IP).
+	it("isDeviceSentinel recognises every unavailability marker", () => {
+		for (const sentinel of ["VARIABLE_NOT_FOUND", "FORBIDDEN", "OBJECT_NOT_FOUND", "MALFORMED_VALUE"]) {
+			assert.ok(isDeviceSentinel(t.reviverNumParse("key", sentinel)), `${sentinel} not recognised`);
+		}
+		assert.ok(isDeviceSentinel(t.reviverNumParse("key", "er_0042")));
+	});
+
+	it("isDeviceSentinel accepts a real reading and an empty string", () => {
+		assert.equal(isDeviceSentinel(t.reviverNumParse("key", "u8_0A")), false);
+		assert.equal(isDeviceSentinel(t.reviverNumParse("key", "FILE_VARIABLE_NOT_READABLE")), false);
+		assert.equal(isDeviceSentinel(""), false);
+	});
+});
+
+describe("state_trans keys", () => {
+	const state_trans = require("../lib/state_trans.js");
+	const state_attr = require("../lib/state_attr.js");
+
+	// Group the flat "<SECTION>.<DATAPOINT>.<lang>" keys by their datapoint.
+	function byDatapoint() {
+		const grouped = {};
+		for (const key of Object.keys(state_trans)) {
+			const dp = key.substring(0, key.lastIndexOf("."));
+			(grouped[dp] ||= []).push(key.substring(key.lastIndexOf(".") + 1));
+		}
+		return grouped;
+	}
+
+	// doDecode builds its lookup key as "<dotted state name>.<lang>", so a key written with
+	// an underscore where the state has a dot never matches and the _Text state is silently
+	// never created. ENERGY_STAT_STATE.1/.2 were wrong this way, which cost every non-German
+	// system its system-mode text.
+	it("uses dot separators so doDecode can find them", () => {
+		for (const key of Object.keys(state_trans)) {
+			assert.ok(
+				/^[A-Z0-9_]+(\.[A-Z0-9_]+)+\.\d$/.test(key),
+				`${key} is not "<SECTION>.<DATAPOINT>.<lang>" — doDecode will never match it`,
+			);
+		}
+	});
+
+	// guiLang is "0" German, "1" English, "2" Italian, and defaults to "1". doDecode falls back
+	// <lang> -> 1 -> 0, so a datapoint need not carry all three tables — but English is the last
+	// stop before German, and without it an Italian user silently gets no text at all.
+	it("provides the English fallback table for every datapoint", () => {
+		for (const [dp, langs] of Object.entries(byDatapoint())) {
+			assert.ok(langs.includes("1"), `${dp} has no English (.1) table for doDecode to fall back to`);
+		}
+	});
+
+	// A table under an unknown language id is dead weight: doDecode only ever asks for 0, 1 or 2,
+	// so a typo'd id looks like a translation but can never be reached.
+	it("uses only the known language ids 0, 1 and 2", () => {
+		for (const [dp, langs] of Object.entries(byDatapoint())) {
+			for (const lang of langs) {
+				assert.ok(["0", "1", "2"].includes(lang), `${dp}.${lang} is not a language doDecode requests`);
+			}
+		}
+	});
+
+	// doDecode writes its result to "<datapoint>_Text". Without a state_attr entry that state is
+	// created with no name, role or type, so the decoded text shows up as an untyped raw object.
+	it("has a matching state_attr _Text entry for every datapoint", () => {
+		for (const dp of Object.keys(byDatapoint())) {
+			assert.ok(Object.hasOwn(state_attr, `${dp}_Text`), `state_attr is missing "${dp}_Text"`);
+		}
+	});
+
+	// Adding a new code to the German table only leaves every other language returning
+	// "(unknown <value>)" for it — exactly the shape of the ENERGY.STAT_STATE bug.
+	it("covers the same numeric codes in every language of a datapoint", () => {
+		for (const [dp, langs] of Object.entries(byDatapoint())) {
+			const reference = Object.keys(state_trans[`${dp}.${langs[0]}`]).sort();
+			for (const lang of langs) {
+				assert.deepEqual(
+					Object.keys(state_trans[`${dp}.${lang}`]).sort(),
+					reference,
+					`${dp}.${lang} does not define the same codes as ${dp}.${langs[0]}`,
+				);
+			}
+		}
 	});
 });
 

@@ -36,6 +36,7 @@ jobs:
           # Uncomment the following line if your adapter cannot be installed using 'npm ci'
           # install-command: 'npm install'
           lint: true
+          type-checking: true
 
   # Runs adapter tests on all supported node versions and OSes
   adapter-tests:

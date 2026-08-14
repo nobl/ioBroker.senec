@@ -15,7 +15,7 @@
     "HighPrioDataPointsDisclaimer": "Por la presente reconozco que es únicamente bajo mi propia responsabilidad garantizar que estas configuraciones sean válidas. También reconozco que configuraciones problemáticas pueden provocar un mal funcionamiento de mi aparato SENEC y que acepto voluntariamente estos riesgos.",
     "HighPrioDataPointsDisclaimerHelp": "Una configuración incorrecta o incluso solicitar demasiados puntos de datos puede provocar que el dispositivo SENEC se reinicie, funcione mal y tenga otros comportamientos no deseados. Si no comprende cuáles son estas configuraciones o cómo configurarlas correctamente, ¡déjelas todas vacías!",
     "HighPrioENERGY": "HighPrio Polling ENERGÍA-puntos de datos",
-    "HighPrioENERGYHelp": "Agregado automáticamente: STAT_STATE, GUI_BAT_DATA_POWER, GUI_INVERTER_POWER, GUI_HOUSE_POW, GUI_GRID_POW, GUI_BAT_DATA_FUEL_CHARGE, GUI_CHARGING_INFO, GUI_BOOSTING_INFO, GUI_BAT_DATA_POWER, GUI_BAT_DATA_VOLTAGE, GUI_BAT_DATA_CURRENT, GUI_BAT_DATA_FUEL_CHARGE, GUI_BAT_DATA_OA_CHARGING, STAT_LIMITED_NET_SKEW, SAFE_CHARGE_FORCE, SAFE_CHARGE_PROHIBIT, SAFE_CHARGE_RUNNING",
+    "HighPrioENERGYHelp": "Agregado automáticamente: STAT_STATE, GUI_BAT_DATA_POWER, GUI_INVERTER_POWER, GUI_HOUSE_POW, GUI_GRID_POW, GUI_BAT_DATA_FUEL_CHARGE, GUI_CHARGING_INFO, GUI_BOOSTING_INFO, GUI_BAT_DATA_POWER, GUI_BAT_DATA_VOLTAGE, GUI_BAT_DATA_CURRENT, GUI_BAT_DATA_FUEL_CHARGE, STAT_LIMITED_NET_SKEW, SAFE_CHARGE_FORCE, SAFE_CHARGE_PROHIBIT, SAFE_CHARGE_RUNNING",
     "HighPrioPM1OBJ1": "Puntos de datos PM1OBJ1 de sondeo HighPrio",
     "HighPrioPM1OBJ2": "Puntos de datos PM1OBJ2 de sondeo HighPrio",
     "HighPrioPMOBJHelp": "Agregado automáticamente: FREQ, U_AC, I_AC, P_AC, P_TOTAL",

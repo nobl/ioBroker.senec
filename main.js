@@ -19,6 +19,9 @@ const {
 	rebootAppliance,
 	HexToFloat32,
 	reviverNumParse,
+	isDeviceSentinel,
+	isAbsentSentinel,
+	DATAPOINT_UNAVAILABLE,
 } = require(`${__dirname}/lib/constants.js`);
 
 const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`);
@@ -82,6 +85,9 @@ class Senec extends utils.Adapter {
 		this.lowPrioForm = "";
 		this.highPrioForm = "";
 		this.knownObjects = new Map();
+		// Datapoints the appliance already refused during this run. Polling repeats every few
+		// seconds, so without this the same refusal would flood the log forever.
+		this.loggedSentinelKeys = new Set();
 
 		this.apiQueue = null;
 		this.apiAgent = null;
@@ -145,6 +151,7 @@ class Senec extends utils.Adapter {
 		this._lastLoggedWebQueueSnapshot = null;
 
 		this.guiLang = "1"; // fallback english
+		this.loggedLangFallback = new Set(); // languages already reported as having no translation table
 
 		this.on("ready", this.onReady.bind(this));
 		this.on("stateChange", this.onStateChange.bind(this));
@@ -1879,8 +1886,9 @@ class Senec extends utils.Adapter {
 	 * @param unit Unit of the state
 	 * @param write Writable state
 	 * @param read Readable state
+	 * @param role ioBroker role of the state, defaults to a plain value
 	 */
-	async doState(name, value, description, unit, write, read = true) {
+	async doState(name, value, description, unit, write, read = true, role = "value") {
 		if (!isNaN(name.substring(0, 1))) {
 			// keys cannot start with digits! Possibly SENEC delivering erraneous data
 			this.log.debug(`(doState) Invalid datapoint: ${name}: ${value}`);
@@ -1921,6 +1929,10 @@ class Senec extends utils.Adapter {
 				this.log.debug(`(doState) Updating object: ${name} (read): ${obj.common.read} -> ${read}`);
 				newCommon.read = read;
 			}
+			if (obj.common.role !== role) {
+				this.log.debug(`(doState) Updating object: ${name} (role): ${obj.common.role} -> ${role}`);
+				newCommon.role = role;
+			}
 			if (Object.keys(newCommon).length > 0) {
 				await this.extendObject(name, { common: newCommon });
 				obj.common = { ...obj.common, ...newCommon };
@@ -1932,7 +1944,7 @@ class Senec extends utils.Adapter {
 				common: {
 					name: description,
 					type: valueType,
-					role: "value",
+					role: role,
 					unit: unit,
 					read: read,
 					write: write,
@@ -1942,6 +1954,20 @@ class Senec extends utils.Adapter {
 
 			await this.setObjectNotExistsAsync(name, obj);
 			this.knownObjects.set(name, obj);
+		}
+		// Keep the language cache warm at its source. refreshGuiLangCache() only runs once during
+		// onReady, which is after the first local polls have already written their _Text states, so
+		// on a non-English appliance those would be decoded with the English fallback. Updating
+		// here costs nothing, always reflects the latest poll and picks up a language change on the
+		// appliance without an adapter restart.
+		if (
+			name === "WIZARD.GUI_LANG" &&
+			value !== null &&
+			value !== undefined &&
+			value !== "" &&
+			!isDeviceSentinel(value)
+		) {
+			this.guiLang = String(value);
 		}
 		await this.setStateChangedAsync(name, {
 			val: value,
@@ -1958,26 +1984,40 @@ class Senec extends utils.Adapter {
 	 * @param {string | number} value Value of the state
 	 */
 	async doDecode(name, value) {
+		// doState() calls us and we write the derived text state through doState() again. That
+		// recursion currently ends only because no translation table happens to be named "*_Text";
+		// bail out on the suffix so it stays bounded no matter what tables are added.
+		if (name.endsWith("_Text")) {
+			return;
+		}
 		const lang = this.guiLang || "1";
 		this.log.silly(`(Decode) Senec language: ${lang}`);
-		let key = name;
-		if (!isNaN(Number(name.substring(name.lastIndexOf(".")) + 1))) {
-			key = name.substring(0, name.lastIndexOf("."));
-		}
+		// A trailing array index is not part of the translation key: "CASC.STATE.0" is one entry of
+		// the "CASC.STATE" table. Same rule as resolveStateAttrKey applies to state_attr.
+		const key = name.replace(/\.\d+$/, "");
 		this.log.silly(`(Decode) Checking: ${name} -> ${key}`);
 
-		if (state_trans[`${key}.${lang}`] !== undefined) {
-			this.log.silly(`(Decode) Trans found for: ${key}.${lang}`);
-			const trans =
-				state_trans[`${key}.${lang}`] !== undefined
-					? state_trans[`${key}.${lang}`][value] !== undefined
-						? state_trans[`${key}.${lang}`][value]
-						: "(unknown)"
-					: "(unknown)";
-			this.log.silly(`(Decode) Trans ${key}:${value} = ${trans}`);
-			const desc = state_attr[`${key}_Text`] !== undefined ? state_attr[`${key}_Text`].name : key;
-			await this.doState(`${name}_Text`, trans, desc, "", true);
+		// The language is unvalidated device input, so anything outside 0/1/2 would silently switch
+		// off every _Text state. Fall back to English and then German instead.
+		const table = state_trans[`${key}.${lang}`] ?? state_trans[`${key}.1`] ?? state_trans[`${key}.0`];
+		if (table === undefined) {
+			return;
 		}
+		if (state_trans[`${key}.${lang}`] === undefined && !this.loggedLangFallback.has(lang)) {
+			this.loggedLangFallback.add(lang);
+			this.log.warn(
+				`(Decode) No translations for appliance language "${lang}" (e.g. ${key}). ` +
+					"Falling back to English, then German texts.",
+			);
+		}
+		this.log.silly(`(Decode) Trans found for: ${key}.${lang}`);
+		// Plain indexing would resolve Object.prototype members, so a device value of "toString" or
+		// "constructor" would publish a function instead of a text.
+		const trans = Object.hasOwn(table, value) ? table[value] : `(unknown ${value})`;
+		this.log.silly(`(Decode) Trans ${key}:${value} = ${trans}`);
+		const desc = state_attr[`${key}_Text`] !== undefined ? state_attr[`${key}_Text`].name : key;
+		// Nothing in onStateChange acts on a _Text write, so these are read-only derived states.
+		await this.doState(`${name}_Text`, trans, desc, "", false, true, "text");
 	}
 
 	/**
@@ -2008,6 +2048,20 @@ class Senec extends utils.Adapter {
 		for (const [key, value] of Object.entries(obj)) {
 			const fullKey = keyPrefix ? `${keyPrefix}.${key}` : key;
 			if (typeof value === "object" && value !== null) {
+				// An appliance without a section answers {"SECTION":{"OBJECT_NOT_FOUND":""}} — the
+				// marker arrives as a key, not as a value, so it slips past the sentinel check in
+				// evalPollHelper and would otherwise be stored as a state called
+				// "SECTION.OBJECT_NOT_FOUND" holding an empty string. The section is simply not
+				// there; record nothing for it.
+				if (Object.keys(value).length === 1 && Object.hasOwn(value, "OBJECT_NOT_FOUND")) {
+					const marker = `${pfx}${fullKey}.OBJECT_NOT_FOUND`;
+					if (!this.loggedSentinelKeys.has(marker)) {
+						this.loggedSentinelKeys.add(marker);
+						this.log.debug(`Section ${fullKey} is not provided by this appliance.`);
+						await this.markDatapointUnavailable(marker);
+					}
+					continue;
+				}
 				await this.evalPoll(value, pfx, fullKey);
 			} else {
 				await this.evalPollHelper(pfx, value, fullKey);
@@ -2022,12 +2076,69 @@ class Senec extends utils.Adapter {
 	 * @param {string | number | boolean} value - The value to evaluate.
 	 * @param {string} fullKey - The full key for the state.
 	 */
+	/**
+	 * Say plainly, in the state itself, that the appliance does not have this datapoint.
+	 *
+	 * The adapter asks every appliance for the same superset of datapoints, so such a state exists
+	 * only because an earlier version stored the appliance's refusal, or because a firmware update
+	 * dropped a field that used to be there. Left alone it keeps its last value and goes on looking
+	 * like a current reading; marked, it is unmistakable at a glance in the object tree.
+	 *
+	 * The state is deliberately NOT deleted. Removing it would discard any history or logging
+	 * setting attached to it, and clearing out states the appliance no longer reports is a separate
+	 * concern with its own rules — this only relabels what the appliance has explicitly refused.
+	 *
+	 * Only called for markers that mean the datapoint is absent for good. A transient read failure
+	 * leaves the state untouched, because the real reading is expected back.
+	 *
+	 * @param {string} id - Full state id, without the adapter namespace
+	 * @returns {Promise<void>}
+	 */
+	async markDatapointUnavailable(id) {
+		for (const candidate of [id, `${id}_Text`]) {
+			try {
+				// Only an existing state is marked. Creating one would add a datapoint to a clean
+				// installation purely to announce that it does not exist, which is noise; the state
+				// is only here at all because an earlier version stored the appliance's refusal.
+				if (!this.knownObjects.has(candidate) && !(await this.getObjectAsync(candidate))) {
+					continue;
+				}
+				await this.setStateChangedAsync(candidate, { val: DATAPOINT_UNAVAILABLE, ack: true });
+				this.log.debug(`Marked ${candidate} as not provided by this appliance.`);
+			} catch (error) {
+				this.log.debug(`Could not mark ${candidate} as unavailable: ${error.message}`);
+			}
+		}
+	}
+
 	async evalPollHelper(pfx, value, fullKey) {
 		// Resolve state attribute: try exact key, then strip trailing index, then strip all indices
 		const attrKey = resolveStateAttrKey(fullKey, state_attr);
 
 		if (!attrKey) {
 			this.log.debug(`REPORT_TO_DEV: State attribute definition missing for: ${fullKey}, Val: ${value}`);
+		}
+		// The appliance answered with an unavailability marker instead of a reading. Logged once per
+		// datapoint and run: polling repeats every few seconds and the answer does not change, so
+		// repeating it would be pure noise.
+		//
+		// Deliberately debug, never warn: the adapter asks every appliance for the same superset of
+		// datapoints and no model provides all of them, so an unanswered one is the normal case
+		// rather than a fault. Raising it would tell users something is wrong when nothing is.
+		//
+		// A marker is never stored. Writing it produced a state whose value was a word where a
+		// reading belongs, and flipped the object between "number" and "string" on every poll of a
+		// datapoint that answered intermittently.
+		if (isDeviceSentinel(value)) {
+			const sentinelKey = pfx + fullKey;
+			if (!this.loggedSentinelKeys.has(sentinelKey)) {
+				this.loggedSentinelKeys.add(sentinelKey);
+				this.log.debug(`Datapoint ${sentinelKey} was not delivered by the appliance (${value}).`);
+				if (isAbsentSentinel(value)) {
+					await this.markDatapointUnavailable(sentinelKey);
+				}
+			}
+			return;
 		}
 		this.log.silly(`API Array Value: ${fullKey} = ${value}`);
 		const desc = attrKey ? state_attr[attrKey].name : fullKey;
@@ -2198,6 +2309,12 @@ function resolveStateAttrKey(fullKey, attrs) {
  * @param value value to modify
  */
 const ValueTyping = (key, value) => {
+	// An unavailability marker is not a reading and must reach doState unchanged. Typing it would
+	// invent plausible data: a booltype turns "FORBIDDEN" into an asserted true, a multiply into
+	// NaN, a datetype into "Invalid Date" and an iptype into "222.NaN.NaN.15".
+	if (isDeviceSentinel(value)) {
+		return value;
+	}
 	if (state_attr[key]?.stringtype) {
 		return typeof value === "string" ? value : String(value);
 	}
@@ -2205,7 +2322,9 @@ const ValueTyping = (key, value) => {
 	// Scaling has to happen here as well: this branch returns early, so the multiply
 	// handling further down is unreachable for anything carrying a unit — which is
 	// every entry that defines one.
-	if (state_attr[key]?.numtype || (state_attr[key]?.unit && !isNaN(value))) {
+	// An empty value means the appliance delivered no payload at all. isNaN("") is false, so it used
+	// to fall through to Number("") || 0 and publish a 0 that is indistinguishable from a reading.
+	if (value !== "" && (state_attr[key]?.numtype || (state_attr[key]?.unit && !isNaN(value)))) {
 		const num = Number(value) || 0;
 		const factor = state_attr[key]?.multiply;
 		return factor ? parseFloat((num * factor).toFixed(2)) : num;

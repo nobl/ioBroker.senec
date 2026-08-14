@@ -18,7 +18,7 @@
 const assert = require("node:assert/strict");
 const { connectPoll, buildInclude, sanitizeKey, systemKey } = require("../lib/connect-client.js");
 
-/** Response of the two-system account from marq24/ha-senec-v3#233, serials shortened. */
+/** Real response of a two-system account, reported publicly by its owner; serials shortened. */
 const TWO_SYSTEMS = [
 	{
 		battery: { state: 0, state_of_charge: 1, power: 0.0 },

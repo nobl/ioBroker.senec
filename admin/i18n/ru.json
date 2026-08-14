@@ -15,7 +15,7 @@
     "HighPrioDataPointsDisclaimer": "Настоящим я признаю, что только я несу ответственность за обеспечение правильности этих настроек. Я также признаю, что неправильные настройки могут привести к неисправности моего устройства SENEC, и что я охотно принимаю на себя эти риски.",
     "HighPrioDataPointsDisclaimerHelp": "Неправильные настройки или даже запрос слишком большого количества точек данных могут привести к перезагрузке устройства SENEC, сбоям в работе и другому нежелательному поведению. Если вы не понимаете, что это за настройки и как их правильно настроить, оставьте их пустыми!",
     "HighPrioENERGY": "Опрос HighPrio ENERGY-Datapoints",
-    "HighPrioENERGYHelp": "Автоматически добавлено: STAT_STATE, GUI_BAT_DATA_POWER, GUI_INVERTER_POWER, GUI_HOUSE_POW, GUI_GRID_POW, GUI_BAT_DATA_FUEL_CHARGE, GUI_CHARGING_INFO, GUI_BOOSTING_INFO, GUI_BAT_DATA_POWER, GUI_BAT_DATA_VOLTAGE, GUI_BAT_DATA_CURRENT, GUI_BAT_DATA_FUEL_CHARGE, GUI_BAT_DATA_OA_CHARGING, STAT_LIMITED_NET_SKEW, SAFE_CHARGE_FORCE, SAFE_CHARGE_PROHIBIT, SAFE_CHARGE_RUNNING",
+    "HighPrioENERGYHelp": "Автоматически добавлено: STAT_STATE, GUI_BAT_DATA_POWER, GUI_INVERTER_POWER, GUI_HOUSE_POW, GUI_GRID_POW, GUI_BAT_DATA_FUEL_CHARGE, GUI_CHARGING_INFO, GUI_BOOSTING_INFO, GUI_BAT_DATA_POWER, GUI_BAT_DATA_VOLTAGE, GUI_BAT_DATA_CURRENT, GUI_BAT_DATA_FUEL_CHARGE, STAT_LIMITED_NET_SKEW, SAFE_CHARGE_FORCE, SAFE_CHARGE_PROHIBIT, SAFE_CHARGE_RUNNING",
     "HighPrioPM1OBJ1": "Опрос HighPrio PM1OBJ1-точки данных",
     "HighPrioPM1OBJ2": "Опрос HighPrio PM1OBJ2-точки данных",
     "HighPrioPMOBJHelp": "Автоматически добавляется: FREQ, U_AC, I_AC, P_AC, P_TOTAL.",

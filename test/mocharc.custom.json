@@ -1,5 +1,5 @@
 {
 	"require": ["test/mocha.setup.js"],
 	"fail-zero": true,
-	"watch-files": ["!(node_modules|test)/**/*.test.js", "*.test.js", "test/**/test!(PackageFiles|Startup).js"]
+	"watch-files": ["!(node_modules|test)/**/*.test.js", "*.test.js", "test/**/test!(PackageFiles|Startup|PureFunctions).js"]
 }
