@@ -29,7 +29,7 @@ const webClient = require(`${__dirname}/lib/web-client.js`);
 const localClient = require(`${__dirname}/lib/local-client.js`);
 const apiClient = require(`${__dirname}/lib/api-client.js`);
 const connectClient = require(`${__dirname}/lib/connect-client.js`);
-const { computeBackoffDelay } = require(`${__dirname}/lib/auth-helpers.js`);
+const { computeBackoffDelay, redactAuthUrl, extractHtmlErrorText } = require(`${__dirname}/lib/auth-helpers.js`);
 
 // process.on("unhandledRejection", (reason, _promise) => {
 // 	console.error("Unhandled Promise Rejection:", reason);
@@ -381,6 +381,57 @@ class Senec extends utils.Adapter {
 							this.log.debug(`[API ERROR] ${status} ${method} ${url}`);
 						} catch (err) {
 							this.log.debug(`Error logging failed: ${err.message}`);
+						}
+						return Promise.reject(error);
+					},
+				);
+
+				// The SSO login runs on authClient, not apiClient, so without these the one flow
+				// users actually report problems with is the one the debug log says nothing
+				// about. Request bodies are never logged — they carry the account's mail address
+				// and password — and every URL goes through redactAuthUrl so that single-use
+				// login codes stay out of the log.
+				this.authClient.interceptors.request.use((config) => {
+					try {
+						const method = (config.method || "GET").toUpperCase();
+						this.log.debug(`[SSO REQUEST] ${method} ${redactAuthUrl(config.url)}`);
+					} catch (err) {
+						this.log.debug(`SSO request logging failed: ${err.message}`);
+					}
+					return config;
+				});
+
+				this.authClient.interceptors.response.use(
+					(response) => {
+						try {
+							const method = (response.config?.method || "GET").toUpperCase();
+							const location = response.headers?.location;
+							this.log.debug(
+								`[SSO RESPONSE] ${response.status} ${method} ${redactAuthUrl(response.config?.url)}${
+									location ? ` → ${redactAuthUrl(location)}` : ""
+								}`,
+							);
+						} catch (err) {
+							this.log.debug(`SSO response logging failed: ${err.message}`);
+						}
+						return response;
+					},
+					(error) => {
+						try {
+							const method = (error.config?.method || "GET").toUpperCase();
+							const status = error.response?.status || "no-status";
+							const body = error.response?.data;
+							let reason = "";
+							if (body && typeof body === "object") {
+								reason = [body.error, body.error_description].filter(Boolean).join(": ");
+							} else if (typeof body === "string" && body) {
+								reason = extractHtmlErrorText(body);
+							}
+							this.log.debug(
+								`[SSO ERROR] ${status} ${method} ${redactAuthUrl(error.config?.url)}${reason ? `: ${reason}` : ""}`,
+							);
+						} catch (err) {
+							this.log.debug(`SSO error logging failed: ${err.message}`);
 						}
 						return Promise.reject(error);
 					},

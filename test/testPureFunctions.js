@@ -156,6 +156,77 @@ describe("generateTOTP", () => {
 	});
 });
 
+describe("redactAuthUrl", () => {
+	it("masks the single-use login code but keeps the endpoint readable", () => {
+		const url = authHelpers.redactAuthUrl(
+			"https://sso.senec.com/realms/senec/login-actions/authenticate?session_code=abc&execution=pwd&tab_id=xyz",
+		);
+		assert.ok(!url.includes("abc"));
+		assert.ok(url.includes("session_code=***"));
+		assert.ok(url.includes("execution=pwd"));
+		assert.ok(url.includes("tab_id=xyz"));
+	});
+
+	it("masks the authorization code in the app redirect", () => {
+		const url = authHelpers.redactAuthUrl("senec-app-auth://keycloak.prod?code=SECRETCODE&state=s");
+		assert.ok(!url.includes("SECRETCODE"));
+		assert.ok(url.includes("code=***"));
+	});
+
+	it("keeps an error redirect legible so the reason survives", () => {
+		const url = authHelpers.redactAuthUrl("senec-app-auth://keycloak.prod?error=access_denied");
+		assert.ok(url.includes("error=access_denied"));
+	});
+
+	it("drops the query of an unparseable URL rather than risking a code in the log", () => {
+		assert.equal(
+			authHelpers.redactAuthUrl("/login-actions/authenticate?session_code=abc"),
+			"/login-actions/authenticate",
+		);
+	});
+
+	it("survives a missing URL", () => {
+		assert.equal(authHelpers.redactAuthUrl(undefined), "n/a");
+	});
+});
+
+describe("describeAuthFailure", () => {
+	it("reports the OAuth error and description from a token endpoint refusal", () => {
+		const described = authHelpers.describeAuthFailure({
+			message: "Request failed with status code 400",
+			response: { status: 400, data: { error: "invalid_grant", error_description: "Token is not active" } },
+		});
+		assert.ok(described.includes("HTTP 400"));
+		assert.ok(described.includes("invalid_grant"));
+		assert.ok(described.includes("Token is not active"));
+	});
+
+	it("pulls the readable part out of a Keycloak HTML error page", () => {
+		const html =
+			"<html><head><title>We are sorry...</title></head><body>" +
+			'<span class="kc-feedback-text">Invalid username or password.</span></body></html>';
+		const described = authHelpers.describeAuthFailure({
+			message: "Request failed with status code 400",
+			response: { status: 400, data: html },
+		});
+		assert.ok(described.includes("We are sorry"));
+		assert.ok(described.includes("Invalid username or password."));
+	});
+
+	it("falls back to the bare status when the body says nothing", () => {
+		const described = authHelpers.describeAuthFailure({
+			message: "Request failed with status code 400",
+			response: { status: 400, data: "" },
+		});
+		assert.ok(described.includes("HTTP 400"));
+		assert.ok(described.includes("Request failed with status code 400"));
+	});
+
+	it("passes a network error through unchanged", () => {
+		assert.equal(authHelpers.describeAuthFailure({ message: "socket hang up" }), "socket hang up");
+	});
+});
+
 describe("computeBackoffDelay", () => {
 	it("returns a number >= 0", () => {
 		const delay = authHelpers.computeBackoffDelay(1000, 0);

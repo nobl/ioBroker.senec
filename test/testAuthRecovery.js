@@ -47,8 +47,25 @@ function makeAdapter(opts = {}) {
 		refreshPosts: 0,
 		loginAttempts: 0,
 		clearedTimers: 0,
-		log: { info() {}, debug() {}, warn() {}, error() {}, silly() {} },
-		logError() {},
+		// What the adapter would have written to the ioBroker log. The diagnostics tests assert
+		// on these strings because they are exactly what an affected user is asked to post.
+		loggedErrors: [],
+		warnLines: [],
+		debugLines: [],
+		log: {
+			info() {},
+			debug(msg) {
+				adapter.debugLines.push(String(msg));
+			},
+			warn(msg) {
+				adapter.warnLines.push(String(msg));
+			},
+			error() {},
+			silly() {},
+		},
+		logError(e, prefix = "") {
+			adapter.loggedErrors.push(prefix ? `${prefix}: ${e?.message ?? e}` : String(e?.message ?? e));
+		},
 		encrypt: (v) => v,
 		decrypt: (v) => v,
 		async getStateAsync() {
@@ -113,6 +130,25 @@ function rejectRefreshWithInvalidGrant(adapter) {
 		return realPost(url, body, cfg);
 	};
 }
+
+/**
+ * Build an axios-shaped rejection.
+ *
+ * @param {number} status - HTTP status
+ * @param {any} data - response body, JSON object or HTML string
+ * @returns {Error} error carrying a response, as axios would throw
+ */
+function httpError(status, data) {
+	const err = new Error(`Request failed with status code ${status}`);
+	// @ts-expect-error test double mimicking an axios error
+	err.response = { status, data };
+	return err;
+}
+
+/** A Keycloak refusal, which arrives as a rendered page rather than as JSON. */
+const KEYCLOAK_ERROR_PAGE =
+	"<html><head><title>We are sorry...</title></head><body>" +
+	'<span class="kc-feedback-text">Client not found.</span></body></html>';
 
 describe("API auth recovery after invalid_grant", () => {
 	it("a successful fallback login counts as recovery", async () => {
@@ -317,5 +353,183 @@ describe("API auth recovery after invalid_grant", () => {
 
 		assert.equal(adapter.loginAttempts, 0);
 		assert.deepEqual(adapter.scheduledDelays, [], "a shutting-down adapter must not leave timers behind");
+	});
+});
+
+/**
+ * Every request of the login flow fails with the same axios sentence — "Request failed with
+ * status code 400" — which names neither the request nor the reason. A user whose account the
+ * SSO refuses can then report only that sentence, and it is compatible with four unrelated
+ * causes at three different endpoints, so the report cannot be acted on at all.
+ *
+ * These tests assert the text the user is asked to post, not the mechanism that produces it.
+ */
+describe("login failure diagnostics", () => {
+	/**
+	 * Run a login that is expected to fail and return what the adapter logged.
+	 *
+	 * @param {object} adapter - Fake adapter
+	 * @returns {Promise<string>} the logged error line
+	 */
+	async function failingLogin(adapter) {
+		const token = await apiClient.apiLogin(adapter);
+		assert.equal(token, null, "this login was set up to fail");
+		assert.equal(adapter.loggedErrors.length, 1, "a failed login must leave exactly one error line");
+		return adapter.loggedErrors[0];
+	}
+
+	it("names the authorization request when the SSO refuses it", async () => {
+		const adapter = makeAdapter();
+		adapter.authClient.get = async () => {
+			throw httpError(400, KEYCLOAK_ERROR_PAGE);
+		};
+
+		const logged = await failingLogin(adapter);
+
+		assert.match(logged, /authorization request/, "the failing step must name itself");
+		assert.match(logged, /HTTP 400/);
+		assert.match(logged, /We are sorry/, "the SSO's own wording must survive into the log");
+		assert.match(logged, /Client not found/);
+	});
+
+	it("names the credentials post when the SSO refuses the form", async () => {
+		const adapter = makeAdapter();
+		const realPost = adapter.authClient.post;
+		adapter.authClient.post = async (url, body, cfg) => {
+			if (String(url).includes("token")) {
+				return realPost(url, body, cfg);
+			}
+			throw httpError(400, KEYCLOAK_ERROR_PAGE);
+		};
+
+		const logged = await failingLogin(adapter);
+
+		assert.match(logged, /credentials/, "the failing step must name itself");
+		assert.match(logged, /sso\.senec\.com/, "the endpoint belongs in the log");
+		assert.match(logged, /Client not found/);
+	});
+
+	it("names the token exchange and repeats the reason the SSO gave", async () => {
+		const adapter = makeAdapter();
+		const realPost = adapter.authClient.post;
+		adapter.authClient.post = async (url, body, cfg) => {
+			if (String(url).includes("token")) {
+				throw httpError(400, { error: "invalid_grant", error_description: "PKCE verification failed" });
+			}
+			return realPost(url, body, cfg);
+		};
+
+		const logged = await failingLogin(adapter);
+
+		assert.match(logged, /authorization_code exchange/, "the failing step must name itself");
+		assert.match(logged, /invalid_grant/);
+		assert.match(logged, /PKCE verification failed/);
+	});
+
+	it("says where the SSO sent us when the login ends somewhere other than the app", async () => {
+		const adapter = makeAdapter();
+		const realPost = adapter.authClient.post;
+		adapter.authClient.post = async (url, body, cfg) => {
+			if (String(url).includes("token")) {
+				return realPost(url, body, cfg);
+			}
+			return {
+				status: 302,
+				headers: {
+					location:
+						"https://sso.senec.com/realms/senec/login-actions/authenticate" +
+						"?session_code=SESSIONCODEVALUE&execution=otp",
+				},
+				data: "",
+			};
+		};
+
+		const logged = await failingLogin(adapter);
+
+		assert.match(logged, /Login incomplete/, "an unfinished login must not read as a missing code");
+		assert.match(logged, /login-actions\/authenticate/, "the destination is the whole point of the message");
+		assert.match(logged, /execution=otp/, "the Keycloak step must stay readable");
+	});
+
+	it("never writes a single-use login code to the log", async () => {
+		const adapter = makeAdapter();
+		const realPost = adapter.authClient.post;
+		adapter.authClient.post = async (url, body, cfg) => {
+			if (String(url).includes("token")) {
+				return realPost(url, body, cfg);
+			}
+			return {
+				status: 302,
+				headers: {
+					location:
+						"https://sso.senec.com/realms/senec/login-actions/authenticate" +
+						"?session_code=SESSIONCODEVALUE&execution=otp",
+				},
+				data: "",
+			};
+		};
+
+		const logged = await failingLogin(adapter);
+
+		assert.ok(!logged.includes("SESSIONCODEVALUE"), `a login code reached the log: ${logged}`);
+		assert.match(logged, /session_code=\*\*\*/, "the parameter stays visible, its value does not");
+	});
+
+	it("redacts the authorization code when the app redirect carries no usable one", async () => {
+		const adapter = makeAdapter();
+		const realPost = adapter.authClient.post;
+		adapter.authClient.post = async (url, body, cfg) => {
+			if (String(url).includes("token")) {
+				return realPost(url, body, cfg);
+			}
+			// A refusal comes back on the app's own scheme, so it passes the destination check
+			// and fails on the missing code instead.
+			return {
+				status: 302,
+				headers: { location: "senec-app-auth://cb?error=access_denied&state=STATEVALUE" },
+				data: "",
+			};
+		};
+
+		const logged = await failingLogin(adapter);
+
+		assert.match(logged, /error=access_denied/, "the refusal reason must survive");
+		assert.ok(!logged.includes("STATEVALUE"), `an unredacted parameter reached the log: ${logged}`);
+	});
+
+	it("treats a refresh token the SSO has dropped as routine rather than as a fault", async () => {
+		const adapter = makeAdapter({ loginSucceeds: true });
+		rejectRefreshWithInvalidGrant(adapter);
+
+		await apiClient.apiRefreshToken(adapter);
+
+		assert.equal(adapter.currentToken, "new-access-token", "the full login must still happen");
+		assert.deepEqual(
+			adapter.warnLines.filter((line) => /Token refresh failed/.test(line)),
+			[],
+			"an expired session is not a failure worth warning about",
+		);
+		assert.ok(
+			adapter.debugLines.some((line) => /no longer accepted/.test(line)),
+			"it still has to be visible at debug level",
+		);
+	});
+
+	it("still warns when a refresh fails for a reason that is not an expired session", async () => {
+		const adapter = makeAdapter();
+		const realPost = adapter.authClient.post;
+		adapter.authClient.post = async (url, body, cfg) => {
+			if (String(body || "").includes("grant_type=refresh_token")) {
+				throw httpError(503, "<html><title>Service Unavailable</title></html>");
+			}
+			return realPost(url, body, cfg);
+		};
+
+		await apiClient.apiRefreshToken(adapter).catch(() => {});
+
+		const warned = adapter.warnLines.filter((line) => /Token refresh failed/.test(line));
+		assert.equal(warned.length, 1, "a real outage must still be warned about");
+		assert.match(warned[0], /HTTP 503/, "the status belongs in the warning");
+		assert.match(warned[0], /Service Unavailable/, "so does what the server said");
 	});
 });

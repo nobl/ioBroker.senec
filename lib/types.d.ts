@@ -239,3 +239,21 @@ export interface SenecAdapter extends AdapterClass {
     apiPoll(): Promise<void>;
     webInit(): Promise<void>;
 }
+
+/**
+ * The body Keycloak returns on a rejected token request.
+ */
+export interface SsoErrorBody {
+    error?: string;
+    error_description?: string;
+    errorDescription?: string;
+}
+
+/**
+ * The part of an axios error that describeAuthFailure reads. Kept as a local shape rather than
+ * the axios error type: the same describer is used on errors that never came from axios.
+ */
+export interface AuthFailure {
+    message?: string;
+    response?: { status?: number; data?: string | SsoErrorBody };
+}
