@@ -126,7 +126,7 @@
     "dbgHdrLocal": "Lokaal",
     "dbgHdrWeb": "mijn-senec",
     "dbgReqResp": "Logverzoeken en reacties",
-    "dbgReqRespHelp": "Registreert HTTP-verzoek-URL's en antwoorddetails op foutopsporingsniveau. Alleen aanbevolen voor foutopsporing. Kan gevoelige informatie registreren - laat deze niet permanent ingeschakeld.",
+    "dbgReqRespHelp": "Registreert HTTP-verzoek-URL's en antwoorddetails op foutopsporingsniveau, en bovendien de volledige antwoordteksten van de inlogpagina's - elk tot ongeveer 6 KB aan markeringen. Zelfs als deze optie is uitgeschakeld, wordt bij een mislukte aanmeldingsstap de door de SSO geretourneerde pagina naar het logboek geschreven wanneer het exemplaarlogboekniveau is ingesteld op foutopsporing. Inlogcodes, e-mailadressen en wachtwoorden zijn gemaskeerd, maar de pagina's kunnen nog steeds persoonlijke gegevens bevatten - alleen aanbevolen voor probleemoplossing, laat ze niet permanent ingeschakeld.",
     "dbgShowPolling": "Polling weergeven in infologboek",
     "dbgShowPollingHelp": "Bevordert pollingstatusberichten van foutopsporing tot informatieniveau. Toont wanneer de adapter elke connector pollt en de volgende poll plant.",
     "debugAndLogging": "Foutopsporing en logboekregistratie",

@@ -126,7 +126,7 @@
     "dbgHdrLocal": "Lokal",
     "dbgHdrWeb": "mein-senec",
     "dbgReqResp": "Requests & Responses loggen",
-    "dbgReqRespHelp": "Loggt HTTP-Request-URLs und Response-Details auf Debug-Ebene. Nur für Debugging empfohlen. Kann sensible Informationen loggen — nicht dauerhaft aktiviert lassen.",
+    "dbgReqRespHelp": "Loggt HTTP-Request-URLs und Response-Details auf Debug-Ebene und zusätzlich die vollständigen Response-Bodies der Login-Seiten — jeweils bis zu etwa 6 KB Markup. Auch bei ausgeschalteter Option schreibt ein fehlgeschlagener Login-Schritt die Antwortseite des SSO ins Log, sobald der Loglevel der Instanz auf „debug“ steht. Login-Codes, Mailadressen und Passwörter werden dabei maskiert, die Seiten können aber weiterhin personenbezogene Daten enthalten — nur zur Fehlersuche empfohlen, nicht dauerhaft aktiviert lassen.",
     "dbgShowPolling": "Polling im Info-Log anzeigen",
     "dbgShowPollingHelp": "Zeigt Polling-Statusmeldungen im Info-Log an. Zeigt wann der Adapter jeden Konnektor abfragt und den nächsten Poll plant.",
     "debugAndLogging": "Debug & Logging",

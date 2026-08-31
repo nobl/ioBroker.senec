@@ -126,7 +126,7 @@
     "dbgHdrLocal": "Lokalny",
     "dbgHdrWeb": "mein-senec",
     "dbgReqResp": "Rejestruj żądania i odpowiedzi",
-    "dbgReqRespHelp": "Rejestruje adresy URL żądań HTTP i szczegóły odpowiedzi na poziomie debugowania. Zalecane tylko do debugowania. Może rejestrować poufne informacje — nie pozostawiaj włączonej na stałe.",
+    "dbgReqRespHelp": "Rejestruje adresy URL żądań HTTP i szczegóły odpowiedzi na poziomie debugowania, a dodatkowo kompletne treści odpowiedzi stron logowania — do około 6 KB znaczników każda. Nawet przy wyłączonej tej opcji, krok logowania, który zakończy się niepowodzeniem, zapisuje stronę zwróconą przez SSO do dziennika, gdy poziom dziennika instancji jest ustawiony na debugowanie. Kody logowania, adresy e-mail i hasła są maskowane, ale strony nadal mogą zawierać dane osobowe — zalecane tylko w przypadku rozwiązywania problemów, nie pozostawiaj włączonej na stałe.",
     "dbgShowPolling": "Pokaż odpytywanie w dzienniku informacyjnym",
     "dbgShowPollingHelp": "Promuje komunikaty o stanie odpytywania z poziomu debugowania do poziomu informacyjnego. Pokazuje, kiedy adapter odpytuje każde złącze i planuje następne odpytywanie.",
     "debugAndLogging": "Debugowanie i rejestrowanie",

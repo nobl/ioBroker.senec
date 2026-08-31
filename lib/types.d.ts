@@ -119,6 +119,9 @@ export interface SenecAdapter extends AdapterClass {
     // ── API logging dedup ─────────────────────────────────────────────
     lastLoggedRecommendedConcurrency: number | null;
     lastLoggedQueueSnapshot: string | null;
+    // Fingerprint of the last logged login page; a successful login clears it, so it spans a run of
+    // failed attempts rather than one attempt or the adapter lifetime.
+    lastLoggedAuthPage: string | null;
 
     // ── Web logging dedup ────────────────────────────────────────────
     _lastLoggedWebRecommendedConcurrency: number | null;

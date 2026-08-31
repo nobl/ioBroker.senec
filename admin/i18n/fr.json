@@ -126,7 +126,7 @@
     "dbgHdrLocal": "Locale",
     "dbgHdrWeb": "mein-senec",
     "dbgReqResp": "Consigner les demandes et les réponses",
-    "dbgReqRespHelp": "Enregistre les URL des requêtes HTTP et les détails des réponses au niveau du débogage. Uniquement recommandé pour le débogage. Peut enregistrer des informations sensibles – ne laissez pas activé en permanence.",
+    "dbgReqRespHelp": "Enregistre les URL des requêtes HTTP et les détails des réponses au niveau du débogage, ainsi que les corps de réponse complets des pages de connexion — jusqu'à environ 6 Ko de balisage chacun. Même si cette option est désactivée, une étape de connexion qui échoue écrit la page renvoyée par le SSO dans le journal chaque fois que le niveau de journalisation de l'instance est défini sur débogage. Les codes de connexion, les adresses e-mail et les mots de passe sont masqués, mais les pages peuvent toujours contenir des données personnelles — recommandé uniquement pour le dépannage, ne laissez pas activé en permanence.",
     "dbgShowPolling": "Afficher le sondage dans le journal d'informations",
     "dbgShowPollingHelp": "Favorise les messages d'état d'interrogation du niveau débogage au niveau information. Indique quand l'adaptateur interroge chaque connecteur et planifie l'interrogation suivante.",
     "debugAndLogging": "Débogage et journalisation",

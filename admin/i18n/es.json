@@ -126,7 +126,7 @@
     "dbgHdrLocal": "Local",
     "dbgHdrWeb": "mein-senec",
     "dbgReqResp": "Registrar solicitudes y respuestas",
-    "dbgReqRespHelp": "Registra las URL de solicitud HTTP y los detalles de respuesta en el nivel de depuración. Sólo recomendado para depuración. Puede registrar información confidencial; no la deje habilitada permanentemente.",
+    "dbgReqRespHelp": "Registra las URL de solicitud HTTP y los detalles de respuesta en el nivel de depuración y, además, los cuerpos de respuesta completos de las páginas de inicio de sesión, hasta aproximadamente 6 KB de marcado cada uno. Incluso con esta opción desactivada, un paso de inicio de sesión que falla escribe la página devuelta por el SSO en el registro siempre que el nivel de registro de la instancia esté configurado para depurar. Los códigos de inicio de sesión, las direcciones de correo y las contraseñas están enmascarados, pero las páginas aún pueden contener datos personales; solo se recomienda para solucionar problemas, no las deje habilitadas permanentemente.",
     "dbgShowPolling": "Mostrar encuestas en el registro de información",
     "dbgShowPollingHelp": "Promueve mensajes de estado de sondeo desde el nivel de depuración hasta el de información. Muestra cuándo el adaptador sondea cada conector y programa el siguiente sondeo.",
     "debugAndLogging": "Depuración y registro",

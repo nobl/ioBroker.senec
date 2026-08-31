@@ -29,7 +29,9 @@ const webClient = require(`${__dirname}/lib/web-client.js`);
 const localClient = require(`${__dirname}/lib/local-client.js`);
 const apiClient = require(`${__dirname}/lib/api-client.js`);
 const connectClient = require(`${__dirname}/lib/connect-client.js`);
-const { computeBackoffDelay, redactAuthUrl, extractHtmlErrorText } = require(`${__dirname}/lib/auth-helpers.js`);
+const { computeBackoffDelay, redactAuthUrl, extractHtmlErrorText, maskAuthSecrets } = require(
+	`${__dirname}/lib/auth-helpers.js`,
+);
 
 // process.on("unhandledRejection", (reason, _promise) => {
 // 	console.error("Unhandled Promise Rejection:", reason);
@@ -147,6 +149,9 @@ class Senec extends utils.Adapter {
 
 		this.lastLoggedRecommendedConcurrency = null;
 		this.lastLoggedQueueSnapshot = null;
+		// Fingerprint of the last login page written to the log, so a login failing the same way on
+		// every retry is reported once instead of every few seconds. A successful login clears it.
+		this.lastLoggedAuthPage = null;
 		this._lastLoggedWebRecommendedConcurrency = null;
 		this._lastLoggedWebQueueSnapshot = null;
 
@@ -309,6 +314,12 @@ class Senec extends utils.Adapter {
 				timeout: resolveApiTimeout(this.config.api_timeout),
 				signal: this.abortController?.signal,
 				httpsAgent: this.apiAgent,
+				// axios 1.x buffers a response of any size by default (-1 = unlimited). Every API
+				// answer is JSON over a bounded window — the largest, a measurement tier, asks for
+				// a fixed from/to range at a fixed resolution — so a body past this bound is a
+				// malfunction, and on a Raspberry Pi it is one that would be paid for in RAM.
+				maxContentLength: API_MAX_RESPONSE_BYTES,
+				maxBodyLength: API_MAX_RESPONSE_BYTES,
 			});
 
 			this.authClient = wrapper(
@@ -316,6 +327,10 @@ class Senec extends utils.Adapter {
 					withCredentials: true,
 					timeout: 10000,
 					signal: this.abortController?.signal,
+					// Same reasoning for the SSO: a real Keycloak page measures ~13 KB, so the bound
+					// is orders of magnitude above anything the login flow legitimately returns.
+					maxContentLength: API_MAX_RESPONSE_BYTES,
+					maxBodyLength: API_MAX_RESPONSE_BYTES,
 				}),
 			);
 
@@ -421,11 +436,18 @@ class Senec extends utils.Adapter {
 							const method = (error.config?.method || "GET").toUpperCase();
 							const status = error.response?.status || "no-status";
 							const body = error.response?.data;
+							const secrets = { mail: this.config.api_mail, password: this.config.api_pwd };
 							let reason = "";
 							if (body && typeof body === "object") {
-								reason = [body.error, body.error_description].filter(Boolean).join(": ");
+								// Masked like the HTML branch below: an OAuth error_description names the
+								// account often enough that letting this one route past the redaction
+								// would undo it for everyone whose failure arrives as JSON.
+								reason = maskAuthSecrets(
+									[body.error, body.error_description].filter(Boolean).join(": "),
+									secrets,
+								);
 							} else if (typeof body === "string" && body) {
-								reason = extractHtmlErrorText(body);
+								reason = extractHtmlErrorText(body, secrets);
 							}
 							this.log.debug(
 								`[SSO ERROR] ${status} ${method} ${redactAuthUrl(error.config?.url)}${reason ? `: ${reason}` : ""}`,
@@ -2453,6 +2475,14 @@ if (require.main !== module) {
 const API_TIMEOUT_MIN_MS = 5000;
 const API_TIMEOUT_MAX_MS = 120000;
 const API_TIMEOUT_DEFAULT_MS = 30000;
+
+/**
+ * Upper bound for a buffered cloud response, in bytes.
+ *
+ * Far above anything the SENEC cloud or its SSO legitimately answers with, and small enough that a
+ * runaway body cannot exhaust the memory of the small hosts this adapter typically runs on.
+ */
+const API_MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 /**
  * Resolve the timeout for ordinary API requests.

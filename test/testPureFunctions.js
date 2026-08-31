@@ -156,6 +156,271 @@ describe("generateTOTP", () => {
 	});
 });
 
+/**
+ * Read a page's hidden fields the way the login flow does: one form match, fields from its content.
+ *
+ * `extractHiddenInputs` takes a form's *content* rather than a document, so that the fields posted
+ * and the action they are posted to can only ever come from the same form. Composing it here keeps
+ * that composition under test instead of letting each case invent its own.
+ *
+ * @param {string} [html] - a whole page
+ * @returns {Array<[string, string]>} the login form's hidden fields
+ */
+function hiddenInputsOf(html) {
+	return authHelpers.extractHiddenInputs(authHelpers.matchLoginForm(html)?.inner ?? "");
+}
+
+describe("matchLoginForm", () => {
+	it("picks the first form that carries an action, not merely the first form", () => {
+		// A locale switcher ahead of the login form carries no action; posting its `locale`
+		// field to the login action would be the wrong body for the right URL.
+		const html =
+			'<form id="kc-locale-form"><input type="hidden" name="locale" value="de"></form>' +
+			'<form id="kc-form-login" action="/login-actions/authenticate?session_code=abc">' +
+			'<input type="hidden" name="credentialId" value="pw-1"><input name="username"></form>';
+		const form = authHelpers.matchLoginForm(html);
+		assert.equal(form.action, "/login-actions/authenticate?session_code=abc");
+		assert.deepEqual(authHelpers.extractHiddenInputs(form.inner), [["credentialId", "pw-1"]]);
+	});
+
+	it("reads an action that is single-quoted or not quoted at all", () => {
+		assert.equal(authHelpers.extractFormAction("<form action='/single/quoted'>"), "/single/quoted");
+		assert.equal(authHelpers.extractFormAction("<form action=/unquoted method=POST>"), "/unquoted");
+	});
+
+	it("stops at a nested form so the inner form's fields cannot be posted as ours", () => {
+		// Markup a browser would auto-close: the only `</form>` in the document belongs to the
+		// inner form, so taking everything up to it would post the inner form's fields.
+		const html =
+			'<form action="/outer"><input type="hidden" name="outer" value="1">' +
+			'<form action="/inner"><input type="hidden" name="inner" value="2"></form>';
+		assert.deepEqual(hiddenInputsOf(html), [["outer", "1"]]);
+	});
+
+	it("yields no fields at all when the document never closes the form", () => {
+		// Truncated markup: keeping the rest of the document would sweep in every later form's
+		// fields, which is the cross-form mix-up the single match exists to prevent.
+		const html = '<form action="/x"><input type="hidden" name="a" value="1">';
+		assert.equal(authHelpers.matchLoginForm(html).inner, "");
+		assert.deepEqual(hiddenInputsOf(html), []);
+	});
+
+	it("returns null for a page with no form and for a form with no action", () => {
+		assert.equal(authHelpers.matchLoginForm("<div>nothing</div>"), null);
+		assert.equal(authHelpers.matchLoginForm('<form><input type="hidden" name="x" value="1"></form>'), null);
+		assert.equal(authHelpers.matchLoginForm(undefined), null);
+	});
+});
+
+describe("extractHiddenInputs", () => {
+	it("collects the hidden fields of the login form in document order", () => {
+		const html = `<form action="https://sso.senec.com/x">
+			<input type="hidden" name="session_code" value="abc">
+			<input type="text" name="username">
+			<input type="hidden" name="credentialId" value="pw-1">
+		</form>`;
+		assert.deepEqual(hiddenInputsOf(html), [
+			["session_code", "abc"],
+			["credentialId", "pw-1"],
+		]);
+	});
+
+	it("decodes entities so the value goes back as the server wrote it", () => {
+		const html = '<form action="/x"><input type="hidden" name="rd" value="a&amp;b&#61;c&quot;d"></form>';
+		assert.deepEqual(hiddenInputsOf(html), [["rd", 'a&b=c"d']]);
+	});
+
+	it("leaves an entity the server never meant as one exactly as it was written", () => {
+		// `&constructor;` resolved through the entity table's prototype chain and was posted as
+		// "function Object() { [native code] }" in place of the value the SSO wrote.
+		assert.equal(authHelpers.decodeHtmlEntities("&constructor;"), "&constructor;");
+		const html = '<form action="/x"><input type="hidden" name="rd" value="&constructor;"></form>';
+		assert.deepEqual(hiddenInputsOf(html), [["rd", "&constructor;"]]);
+	});
+
+	it("handles unquoted and single-quoted attributes, and a hidden field without a value", () => {
+		const html =
+			'<form action="/x"><input type=hidden name=\'tab_id\' value=xyz><input type="hidden" name="empty"></form>';
+		assert.deepEqual(hiddenInputsOf(html), [
+			["tab_id", "xyz"],
+			["empty", ""],
+		]);
+	});
+
+	it("reads the field's own name and value past the data- attributes a theme adds", () => {
+		// `\b` also sits between the `-` and the `v` of `data-value`, so the anchored form is what
+		// keeps `data-value="junk"` from being posted as the field's value.
+		const html =
+			'<form action="/x"><input data-name="junk" data-value="junk" type="hidden" name="credentialId" value="pw-1"></form>';
+		assert.deepEqual(hiddenInputsOf(html), [["credentialId", "pw-1"]]);
+		assert.equal(authHelpers.readTagAttribute('<input data-value="junk" value="real">', "value"), "real");
+	});
+
+	it("does not take a field whose type merely starts with hidden", () => {
+		// An optional closing quote made `type="hiddenfoo"` match as a prefix, so a field the
+		// browser renders and the user never fills was posted as form state.
+		const html =
+			'<form action="/x"><input type="hiddenfoo" name="k" value="v"><input data-type="hidden" name="d"></form>';
+		assert.deepEqual(hiddenInputsOf(html), []);
+	});
+
+	it("ignores hidden fields outside the form the action was taken from", () => {
+		const html =
+			'<form action="/x"><input type="hidden" name="in" value="1"></form><input type="hidden" name="out" value="2">';
+		assert.deepEqual(hiddenInputsOf(html), [["in", "1"]]);
+	});
+
+	it("returns nothing for a missing or empty form content", () => {
+		assert.deepEqual(authHelpers.extractHiddenInputs(""), []);
+		assert.deepEqual(authHelpers.extractHiddenInputs(undefined), []);
+	});
+});
+
+describe("buildLoginForm", () => {
+	/** The content of a form, as `matchLoginForm` hands it over. */
+	const inner =
+		'<input type="hidden" name="execution" value="idp-discovery">' +
+		'<input type="hidden" name="username" value="stale@example.com">' +
+		'<input name="username" type="text"><input name="password" type="password">';
+
+	it("posts the form's hidden state and lets the adapter's own values win", () => {
+		const body = authHelpers.buildLoginForm(inner, { username: "user@example.com", password: "secret" });
+		assert.equal(body.get("execution"), "idp-discovery");
+		assert.deepEqual(body.getAll("username"), ["user@example.com"], "the stale hidden copy must be replaced");
+		assert.equal(body.get("password"), "secret");
+	});
+
+	it("keeps a name the form carries twice as two fields, the way a browser sends it", () => {
+		const duplicated =
+			'<input type="hidden" name="scope" value="openid"><input type="hidden" name="scope" value="profile">';
+		const body = authHelpers.buildLoginForm(duplicated, {});
+		assert.deepEqual(body.getAll("scope"), ["openid", "profile"]);
+		assert.equal(body.toString(), "scope=openid&scope=profile");
+	});
+
+	it("drops a field the adapter does not supply rather than posting the form's own value", () => {
+		// The username step must not carry a password at all; a hidden `password` on that page
+		// would otherwise be posted as though the adapter had chosen it.
+		const body = authHelpers.buildLoginForm(inner, { username: "user@example.com", password: undefined });
+		assert.equal(body.has("password"), false);
+		assert.ok(!body.toString().includes("password="));
+	});
+});
+
+describe("redactAuthHtml", () => {
+	it("keeps the form fields and the error text a failing login has to be read from", () => {
+		const html = `<html><head><style>.a{color:red}</style></head><body>
+			<span class="kc-feedback-text">Unexpected error when handling authentication request to identity provider.</span>
+			<form action="/login-actions/authenticate?session_code=SECRET&execution=e1">
+			<input type="hidden" name="credentialId" value="idp-myenergykey"></form>
+			<script>var x=1;</script></body></html>`;
+		const out = authHelpers.redactAuthHtml(html);
+		assert.ok(out.includes("identity provider"));
+		assert.ok(out.includes('name="credentialId"'));
+		assert.ok(out.includes("idp-myenergykey"));
+		assert.ok(out.includes("execution=e1"));
+		assert.ok(!out.includes("color:red"));
+		assert.ok(!out.includes("var x=1"));
+	});
+
+	it("masks the session code, the configured credentials and any mail address", () => {
+		const html =
+			'<form action="/x?session_code=SECRET"><input value="user@example.com">' +
+			'<input type="password" value="hunter2"></form>';
+		const out = authHelpers.redactAuthHtml(html, { mail: "user@example.com", password: "hunter2" });
+		assert.ok(!out.includes("SECRET"));
+		assert.ok(!out.includes("user@example.com"));
+		assert.ok(!out.includes("hunter2"));
+		assert.ok(out.includes("session_code=***"));
+	});
+
+	it("masks the login code Keycloak carries as a hidden field, not only the one in a URL", () => {
+		const html = '<form action="/x"><input type="hidden" name="session_code" value="SESSIONCODEVALUE"></form>';
+		const out = authHelpers.redactAuthHtml(html);
+		assert.ok(!out.includes("SESSIONCODEVALUE"), `a login code reached the log: ${out}`);
+		assert.ok(out.includes('name="session_code"'), "the field stays visible, its value does not");
+		assert.ok(out.includes('value="***"'));
+	});
+
+	it("masks the account address however the page spells it", () => {
+		const mail = "user@example.com";
+		const html =
+			"<p>raw user@example.com</p>" +
+			'<a href="/login?login_hint=user%40example.com">x</a>' +
+			"<p>user&#64;example.com</p>" +
+			'<a href="/restart?login_hint=user%40example%2Ecom">y</a>';
+		const out = authHelpers.redactAuthHtml(html, { mail: mail, password: "secret" });
+		assert.ok(!out.includes("user@example.com"), "the raw spelling");
+		assert.ok(!out.includes("user%40example.com"), "the percent-encoded one the SSO puts in links");
+		assert.ok(!out.includes("user&#64;example.com"), "and the entity-encoded one");
+		// The address-shaped backstop cannot see a percent-encoded dot, so this spelling is the one
+		// that shows the *configured* address is being masked and not merely anything mail-shaped.
+		assert.ok(!out.includes("user%40example%2Ecom"), "and one escaped past what the backstop matches");
+		assert.equal(
+			(out.match(/\*\*\*@\*\*\*/g) ?? []).length,
+			4,
+			"each spelling has to be masked, not just the first",
+		);
+	});
+
+	it("masks an address the adapter was never told about", () => {
+		// The backstop is what covers a support address or a second account the page names: the
+		// configured spelling only masks the one address the adapter happens to know.
+		const out = authHelpers.maskAuthSecrets("Contact other.person+tag@some-provider.co.uk for help.", {});
+		assert.ok(!out.includes("other.person+tag@some-provider.co.uk"));
+		assert.ok(out.includes("***@***"));
+	});
+
+	it("does not rewrite the page when the password happens to be a markup word", () => {
+		// A blind substring replace turned `type="hidden"` into `type="***"` for a password of
+		// `hidden`, which destroys the page and tells every reader what the password is.
+		const html = '<form action="/x"><input type="hidden" name="credentialId" value="pw-1"></form>';
+		const out = authHelpers.redactAuthHtml(html, { mail: "user@example.com", password: "hidden" });
+		assert.ok(out.includes('type="hidden"'), `the markup was mangled: ${out}`);
+		assert.ok(!out.includes('type="***"'), "and the password must not be disclosed by what got masked");
+	});
+
+	it("masks a secret that lies across the truncation boundary", () => {
+		// Cutting before redacting left `user@exa` — matching neither the configured spelling nor
+		// an address-shaped pattern — in the log. Sweep the offsets where the cut falls inside the
+		// secret, so the case cannot pass by the secret having been truncated away instead.
+		const mail = "boundaryuser@example.com";
+		const password = "straddlingpassword";
+		for (let back = 4; back < mail.length; back++) {
+			const pad = authHelpers.AUTH_HTML_LOG_LIMIT - "<p></p>".length - back;
+			const html = `<p>${"x".repeat(pad)}${mail}</p><input value="${password}">`;
+			const out = authHelpers.redactAuthHtml(html, { mail: mail, password: password });
+			assert.ok(
+				!out.includes("boundaryuser"),
+				`the address survived the cut at offset ${back}: …${out.slice(-80)}`,
+			);
+			assert.ok(out.includes("***@***"), `the address was truncated away rather than masked at offset ${back}`);
+		}
+		// The password sits past the cut on every pad above, so it is checked where the cut falls
+		// inside it: same sweep, this time with the address out of the way.
+		for (let back = 4; back < password.length; back++) {
+			const pad = authHelpers.AUTH_HTML_LOG_LIMIT - '<p></p><input value="'.length - back;
+			const html = `<p>${"x".repeat(pad)}</p><input value="${password}">`;
+			const out = authHelpers.redactAuthHtml(html, { mail: "user@example.com", password: password });
+			assert.ok(
+				!out.includes("straddling"),
+				`the password survived the cut at offset ${back}: …${out.slice(-80)}`,
+			);
+			assert.ok(out.includes('value="***"'), `the password was truncated away rather than masked at ${back}`);
+		}
+	});
+
+	it("truncates a long page instead of flooding the log", () => {
+		const out = authHelpers.redactAuthHtml(`<p>${"x".repeat(20000)}</p>`);
+		assert.equal(out.length, authHelpers.AUTH_HTML_LOG_LIMIT + " …(truncated)".length);
+		assert.ok(out.endsWith("…(truncated)"));
+	});
+
+	it("survives a missing body", () => {
+		assert.equal(authHelpers.redactAuthHtml(undefined), "");
+	});
+});
+
 describe("redactAuthUrl", () => {
 	it("masks the single-use login code but keeps the endpoint readable", () => {
 		const url = authHelpers.redactAuthUrl(

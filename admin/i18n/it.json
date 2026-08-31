@@ -126,7 +126,7 @@
     "dbgHdrLocal": "Locale",
     "dbgHdrWeb": "mein-senec",
     "dbgReqResp": "Registra richieste e risposte",
-    "dbgReqRespHelp": "Registra gli URL delle richieste HTTP e i dettagli della risposta a livello di debug. Consigliato solo per il debug. Può registrare informazioni sensibili: non lasciarlo abilitato in modo permanente.",
+    "dbgReqRespHelp": "Registra gli URL delle richieste HTTP e i dettagli della risposta a livello di debug e inoltre i corpi completi della risposta delle pagine di accesso, fino a circa 6 KB di markup ciascuno. Anche con questa opzione disattivata, un passaggio di accesso che non riesce scrive la pagina restituita da SSO nel log ogni volta che il livello del log dell'istanza è impostato su debug. Codici di accesso, indirizzi e-mail e password vengono mascherati, ma le pagine possono comunque contenere dati personali: consigliato solo per la risoluzione dei problemi, non lasciare abilitati in modo permanente.",
     "dbgShowPolling": "Mostra il sondaggio nel registro delle informazioni",
     "dbgShowPollingHelp": "Promuove il polling dei messaggi di stato dal livello di debug al livello di informazioni. Mostra quando l'adattatore esegue il polling di ciascun connettore e pianifica il polling successivo.",
     "debugAndLogging": "Debug e registrazione",

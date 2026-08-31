@@ -55,7 +55,7 @@
     "dbgShowPolling": "Show polling in info log",
     "dbgShowPollingHelp": "Promotes polling status messages from debug to info level. Shows when the adapter polls each connector and schedules the next poll.",
     "dbgReqResp": "Log requests & responses",
-    "dbgReqRespHelp": "Logs HTTP request URLs and response details at debug level. Only recommended for debugging. May log sensitive information — do not leave enabled permanently.",
+    "dbgReqRespHelp": "Logs HTTP request URLs and response details at debug level, and additionally the complete response bodies of the login pages — up to about 6 KB of markup each. Even with this option switched off, a login step that fails writes the page returned by the SSO to the log whenever the instance log level is set to debug. Login codes, mail addresses and passwords are masked, but the pages can still contain personal data — only recommended for troubleshooting, do not leave enabled permanently.",
     "dbgDebugLog": "Queue diagnostics → info log",
     "dbgDebugLogHelp": "Promotes queue concurrency recommendations and statistics from debug to info level. Only available for connectors with request queues (API, mein-senec).",
     "dbgDebugStates": "Write diagnostics to states",
