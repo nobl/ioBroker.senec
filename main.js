@@ -29,7 +29,7 @@ const webClient = require(`${__dirname}/lib/web-client.js`);
 const localClient = require(`${__dirname}/lib/local-client.js`);
 const apiClient = require(`${__dirname}/lib/api-client.js`);
 const connectClient = require(`${__dirname}/lib/connect-client.js`);
-const { computeBackoffDelay, redactAuthUrl, extractHtmlErrorText, maskAuthSecrets } = require(
+const { computeBackoffDelay, redactAuthUrl, extractHtmlErrorText, maskAuthSecrets, maskMailAddress } = require(
 	`${__dirname}/lib/auth-helpers.js`,
 );
 
@@ -1705,10 +1705,52 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Strip what a pasted mail address brings with it and nobody can see.
+	 *
+	 * A trailing space in the configured address makes the SENEC App API login fail on every single
+	 * attempt, with a message that names neither the address nor the space: the app client's login
+	 * asks for the username first and resolves the domain behind the `@` to decide whether the
+	 * account belongs to an identity provider. `example.com ` is not a domain, that handover throws,
+	 * and Keycloak answers the username step with "Unexpected error when handling authentication
+	 * request to identity provider" — a 400 that reads like a broken endpoint or a rejected account.
+	 *
+	 * The mein-senec.de login is served a single form carrying username *and* password, which
+	 * validates credentials directly and trims the username on the way — so the same stray
+	 * character passes there unnoticed, and the two connectors disagree about credentials that are
+	 * in fact identical. That is the shape this arrived in and the reason it cost a diagnosis.
+	 *
+	 * Zero-width characters are removed along with the whitespace: `trim()` does not touch them,
+	 * and they travel through a copy & paste just as invisibly.
+	 *
+	 * The password is deliberately left alone — a space at either end of it may well be part of it.
+	 *
+	 * @returns {void}
+	 */
+	normalizeMailConfig() {
+		const configured = this.config.api_mail;
+		if (typeof configured !== "string" || !configured) {
+			return;
+		}
+		// Escaped rather than written out: the characters this removes are invisible in the source
+		// too, and a literal one here would be as hard to see as the one it is meant to catch.
+		const cleaned = configured.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+		if (cleaned === configured) {
+			return;
+		}
+		this.config.api_mail = cleaned;
+		this.log.warn(
+			`(checkConf) The configured mail address carried leading or trailing whitespace, which the SENEC ` +
+				`App API login cannot be made with. It is used as ${maskMailAddress(cleaned)} — please remove ` +
+				`the stray character in the adapter settings as well.`,
+		);
+	}
+
+	/**
 	 * checks config paramaters
 	 * Fallback to default values in case they are out of scope
 	 */
 	checkConfig() {
+		this.normalizeMailConfig();
 		this.log.debug(`(checkConf) Configured polling interval high priority: ${this.config.interval}s`);
 		if (this.config.interval < 1 || this.config.interval > 3600) {
 			this.log.warn(

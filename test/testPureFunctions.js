@@ -363,6 +363,24 @@ describe("redactAuthHtml", () => {
 		);
 	});
 
+	it("names the login account by its domain without writing the address out", () => {
+		// The point of the line this feeds is comparing two addresses against each other — the one
+		// configured and the one the reporter believes is configured — so the domain has to survive
+		// while the local part must not.
+		assert.equal(authHelpers.maskMailAddress("uwe.mueller@example.com"), "u***@example.com");
+		assert.equal(authHelpers.maskMailAddress("  uwe.mueller@example.com  "), "u***@example.com");
+		// A plus-addressed local part is still a local part, and an address may carry more than one
+		// `@` — the domain is what follows the last one.
+		assert.equal(authHelpers.maskMailAddress('"a@b"@example.com'), '"***@example.com');
+		// Not an address at all: a misconfiguration that has to be visible as one, with nothing to
+		// keep but the first character.
+		assert.equal(authHelpers.maskMailAddress("uwe.mueller"), "u***");
+		assert.equal(authHelpers.maskMailAddress("@example.com"), "@***");
+		for (const empty of ["", "   ", undefined, null, 42]) {
+			assert.equal(authHelpers.maskMailAddress(empty), "(not configured)", `for ${String(empty)}`);
+		}
+	});
+
 	it("masks an address the adapter was never told about", () => {
 		// The backstop is what covers a support address or a second account the page names: the
 		// configured spelling only masks the one address the adapter happens to know.
