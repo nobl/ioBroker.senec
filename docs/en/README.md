@@ -17,9 +17,10 @@ Practically every SENEC storage system works: the Home range from the early lead
 models through V2, V2.1 and V3, the current V4 | P4 | E4 generation, the Business models, and the
 partner variants ADS Tec, OEM LG and Solarinvert.
 
-Systems with a local web interface can use all four connectors. Those without one — the V4
-generation among them — work through the SENEC App API, mein-senec.de and SENEC.Connect. Which
-data points appear varies by model.
+Systems with a local web interface can use all five connectors. Those without one — the V4
+generation among them — work through the SENEC App API, mein-senec.de and SENEC.Connect. The
+local OpenAPI on port 4424 needs a local web interface too, so it is available on the V2 and V3
+generations and not on V4 | P4 | E4. Which data points appear varies by model.
 
 See the [full list of models](../SUPPORTED_SYSTEMS.md) to find your system by name.
 
@@ -41,7 +42,7 @@ Install the adapter from the ioBroker adapter repository. After installation, cr
 
 ## Configuration
 
-The adapter settings are organized in tabs — one per connector plus general settings and debug options.
+The adapter settings are organized in tabs — one per connector plus general settings and debug options. The two local interfaces, `lala.cgi` and the OpenAPI on port 4424, share the *Local Connection* tab and the appliance address.
 
 ### SENEC Account
 
@@ -65,9 +66,8 @@ One secret covers both cloud connectors, since they authenticate against the sam
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| Connect via lala.cgi | Enable local polling | On |
+| Connect via lala.cgi | Enable local polling | Off |
 | SENEC System IP | IP address or FQDN of your SENEC device | — |
-| Use HTTPS | Enable if your device uses HTTPS | Off |
 
 Expand **Polling Settings** to adjust timing:
 
@@ -100,6 +100,49 @@ If automatic CA download failed and you want to retry, set `_local.tls.certFetch
 ![High Priority Polling](media/admin-highprio.png)
 
 You can add additional data sections (e.g. BMS, PV1, WALLBOX) to the high-priority polling cycle. This requires accepting a disclaimer acknowledging the risks. Only characters A-Z, digits 0-9, and commas are allowed.
+
+### Local OpenAPI (port 4424)
+
+A second local interface, independent of `lala.cgi` and served over HTTPS on port 4424 of the appliance. It shares the *Local Connection* tab and the appliance address with the local connector, and either one works without the other.
+
+![Registration and approval](media/admin-openapi.png)
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Use the appliance's local OpenAPI | Enable polling on port 4424 | Off |
+| Device name | The name you approve in the SENEC portal | ioBroker |
+| Register automatically | Ask the appliance for a token on start when none is stored | On |
+| Approve automatically | Approve this instance's own registration through the portal | On |
+| Plant for the approval link | Which plant of your account holds this appliance | Automatic |
+| Poll interval | How often to read the selected sections (seconds) | 60 |
+| Request timeout | How long to wait for one request (ms) | 10000 |
+| Sections to poll | Which routes to request each cycle. The nameplate is read in addition to whatever is selected; wallboxes have to be switched on deliberately | Battery, Meter, Nameplate |
+
+It is read-only. The routes that would set a charge or discharge power refuse every request a customer token can make, before and after approval alike, so there is nothing there to write with. What the interface offers and refuses is recorded in [LOCAL_OPENAPI_4424.md](../LOCAL_OPENAPI_4424.md).
+
+Only systems with a local web interface open this port: the V2 and V3 generations do, the V4 | P4 | E4 generation does not. No appliance is known that serves 4424 but not `lala.cgi`, so this is an addition to local polling rather than a replacement for it.
+
+The poll interval defaults to 60 seconds deliberately. How much this listener tolerates has not been established, and the appliance is easy to overload — the warning above about polling `lala.cgi` too hard applies here as well.
+
+#### Registration
+
+Unlike `lala.cgi`, this interface needs a one-time registration that only the account holder can approve.
+
+**With your SENEC account credentials filled in on the *SENEC Account* tab, all of it happens by itself:** the adapter registers, approves its own registration and starts polling. The mein-senec.de connector does not have to be enabled for this — the adapter signs in once for the approval and drops the session again straight afterwards.
+
+Setting the mein-senec.de connector up first, saving, and letting the adapter restart before switching this on makes the log easier to follow: the session is already there by then and the plant is already known, so this connector signs in not at all.
+
+Without credentials, approve it by hand:
+
+1. Fill in the appliance address at the top of the tab and save.
+2. Press **Register this instance**. The appliance issues a token and the adapter stores it. Nothing is read yet.
+3. **Log in to mein-senec.de first**, then follow the approval link on the tab. The address is a fragment, so opening it while logged out drops you at the login screen and loses the destination. The page is not reachable from the portal menu — only by that link.
+4. Approve the entry named after your device name, using the blue check mark.
+5. Press **Check approval**. Once it reports approved, polling starts by itself.
+
+`_openapi.info.approvalState` reports where things stand at any time: `unregistered`, `pending`, `approved`, `rejected` — the token was withdrawn in the portal or belongs to another appliance — or `error`.
+
+**Forget token** discards the stored token and, where your credentials are configured and the plant could be determined, withdraws the registration in the portal as well, so no orphaned entry is left behind; the appliance stops accepting the old token about a minute later. Where it cannot ask the portal it says so, and the entry has to be removed there by hand. With automatic registration on, a fresh token is requested immediately, which is also the way to start over. Registering twice without withdrawing the first entry leaves two entries under the same name and nothing to tell them apart by, which is why registering is refused while a token is stored.
 
 ### SENEC App API
 
@@ -209,7 +252,7 @@ Control features allow you to change settings on your SENEC device. Each control
 
 ![Debug & Logging](media/admin-debug.png)
 
-Configurable per connector (Local, API, mein-senec.de, Connect):
+Configurable per connector (Local, local OpenAPI, API, mein-senec.de, Connect):
 
 - **Show polling in info log** — Promotes polling status messages from debug to info level
 - **Log requests & responses** — Logs HTTP details at debug level (may log sensitive data)
@@ -374,6 +417,7 @@ The adapter creates states organized by connector and data section. All states a
 | `info.apiConnected` | SENEC App API connection status |
 | `info.webConnected` | mein-senec.de connection status |
 | `info.connectConnected` | SENEC.Connect connection status |
+| `info.openapiConnected` | Local OpenAPI (port 4424) connection status |
 | `info.lastPoll.HighPrio` | Timestamp of last high-priority local poll |
 | `info.lastPoll.LowPrio` | Timestamp of last low-priority local poll |
 
@@ -452,6 +496,26 @@ If a system reports no `system_id`, its serial number is used instead, and a sys
 States of a system the API no longer reports are removed. Adapters before 2.15.0 numbered the systems by their position in the response (`_connect.Systems.0.*`); those states are deleted on the first poll after the update, once the systems have been identified.
 
 **If you record SENEC.Connect states with a history adapter** (History, InfluxDB, SQL), that setting lives on the state itself and is lost when the old state is deleted. Recording does not resume by itself — switch logging back on for the states under the new paths after updating.
+
+### OpenAPI States (`_openapi.*`)
+
+Readings from the appliance's local OpenAPI are stored under `_openapi.*`, one channel per section:
+
+| Channel | Contents |
+|---------|----------|
+| `_openapi.battery.*` | State of charge, operating state, power, voltage, current |
+| `_openapi.meter.*` | Grid power, house consumption, PV, surplus |
+| `_openapi.bessNameplate.*` | Model, serial number, capacity and rated values |
+| `_openapi.evse.{wallbox_id}.*` | One channel per wallbox slot — the appliance reports four whether or not a wallbox is attached |
+| `_openapi.bess.*` | Only when selected — several of its values come back empty |
+| `_openapi.info.approvalState` | `unregistered`, `pending`, `approved`, `rejected` or `error` |
+| `_openapi.info.lastPoll` | Timestamp of the last successful poll |
+
+The nameplate is read on every cycle whether or not it is selected. The appliance is normally identified from the common name of the certificate it presents on port 4424 — that name is the appliance's own serial number, so the certificate pins the individual appliance exactly, which the one on the local web interface cannot. The nameplate is the fallback for the case where that name cannot be read: its serial number then identifies the appliance instead, and it is what still allows the plant to be matched in your account — and therefore the registration to be approved automatically.
+
+The registration token is stored encrypted in `_openapi.token`, so what the object tree holds is the ciphertext rather than the token itself. The state is flagged as not readable, but that flag is advisory in ioBroker — the encryption is the actual protection.
+
+These states come from the appliance directly and are independent of the `lala.cgi` states. Where both report the same quantity, they are measured by the appliance at different points and need not agree to the watt.
 
 ### External States (`_external.*`)
 

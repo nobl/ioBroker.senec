@@ -17,9 +17,11 @@ Praktisch jedes SENEC-Speichersystem funktioniert: die Home-Reihe von den frühe
 Lithium-Modellen über V2, V2.1 und V3 bis zur aktuellen Generation V4 | P4 | E4, die
 Business-Modelle sowie die Partnervarianten ADS Tec, OEM LG und Solarinvert.
 
-Systeme mit lokalem Webinterface können alle vier Konnektoren nutzen. Systeme ohne — darunter die
-V4-Generation — laufen über die SENEC App API, mein-senec.de und SENEC.Connect. Welche Datenpunkte
-verfügbar sind, hängt vom Modell ab.
+Systeme mit lokalem Webinterface können alle fünf Konnektoren nutzen. Systeme ohne — darunter die
+V4-Generation — laufen über die SENEC App API, mein-senec.de und SENEC.Connect. Die lokale OpenAPI
+auf Port 4424 setzt ebenfalls ein lokales Webinterface voraus und steht daher auf den Generationen
+V2 und V3 zur Verfügung, nicht auf V4 | P4 | E4. Welche Datenpunkte verfügbar sind, hängt vom
+Modell ab.
 
 Die [vollständige Modellliste](../SUPPORTED_SYSTEMS.md) hilft beim Wiederfinden des eigenen Systems.
 
@@ -41,7 +43,7 @@ Installieren Sie den Adapter über das ioBroker Adapter-Repository. Nach der Ins
 
 ## Konfiguration
 
-Die Adaptereinstellungen sind in Tabs organisiert — je einer pro Konnektor sowie allgemeine Einstellungen und Debug-Optionen.
+Die Adaptereinstellungen sind in Tabs organisiert — je einer pro Konnektor sowie allgemeine Einstellungen und Debug-Optionen. Die beiden lokalen Schnittstellen, `lala.cgi` und die OpenAPI auf Port 4424, teilen sich den Tab *Lokale Verbindung* und die Anlagenadresse.
 
 ### SENEC Konto
 
@@ -65,9 +67,8 @@ Ein Geheimnis genügt für beide Cloud-Konnektoren, da sich beide am selben Kont
 
 | Einstellung | Beschreibung | Standard |
 |-------------|-------------|----------|
-| Über lala.cgi verbinden | Lokale Abfrage aktivieren | Ein |
+| Über lala.cgi verbinden | Lokale Abfrage aktivieren | Aus |
 | SENEC System IP | IP-Adresse oder FQDN des SENEC Geräts | — |
-| HTTPS verwenden | Aktivieren wenn das Gerät HTTPS nutzt | Aus |
 
 **Abfrage-Einstellungen** aufklappen für Timing-Optionen:
 
@@ -100,6 +101,49 @@ Falls der automatische CA-Download fehlgeschlagen ist und Sie es erneut versuche
 ![HighPrio Polling](media/admin-highprio.png)
 
 Sie können zusätzliche Datenbereiche (z.B. BMS, PV1, WALLBOX) zum hochprioritären Polling hinzufügen. Dies erfordert die Bestätigung eines Haftungsausschlusses. Es sind nur Zeichen A-Z, Ziffern 0-9 und Kommas erlaubt.
+
+### Lokale OpenAPI (Port 4424)
+
+Eine zweite lokale Schnittstelle, unabhängig von `lala.cgi` und per HTTPS auf Port 4424 der Anlage erreichbar. Sie teilt sich den Tab *Lokale Verbindung* und die Anlagenadresse mit dem lokalen Konnektor; jeder der beiden funktioniert auch ohne den anderen.
+
+![Registrierung und Freigabe](media/admin-openapi.png)
+
+| Einstellung | Beschreibung | Standard |
+|-------------|--------------|----------|
+| Lokale OpenAPI der Anlage nutzen | Abfrage über Port 4424 aktivieren | Aus |
+| Gerätename | Der Name, der im SENEC-Portal freigegeben wird | ioBroker |
+| Automatisch registrieren | Beim Start ein Token anfordern, wenn keines gespeichert ist | Ein |
+| Automatisch freigeben | Die eigene Registrierung über das Portal selbst freigeben | Ein |
+| Anlage für den Freigabe-Link | Welche Anlage des Kontos diese Anlage ist | Automatisch |
+| Abfrageintervall | Wie oft die gewählten Bereiche gelesen werden (Sekunden) | 60 |
+| Anfrage-Timeout | Wie lange auf eine Anfrage gewartet wird (ms) | 10000 |
+| Abzufragende Bereiche | Welche Routen pro Zyklus abgefragt werden. Das Typenschild wird zusätzlich zur Auswahl gelesen; Wallboxen müssen bewusst zugeschaltet werden | Batterie, Zähler, Typenschild |
+
+Die Schnittstelle ist nur lesend. Die Routen, die eine Lade- oder Entladeleistung setzen würden, lehnen jede Anfrage ab, die ein Kunden-Token stellen kann — vor wie nach der Freigabe. Es gibt dort also nichts zu schreiben. Was die Schnittstelle bietet und was sie verweigert, ist in [LOCAL_OPENAPI_4424.md](../LOCAL_OPENAPI_4424.md) festgehalten.
+
+Nur Systeme mit lokalem Webinterface öffnen diesen Port: die Generationen V2 und V3 ja, die Generation V4 | P4 | E4 nicht. Eine Anlage, die 4424 bedient, aber kein `lala.cgi`, ist nicht bekannt — diese Schnittstelle ergänzt das lokale Polling also, sie ersetzt es nicht.
+
+Das Abfrageintervall steht mit Absicht auf 60 Sekunden. Wie viel dieser Dienst verträgt, ist nicht erprobt, und die Anlage ist leicht zu überlasten — der Hinweis oben zum zu häufigen Abfragen von `lala.cgi` gilt hier genauso.
+
+#### Registrierung
+
+Anders als `lala.cgi` verlangt diese Schnittstelle eine einmalige Registrierung, die nur der Kontoinhaber freigeben kann.
+
+**Sind die SENEC-Kontodaten im Tab *SENEC Konto* eingetragen, erledigt sich das von selbst:** Der Adapter registriert sich, gibt seine eigene Registrierung frei und beginnt zu lesen. Der mein-senec.de-Konnektor muss dafür nicht aktiviert sein — der Adapter meldet sich einmal für die Freigabe an und verwirft die Sitzung gleich danach wieder.
+
+Wer den mein-senec.de-Konnektor zuerst einrichtet, speichert und den Adapter neu starten lässt, bevor er diesen hier einschaltet, hat es im Log leichter: Die Sitzung besteht dann schon und die Anlage ist bekannt, sodass sich dieser Konnektor überhaupt nicht anmelden muss.
+
+Ohne Kontodaten läuft die Freigabe von Hand:
+
+1. Die Anlagenadresse oben im Tab eintragen und speichern.
+2. **Diese Instanz registrieren** drücken. Die Anlage gibt ein Token aus, der Adapter speichert es. Gelesen wird noch nichts.
+3. **Zuerst bei mein-senec.de anmelden**, dann dem Freigabe-Link im Tab folgen. Die Adresse ist ein Fragment — wer sie abgemeldet öffnet, landet auf der Anmeldeseite und das Ziel ist verloren. Über das Portalmenü ist die Seite nicht erreichbar, nur über diesen Link.
+4. Den Eintrag mit dem eigenen Gerätenamen über das blaue Häkchen freigeben.
+5. **Freigabe prüfen** drücken. Sobald freigegeben gemeldet wird, läuft die Abfrage von selbst an.
+
+`_openapi.info.approvalState` zeigt jederzeit den Stand: `unregistered`, `pending`, `approved`, `rejected` — das Token wurde im Portal zurückgezogen oder gehört zu einer anderen Anlage — oder `error`.
+
+**Token verwerfen** löscht das gespeicherte Token und zieht die Registrierung auch im Portal zurück, sofern die Kontodaten eingetragen sind und die Anlage ermittelt werden konnte, sodass kein verwaister Eintrag bleibt; die Anlage akzeptiert das alte Token etwa eine Minute später nicht mehr. Kann der Adapter das Portal nicht fragen, meldet er das, und der Eintrag muss dort von Hand entfernt werden. Bei eingeschalteter automatischer Registrierung wird sofort ein neues Token angefordert — so wird also auch neu begonnen. Zweimal registrieren, ohne den ersten Eintrag zurückzuziehen, hinterlässt zwei Einträge mit gleichem Namen und nichts, woran sie zu unterscheiden wären; deshalb wird eine Registrierung abgelehnt, solange ein Token gespeichert ist.
 
 ### SENEC App API
 
@@ -210,7 +254,7 @@ Steuerungsfunktionen ermöglichen das Ändern von Einstellungen am SENEC Gerät.
 
 ![Debug & Logging](media/admin-debug.png)
 
-Konfigurierbar pro Konnektor (Lokal, API, mein-senec.de, Connect):
+Konfigurierbar pro Konnektor (Lokal, lokale OpenAPI, API, mein-senec.de, Connect):
 
 - **Polling im Info-Log anzeigen** — Zeigt Polling-Statusmeldungen im Info-Log statt nur im Debug-Log
 - **Requests & Responses loggen** — Loggt HTTP-Details auf Debug-Ebene (kann sensible Daten enthalten)
@@ -376,6 +420,7 @@ Der Adapter erstellt States, organisiert nach Konnektor und Datenbereich. Alle S
 | `info.apiConnected` | SENEC App API Verbindungsstatus |
 | `info.webConnected` | mein-senec.de Verbindungsstatus |
 | `info.connectConnected` | SENEC.Connect Verbindungsstatus |
+| `info.openapiConnected` | Verbindungsstatus der lokalen OpenAPI (Port 4424) |
 | `info.lastPoll.HighPrio` | Zeitstempel der letzten hochprioritären lokalen Abfrage |
 | `info.lastPoll.LowPrio` | Zeitstempel der letzten niedrigprioritären lokalen Abfrage |
 
@@ -454,6 +499,26 @@ Meldet ein System keine `system_id`, wird stattdessen seine Seriennummer verwend
 States eines Systems, das die API nicht mehr meldet, werden entfernt. Adapter vor 2.15.0 nummerierten die Systeme nach ihrer Position in der Antwort (`_connect.Systems.0.*`); diese States werden beim ersten Poll nach dem Update gelöscht, sobald die Systeme identifiziert sind.
 
 **Wer SENEC.Connect-States mit einem History-Adapter aufzeichnet** (History, InfluxDB, SQL): Diese Einstellung hängt am State selbst und geht mit dem alten State verloren. Die Aufzeichnung läuft nicht von allein weiter — bitte das Logging nach dem Update für die States unter den neuen Pfaden wieder einschalten.
+
+### OpenAPI-States (`_openapi.*`)
+
+Die Messwerte der lokalen OpenAPI liegen unter `_openapi.*`, ein Kanal pro Bereich:
+
+| Kanal | Inhalt |
+|-------|--------|
+| `_openapi.battery.*` | Ladezustand, Betriebszustand, Leistung, Spannung, Strom |
+| `_openapi.meter.*` | Netzleistung, Hausverbrauch, PV, Überschuss |
+| `_openapi.bessNameplate.*` | Modell, Seriennummer, Kapazität und Nennwerte |
+| `_openapi.evse.{wallbox_id}.*` | Ein Kanal pro Wallbox-Steckplatz — die Anlage meldet vier, auch ohne angeschlossene Wallbox |
+| `_openapi.bess.*` | Nur bei Auswahl — mehrere Werte kommen leer zurück |
+| `_openapi.info.approvalState` | `unregistered`, `pending`, `approved`, `rejected` oder `error` |
+| `_openapi.info.lastPoll` | Zeitstempel der letzten erfolgreichen Abfrage |
+
+Das Typenschild wird in jedem Zyklus gelesen, auch wenn es nicht ausgewählt ist. Normalerweise erkennt der Adapter die Anlage am Common Name des Zertifikats, das sie auf Port 4424 vorweist — dieser Name ist die Seriennummer der Anlage selbst, das Zertifikat benennt also genau dieses Gerät, was das Zertifikat des lokalen Webinterfaces nicht leistet. Das Typenschild ist der Rückfallweg für den Fall, dass dieser Name nicht lesbar ist: Dann identifiziert seine Seriennummer die Anlage, und nur so lässt sich die Anlage im Konto noch zuordnen — und damit die Registrierung automatisch freigeben.
+
+Das Registrierungs-Token liegt verschlüsselt in `_openapi.token`; im Objektbaum steht also der Geheimtext, nicht das Token selbst. Der State ist als nicht lesbar gekennzeichnet, doch diese Kennzeichnung ist in ioBroker nur ein Hinweis — der eigentliche Schutz ist die Verschlüsselung.
+
+Diese States kommen direkt von der Anlage und sind von den `lala.cgi`-States unabhängig. Wo beide dieselbe Größe melden, messen sie an unterschiedlichen Punkten und müssen nicht auf das Watt übereinstimmen.
 
 ### Externe States (`_external.*`)
 
