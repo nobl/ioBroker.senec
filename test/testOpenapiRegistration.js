@@ -34,6 +34,7 @@ const assert = require("node:assert/strict");
 const proxyquire = require("proxyquire").noCallThru();
 
 const openapi = require("../lib/openapi-client.js");
+const { withNoRealWait, recordingDelay } = require("./waitHelpers.js");
 
 /** What the token read answers when one is stored. The adapter's decrypt is the identity here. */
 const STORED_TOKEN = "appliance-token";
@@ -69,6 +70,8 @@ function makeAdapter(over = {}) {
 
 		/** Timers still pending: armed, not yet cleared. */
 		timers: [],
+		/** Every in-cycle wait asked for, in order, in milliseconds. */
+		waited: [],
 		/** Every delay ever armed, in order. */
 		armed: [],
 		states: [],
@@ -86,6 +89,9 @@ function makeAdapter(over = {}) {
 		silly: () => {},
 	};
 	adapter.logError = (e, prefix = "") => adapter.logs.push(["error", `${prefix}: ${e?.message ?? e}`]);
+	// In-cycle waits go through adapter.delay. Settled at once so the suite does not spend real
+	// seconds in the confirmation loops, and recorded so a test can pin the wait constants.
+	adapter.delay = recordingDelay(adapter);
 	adapter.setTimeout = (fn, ms) => {
 		const handle = { fn, ms };
 		adapter.timers.push(handle);
@@ -221,57 +227,38 @@ function appliance(answer) {
 const fails = (code, message = `connect ${code} 192.0.2.1:4424`) => Object.assign(new Error(message), { code });
 
 /**
- * Run `body` with every wait collapsed, and with the waits holding the process open.
+ * Run `body` and assert that no cycle waited on a global timer.
+ *
+ * Unlike the lifecycle suite, a reintroduced bare timer is caught here by two things: this
+ * assertion, and `withUnloadDuringEveryWait` below, whose tests exceed mocha's timeout once a
+ * real multi-second wait runs inside them. See `test/waitHelpers.js` for the guard's limits.
  *
  * @param {() => Promise<unknown>} body - Work to run
  * @returns {Promise<void>}
  */
-async function withCollapsedWaits(body) {
-	const real = global.setTimeout;
-	// @ts-expect-error — a test-local stand-in, restored immediately afterwards
-	global.setTimeout = (fn, ms, ...rest) => {
-		const handle = real(fn, ms > 5 ? 0 : ms, ...rest);
-		// The module unrefs its own waits so one cannot hold the process open. Swallowing that
-		// here is what keeps node alive while a test awaits one — otherwise the wait is the only
-		// thing left on the event loop and the process is free to exit before the assertions run.
-		return { unref: () => handle, ref: () => handle };
-	};
-	try {
-		await body();
-	} finally {
-		global.setTimeout = real;
-	}
-}
+const withCollapsedWaits = withNoRealWait;
 
 /**
- * Run `body` with teardown arriving during every wait.
+ * Run `body` with teardown arriving as each wait returns.
  *
- * The confirmation waits run on the global timer rather than the adapter's — deliberately, so a
- * wait cannot be left unsettled by teardown, which also means a test cannot fake one through the
- * adapter. Setting `unloaded` as the wait expires is exactly the race the checks after those
- * waits exist for, and collapsing the delay keeps the suite in milliseconds.
+ * This models the branch of `main.js`'s delay() that settles while the adapter is stopping:
+ * either it is called once `unloaded` is set and returns at once, or onUnload's drain wakes it.
+ * Both leave the caller awake with `unloaded` true, which is what the checks after each wait
+ * exist for — the cycle must stop asking the appliance rather than finish its loop.
+ *
+ * The double replaces `adapter.delay` on the test-local object built by `makeAdapter`, which is
+ * discarded when the test ends, so there is nothing to restore.
  *
  * @param {object} adapter - Adapter double to stop
  * @param {() => Promise<void>} body - Work to run
  * @returns {Promise<void>}
  */
 async function withUnloadDuringEveryWait(adapter, body) {
-	const real = global.setTimeout;
-	// @ts-expect-error — a test-local stand-in, restored immediately afterwards
-	global.setTimeout = (fn, ms, ...rest) =>
-		real(
-			(...args) => {
-				adapter.unloaded = true;
-				fn(...args);
-			},
-			ms > 5 ? 0 : ms,
-			...rest,
-		);
-	try {
-		await body();
-	} finally {
-		global.setTimeout = real;
-	}
+	adapter.delay = async (ms) => {
+		adapter.waited.push(ms);
+		adapter.unloaded = true;
+	};
+	await body();
 }
 
 /**
@@ -477,6 +464,12 @@ describe("local OpenAPI: registering with the appliance", () => {
 				"one grant, not one per path: the second would be an entry nobody can tell from the first",
 			);
 			assert.equal(adapter.openapiApproveAttempts, 1, "and one round of the three is spent, not two");
+			assert.equal(
+				adapter.waited.length,
+				14,
+				"the winning cycle waits out the full confirmation budget — pinned so shrinking " +
+					"APPROVAL_CONFIRM_ATTEMPTS cannot silently cut the grant's time to arrive",
+			);
 			assert.equal(
 				adapter.logs.filter(([level, msg]) => level === "debug" && /already running/.test(msg)).length,
 				1,
@@ -854,10 +847,14 @@ describe("local OpenAPI: registering with the appliance", () => {
 		// at the top of it, teardown was answered by carrying on asking the appliance for another
 		// minute, with every answer landing in an adapter that was already gone.
 		it("stops confirming an approval when teardown arrives during one of its waits", async () => {
+			// Recorded rather than ignored: a wait that teardown releases has to return through
+			// the `finally` that gives the borrowed session back, which is the whole point of the
+			// wait settling at all.
+			const released = [];
 			const portal = proxyquire("../lib/openapi-client.js", {
 				"./web-client.js": {
-					webAcquireSession: async () => ({ ok: true, borrowed: false }),
-					webReleaseSession: () => {},
+					webAcquireSession: async () => ({ ok: true, borrowed: true }),
+					webReleaseSession: () => released.push("released"),
 					webGet: async () => ({ data: [{ tokenValue: STORED_TOKEN, tokenState: "PENDING" }] }),
 					webPost: async () => ({ status: 200, data: "" }),
 				},
@@ -890,6 +887,18 @@ describe("local OpenAPI: registering with the appliance", () => {
 			);
 			assert.equal(adapter.openapiApproveAttempts, 1, "the round it did spend still counts");
 			assert.deepEqual(adapter.armed, [], "and nothing is armed to fire after the instance is gone");
+			assert.deepEqual(
+				adapter.waited,
+				[5000],
+				"the one wait it entered was the approval delay — pinned so that constant cannot " +
+					"drift or be swapped with the rejection one",
+			);
+			assert.deepEqual(
+				released,
+				["released"],
+				"and the borrowed mein-senec.de session is given back, because the released wait " +
+					"returned through its finally rather than being abandoned",
+			);
 		});
 	});
 });

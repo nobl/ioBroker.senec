@@ -95,6 +95,8 @@ class Senec extends utils.Adapter {
 		this.openapiTransportFailures = 0;
 		this.connectVia = "https://";
 		this.unloaded = false;
+		/** Waiters parked by delay(), so unload can wake them instead of leaving them pending. */
+		this.pendingDelays = new Set();
 
 		this.rebuildRunning = false; // true only while one rebuild batch is actively executing
 		this.rebuildStepsPerCycle = 1; // bewusst klein halten wegen API-Last
@@ -1752,6 +1754,18 @@ class Senec extends utils.Adapter {
 				this.openapiPollTimer = null;
 			}
 
+			// Tracked timers are cleared during unload, which would leave every promise handed out
+			// by delay() pending for ever — skipping the `finally` blocks that release the shared
+			// mein-senec.de session and clear the cycle flags. Waking the parked waiters lets each
+			// one resume, see `unloaded`, and unwind. They resume as microtasks, after this handler
+			// has returned, so nothing re-enters the adapter while it is still tearing down. Last
+			// of the cleanup steps deliberately: it is the only one whose input comes from a field,
+			// so a fault here cannot cost the abort, the agent destruction or the timer clearing.
+			for (const wake of this.pendingDelays) {
+				wake();
+			}
+			this.pendingDelays.clear();
+
 			this.knownObjects.clear(); // empty objects cache
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
@@ -2711,6 +2725,15 @@ class Senec extends utils.Adapter {
 	}
 
 	/**
+	 * Wait, with the guarantee that the wait always settles.
+	 *
+	 * Overrides the platform's `delay`, which leaves its promise pending for ever once the
+	 * adapter is stopping. Callers put cleanup in a `finally` after a wait — releasing the
+	 * shared mein-senec.de session, clearing the one-cycle-at-a-time flag — and a promise that
+	 * never settles skips all of it. The timer is `this.setTimeout`, so it stays tracked and is
+	 * cleared on unload; the parked resolver is what lets `onUnload` wake the waiter anyway, so
+	 * it sees `unloaded` and unwinds.
+	 *
 	 * @param {number} ms - ms to wait
 	 * @returns {Promise<void>}
 	 */
@@ -2721,9 +2744,12 @@ class Senec extends utils.Adapter {
 				return;
 			}
 
-			this.setTimeout(() => {
+			const wake = () => {
+				this.pendingDelays.delete(wake);
 				resolve(undefined);
-			}, ms);
+			};
+			this.pendingDelays.add(wake);
+			this.setTimeout(wake, ms);
 		});
 	}
 
@@ -2901,6 +2927,9 @@ if (require.main !== module) {
 	module.exports = (options) => new Senec(options);
 	// Export pure functions for unit testing
 	module.exports._testing = {
+		// The class itself, so the wait primitive can be exercised against a controlled `this`
+		// rather than a full adapter instance. delay() is the in-cycle wait for two connectors.
+		Senec,
 		normalizeRebuildMode,
 		resolveApiTimeout,
 		HexToFloat32,

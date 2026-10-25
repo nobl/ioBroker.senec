@@ -34,6 +34,7 @@ const assert = require("node:assert/strict");
 const proxyquire = require("proxyquire").noCallThru();
 
 const openapi = require("../lib/openapi-client.js");
+const { withNoRealWait, recordingDelay } = require("./waitHelpers.js");
 
 /** What the poll reads when a token is stored. The adapter's decrypt is the identity here. */
 const STORED_TOKEN = "appliance-token";
@@ -65,6 +66,8 @@ function makeAdapter(over = {}) {
 		// press from overlapping a timer poll inside the approval wait.
 		openapiCycleRunning: false,
 
+		/** Every in-cycle wait asked for, in order, in milliseconds. */
+		waited: [],
 		/** Timers still pending: armed, not yet cleared. */
 		timers: [],
 		/** Every delay ever armed, in order, including those later replaced. */
@@ -86,6 +89,9 @@ function makeAdapter(over = {}) {
 		silly: () => {},
 	};
 	adapter.logError = (e, prefix = "") => adapter.logs.push(["error", `${prefix}: ${e?.message ?? e}`]);
+	// In-cycle waits go through adapter.delay. Settled at once so the suite does not spend real
+	// seconds in the confirmation paths, and recorded so a test can pin the wait constants.
+	adapter.delay = recordingDelay(adapter);
 	adapter.setTimeout = (fn, ms) => {
 		const handle = { fn, ms };
 		adapter.timers.push(handle);
@@ -180,26 +186,18 @@ function appliance(answer, onPost) {
 }
 
 /**
- * Run `body` with every wait collapsed.
+ * Run `body` and assert that no cycle waited on a global timer.
  *
- * The 401 paths wait `REJECTION_CONFIRM_WAIT_MS` (three seconds) before confirming the refusal,
- * on the global timer rather than the adapter's — deliberately, so a wait cannot be left
- * unsettled by teardown, which also means a test cannot fake it through the adapter. Collapsing
- * long delays keeps the suite in milliseconds while leaving the ordering intact.
+ * The helper collapses every timer to the next tick, so a reintroduced bare timer does not slow
+ * this suite — the run stays in milliseconds either way, and a timing change would not reveal
+ * one. Two things report it instead: this assertion, and the teardown test further down, which
+ * never reaches `adapter.delay` and fails on its own. See `test/waitHelpers.js` for what the
+ * guard does and does not cover.
  *
  * @param {() => Promise<void>} body - Work to run
  * @returns {Promise<void>}
  */
-async function withoutWaiting(body) {
-	const real = global.setTimeout;
-	// @ts-expect-error — a test-local stand-in, restored immediately afterwards
-	global.setTimeout = (fn, ms, ...rest) => real(fn, ms > 5 ? 0 : ms, ...rest);
-	try {
-		await body();
-	} finally {
-		global.setTimeout = real;
-	}
-}
+const withoutWaiting = withNoRealWait;
 
 /**
  * @param {object} adapter - Adapter double
@@ -474,6 +472,12 @@ describe("local OpenAPI connector: life cycle", () => {
 					"the refusal is confirmed on a second look before it is believed",
 				);
 				assert.deepEqual(adapter.armed, [], "nothing changes until the user acts");
+				assert.deepEqual(
+					adapter.waited,
+					[3000],
+					"and it waits the confirmation delay once — pinned so the constant cannot drift " +
+						"or be swapped with the approval one",
+				);
 			});
 		});
 
@@ -673,6 +677,43 @@ describe("local OpenAPI connector: life cycle", () => {
 				`a longer outage is asked about less often — ${early} then ${late} at the median`,
 			);
 			assert.ok(early >= FLOOR_MS && late <= CEILING_MS, "and both stay between the floor and the ceiling");
+		});
+	});
+
+	// `main.js`'s delay() parks its resolver and onUnload wakes every parked waiter, precisely so
+	// a cycle caught mid-wait still unwinds. Modelled here the way the real pair behaves: the
+	// wait does not settle on its own, and teardown is what releases it.
+	describe("a wait released by teardown rather than by its timer", () => {
+		it("unwinds through its finally, so the cycle flag is not left set", async () => {
+			let wake = null;
+			const adapter = makeAdapter({
+				getStateAsync: tokenStored(),
+				openapiClient: appliance(() => refuses(401)),
+			});
+			// The real delay() resolves from either the timer or onUnload's drain; this one only
+			// ever from the drain, which is the case that used to strand the caller for ever.
+			adapter.delay = () =>
+				new Promise((resolve) => {
+					wake = () => {
+						adapter.unloaded = true;
+						resolve(undefined);
+					};
+				});
+
+			const cycle = openapi.openapiPoll(adapter);
+			await new Promise((resolve) => setImmediate(resolve));
+
+			assert.ok(wake, "the cycle reaches the confirmation wait");
+			assert.equal(adapter.openapiCycleRunning, true, "and holds the one-cycle flag while it waits");
+
+			wake();
+			await cycle;
+
+			assert.equal(
+				adapter.openapiCycleRunning,
+				false,
+				"a woken wait returns through the finally that releases the flag",
+			);
 		});
 	});
 
