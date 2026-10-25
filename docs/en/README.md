@@ -232,7 +232,7 @@ Most problems become obvious from a log, and almost none are diagnosable without
 
 Issues go to [GitHub](https://github.com/nobl/ioBroker.senec/issues). What makes one quick to act on:
 
-- **Which system** — the model, and the firmware version if you have it (`_local.FACTORY` and `_local.SYS_UPDATE` hold both when the local connector runs)
+- **Which system** — the model, and the firmware version if you have it (`FACTORY.*` and `SYS_UPDATE.*` hold both when the local connector runs)
 - **Which connectors** are enabled, since the same symptom has different causes on local and cloud
 - **Adapter and ioBroker version**, plus the Node.js version
 - **What you expected and what happened instead** — "the battery level is missing" is actionable; "it does not work" needs a round of questions first
@@ -474,8 +474,7 @@ Writable states for appliance control:
 
 | State | Type | Description |
 |-------|------|-------------|
-| `control.ForceCharge` | boolean | Force battery charging on/off |
-| `control.BlockDischarge` | boolean | Block battery discharge on/off |
+| `control.ForceLoadBattery` | boolean | Force battery charging on/off |
 | `control.RebootAppliance` | boolean | Trigger appliance reboot |
 | `control.EmergencyPower.ReserveInPercent` | number | Emergency power reserve (%) |
 | `control.PeakShaving.*` | various | Peak shaving settings |

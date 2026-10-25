@@ -233,7 +233,7 @@ Die meisten Probleme lassen sich aus einem Log ablesen, und fast keines ohne.
 
 Meldungen bitte über [GitHub](https://github.com/nobl/ioBroker.senec/issues). Was eine Meldung schnell bearbeitbar macht:
 
-- **Welches System** — Modell und, falls bekannt, die Firmware-Version (`_local.FACTORY` und `_local.SYS_UPDATE` enthalten beides, sofern der lokale Konnektor läuft)
+- **Welches System** — Modell und, falls bekannt, die Firmware-Version (`FACTORY.*` und `SYS_UPDATE.*` enthalten beides, sofern der lokale Konnektor läuft)
 - **Welche Konnektoren** aktiv sind, denn dasselbe Symptom hat lokal und in der Cloud unterschiedliche Ursachen
 - **Adapter- und ioBroker-Version** sowie die Node.js-Version
 - **Was erwartet wurde und was stattdessen passiert ist** — „der Batteriestand fehlt" lässt sich bearbeiten, „geht nicht" erfordert erst eine Rückfrage
@@ -476,8 +476,7 @@ Schreibbare States zur Gerätesteuerung:
 
 | State | Typ | Beschreibung |
 |-------|-----|-------------|
-| `control.ForceCharge` | Boolean | Akku-Zwangsladung ein/aus |
-| `control.BlockDischarge` | Boolean | Entladung blockieren ein/aus |
+| `control.ForceLoadBattery` | Boolean | Akku-Zwangsladung ein/aus |
 | `control.RebootAppliance` | Boolean | Gerät neustarten auslösen |
 | `control.EmergencyPower.ReserveInPercent` | Zahl | Notstromreserve (%) |
 | `control.PeakShaving.*` | Diverse | Peak-Shaving-Einstellungen |

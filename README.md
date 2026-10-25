@@ -158,6 +158,8 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- Fix: The documentation listed a writable state `control.BlockDischarge` for blocking battery discharge. No such state exists and none ever has — the row was invented by a documentation rewrite and described a feature nothing implements, so anyone following it searched their object tree for something that was never going to be there. The row is removed. The force-charge switch in the same table was named `control.ForceCharge`, which is also not its name: it is `control.ForceLoadBattery`, and it is created on every instance alongside `control.RebootAppliance`. Whether the appliance offers a discharge block at all is now tracked as a question of its own (#543).
+- Fix: The documentation named `_local.FACTORY` and `_local.SYS_UPDATE` as the states holding model and firmware version for a bug report. Those are `FACTORY.*` and `SYS_UPDATE.*` at the root of the instance — `_local.` holds the TLS states and nothing else.
 - Dependency updates
 
 ### 2.15.6 (2026-10-06)
