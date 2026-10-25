@@ -9,18 +9,6 @@
 			"type": "panel",
 			"label": "General_Settings",
 			"items": {
-				"lala_use": {
-					"type": "checkbox",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 4,
-					"xl": 4,
-					"label": "usaLala",
-					"help": "useLalaHelp",
-					"default": false,
-					"newLine": true
-				},
 				"senecip": {
 					"type": "text",
 					"xs": 12,
@@ -31,7 +19,19 @@
 					"label": "IP",
 					"help": "IPHelp",
 					"default": "",
-					"hidden": "data.lala_use !== true",
+					"hidden": "data.lala_use !== true && data.openapi_use !== true",
+					"newLine": true
+				},
+				"lala_use": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "usaLala",
+					"help": "useLalaHelp",
+					"default": false,
 					"newLine": true
 				},
 				"battery_capacity": {
@@ -100,6 +100,237 @@
 							"min": 1000,
 							"max": 100000,
 							"newLine": true
+						}
+					}
+				},
+				"openapi_use": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "useOpenapi",
+					"help": "useOpenapiHelp",
+					"default": false,
+					"newLine": true
+				},
+				"_openapiRegistration": {
+					"type": "panel",
+					"label": "openapiRegistration",
+					"collapsable": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"hidden": "data.openapi_use !== true",
+					"items": {
+						"_openapiSteps": {
+							"type": "staticText",
+							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12,
+							"text": "openapiSteps",
+							"newLine": true
+						},
+						"openapi_device_name": {
+							"type": "text",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "openapiDeviceName",
+							"help": "openapiDeviceNameHelp",
+							"default": "ioBroker",
+							"newLine": true
+						},
+						"openapi_register_automatically": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "openapiAutoRegister",
+							"help": "openapiAutoRegisterHelp",
+							"default": true,
+							"newLine": true
+						},
+						"openapi_auto_approve": {
+							"type": "checkbox",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "openapiAutoApprove",
+							"help": "openapiAutoApproveHelp",
+							"default": true
+						},
+						"_openapiRegister": {
+							"type": "sendTo",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "openapiRegisterButton",
+							"help": "openapiRegisterButtonHelp",
+							"command": "openapiRegister",
+							"useNative": true,
+							"showProcess": true,
+							"variant": "contained",
+							"hidden": "data.openapi_register_automatically === true",
+							"newLine": true
+						},
+						"_openapiCheck": {
+							"type": "sendTo",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "openapiCheckButton",
+							"help": "openapiCheckButtonHelp",
+							"command": "openapiCheckApproval",
+							"useNative": true,
+							"showProcess": true,
+							"variant": "outlined"
+						},
+						"openapi_plant": {
+							"type": "autocompleteSendTo",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "openapiPlant",
+							"help": "openapiPlantHelp",
+							"command": "openapiListPlants",
+							"alsoDependsOn": ["senecip"],
+							"freeSolo": true,
+							"default": "",
+							"validator": "/^\\s*[0-9]*\\s*$/.test(String(data.openapi_plant === undefined || data.openapi_plant === null ? '' : data.openapi_plant))",
+							"validatorErrorText": "openapiPlantInvalid",
+							"newLine": true
+						},
+						"_openapiApprovalLink": {
+							"type": "staticLink",
+							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12,
+							"label": "openapiApprovalLink",
+							"href": "https://mein-senec.de/endkunde/#/${/^\\s*[0-9]+\\s*$/.test(String(data.openapi_plant || '')) ? String(data.openapi_plant).trim() : 0}/senec-open-api",
+							"button": false,
+							"newLine": true
+						},
+						"_openapiApprovalHint": {
+							"type": "staticText",
+							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12,
+							"text": "openapiApprovalHint",
+							"newLine": true
+						}
+					}
+				},
+				"_openapiRegistrationReset": {
+					"type": "panel",
+					"label": "openapiRegistrationReset",
+					"collapsable": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"items": {
+						"_openapiForget": {
+							"type": "sendTo",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "openapiForgetButton",
+							"help": "openapiForgetButtonHelp",
+							"command": "openapiForgetToken",
+							"useNative": true,
+							"showProcess": true,
+							"variant": "outlined",
+							"newLine": true,
+							"confirm": {
+								"title": "openapiForgetConfirmTitle",
+								"text": "openapiForgetConfirmText",
+								"ok": "openapiForgetConfirmOk",
+								"cancel": "openapiForgetConfirmCancel"
+							}
+						}
+					}
+				},
+				"_openapiPolling": {
+					"type": "panel",
+					"label": "openapiPollingSettings",
+					"collapsable": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"hidden": "data.openapi_use !== true",
+					"items": {
+						"openapi_interval": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "openapiPollInterval",
+							"help": "openapiPollIntervalHelp",
+							"default": 60,
+							"min": 10,
+							"max": 86400,
+							"newLine": true
+						},
+						"openapi_timeout": {
+							"type": "number",
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 4,
+							"xl": 4,
+							"label": "openapiTimeout",
+							"help": "openapiTimeoutHelp",
+							"default": 10000,
+							"min": 2000,
+							"max": 60000
+						},
+						"openapi_include": {
+							"type": "select",
+							"multiple": true,
+							"xs": 12,
+							"sm": 12,
+							"md": 6,
+							"lg": 6,
+							"xl": 6,
+							"label": "openapiInclude",
+							"help": "openapiIncludeHelp",
+							"default": ["battery", "meter"],
+							"newLine": true,
+							"options": [
+								{ "label": "openapiSectionBattery", "value": "battery" },
+								{ "label": "openapiSectionMeter", "value": "meter" },
+								{ "label": "openapiSectionEvse", "value": "evse" },
+								{ "label": "openapiSectionBess", "value": "bess" }
+							]
 						}
 					}
 				}
@@ -1449,6 +1680,16 @@
 					"label": "dbgHdrConnect",
 					"default": true
 				},
+				"openapi_showPolling": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "dbgHdrOpenapi",
+					"default": true
+				},
 				"_dbgReqRespLabel": {
 					"type": "staticText",
 					"xs": 12,
@@ -1503,6 +1744,16 @@
 					"lg": 4,
 					"xl": 4,
 					"label": "dbgHdrConnect",
+					"default": false
+				},
+				"openapi_reqnresp_log": {
+					"type": "checkbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 4,
+					"xl": 4,
+					"label": "dbgHdrOpenapi",
 					"default": false
 				},
 				"_dbgDebugLogLabel": {

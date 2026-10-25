@@ -307,6 +307,19 @@
     "connect_interval": 300,
     "connect_timeout": 30000,
     "connect_include": "battery,meter,evse,bessNameplate",
+    "openapi_use": false,
+    "openapi_interval": 60,
+    "openapi_timeout": 10000,
+    "openapi_include": [
+      "battery",
+      "meter"
+    ],
+    "openapi_device_name": "ioBroker",
+    "openapi_plant": "",
+    "openapi_register_automatically": true,
+    "openapi_auto_approve": true,
+    "openapi_showPolling": true,
+    "openapi_reqnresp_log": false,
     "external_sources": [],
     "webInstance": "*"
   },
