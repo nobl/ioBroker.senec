@@ -22,6 +22,7 @@ const {
 	isDeviceSentinel,
 	isAbsentSentinel,
 	DATAPOINT_UNAVAILABLE,
+	ENCRYPTED_STATES,
 } = require(`${__dirname}/lib/constants.js`);
 
 const AdaptiveRequestQueue = require(`${__dirname}/lib/AdaptiveRequestQueue.js`);
@@ -29,9 +30,34 @@ const webClient = require(`${__dirname}/lib/web-client.js`);
 const localClient = require(`${__dirname}/lib/local-client.js`);
 const apiClient = require(`${__dirname}/lib/api-client.js`);
 const connectClient = require(`${__dirname}/lib/connect-client.js`);
+const openapiClientLib = require(`${__dirname}/lib/openapi-client.js`);
+const { uiMessage } = require(`${__dirname}/lib/ui-messages.js`);
 const { computeBackoffDelay, redactAuthUrl, extractHtmlErrorText, maskAuthSecrets, maskMailAddress } = require(
 	`${__dirname}/lib/auth-helpers.js`,
 );
+
+/**
+ * Translation keys for the trees that are not the appliance's own.
+ *
+ * `doDecode` is handed the full state path, and for the appliance's own tree the path and the
+ * translation key are the same thing — `ENERGY.STAT_STATE` is both. Every other connector
+ * stores below a prefix, and SENEC.Connect stores below a per-system segment that is not
+ * knowable in advance, so no table could ever be written for one: a state at
+ * `_connect.Systems.a1b2c3.battery.state` has nothing a key could match.
+ *
+ * Each pattern here strips one such prefix and captures the key the tables are written
+ * against. They are tried only after the full path has produced no table, so no match that
+ * worked before resolves differently now.
+ *
+ * Note that every tree listed shares one translation namespace: two connectors that spell a
+ * field the same way get the same table, whether or not that was intended. Where the same
+ * name means different things the connector renames its own field rather than relying on the
+ * prefix to keep them apart — see the operating state in `lib/openapi-client.js`.
+ */
+const TRANSLATION_PREFIXES = [
+	/^_connect\.Systems\.[^.]+\.(.+)$/, // _connect.Systems.<system>.<section>.<field>
+	/^_openapi\.(.+)$/, // _openapi.<section>.<field>
+];
 
 // process.on("unhandledRejection", (reason, _promise) => {
 // 	console.error("Unhandled Promise Rejection:", reason);
@@ -56,6 +82,17 @@ class Senec extends utils.Adapter {
 		this.lalaConnected = false;
 		this.webConnected = false;
 		this.connectConnected = false;
+		this.openapiConnected = false;
+		this.openapiClient = null;
+		this.openapiHttpsAgent = null;
+		this.openapiFingerprint = null;
+		this.openapiExpectedDeviceId = null;
+		this.openapiIdentityMismatch = false;
+		this.openapiApproveAttempts = 0;
+		this.openapiPollTimer = null;
+		this.openapiBusy = false;
+		this.openapiCycleRunning = false;
+		this.openapiTransportFailures = 0;
 		this.connectVia = "https://";
 		this.unloaded = false;
 
@@ -133,6 +170,12 @@ class Senec extends utils.Adapter {
 		this.webJar = null; // cookie jar for mein-senec.de
 		this.webAuthenticated = false;
 		this.webMasterPlantNumber = null; // anlageNummer for the matched system
+		this.webMasterPlantSerial = null; // steuereinheitnummer of that system, to identify it
+		// One owner for the shared portal session: borrowers are counted and concurrent sign-ins
+		// collapse onto one promise, because webLogin() replaces the cookie jar outright.
+		this.webSessionHolders = 0;
+		this.webSessionLogin = null;
+		this.webSecondaryPlants = new Map(); // steuereinheitnummer → { anlageNummer, produktName }
 		this.webAbilities = {}; // feature visibility flags from getSystem
 		this.webStatusIntervalMs = 360000; // default 6 min, overwritten by checkConfig
 		this.webMediumIntervalMs = 21600000; // default 6h
@@ -143,7 +186,10 @@ class Senec extends utils.Adapter {
 		this.connectSystemNames = new Map(); // system key -> channel name, keeps object reads off the poll
 		this.connectKnownKeys = null; // system keys of the last reconciled poll, null until one succeeded
 		this.connectIdentityAliases = new Map(); // every identifier a system answers to -> its key
-		this.connectLoggedConditions = new Set(); // conditions already warned about, so they log on entry only
+		// Adapter-wide, not one connector's: several connectors record "already warned about this
+		// condition" here, each under its own key prefix, so a persistent fault logs on entry
+		// instead of once per poll.
+		this.loggedConditions = new Set();
 
 		this.abortController = new AbortController(); // used to cancel ongoing API calls on unload
 
@@ -237,10 +283,23 @@ class Senec extends utils.Adapter {
 			},
 			native: {},
 		});
+		await this.setObjectNotExistsAsync("info.openapiConnected", {
+			type: "state",
+			common: {
+				role: "indicator.connected",
+				name: "Local OpenAPI connected",
+				type: "boolean",
+				read: true,
+				write: false,
+				def: false,
+			},
+			native: {},
+		});
 		await this.setState("info.localConnected", false, true);
 		await this.setState("info.apiConnected", false, true);
 		await this.setState("info.webConnected", false, true);
 		await this.setState("info.connectConnected", false, true);
+		await this.setState("info.openapiConnected", false, true);
 
 		try {
 			this.checkConfig();
@@ -519,6 +578,18 @@ class Senec extends utils.Adapter {
 				}
 			}
 
+			// After the web connector, deliberately: approving this instance's own registration
+			// needs a mein-senec.de session, and running afterwards reuses the one that connector
+			// has already established rather than asking web-client to open a second.
+			if (this.config.openapi_use) {
+				// Not retried through retryConnectorInit: when this connector does not come up it is
+				// almost always because the registration is not approved yet, which no amount of
+				// retrying fixes. openapiPoll reschedules itself and reports where approval stands.
+				openapiClientLib
+					.openapiInit(this)
+					.catch((e) => this.logError(e, "[OpenAPI] ❌ Initial local OpenAPI poll failed"));
+			}
+
 			// After web connector is up, try to download CA cert if still on TOFU
 			if (this.config.lala_use) {
 				await this.attemptCertDownload();
@@ -556,12 +627,14 @@ class Senec extends utils.Adapter {
 			api: !!this.config.api_use,
 			web: !!this.config.web_use,
 			connect: !!this.config.connect_use,
+			openapi: !!this.config.openapi_use,
 		};
 		const connected = {
 			local: !!this.lalaConnected,
 			api: !!this.apiConnected,
 			web: !!this.webConnected,
 			connect: !!this.connectConnected,
+			openapi: !!this.openapiConnected,
 		};
 
 		// Update per-connector indicators
@@ -569,6 +642,7 @@ class Senec extends utils.Adapter {
 		await this.setStateAsync("info.apiConnected", connected.api, true);
 		await this.setStateAsync("info.webConnected", connected.web, true);
 		await this.setStateAsync("info.connectConnected", connected.connect, true);
+		await this.setStateAsync("info.openapiConnected", connected.openapi, true);
 
 		// Count configured vs connected
 		const configuredCount = Object.values(configured).filter(Boolean).length;
@@ -946,14 +1020,34 @@ class Senec extends utils.Adapter {
 	async reportConnectorStatus() {
 		await this.updateConnectionStatus();
 
-		if (this.lalaConnected || this.apiConnected || this.connectEnabled || this.webConnected) {
+		// Connection, not configuration: refreshing the language cache reads a state only a
+		// connected appliance has written, so there is nothing to refresh until one is. The
+		// warning below is the separate question of whether anything is switched on at all, and
+		// the gap between the two is the deliberate third state — enabled but not yet up, where
+		// the connector has already reported for itself and this stays quiet.
+		//
+		// `connectEnabled` is the odd one out, being an enablement flag among connection flags;
+		// that predates this connector and is left alone rather than changed blind.
+		if (
+			this.lalaConnected ||
+			this.apiConnected ||
+			this.connectEnabled ||
+			this.webConnected ||
+			this.openapiConnected
+		) {
 			await this.refreshGuiLangCache();
 			return;
 		}
 
 		// Only when nothing is even switched on. If a connector is enabled but has not come
 		// up, it has already reported that itself — repeating it here would say it twice.
-		if (!this.config.lala_use && !this.config.api_use && !this.config.web_use && !this.config.connect_use) {
+		if (
+			!this.config.lala_use &&
+			!this.config.api_use &&
+			!this.config.web_use &&
+			!this.config.connect_use &&
+			!this.config.openapi_use
+		) {
 			this.log.warn("No connectors are enabled yet. Open the adapter settings and choose which ones to use.");
 		}
 	}
@@ -961,7 +1055,8 @@ class Senec extends utils.Adapter {
 	/**
 	 * Whether the local connector has an address it could actually reach.
 	 *
-	 * `senecip` ships as "0.0.0.0", which is the absence of a setting rather than a host — the
+	 * `senecip` ships empty, and legacy instances may still hold "0.0.0.0" — either way that is
+	 * the absence of a setting rather than a host — the
 	 * same reading negotiateLocalTls() already applies before it declines to negotiate.
 	 *
 	 * @returns {boolean} True when a usable host is configured
@@ -1644,6 +1739,18 @@ class Senec extends utils.Adapter {
 			if (this.localAgent) {
 				this.localAgent.destroy();
 			}
+			// Keep-alive sockets outlive an abort, so the agent has to be destroyed like the
+			// others — in compact mode the host process survives the instance and they accumulate.
+			if (this.openapiHttpsAgent) {
+				this.openapiHttpsAgent.destroy();
+			}
+			// adapter.setTimeout tracks its timers and clears them here, but this connector is the
+			// only one holding a handle of its own, so clearing it costs a line and removes the
+			// dependency on that happening in the right order.
+			if (this.openapiPollTimer) {
+				this.clearTimeout(this.openapiPollTimer);
+				this.openapiPollTimer = null;
+			}
 
 			this.knownObjects.clear(); // empty objects cache
 			this.log.info("cleaned everything up...");
@@ -1788,6 +1895,35 @@ class Senec extends utils.Adapter {
 				} not [60..86400] seconds. Using default: 300`,
 			);
 			this.config.connect_interval = 300;
+		}
+
+		// Same reasoning for the local OpenAPI. Its own resolver clamps at the point of use as
+		// well, but warning here is what tells the user their value was not taken, which every
+		// other interval in this adapter does.
+		this.log.debug(`(checkConf) Configured local OpenAPI polling interval: ${this.config.openapi_interval}s`);
+		if (
+			this.config.openapi_interval !== undefined &&
+			(this.config.openapi_interval < 10 || this.config.openapi_interval > 86400)
+		) {
+			this.log.warn(
+				`(checkConf) Config local OpenAPI interval ${
+					this.config.openapi_interval
+				} not [10..86400] seconds. Using default: 60`,
+			);
+			this.config.openapi_interval = 60;
+		}
+
+		this.log.debug(`(checkConf) Configured local OpenAPI timeout: ${this.config.openapi_timeout}`);
+		if (
+			this.config.openapi_timeout !== undefined &&
+			(this.config.openapi_timeout < 2000 || this.config.openapi_timeout > 60000)
+		) {
+			this.log.warn(
+				`(checkConf) Config local OpenAPI timeout ${
+					this.config.openapi_timeout
+				} not [2000..60000] ms. Using default: 10000`,
+			);
+			this.config.openapi_timeout = 10000;
 		}
 
 		this.log.debug(`(checkConf) Configured api polling interval dashboard: ${this.config.api_interval}`);
@@ -2105,16 +2241,34 @@ class Senec extends utils.Adapter {
 		if (name.endsWith("_Text")) {
 			return;
 		}
+		// A runtime secret never gets a _Text sibling. The derived state is written with
+		// read: true, so a translation table matching the stripped path — "_openapi.token"
+		// strips to the bare name "token" — would publish the stored ciphertext into a readable
+		// state and undo the point of encrypting it.
+		if (ENCRYPTED_STATES.has(name)) {
+			return;
+		}
 		const lang = this.guiLang || "1";
 		this.log.silly(`(Decode) Senec language: ${lang}`);
 		// A trailing array index is not part of the translation key: "CASC.STATE.0" is one entry of
 		// the "CASC.STATE" table. Same rule as resolveStateAttrKey applies to state_attr.
-		const key = name.replace(/\.\d+$/, "");
-		this.log.silly(`(Decode) Checking: ${name} -> ${key}`);
+		const path = name.replace(/\.\d+$/, "");
+		this.log.silly(`(Decode) Checking: ${name} -> ${path}`);
+
+		const candidates = translationCandidates(path);
 
 		// The language is unvalidated device input, so anything outside 0/1/2 would silently switch
 		// off every _Text state. Fall back to English and then German instead.
-		const table = state_trans[`${key}.${lang}`] ?? state_trans[`${key}.1`] ?? state_trans[`${key}.0`];
+		let key = null;
+		let table;
+		for (const candidate of candidates) {
+			table =
+				state_trans[`${candidate}.${lang}`] ?? state_trans[`${candidate}.1`] ?? state_trans[`${candidate}.0`];
+			if (table !== undefined) {
+				key = candidate;
+				break;
+			}
+		}
 		if (table === undefined) {
 			return;
 		}
@@ -2276,11 +2430,234 @@ class Senec extends utils.Adapter {
 		if (!obj?.command) {
 			return;
 		}
+		let answered = false;
 		const reply = (payload) => {
+			answered = true;
 			if (obj.callback) {
 				this.sendTo(obj.from, obj.command, payload, obj.callback);
 			}
 		};
+
+		// What a button puts back into the Admin dialog is read beside labels Admin has already
+		// translated, so it is written in the user's language rather than in the log's English.
+		// Resolved on first use and only for the commands that need it: Admin sends the dashboard's
+		// own data commands through here too, and they would otherwise each pay an object read for
+		// text they never show. Re-resolved per message, so changing the language needs no restart.
+		let lang = null;
+		const language = async () => {
+			if (lang === null) {
+				try {
+					lang = (await this.getForeignObjectAsync("system.config"))?.common?.language || "en";
+				} catch {
+					// Unreadable system configuration is no reason to fail a button; English is complete.
+					lang = "en";
+				}
+			}
+			return lang;
+		};
+		const say = async (key, vars) => uiMessage(await language(), key, vars);
+		// Said only where the plant could not be determined, so the page the link opens may be
+		// the approval list of the wrong one of several. The separating space belongs here, not
+		// inside the translated string: a leading space in a translation does not survive the
+		// translation pipeline.
+		const approvalHint = async (link) => (link.exact ? "" : ` ${await say("openapiReplyPlantHint")}`);
+
+		try {
+			await this.dispatchMessage(obj, reply, say, approvalHint);
+		} catch (error) {
+			this.logError(error, `[Message] ❌ ${obj.command} failed`);
+			// A button whose handler threw must still answer, or Admin spins until it gives up
+			// with nothing to show for it.
+			if (!answered) {
+				reply({ error: `${obj.command} failed: ${error.message}` });
+			}
+		}
+	}
+
+	/**
+	 * Dispatch one sendTo command.
+	 *
+	 * Split from onMessage so every command is wrapped by the same "always answer" guarantee.
+	 *
+	 * @param {ioBroker.Message} obj - Incoming message
+	 * @param {(payload: unknown) => void} reply - Answer the caller
+	 * @param {(key: string, vars?: Record<string, string | number>) => Promise<string>} say - Translated reply text
+	 * @param {(link: {url: string, exact: boolean}) => Promise<string>} approvalHint - Plant-number caveat, when needed
+	 * @returns {Promise<void>}
+	 */
+	async dispatchMessage(obj, reply, say, approvalHint) {
+		// --- Local OpenAPI registration, driven from the buttons on the Local Connection tab ---
+		//
+		// Registering is the only one of these that reaches outside the appliance: it puts an
+		// entry into the user's SENEC portal that only they can approve or remove. There is no
+		// endpoint that lists those entries, so two registrations under the same name cannot be
+		// told apart afterwards — which is why this refuses to register while a token is stored
+		// and makes forgetting the old one a deliberate, separate step.
+		if (obj.command === "openapiRegister") {
+			if (!this.config.openapi_use) {
+				return reply({ error: await say("openapiReplyNotEnabled") });
+			}
+			if (!this.localHostConfigured()) {
+				return reply({ error: await say("openapiReplyNoAddress") });
+			}
+			// The whole sequence runs under the shared lock, token check included: checking in one
+			// tick and taking the lock in the next is no guard at all. The startup path takes the
+			// same lock, so a press cannot slip alongside an automatic registration.
+			const outcome = await openapiClientLib.withOpenapiRegistration(this, async () => {
+				const stored = await openapiClientLib.openapiReadTokenResult(this);
+				if (!stored.ok) {
+					return { error: await say("openapiReplyTokenUnreadable") };
+				}
+				if (stored.token) {
+					return { error: await say("openapiReplyAlreadyRegistered") };
+				}
+				const name = this.config.openapi_device_name || "ioBroker";
+				const result = await openapiClientLib.openapiRegister(this, name);
+				if (!result.ok || !result.token) {
+					// A refusal the appliance worded itself is reported as it came; the rest is
+					// prose this adapter wrote, and that exists translated.
+					return { error: result.key ? await say(result.key) : result.error };
+				}
+				await openapiClientLib.openapiStoreToken(this, result.token);
+				const link = openapiClientLib.openapiApprovalUrl(this);
+				// The hint follows the whole sentence rather than the address: translations put
+				// the address mid-sentence, and a parenthesis glued to it would be read as part
+				// of the link.
+				return {
+					result: (await say("openapiReplyRegistered", { name, url: link.url })) + (await approvalHint(link)),
+					registered: true,
+				};
+			});
+			if (!outcome.ok) {
+				return reply({ error: await say("openapiReplyBusy") });
+			}
+			// eslint-disable-next-line jsdoc/check-tag-names
+			const answer = /** @type {{error?: string, result?: string, registered?: boolean}} */ (outcome.value);
+			if (answer.registered) {
+				// openapiInit owns the whole register-approve-poll sequence, and takes the lock
+				// itself — which is why it is started once this one has been released. Without it
+				// an instance with automatic approval on would wait for a portal visit the
+				// adapter was configured to make itself.
+				openapiClientLib
+					.openapiInit(this)
+					.catch((e) => this.logError(e, "[OpenAPI] ❌ approving after registration failed"));
+			}
+			return reply(answer.error ? { error: answer.error } : { result: answer.result });
+		}
+
+		// Suggestions for the plant field. The field is free text as well, because enumerating
+		// plants needs a mein-senec.de session and this connector must stay usable for someone who
+		// runs nothing but local polling. An empty list is a perfectly good answer.
+		if (obj.command === "openapiListPlants") {
+			const plants = await openapiClientLib.openapiListPlants(this);
+			if (!plants.length) {
+				this.log.debug(
+					"[OpenAPI] No plants to suggest. The field can still be filled in by hand — 0 is the first plant.",
+				);
+			}
+			return reply(plants);
+		}
+
+		if (obj.command === "openapiCheckApproval") {
+			if (!this.config.openapi_use) {
+				return reply({ error: await say("openapiReplyNotEnabled") });
+			}
+			if (!this.localHostConfigured()) {
+				return reply({ error: await say("openapiReplyNoAddress") });
+			}
+			// The ladder's own message is the English one the log carries. The dialog gets the
+			// translated sentence for the same state instead.
+			const ladder = await openapiClientLib.openapiCheckToken(this);
+			await openapiClientLib.openapiReportApproval(this, ladder);
+			if (ladder.state === "approved") {
+				// Nothing is scheduled while a token is refused, so an approval that arrives after
+				// the connector gave up needs the poll started again rather than merely reported.
+				openapiClientLib
+					.openapiPoll(this)
+					.catch((e) => this.logError(e, "[OpenAPI] ❌ poll after approval failed"));
+				return reply({ result: await say("openapiReplyApproved") });
+			}
+			if (ladder.state === "pending") {
+				const link = openapiClientLib.openapiApprovalUrl(this);
+				// Still waiting is also the moment to make the attempt the configuration asked
+				// for, rather than only reporting it: a user who registered by hand with automatic
+				// approval on would otherwise never get one.
+				if (this.config.openapi_auto_approve !== false) {
+					openapiClientLib
+						.openapiInit(this)
+						.catch((e) => this.logError(e, "[OpenAPI] ❌ approving from the button failed"));
+				}
+				return reply({
+					result:
+						(await say("openapiReplyPending", {
+							name: this.config.openapi_device_name || "ioBroker",
+							url: link.url,
+						})) + (await approvalHint(link)),
+				});
+			}
+			if (ladder.state === "unregistered") {
+				return reply({ error: await say("openapiReplyUnregistered") });
+			}
+			if (ladder.state === "rejected") {
+				return reply({ error: await say("openapiReplyRejected") });
+			}
+			// Anything else carries the appliance's own words — a transport error or an unexpected
+			// status — and those are worth more to the reader verbatim than translated.
+			return reply({ error: ladder.message });
+		}
+
+		if (obj.command === "openapiForgetToken") {
+			// Deliberately NOT gated on openapi_use. This is the only action that withdraws the
+			// registration from the user's SENEC account, and gating it meant that switching the
+			// connector off made the granted entry — and the stored appliance token — impossible
+			// to clean up from the UI. The re-registration below stays gated, so discarding while
+			// the connector is off discards and stops there.
+			// Discarding and registering are the same lock: a press must never overlap the next,
+			// nor an automatic registration, because each registration leaves a portal entry that
+			// nothing can tell apart from another of the same name.
+			const outcome = await openapiClientLib.withOpenapiRegistration(this, async () =>
+				openapiClientLib.openapiForgetToken(this),
+			);
+			if (!outcome.ok) {
+				return reply({ error: await say("openapiReplyBusy") });
+			}
+			const withdrawn = String(outcome.value);
+			// The armed poll would otherwise fire into the middle of the replacement sequence and
+			// write "unregistered" over a registration in progress.
+			if (this.openapiPollTimer) {
+				this.clearTimeout(this.openapiPollTimer);
+				this.openapiPollTimer = null;
+			}
+			this.openapiConnected = false;
+			await this.updateConnectionStatus();
+			// "There may still be an entry" is only honest where the portal could not be asked.
+			// Having looked and found none is a separate answer, and the one that saves a trip.
+			const forgotten = {
+				revoked: "openapiReplyForgottenAndRevoked",
+				absent: "openapiReplyForgottenNoEntry",
+				none: "openapiReplyNothingStored",
+			};
+			let answer = await say(forgotten[withdrawn] || "openapiReplyForgotten");
+
+			// Discarding is also how a user starts over, and with automatic registration on the
+			// button that would start one is hidden by design — so the same register-approve-poll
+			// sequence onReady runs is started here.
+			//
+			// Only when the old entry is known to be gone. On "unknown" the portal could not be
+			// asked, so it may still be there, and registering then produces the pair of
+			// indistinguishable entries this flow exists to avoid — while the reply above is
+			// telling the user to go and remove the old one.
+			if (this.config.openapi_use && this.config.openapi_register_automatically && withdrawn !== "unknown") {
+				answer += ` ${await say("openapiReplyRegisteringAgain")}`;
+				// Not awaited: approval waits on the appliance picking the grant up, which takes
+				// longer than Admin is willing to hold a button for. The log carries the rest.
+				// openapiInit takes the lock itself, so it is started once this one is released.
+				openapiClientLib
+					.openapiInit(this)
+					.catch((e) => this.logError(e, "[OpenAPI] ❌ registering again failed"));
+			}
+			return reply({ result: answer });
+		}
 
 		if (obj.command === "statsCsv") {
 			if (!this.config.web_use) {
@@ -2376,6 +2753,29 @@ class Senec extends utils.Adapter {
 			this.log.debug(`Failed to refresh GUI language cache: ${error.message}`);
 		}
 	}
+}
+
+/**
+ * Translation keys to try for one state path, most specific first.
+ *
+ * The path itself is always first, so a table written against a full path keeps winning. The
+ * prefix-stripped forms follow, which is what lets the connectors that store below a prefix
+ * carry `_Text` states at all — see TRANSLATION_PREFIXES.
+ *
+ * @param {string} path - State path, with any trailing array index already removed
+ * @returns {string[]} Candidate translation keys, in lookup order
+ */
+function translationCandidates(path) {
+	const candidates = [path];
+	for (const prefix of TRANSLATION_PREFIXES) {
+		const stripped = path.match(prefix);
+		// A prefix that matches but captures nothing usable would add an empty key that could
+		// never resolve, and a duplicate would cost a second lookup for the same answer.
+		if (stripped && stripped[1] && !candidates.includes(stripped[1])) {
+			candidates.push(stripped[1]);
+		}
+	}
+	return candidates;
 }
 
 /**
@@ -2507,6 +2907,7 @@ if (require.main !== module) {
 		DecToIP,
 		reviverNumParse,
 		resolveStateAttrKey,
+		translationCandidates,
 	};
 } else {
 	// otherwise start the instance directly

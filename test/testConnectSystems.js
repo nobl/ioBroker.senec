@@ -61,7 +61,9 @@ function makeAdapter({ objects = {} } = {}) {
 		connectSystemNames: new Map(),
 		connectKnownKeys: null,
 		connectIdentityAliases: new Map(),
-		connectLoggedConditions: new Set(),
+		// One set for the whole instance, not one per connector: two connectors now record their
+		// once-only conditions in it, each under its own key prefix.
+		loggedConditions: new Set(),
 		knownObjects: new Map(),
 		connectConnected: false,
 

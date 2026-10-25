@@ -199,10 +199,17 @@ describe("an instance with no connector enabled", () => {
 	 */
 	function makeBareAdapter() {
 		const adapter = makeAdapter("");
-		adapter.config = { lala_use: false, api_use: false, web_use: false, connect_use: false };
+		adapter.config = {
+			lala_use: false,
+			api_use: false,
+			web_use: false,
+			connect_use: false,
+			openapi_use: false,
+		};
 		adapter.connectEnabled = false;
 		adapter.apiConnected = false;
 		adapter.webConnected = false;
+		adapter.openapiConnected = false;
 		adapter.refreshGuiLangCache = async () => {
 			throw new Error("nothing is connected, so there is no language cache to refresh");
 		};
@@ -249,6 +256,39 @@ describe("an instance with no connector enabled", () => {
 		await adapter.reportConnectorStatus();
 
 		assert.equal(refreshed, true);
+		assert.deepEqual(adapter.logs, []);
+	});
+
+	// The same three states, reached through the local OpenAPI instead of the local connector.
+	// Driving only one connector leaves the first condition free to be anything that happens to
+	// be true of that one: collapsing "is anything connected" to "is anything configured" passes
+	// every lala case above, and then an instance whose only connector is this one refreshes a
+	// cache from a state no appliance has written yet.
+	it("refreshes the language cache once the local OpenAPI is connected", async () => {
+		const adapter = makeBareAdapter();
+		adapter.config.openapi_use = true;
+		adapter.openapiConnected = true;
+		let refreshed = false;
+		adapter.refreshGuiLangCache = async () => {
+			refreshed = true;
+		};
+
+		await adapter.reportConnectorStatus();
+
+		assert.equal(refreshed, true);
+		assert.deepEqual(adapter.logs, []);
+	});
+
+	it("stays quiet when the local OpenAPI is enabled but has not connected yet", async () => {
+		// Enabled counts as a chosen connector, so there is nothing to warn about; and it is the
+		// connector's own job to say why it is not up, so there is nothing to refresh either.
+		// makeBareAdapter's refreshGuiLangCache throws, which is what makes that half an
+		// assertion rather than a hope.
+		const adapter = makeBareAdapter();
+		adapter.config.openapi_use = true;
+
+		await adapter.reportConnectorStatus();
+
 		assert.deepEqual(adapter.logs, []);
 	});
 

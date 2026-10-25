@@ -62,6 +62,7 @@ export interface SenecAdapter extends AdapterClass {
     webConnected: boolean;
     connectEnabled: boolean;
     connectConnected: boolean;
+    openapiConnected: boolean;
     _localTlsMode: "user" | "cached" | "tofu" | "none";
     _localTofuFingerprint: string | null;
     _localCertFetchFailed: boolean;
@@ -151,6 +152,12 @@ export interface SenecAdapter extends AdapterClass {
     webJar: any;
     webAuthenticated: boolean;
     webMasterPlantNumber: number | null;
+    /** Control-unit number of the master plant, so another connector can tell which appliance it is */
+    webMasterPlantSerial: string | null;
+    /** How many borrowers hold the shared mein-senec.de session; the last one out drops it */
+    webSessionHolders: number;
+    /** In-flight sign-in, so concurrent borrowers collapse onto one login instead of racing jars */
+    webSessionLogin: Promise<boolean> | null;
     webSecondaryPlants: Map<string, { anlageNummer: number; produktName: string }>;
     webAbilities: Record<string, boolean>;
     webStatusIntervalMs: number;
@@ -185,7 +192,34 @@ export interface SenecAdapter extends AdapterClass {
     /** Every identifier a system answers to → its path segment, so a partial response still resolves */
     connectIdentityAliases: Map<string, string>;
     /** Conditions already warned about, so a persistent one logs on entry instead of every poll */
-    connectLoggedConditions: Set<string>;
+    loggedConditions: Set<string>;
+
+    // ── Local OpenAPI (port 4424) state ───────────────────────────────
+    openapiClient: AxiosInstance | null;
+    openapiHttpsAgent: import("node:https").Agent | null;
+    /** SHA-256 of the certificate this listener presented, pinned on first contact */
+    openapiFingerprint: string | null;
+    /**
+     * The appliance this connector is allowed to talk to, as the bare digits of its device id.
+     * Taken from FACTORY.DEVICE_ID when the local connector has run, otherwise from the
+     * nameplate. Set once; a certificate naming a different appliance stops the connector.
+     */
+    openapiExpectedDeviceId: string | null;
+    /** True once the certificate named an appliance other than the configured one */
+    openapiIdentityMismatch: boolean;
+    /** Bounded count of automatic-approval attempts this session, so a hopeless case stops retrying */
+    openapiApproveAttempts: number;
+    /** The one pending poll timer, cleared before a new one is set so no second chain can start */
+    openapiPollTimer: any;
+    /** True while a registration or withdrawal is in flight, so a second press cannot overlap it */
+    openapiBusy: boolean;
+    /**
+     * True while any local-OpenAPI cycle is running — a poll or a registration sequence.
+     * One flag for both, because both lead into the portal approval and must not overlap there.
+     */
+    openapiCycleRunning: boolean;
+    /** Consecutive transport failures, so the retry interval grows during a long outage */
+    openapiTransportFailures: number;
 
     // ── GUI / misc ────────────────────────────────────────────────────
     guiLang: string;
@@ -194,6 +228,8 @@ export interface SenecAdapter extends AdapterClass {
     evalPoll(obj: Record<string, any> | Record<number, any>, pfx: string, keyPrefix?: string): Promise<void>;
     doState(name: string, value: any, description: string, unit: string, write: boolean, read?: boolean): Promise<void>;
     logError(e: Error | string, prefix?: string): void;
+    /** True when senecip names a host: it ships empty, and legacy instances may hold "0.0.0.0" */
+    localHostConfigured(): boolean;
     updateLastPoll(stateId: string, description: string): Promise<void>;
     updateConnectionStatus(): Promise<void>;
     initTlsStates(): Promise<void>;

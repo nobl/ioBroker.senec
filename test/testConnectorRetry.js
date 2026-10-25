@@ -208,6 +208,30 @@ describe("retryConnectorInit", () => {
 
 			assert.deepEqual(adapter.scheduled, []);
 		});
+
+		// webInit reports a failed login by throwing rather than by returning, so that the caller
+		// cannot mistake "could not sign in" for "started". That makes the throw the ordinary
+		// failure path through here, and it must be caught: letting it escape would take the
+		// retry chain down with it and leave the connector dead with no timer armed.
+		it("arms another attempt when webInit throws rather than letting it escape", async () => {
+			const adapter = makeAdapter();
+
+			await withStubs(
+				webClient,
+				{
+					webInit: async () => {
+						throw new Error("mein-senec.de could not be logged in to");
+					},
+				},
+				() => adapter.retryConnectorInit("web"),
+			);
+
+			assert.equal(adapter.scheduled.length, 1, "a failed login is retried, not abandoned");
+			assert.ok(
+				adapter.logs.some(([level, msg]) => level === "warn" && /could not be logged in to/.test(msg)),
+				"and the reason is reported rather than swallowed",
+			);
+		});
 	});
 
 	it("does nothing at all once the adapter is unloading", async () => {
