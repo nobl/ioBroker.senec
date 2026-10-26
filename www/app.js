@@ -164,7 +164,6 @@ var app = {
 	 */
 	onSocketReady: function (reconnected) {
 		document.getElementById("error-banner").style.display = "none";
-		app._everConnected = true;
 		// Object subscriptions live on the server side of the socket, so a reconnect loses them
 		// and they have to be asked for again — including the adapter object carrying the
 		// connector enable flags that every card now tests before rendering a value.
@@ -358,9 +357,6 @@ var app = {
 		}
 		el.innerHTML = html;
 	},
-
-	/** Whether a socket connection has been established before — set on first connect */
-	_everConnected: false,
 
 	_renderPending: false,
 
