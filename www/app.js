@@ -2,7 +2,7 @@
 
 /* exported app, logViewer, toggleTheme */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
-/* global io, i18n, t, connectorEnabled, energyFlow, liveChart, eventTimeline, charts, systemInfo, controls, statsViewer, document, window, requestAnimationFrame, FileReader, XMLHttpRequest */
+/* global io, i18n, t, connectorEnabled, OPENAPI_ROUTE_SECTIONS, energyFlow, liveChart, eventTimeline, charts, systemInfo, controls, statsViewer, document, window, requestAnimationFrame, FileReader, XMLHttpRequest */
 
 /**
  * Dashboard entry point: socket wiring, state cache, tab handling and the render loop.
@@ -13,6 +13,20 @@
  * from the real handler without any test noticing.
  */
 const NAMESPACE = "senec.0";
+
+/**
+ * OpenAPI sections whose writes are live power readings, derived from the one list of routes.
+ *
+ * Identity and wallbox data are not: the nameplate changes once a year and the wallbox has its
+ * own card. Derived rather than written out again because these names were already repeated in
+ * three places — `OPENAPI_ROUTE_SECTIONS`, `READ_ROUTES` in lib/openapi-client.js and
+ * `stateMap` in energy.js — and a fourth copy here meant a new section could silently fail to
+ * trigger a re-render. Anything added to the route list counts as power-bearing unless named
+ * below, which is the safer default of the two.
+ */
+const OPENAPI_POWER_SECTIONS = OPENAPI_ROUTE_SECTIONS.filter(function (section) {
+	return section !== "bessNameplate" && section !== "evse";
+});
 
 var app = {
 	namespace: NAMESPACE,
@@ -120,11 +134,17 @@ var app = {
 		// cache that could no longer shrink, stopped hearing about configuration changes, and
 		// left the chart with a hole it had no other path to ask for. The `reconnected` flag
 		// inside that handler was likewise always false, which is what made it look harmless.
+		// Both events, and the handler derives "is this a reconnect" from its own flag rather
+		// than from which event fired. ioBroker's own ws client raises `connect` on the first
+		// connection and `reconnect` on every later one, exclusively — but the web adapter can
+		// be configured to serve socket.io-client v2 instead, which forwards `reconnect` to the
+		// namespace socket *as well as* `connect`. Keying the behaviour on the event name
+		// therefore ran the whole recovery twice on one client and not at all on another.
 		this.conn.on("connect", function () {
-			app.onSocketReady(false);
+			app.onSocketReady();
 		});
 		this.conn.on("reconnect", function () {
-			app.onSocketReady(true);
+			app.onSocketReady();
 		});
 
 		this.conn.on("disconnect", function () {
@@ -160,9 +180,16 @@ var app = {
 	/**
 	 * Bring the page back up on a socket that has just become usable.
 	 *
-	 * @param {boolean} reconnected - False on the first connection, true on every later one
+	 * Idempotent: two lifecycle events for one connection must not run it twice.
 	 */
-	onSocketReady: function (reconnected) {
+	onSocketReady: function () {
+		if (this._readyFor === this.conn && this._readyPending) {
+			return;
+		}
+		this._readyPending = true;
+		this._readyFor = this.conn;
+		var reconnected = this._hasConnected;
+		this._hasConnected = true;
 		document.getElementById("error-banner").style.display = "none";
 		// Object subscriptions live on the server side of the socket, so a reconnect loses them
 		// and they have to be asked for again — including the adapter object carrying the
@@ -176,14 +203,19 @@ var app = {
 			app.renderDashboard();
 			app.loadConfig();
 			// Rebuilds the state cache from scratch, which is how a state deleted while the
-			// socket was down leaves the page.
-			app.subscribe();
-			// A dropped socket leaves a hole in the middle of the chart buffer. No other path
-			// asks for it: the pan and zoom backfills compare the visible window against the
-			// oldest edge they have requested, which a gap at the newest edge never trips.
-			if (reconnected) {
-				liveChart.resumeAfterReconnect(app.conn, NAMESPACE, app.connectors);
-			}
+			// socket was down leaves the page. The gap fill waits for it: `subscribe` only
+			// *emits* getStates, so running straight on would resolve the source against a
+			// cache as old as the outage, and query the wrong connector's state ids.
+			app.subscribe(function () {
+				app._readyPending = false;
+				// A dropped socket leaves a hole in the middle of the chart buffer. No other
+				// path asks for it: the pan and zoom backfills compare the visible window
+				// against the oldest edge they have requested, which a gap at the newest edge
+				// never trips.
+				if (reconnected) {
+					liveChart.resumeAfterReconnect(app.conn, NAMESPACE, app.connectors);
+				}
+			});
 		});
 	},
 
@@ -201,12 +233,18 @@ var app = {
 		});
 	},
 
-	subscribe: function () {
+	/**
+	 * Subscribe and rebuild the state cache.
+	 *
+	 * @param {function(): void} [onLoaded] - Called once the cache has actually been replaced
+	 */
+	subscribe: function (onLoaded) {
 		this.conn.emit("subscribe", `${NAMESPACE}.*`);
 
 		this.conn.emit("getStates", `${NAMESPACE}.*`, function (err, states) {
 			if (err) {
 				app.showError(t("error_loading_states", { error: err }));
+				app._readyPending = false;
 				return;
 			}
 
@@ -230,6 +268,9 @@ var app = {
 
 			app.connected = !!app.states["info.connection"];
 			app.render();
+			if (onLoaded) {
+				onLoaded();
+			}
 		});
 	},
 
@@ -242,6 +283,9 @@ var app = {
 		if (shortId.startsWith("_openapi.evse.")) {
 			systemInfo.evseDirty();
 		}
+		// Tell energyFlow where this write falls in the OpenAPI cycle, so the render path can
+		// refuse to recompute from a part-written one.
+		energyFlow.noteOpenapiWrite(shortId);
 		for (var key in this.connectors) {
 			if (shortId === this.connectors[key].stateId) {
 				this.connectors[key].active = !!val;
@@ -256,10 +300,9 @@ var app = {
 		// fresh battery value against the previous cycle's meter — which inverts the grid
 		// direction, because the direction is derived from the balance of the two. The
 		// end-of-cycle marker is the only point at which the set is coherent.
-		var isOpenapiSection =
-			shortId.startsWith("_openapi.meter.") ||
-			shortId.startsWith("_openapi.battery.") ||
-			shortId.startsWith("_openapi.bess.");
+		var isOpenapiSection = OPENAPI_POWER_SECTIONS.some(function (section) {
+			return shortId.startsWith(`_openapi.${section}.`);
+		});
 		// Both markers, because the connector writes `lastPoll` first and `lastCompletePoll`
 		// only afterwards: on `lastPoll` the completeness test below still sees the previous
 		// cycle's stamp, so keying the recompute on `lastPoll` alone recorded nothing at all.
@@ -289,10 +332,11 @@ var app = {
 			shortId.indexOf("SystemStatus.") !== -1;
 
 		if (isEnergyState) {
-			// Under the OpenAPI, hold the recompute until the cycle marker rather than running
-			// it on each section. Other sources publish a reading in one write and need no wait.
-			var holdForCycle = energyFlow.activeSource === "openapi" && isOpenapiSection;
-			if (!holdForCycle) {
+			// One test, asked in one place. Under the OpenAPI a cycle is written section by
+			// section, so a recompute part-way through pairs a fresh reading with the previous
+			// cycle's — and `_doRender` below asks the same question, because a second copy of
+			// this condition is how the hold came to be bypassed in the first place.
+			if (!energyFlow.openapiMidCycle(this.states)) {
 				energyFlow.update(this.states, this.connectors);
 			}
 			// Only the active source's own states produce a sample — see
@@ -335,16 +379,14 @@ var app = {
 		}
 
 		this.renderConnectors();
+		// energyFlow.update runs inside the render, so the first point can only be taken after
+		// it. Recording here instead stamped `now` on whatever energyFlow.data still held —
+		// nothing at all on the first load, and the pre-outage values on a reconnect.
+		// No initHistory here: the first render resolves the source, and energyFlow re-arms the
+		// chart as part of that. Probing before it was resolved meant every callback of that
+		// discovery was discarded by the generation bump that followed — twelve object reads
+		// per page load where six suffice.
 		this.renderDashboard();
-		// First data point from the initial state load — except under the OpenAPI, whose
-		// sections are written one at a time across a 60s cycle, so a snapshot taken
-		// mid-cycle holds one section from this cycle and the rest from the previous one.
-		// Its first point comes from the next complete-cycle marker instead, at most one
-		// interval away.
-		if (energyFlow.activeSource !== "openapi") {
-			liveChart.record();
-		}
-		liveChart.initHistory(this.conn, NAMESPACE, this.connectors);
 	},
 
 	renderConnectors: function () {
@@ -357,6 +399,13 @@ var app = {
 		}
 		el.innerHTML = html;
 	},
+
+	/** Whether any connection has been established before, so a recovery knows which it is. */
+	_hasConnected: false,
+
+	/** Guard making onSocketReady idempotent across two lifecycle events for one connection. */
+	_readyPending: false,
+	_readyFor: null,
 
 	_renderPending: false,
 
@@ -384,7 +433,13 @@ var app = {
 		}
 
 		var el = document.getElementById("dashboard");
-		energyFlow.update(this.states, this.connectors);
+		// The same hold onStateUpdate applies, because this is where the recompute really
+		// happens: suppressing the direct call there achieved nothing while this one ran
+		// unconditionally on the next animation frame, and a mid-cycle recompute pairs a fresh
+		// battery reading with the previous cycle's meter — which inverts the grid arrow.
+		if (!energyFlow.openapiMidCycle(this.states)) {
+			energyFlow.update(this.states, this.connectors);
+		}
 		if (window._sim) {
 			window._sim.apply();
 		}

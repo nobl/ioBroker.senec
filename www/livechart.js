@@ -88,6 +88,16 @@ var liveChart = {
 	/** Pending release of `_historyLoading`, in case the getHistory emit is never acked */
 	_loadTimer: null,
 
+	/** Identity of the load that currently owns `_historyLoading` and `_loadTimer`. */
+	_loadToken: 0,
+
+	/** True while discovery probes are outstanding, so a second pass is not started on top. */
+	_discovering: false,
+
+	/** A gap fill that arrived while a load was running, to be issued when it finishes. */
+	/** @type {{start: number, end: number|undefined}|null} */
+	_queuedGap: null,
+
 	/**
 	 * How long to wait for a getHistory reply before assuming it will not come.
 	 *
@@ -415,7 +425,7 @@ var liveChart = {
 	 * @param {object} connectors - connector status
 	 */
 	initHistory: function (conn, namespace, connectors) {
-		if (this._historyLoaded || this.disabled) {
+		if (this._historyLoaded || this._discovering || this.disabled) {
 			return;
 		}
 		var src = energyFlow.resolveSource(app.states, connectors);
@@ -423,9 +433,15 @@ var liveChart = {
 			// Source not resolvable yet (e.g. API plant id still unknown) — retry on next call
 			return;
 		}
-		this._historyLoaded = true;
+		// In progress, not done. Latching "loaded" before the probes answered meant a socket
+		// drop during discovery left every entry at instance:null for the life of the tab:
+		// `_hasHistory()` false for ever, and every later initHistory refused at the guard
+		// above. The flag only becomes true when a probe round actually completes.
+		this._discovering = true;
 
 		this.discoverHistory(conn, namespace, connectors, function (src) {
+			liveChart._discovering = false;
+			liveChart._historyLoaded = true;
 			if (liveChart._hasHistory()) {
 				liveChart._loadHistory(conn, namespace, src);
 			}
@@ -451,13 +467,20 @@ var liveChart = {
 		if (this.disabled) {
 			return;
 		}
-		if (!this._historyLoaded) {
-			// Never loaded at all — the ordinary path still applies.
+		// A discovery that was in flight when the socket dropped lost every ack, so its probes
+		// will never answer. Start it again rather than waiting on callbacks that are gone.
+		if (this._discovering) {
+			this._discovering = false;
+		}
+		if (!this._historyLoaded || !this._hasHistory()) {
+			// Never completed a discovery — the ordinary path still applies, and it is the only
+			// thing that can re-probe.
+			this._historyLoaded = false;
 			this.initHistory(conn, namespace, connectors);
 			return;
 		}
 		var src = energyFlow.resolveSource(app.states, connectors);
-		if (!src || !this._hasHistory() || !this._newestHistoryTs) {
+		if (!src || !this._newestHistoryTs) {
 			return;
 		}
 		var now = Date.now();
@@ -480,9 +503,24 @@ var liveChart = {
 	_loadHistory: function (conn, namespace, src, startOverride, endOverride) {
 		// Prevent stacking: skip if a history load is already in progress
 		if (this._historyLoading) {
+			// Remember what was asked for instead of dropping it. The socket drop that strands
+			// a load is the same event that triggers the reconnect gap fill, so the one request
+			// that can close a mid-buffer hole arrived exactly when this guard was closed —
+			// and no other trigger ever asks for a hole in the middle.
+			if (startOverride != null) {
+				this._queuedGap =
+					this._queuedGap && this._queuedGap.start < startOverride
+						? this._queuedGap
+						: { start: startOverride, end: endOverride };
+			}
 			return;
 		}
+		// Each load owns its own timer and its own claim on the in-progress flag. They used to
+		// be single slots mutated by whichever callback arrived, so a superseded load released
+		// and re-armed state belonging to the load that replaced it — three concurrent
+		// fan-outs, and the survivor left with no ack timeout.
 		var generation = this._loadGeneration;
+		var token = ++this._loadToken;
 
 		var fields = this._historyFields(src);
 		if (fields.length === 0) {
@@ -505,20 +543,19 @@ var liveChart = {
 		}
 
 		this._historyLoading = true;
-		// socket.io does not time out an un-acked emit, and `_historyLoading` is the flag every
-		// backfill trigger tests before asking for more. A getHistory lost to an adapter restart
-		// or a dropped socket therefore wedges the chart for the life of the page: no further
-		// load is ever attempted, and nothing on screen says why. Releasing the flag lets the
-		// next trigger retry; a late reply is discarded by the generation check below.
-		if (this._loadTimer) {
-			clearTimeout(this._loadTimer);
-		}
-		// The generation is deliberately not bumped: a reply that arrives late is still this
-		// source's own data for a range it still wants, and bumping would also discard any
-		// discovery in flight.
+		// The socket client does not time out an un-acked emit, and `_historyLoading` is the
+		// flag every backfill trigger tests before asking for more. A getHistory lost to an
+		// adapter restart or a dropped socket therefore wedges the chart for the life of the
+		// page. Releasing the flag lets the next trigger retry, and the range this load claimed
+		// is given back so that a trigger will actually ask for it again.
+		this._clearLoadTimer();
+		var priorRequested = this._historyRequestedTs;
+		var priorNewest = this._newestHistoryTs;
 		this._loadTimer = setTimeout(function () {
-			if (generation === liveChart._loadGeneration) {
+			if (token === liveChart._loadToken && liveChart._historyLoading) {
 				liveChart._historyLoading = false;
+				liveChart._loadTimer = null;
+				liveChart._releaseRange(priorRequested, priorNewest);
 			}
 		}, this.HISTORY_ACK_TIMEOUT_MS);
 
@@ -528,7 +565,10 @@ var liveChart = {
 		var end = endOverride != null && isFinite(endOverride) ? endOverride : Date.now();
 
 		// Mark the range as attempted before the results arrive, so a short or empty
-		// response cannot make the callers re-request it
+		// response cannot make the callers re-request it. Rolled back by `_releaseRange` if the
+		// request is never answered — otherwise a pan performed while the socket was down, when
+		// the client drops the emit without invoking its callback, recorded a range as covered
+		// that was never requested, and no trigger would ever ask for it again.
 		if (start < this._historyRequestedTs) {
 			this._historyRequestedTs = start;
 		}
@@ -562,13 +602,16 @@ var liveChart = {
 							// merge into the new source's buffer. Clearing the in-progress flag
 							// is still this callback's job, or nothing would ever load again.
 							if (generation !== liveChart._loadGeneration) {
-								liveChart._clearLoadTimer();
-								liveChart._historyLoading = false;
-								// The load the new source needed was refused by the in-progress
-								// guard while this one was outstanding. Re-arm it, or the chart
-								// keeps whatever the switch left it with and never backfills.
-								liveChart._historyLoaded = false;
-								liveChart.initHistory(conn, namespace, app.connectors);
+								// Only the load that currently owns the flag and the timer may
+								// release them. A superseded load touching them cancelled the
+								// ack timeout of the load that replaced it and let a third
+								// start on top of both.
+								if (token === liveChart._loadToken) {
+									liveChart._clearLoadTimer();
+									liveChart._historyLoading = false;
+									liveChart._historyLoaded = false;
+									liveChart.initHistory(conn, namespace, app.connectors);
+								}
 								return;
 							}
 							liveChart._mergeHistory(pending, src);
@@ -582,6 +625,23 @@ var liveChart = {
 	/**
 	 * Drop the pending release of `_historyLoading`.
 	 */
+	/**
+	 * Give back the range a load claimed but never actually fetched.
+	 *
+	 * The edges are widened before the request goes out, so that a reply which comes back
+	 * short cannot make the callers ask again in a loop. A request that was never answered —
+	 * or never sent, which the socket client does silently while disconnected — has to undo
+	 * that, or the range stays marked covered with nothing in it and no trigger will ask.
+	 *
+	 * @param {number} requested - `_historyRequestedTs` before the load claimed its range
+	 * @param {number} newest - `_newestHistoryTs` before the load claimed its range
+	 */
+	_releaseRange: function (requested, newest) {
+		this._historyRequestedTs = requested;
+		// Not below whatever `record()` has since collected: those points really are present.
+		this._newestHistoryTs = Math.max(newest, this._lastTs);
+	},
+
 	_clearLoadTimer: function () {
 		if (this._loadTimer) {
 			clearTimeout(this._loadTimer);
@@ -590,22 +650,22 @@ var liveChart = {
 	},
 
 	/**
-	 * How far apart two OpenAPI samples may be and still count as one poll cycle.
+	 * How far apart two OpenAPI writes may be and still belong to one poll cycle.
 	 *
-	 * Half the poll interval is the widest window in which the nearest sample is necessarily
-	 * from the same cycle, so it is the correctness bound; the 5 s cap keeps a skipped cycle
-	 * from pulling in its neighbour, since the sections of one cycle land a few hundred
-	 * milliseconds apart however slow the appliance is. The floor keeps that spread inside the
-	 * window if someone configures a one-second interval.
+	 * Five seconds, flat. The sections of a cycle land a few hundred milliseconds apart however
+	 * slow the appliance is, and the connector clamps the poll interval to at least ten
+	 * seconds — so half the interval, which would be the general correctness bound, is never
+	 * the binding one and deriving it only produced a branch that could not be taken.
+	 *
+	 * One exception is real: after an approval or a cleared 401 the connector re-polls after a
+	 * second (`APPROVED_REPOLL_MS`), so two cycles can both fall inside this window. Same-cycle
+	 * writes are still far nearer, so the nearest-sample lookup picks correctly; only a term
+	 * absent from one of the two cycles could be taken from the other.
 	 *
 	 * @returns {number} Window in milliseconds
 	 */
 	_cycleWindowMs: function () {
-		var seconds = Number(app.config && app.config.openapi_interval);
-		if (!Number.isFinite(seconds) || seconds <= 0) {
-			seconds = 60;
-		}
-		return Math.max(500, Math.min((seconds * 1000) / 2, 5000));
+		return 5000;
 	},
 
 	/**
@@ -618,6 +678,19 @@ var liveChart = {
 	_mergeHistory: function (pending, src) {
 		this._clearLoadTimer();
 		this._historyLoading = false;
+
+		// A gap fill refused while this load was running. Nothing else asks for a hole in the
+		// middle of the buffer, so dropping it left the hole there for good.
+		if (this._queuedGap) {
+			var gap = this._queuedGap;
+			this._queuedGap = null;
+			var gapSrc = energyFlow.resolveSource(app.states, app.connectors);
+			if (gapSrc && gap.start < Date.now()) {
+				setTimeout(function () {
+					liveChart._loadHistory(app.conn, app.namespace, gapSrc, gap.start, gap.end);
+				}, 0);
+			}
+		}
 
 		// If a window expansion was queued while loading, execute it now
 		if (this._pendingWindowLoad) {
@@ -700,7 +773,13 @@ var liveChart = {
 				for (var mdi = 0; mdi < fields[mi].data.length; mdi++) {
 					var d = fields[mi].data[mdi];
 					if (d && d.ts) {
-						map[d.ts] = Number(d.val) || 0;
+						// null, not 0. A recorded null means the appliance did not report the
+						// value — `markDatapointUnavailable` writes a string for exactly that —
+						// and coercing it to a confident zero made it a balance term in the
+						// OpenAPI branch, which decides the grid sign: a 3.2 kW export read as
+						// a 3.2 kW import.
+						var num = d.val === null || d.val === undefined ? null : Number(d.val);
+						map[d.ts] = Number.isFinite(num) ? num : null;
 					}
 				}
 				maps.push(map);
@@ -712,11 +791,12 @@ var liveChart = {
 				var point = { ts: t };
 				var hasAny = false;
 				for (var fj = 0; fj < fields.length; fj++) {
-					if (maps[fj][t] !== undefined) {
-						point[fields[fj].name] = maps[fj][t];
+					var cell = maps[fj][t];
+					point[fields[fj].name] = cell === undefined ? null : cell;
+					// A row that carries only nulls is not a reading. Counting a recorded null
+					// as presence produced points with no plotted value at all.
+					if (cell !== undefined && cell !== null) {
 						hasAny = true;
-					} else {
-						point[fields[fj].name] = null;
 					}
 				}
 				if (hasAny) {
@@ -836,8 +916,35 @@ var liveChart = {
 				if (gapPrev <= cycleWindow || gapNext <= cycleWindow) {
 					return gapNext < gapPrev ? arr[next].val : arr[prev].val;
 				}
+				// Outside the window: carry the last known value forward without limit. Where
+				// there is nothing earlier at all — the leading edge of a loaded range, whose
+				// preceding sample `removeBorderValues: true` has excluded — the first later
+				// sample is reached backwards instead. That is a guess either way, and the
+				// alternative is discarding a point whose magnitude was really measured.
 				return prev >= 0 ? arr[prev].val : arr[0].val;
 			};
+
+			// One point per cycle, not per row. Each `_openapi.*` state is written by its own
+			// setStateChangedAsync at its own millisecond, so mergeTimelines — which keys on an
+			// exact timestamp — yields a row per state, each carrying a single field. Emitting
+			// a point for every one of them inflated the buffer several-fold with near-empty
+			// objects, and a row for a term that is not plotted at all (surplus feeds the grid
+			// magnitude, it is not a line) produced a point with no data whatsoever.
+			var cycles = [];
+			for (var ci = 0; ci < oaMerged.length; ci++) {
+				var row = oaMerged[ci];
+				var last = cycles[cycles.length - 1];
+				if (last && row.ts - last.ts <= cycleWindow) {
+					for (var fname in row) {
+						if (fname !== "ts" && row[fname] != null) {
+							last[fname] = row[fname];
+						}
+					}
+				} else {
+					cycles.push(Object.assign({}, row));
+				}
+			}
+			oaMerged = cycles;
 
 			for (var oi = 0; oi < oaMerged.length; oi++) {
 				var om = oaMerged[oi];
@@ -1027,6 +1134,12 @@ var liveChart = {
 		// Deduplicate — skip if less than 2s since last record
 		if (now - this._lastTs < 2000) {
 			return;
+		}
+		// Never behind the previous point. A backward clock step — NTP correction, VM resume,
+		// container skew — would otherwise leave the buffer locally unsorted, and the merge
+		// below advances two cursors on the assumption that it is not.
+		if (now <= this._lastTs) {
+			now = this._lastTs + 1;
 		}
 		this._lastTs = now;
 
@@ -1662,6 +1775,10 @@ var liveChart = {
 
 	togglePause: function () {
 		this.paused = !this.paused;
+		if (!this.paused) {
+			// Same hole as a collapsed chart, for the same reason.
+			this._fillCollectionGap();
+		}
 		app.renderDashboard();
 	},
 
@@ -1673,13 +1790,38 @@ var liveChart = {
 	toggleDisabled: function () {
 		this.disabled = !this.disabled;
 		if (!this.disabled) {
-			// Re-enable: record current state and try history backfill
+			// Fill the hole first, and only then record. `record()` advances `_newestHistoryTs`
+			// to now, which is the very boundary the gap fill needs — doing it the other way
+			// round left the collapsed interval empty with no path to fill it, the same defect
+			// a dropped socket has, for a cause the user chose.
+			this._fillCollectionGap();
 			this.record();
 			if (!this._historyLoaded) {
 				this.initHistory(app.conn, app.namespace, app.connectors);
 			}
 		}
 		app.renderDashboard();
+	},
+
+	/**
+	 * Ask history for whatever was missed while the chart was not collecting.
+	 *
+	 * `record()` returns early while paused or collapsed, so the buffer gains a hole in the
+	 * middle — and a mid-buffer hole is exactly what no pan or zoom trigger can see, because
+	 * they all compare the visible window against the oldest edge.
+	 */
+	_fillCollectionGap: function () {
+		if (!app.conn || !this._hasHistory() || !this._newestHistoryTs) {
+			return;
+		}
+		var now = Date.now();
+		if (this._newestHistoryTs >= now) {
+			return;
+		}
+		var src = energyFlow.resolveSource(app.states, app.connectors);
+		if (src) {
+			this._loadHistory(app.conn, app.namespace, src, this._newestHistoryTs, now);
+		}
 	},
 
 	/** Snap back to live (rightmost edge = now) */

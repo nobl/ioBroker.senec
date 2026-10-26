@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, escHtml, stateIsLive, connectorOfState, connectorEnabled, liveChart */
+/* global app, i18n, t, escHtml, stateIsLive, connectorOfState, connectorEnabled, liveChart */
 /* exported energyFlow */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -46,6 +46,28 @@ var energyFlow = {
 	period: "today", // "today", "month", "year"
 
 	/** @type {string|null} */ activeSource: null, // which source is actually providing data
+
+	/** True between the first section write of an OpenAPI cycle and its `lastPoll` marker. */
+	openapiPending: false,
+
+	/**
+	 * How long a newly selected source must hold before the chart is reset onto it.
+	 *
+	 * Long enough to outlast a single failed local poll (the local connector drops its
+	 * connected flag on the first failure, and retries from 10 s), short enough that a genuine
+	 * switch is not visibly delayed.
+	 */
+	SOURCE_SETTLE_MS: 30000,
+
+	/** Past this age the last-update stamp carries its date, not just a time of day. */
+	STALE_STAMP_MS: 36 * 60 * 60 * 1000,
+
+	/** Source awaiting confirmation, and when it was first seen. */
+	/** @type {string|null} */ _pendingSource: null,
+	_pendingSourceSince: 0,
+
+	/** The source the current chart buffer belongs to. */
+	/** @type {string|null} */ _chartSource: null,
 
 	/** @type {string|null} */ apiAnlagenId: null, // discovered API system ID
 	hasData: false,
@@ -268,8 +290,37 @@ var energyFlow = {
 		// the same way (one is the device's own signed figure, another is derived from a power
 		// balance), so a buffer holding both steps sign-wise with no cause in the plant, and the
 		// history discovery left behind belongs to the previous source's state ids.
-		if (changed) {
-			this.resetChart();
+		//
+		// But only once the new source has held for a moment. The local connector drops
+		// `info.localConnected` on a single failed poll, so an appliance that intermittently
+		// refuses lala.cgi flips the source every few seconds — and each flip emptied the
+		// buffer and re-issued a six-query history fan-out over the whole loaded window. A
+		// reset is right for a real switch and ruinous for a flap; the only difference between
+		// them is how long the new source lasts.
+		if (this._chartSource === null) {
+			// First resolution on this page. There is no buffer to discard and no previous
+			// source's discovery to throw away, so adopt it at once — waiting would leave the
+			// chart empty for the settle window and then wipe it anyway.
+			this._chartSource = src;
+			this._pendingSource = null;
+			changed = true;
+		} else if (src !== this._chartSource) {
+			if (this._pendingSource !== src) {
+				this._pendingSource = src;
+				this._pendingSourceSince = Date.now();
+			}
+			if (Date.now() - this._pendingSourceSince >= this.SOURCE_SETTLE_MS) {
+				this._pendingSource = null;
+				this._chartSource = src;
+				this.resetChart();
+				changed = true;
+			} else {
+				changed = false;
+			}
+		} else {
+			// Back where we started, or never left: a flap that resolved itself needs nothing.
+			this._pendingSource = null;
+			changed = false;
 		}
 
 		// Each reader reports whether any of its mapped power states is present. Asserting
@@ -342,6 +393,11 @@ var energyFlow = {
 		// switch made within 2 s of the old source's last point threw away the new source's
 		// first one — and `rearmChart` is the only thing that records it.
 		liveChart._lastTs = 0;
+		// The view, not only the data. `_clampOffset` returns early on an empty buffer, so a
+		// panned-back offset survived the reset and `render()` took the canvas branch — an
+		// empty plot with no "waiting for data" message, which reads as a broken page.
+		liveChart.viewOffset = 0;
+		liveChart._pendingWindowLoad = 0;
 		liveChart._loadGeneration++;
 		liveChart._clearLoadTimer();
 		liveChart._historyLoading = false;
@@ -826,8 +882,8 @@ var energyFlow = {
 		if (this.activeSource === "local") {
 			isoStr = states["info.lastPoll.HighPrio"] || null;
 		} else if (this.activeSource === "openapi") {
-			// The complete-cycle marker, not `lastPoll`: the connector stamps that one as soon as
-			// any one section answered, so a cycle whose meter route failed would report the
+			// The complete-cycle marker, not `lastPoll`: `lastPoll` is stamped whenever at least
+			// one section answered, so a cycle whose meter route failed would report the
 			// current time next to a diagram holding the previous cycle's meter values.
 			// No fallback to `lastPoll` on purpose: an install whose meter route keeps failing
 			// would otherwise keep reporting a fresh time forever, which is the thing being fixed.
@@ -848,6 +904,18 @@ var energyFlow = {
 			return null;
 		}
 
+		// A bare time of day reads as current at a glance, which is the wrong impression for a
+		// connector that stopped answering days ago — and a connector that is enabled but
+		// offline keeps its place on the page by design, so this stamp is the only thing that
+		// can say so. Past the threshold the date comes with it, as systemInfo.formatAge does.
+		if (Date.now() - d.getTime() >= this.STALE_STAMP_MS) {
+			return d.toLocaleString(i18n.lang, {
+				month: "short",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+			});
+		}
 		return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 	},
 
@@ -952,6 +1020,7 @@ var energyFlow = {
 		if (
 			this.activeSource === "openapi" &&
 			app.states["_openapi.info.lastPoll"] &&
+			!this.openapiMidCycle(app.states) &&
 			!this.openapiCycleComplete(app.states)
 		) {
 			html += `<span class="energy-source-label" style="color:#ff9800">${t("energy_partial_cycle")}</span>`;
@@ -1563,6 +1632,39 @@ var energyFlow = {
 	 * @param {object} states - ioBroker state values
 	 * @returns {boolean} True when the last poll served every requested section
 	 */
+	/**
+	 * Whether an OpenAPI poll cycle is part-written right now.
+	 *
+	 * The two markers are stamped at the *end* of a cycle, so while one is in progress they both
+	 * still carry the previous cycle's value and compare equal — they cannot answer this. The
+	 * only available signal is that a section state has arrived since the last cycle-end marker,
+	 * which `noteOpenapiWrite` records.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {boolean} True while this source's cycle is mid-flight
+	 */
+	openapiMidCycle: function (states) {
+		return this.activeSource === "openapi" && !!this.openapiPending && !!states["_openapi.info.lastPoll"];
+	},
+
+	/**
+	 * Record that an OpenAPI state arrived, so the render path can tell a part-written cycle
+	 * from a settled one.
+	 *
+	 * `lastPoll` is written last by the connector, which is what makes it the cycle-end signal:
+	 * when it lands, every other state of that cycle — including the completeness marker — is
+	 * already in place.
+	 *
+	 * @param {string} shortId - State id without the adapter namespace
+	 */
+	noteOpenapiWrite: function (shortId) {
+		if (shortId === "_openapi.info.lastPoll") {
+			this.openapiPending = false;
+		} else if (shortId.startsWith("_openapi.") && !shortId.startsWith("_openapi.info.")) {
+			this.openapiPending = true;
+		}
+	},
+
 	openapiCycleComplete: function (states) {
 		var polled = states["_openapi.info.lastPoll"];
 		var complete = states["_openapi.info.lastCompletePoll"];
@@ -1587,13 +1689,11 @@ var energyFlow = {
 			return false;
 		}
 		if (src === "openapi") {
-			// The end-of-cycle markers, which the connector writes after the sections. Not the
-			// individual section writes: they arrive a dozen at a time from separate requests,
-			// and sampling on one of them pairs a fresh value with the rest of the previous
-			// cycle. Both markers count because `lastCompletePoll` is written after `lastPoll`,
-			// so it is the later of the two that carries a complete cycle — whether this one is
-			// complete is a separate question, see openapiCycleComplete.
-			return shortId === "_openapi.info.lastPoll" || shortId === "_openapi.info.lastCompletePoll";
+			// The cycle-end marker alone. Not the individual section writes: they arrive a dozen
+			// at a time from separate requests, and sampling on one of them pairs a fresh value
+			// with the rest of the previous cycle. `lastPoll` is written last of everything,
+			// including the completeness marker, so by the time it lands the cycle has settled.
+			return shortId === "_openapi.info.lastPoll";
 		}
 		if (src === "local") {
 			return shortId.startsWith("ENERGY.GUI_") || shortId.startsWith("WALLBOX.");
@@ -1610,6 +1710,10 @@ var energyFlow = {
 	onSourceChange: function (val) {
 		this.source = val;
 		// Before update(), so update()'s own activeSource-change reset does not fight this one.
+		// An explicit choice is never debounced — the settle window exists to absorb a
+		// connector flapping, not to delay something the user just asked for.
+		this._pendingSource = null;
+		this._chartSource = val === "auto" ? null : val;
 		this.resetChart();
 		this.update(app.states, app.connectors);
 		// Unconditional, because the user may well have picked the source auto had already

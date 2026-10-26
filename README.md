@@ -185,6 +185,27 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 - Fix: An external energy source's configured name is now escaped where it is drawn into the energy-flow diagram.
 - Fix: Connection status is no longer recalculated after the instance has started unloading.
 - Fix: The energy flow's *incomplete poll* warning appeared only on an installation that had never completed a cycle — the one case where it is least needed. It now shows whenever the latest cycle did not serve every section, beside the time of the last complete one rather than instead of it.
+- Fix: The *Measurement History* tab could pick a connector you had switched off as its data source and render its months-old values as current. It was the one view module never brought under the staleness check added alongside it; the source selector no longer offers a disabled connector either.
+- Fix: The energy flow could still show a fabricated grid direction part-way through a local OpenAPI poll. Holding the recomputation back on each section write achieved nothing, because the render that followed on the next animation frame recomputed anyway — so a fresh battery reading sat beside the previous cycle's meter, which inverts the arrow. The two places that asked the question are now one.
+- Fix: The chart's reconnect gap fill never ran in the case it was written for. The dropped socket that opens the gap is also what strands the history request in flight, and the in-progress guard then refused the one request able to close it. It is queued and issued when the stranded load settles.
+- Fix: A socket dropped while the chart was still discovering which states a history adapter records left it unable to backfill for the life of the page, reporting every state as "not recorded" with logging switched on. Discovery is now only marked done once it has actually finished, and a reconnect re-probes an unfinished one.
+- Fix: Switching the energy-flow source while history was loading issued three overlapping sets of queries instead of one, and left the surviving load without its timeout. Each load now owns its own state, so a superseded one cannot disown the load that replaced it.
+- Fix: Panning or zooming the chart while the connection was down marked that range as loaded without ever sending the request, so it stayed permanently blank. A range is given back if its request is never answered.
+- Fix: The live chart no longer empties and reloads its whole history every time the `lala.cgi` connector drops a single poll. The source has to hold for half a minute before the chart is rebuilt onto it, which a flapping connection never does and a genuine switch always does.
+- Fix: Collapsing or pausing the live chart left a permanent hole for the interval it did not collect. It is filled from history on resume.
+- Fix: A wallbox slot missing from a single response is no longer deleted immediately — two cycles must agree first. Deleting the objects also removes any history or logging you attached to them, which cannot be undone. A sweep that fails is retried instead of being recorded as done, and a wallbox removed while the adapter was stopped is now cleaned up on the next start.
+- Fix: A section of the local OpenAPI that legitimately answers with nothing — no wallbox slots, for instance — no longer withholds the complete-poll marker. That marker is what the dashboard records chart points from, so on some configurations the chart recorded nothing at all.
+- Fix: A `200` response whose body is an array or a plain string is no longer published as measurements and counted as a complete read.
+- Fix: A recorded "not reported by the appliance" value in the chart's history is no longer read as a measured zero, which inverted the grid direction for those points.
+- Fix: Backfilled OpenAPI history produced several near-empty chart points per poll instead of one complete one, because each value is written separately and recorded at its own timestamp.
+- Fix: A stopped instance no longer shows every connector as connected on the dashboard.
+- Fix: Values are no longer published as `Infinity` for a state declared numeric, and a value that cannot be read as a number no longer changes the state's declared type — which breaks recording in InfluxDB.
+- Fix: Several states could still be written during shutdown, after the adapter had reported itself stopped.
+- Fix: A changed certificate on port 4424 is now refused rather than adopted. Unlike `lala.cgi`, this connector sends a token with every request, so a device presenting an unexpected certificate has already been given a credential. If the appliance genuinely has a new certificate, forget the token in the settings and register again.
+- Fix: A log warning about a response this version cannot read is written once per condition rather than once per poll.
+- Fix: The *Battery (now)* card and the energy flow beside it no longer disagree by up to a minute when both local connectors are enabled.
+- Fix: The dashboard no longer hides the `bess` and wallbox rows for a moment on every page load, and reads the OpenAPI section list the same way the connector does for every stored shape of that setting.
+- Fix: A last-update time older than 36 hours now carries its date, rather than showing a time of day that reads as current.
 - Dependency updates
 
 ### 2.16.0 (2026-10-25)

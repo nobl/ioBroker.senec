@@ -225,8 +225,10 @@ export interface SenecAdapter extends AdapterClass {
      * The sweep walks every object the instance owns, so it must not run once per poll.
      */
     openapiEvseCleared: boolean;
-    /** Slot keys of the last successful /v1/evse read, so the sweep runs only when they change */
-    openapiEvseSlots: string;
+    /** Slot keys of the last swept /v1/evse read; null until one has been read at all */
+    openapiEvseSlots: string | null;
+    /** Slot signature seen once, awaiting a second agreeing cycle before anything is deleted */
+    openapiEvsePending: string | null;
 
     // ── GUI / misc ────────────────────────────────────────────────────
     guiLang: string;

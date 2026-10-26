@@ -1091,6 +1091,100 @@ describe("local OpenAPI connector: wallbox slots that stop being reported", () =
 		assert.equal(sweeps, 1, `swept ${sweeps} times across three cycles`);
 	});
 
+	it("counts a section that answered with nothing as served", async () => {
+		// TEST: an empty collection is a legitimate answer — zero wallbox slots is the ordinary
+		// state of most appliances — and treating it as "did not answer" withheld
+		// lastCompletePoll on every single cycle. That marker is the dashboard's only
+		// chart-record trigger, so the chart recorded nothing at all for the life of the
+		// instance.
+		const adapter = makeAdapter({
+			config: { openapi_include: ["battery", "meter", "evse"] },
+			getStateAsync: tokenStored(),
+			openapiClient: appliance((path) =>
+				path === "/v1/evse" ? answers({ devices: [] }) : answers({ power: -850 }),
+			),
+		});
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		assert.ok(lastWrite(adapter, "_openapi.info.lastCompletePoll"), "an empty section still answered");
+	});
+
+	it("completes a cycle whose include list asks for nothing but the identity section", async () => {
+		// Deselecting everything in Admin leaves exactly the identity section, which the
+		// connector adds for itself — a configuration it explicitly supports. Requiring a
+		// measurement section to have answered made the marker unwritable for ever, and the
+		// system card then reported "Last complete poll: never" in orange indefinitely.
+		const adapter = makeAdapter({
+			config: { openapi_include: [] },
+			getStateAsync: tokenStored(),
+			openapiClient: appliance(() => answers({ serialNumber: "S2097" })),
+		});
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		assert.ok(lastWrite(adapter, "_openapi.info.lastPoll"));
+		assert.ok(lastWrite(adapter, "_openapi.info.lastCompletePoll"), "nothing was asked for and nothing is missing");
+	});
+
+	it("stamps the completeness marker before the cycle-end marker", async () => {
+		// The order is a contract the dashboard reads: `lastPoll` lands last, so a consumer
+		// that sees it knows every other state of the cycle — including this marker — is
+		// already in place. Stamped the other way round, a render landing between the two
+		// writes compared a fresh marker against a stale one and called a healthy cycle
+		// partial.
+		const adapter = makeAdapter({
+			getStateAsync: tokenStored(),
+			openapiClient: appliance(() => answers({ power: -850 })),
+		});
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		const order = adapter.states.map(([id]) => id);
+		const complete = order.indexOf("_openapi.info.lastCompletePoll");
+		const polled = order.indexOf("_openapi.info.lastPoll");
+		assert.ok(complete !== -1 && polled !== -1, "both markers were written");
+		assert.ok(complete < polled, `lastCompletePoll must precede lastPoll — got ${JSON.stringify(order)}`);
+	});
+
+	it("does not count an array or a string body as a section that answered", async () => {
+		// Both parse as JSON, so the "did not answer JSON" branch never sees them, and
+		// normalizeOpenapiSection hands back anything that is not a plain object untouched —
+		// which wrote `_openapi.meter` holding "error" and certified a complete cycle.
+		for (const body of [[1, 2, 3], "error"]) {
+			const adapter = makeAdapter({
+				getStateAsync: tokenStored(),
+				openapiClient: appliance((path) => (path === "/v1/meter" ? answers(body) : answers({ power: -850 }))),
+			});
+
+			await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+			assert.equal(
+				lastWrite(adapter, "_openapi.info.lastCompletePoll"),
+				undefined,
+				`a ${typeof body} body was treated as a complete read`,
+			);
+			assert.ok(!adapter.polled.some(([, obj]) => "meter" in obj), "and the unreadable body was not published");
+		}
+	});
+
+	it("warns once about an unreadable body, not once per cycle", async () => {
+		// A shape this version cannot read is a property of the firmware, not an event. At the
+		// default interval an undeduplicated warning is 1440 lines a day per route, in a file
+		// that routes every other persistent condition through loggedConditions.
+		const adapter = makeAdapter({
+			getStateAsync: tokenStored(),
+			openapiClient: appliance((path) => (path === "/v1/meter" ? answers("error") : answers({ power: -850 }))),
+		});
+
+		for (let i = 0; i < 3; i++) {
+			await withoutWaiting(() => openapi.openapiPoll(adapter));
+		}
+
+		const warns = adapter.logs.filter(([level, msg]) => level === "warn" && /does not recognise/.test(msg));
+		assert.equal(warns.length, 1, `three cycles produced ${warns.length} warnings`);
+	});
+
 	it("keeps every slot when the response shape is not recognised", async () => {
 		// A 200 whose body is neither the array nor the object the appliance is known to send
 		// used to key an empty slot list — which the prune reads as "no slot was reported" and
@@ -1112,6 +1206,81 @@ describe("local OpenAPI connector: wallbox slots that stop being reported", () =
 		assert.ok(adapter.objects["senec.0._openapi.evse.4.evConnected"], "slot 4 survives");
 		// And the cycle is not called complete: a section that could not be read did not answer.
 		assert.equal(lastWrite(adapter, "_openapi.info.lastCompletePoll"), undefined);
+	});
+
+	it("needs two agreeing cycles before it deletes a slot", async () => {
+		// delObjectAsync takes `common.custom` with it — the history, SQL or InfluxDB logging
+		// the user attached to that state — and that cannot be restored. main.js takes the same
+		// position for ordinary states: "Removing it would discard any history or logging
+		// setting attached to it." One anomalous response must not be enough.
+		const adapter = makeAdapter({
+			config: { openapi_include: ["battery", "meter", "evse"] },
+			getStateAsync: tokenStored(),
+			openapiClient: appliance((path) =>
+				path === "/v1/evse" ? answers([{ id: "1" }]) : answers({ power: -850 }),
+			),
+		});
+		withSlots(adapter, ["1", "2"]);
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+		assert.deepEqual(adapter.deleted, [], "the first disagreeing cycle only takes note");
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+		assert.ok(
+			adapter.deleted.length > 0 && adapter.deleted.every((id) => id.includes("evse.2")),
+			`the second agreeing cycle removes it: ${JSON.stringify(adapter.deleted)}`,
+		);
+	});
+
+	it("retries a sweep that failed instead of recording it as done", async () => {
+		const adapter = makeAdapter({
+			config: { openapi_include: ["battery", "meter", "evse"] },
+			getStateAsync: tokenStored(),
+			openapiClient: appliance((path) =>
+				path === "/v1/evse" ? answers([{ id: "1" }]) : answers({ power: -850 }),
+			),
+		});
+		withSlots(adapter, ["1", "2"]);
+		adapter.delObjectAsync = async () => {
+			throw new Error("object db unavailable");
+		};
+
+		// Two cycles to clear the confirmation, then the sweep runs and fails.
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+		assert.ok(adapter.objects["senec.0._openapi.evse.2.evConnected"], "nothing was removed");
+
+		// The failure must not be latched: the next identical cycle has to try again.
+		const attempts = [];
+		adapter.delObjectAsync = async (id) => {
+			attempts.push(id);
+			delete adapter.objects[id];
+		};
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		assert.ok(attempts.length > 0, "a failed sweep was recorded as done and never retried");
+	});
+
+	it("prunes slots left from a previous run when the appliance now reports none", async () => {
+		// The signature of a zero-slot response is the empty string, which was also the
+		// initial value of the memo — so the one transition that most needs the sweep, "had
+		// slots, now has none, across a restart", compared equal and was skipped.
+		const adapter = makeAdapter({
+			config: { openapi_include: ["battery", "meter", "evse"] },
+			getStateAsync: tokenStored(),
+			openapiClient: appliance((path) =>
+				path === "/v1/evse" ? answers({ devices: [] }) : answers({ power: -850 }),
+			),
+		});
+		withSlots(adapter, ["1"]);
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		assert.ok(
+			adapter.deleted.some((id) => id.includes("evse.1")),
+			"the leftover slot survived a restart into a zero-slot appliance",
+		);
 	});
 
 	it("leaves states under other sections alone", async () => {

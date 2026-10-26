@@ -1842,17 +1842,28 @@ describe("local OpenAPI client", () => {
 			assert.equal(a.openapiIdentityMismatch, false);
 		});
 
-		// A certificate does get replaced, so this is reported and then accepted — refusing to
-		// talk to the appliance until someone intervenes would be the worse failure.
-		it("warns about a changed certificate and then re-pins it", async () => {
+		// Unlike lala.cgi's TOFU, this connector sends a bearer token on every request — and
+		// sends it before the response carrying this certificate arrives. A peer presenting a
+		// different certificate has therefore already been handed one credential; adopting its
+		// fingerprint would hand it every later one too.
+		it("refuses a changed certificate instead of re-pinning it", async () => {
 			const a = adapter({ openapiFingerprint: fingerprintOf("cert-one") });
 			await openapi.openapiVerifyPeer(a, cert("S209719282544", "cert-two"));
 			assert.ok(
-				a.logs.some(([level, msg]) => level === "warn" && /certificate on port 4424 changed/.test(msg)),
+				a.logs.some(([level, msg]) => level === "error" && /certificate on port 4424 changed/.test(msg)),
 				"a swapped certificate has to be said out loud",
 			);
-			assert.equal(a.openapiFingerprint, fingerprintOf("cert-two"), "and then accepted");
-			assert.deepEqual(a.states, [["_openapi.tls.fingerprint", fingerprintOf("cert-two")]]);
+			assert.equal(a.openapiFingerprint, fingerprintOf("cert-one"), "the pin is kept");
+			assert.equal(a.openapiIdentityMismatch, true, "and the connector stops talking to it");
+			assert.deepEqual(a.states, [], "the new fingerprint is not written down");
+		});
+
+		it("names the way back when it refuses a changed certificate", async () => {
+			// Refusing without saying how to recover would strand an appliance whose
+			// certificate was genuinely renewed.
+			const a = adapter({ openapiFingerprint: fingerprintOf("cert-one") });
+			await openapi.openapiVerifyPeer(a, cert("S209719282544", "cert-two"));
+			assert.ok(a.logs.some(([, msg]) => /forget\s+the token/.test(msg)));
 		});
 
 		// The handshake is the only identity available to an instance that polls nothing from
@@ -2594,5 +2605,52 @@ describe("Admin dialog messages (lib/ui-messages.js)", () => {
 		for (const key of used) {
 			assert.ok(english[key], `en.json is missing ${key}, used in main.js`);
 		}
+	});
+});
+
+describe("ValueTyping — finite values only", () => {
+	const vm = require("node:vm");
+	const fs = require("node:fs");
+	const path = require("node:path");
+	const state_attr = require("../lib/state_attr.js");
+
+	/**
+	 * Evaluate the real ValueTyping out of main.js, with its two collaborators stubbed.
+	 *
+	 * Loaded this way because main.js is the adapter class and requires a running controller;
+	 * the function itself is pure and is what the finite-value contract lives in.
+	 *
+	 * @returns {Function} ValueTyping
+	 */
+	function valueTyping() {
+		const src = fs.readFileSync(path.join(__dirname, "..", "main.js"), "utf8");
+		const start = src.indexOf("const ValueTyping = (key, value) =>");
+		const end = src.indexOf("\n};", start);
+		const ctx = vm.createContext({ state_attr, isDeviceSentinel: () => false, DecToIP: () => "ip", console });
+		vm.runInContext(`${src.slice(start, end + 3)}\nglobalThis.VT = ValueTyping;`, ctx);
+		return ctx.VT;
+	}
+
+	// A state declared `number` must never carry Infinity, and must never carry a string:
+	// doState derives common.type from typeof, so a string flips the object's declared type,
+	// and InfluxDB rejects a field whose type changes — which silently breaks the recording.
+	it("never publishes a non-finite number or a string for a unit-bearing key", () => {
+		const VT = valueTyping();
+		const key = Object.entries(state_attr).find(([, v]) => v && v.multiply && v.unit)[0];
+		// "1e309" as a string rather than the literal: the literal is Infinity at parse time,
+		// which the linter rightly objects to, and a JSON body delivers it as a string anyway.
+		for (const input of ["Infinity", "-Infinity", "1e309", "NaN", "REPORT TO DEV: x:y"]) {
+			const out = VT(key, input);
+			assert.ok(
+				out === null || Number.isFinite(out),
+				`${JSON.stringify(input)} produced ${String(out)} (${typeof out})`,
+			);
+		}
+	});
+
+	it("still scales an ordinary reading", () => {
+		const VT = valueTyping();
+		const [key, attr] = Object.entries(state_attr).find(([, v]) => v && v.multiply && v.unit);
+		assert.equal(VT(key, "12.5"), parseFloat((12.5 * attr.multiply).toFixed(2)));
 	});
 });

@@ -98,7 +98,11 @@ class Senec extends utils.Adapter {
 		 * The sweep walks every object the instance owns, so it must not run once per poll.
 		 */
 		this.openapiEvseCleared = false;
-		this.openapiEvseSlots = "";
+		// null, not "": the empty string is exactly the signature of a zero-slot response, so
+		// "had slots, now has none, across a restart" compared equal and never pruned.
+		this.openapiEvseSlots = null;
+		/** Slot signature seen once, awaiting a second agreeing cycle before anything is deleted. */
+		this.openapiEvsePending = null;
 		this.connectVia = "https://";
 		this.unloaded = false;
 		/** Waiters parked by delay(), so unload can wake them instead of leaving them pending. */
@@ -1782,6 +1786,12 @@ class Senec extends utils.Adapter {
 			this.log.info("cleaned everything up...");
 			this.setState("info.connection", false, true);
 			this.setState("info.connectionStatus", "none", true);
+			// updateConnectionStatus is the only writer of these and now returns early once
+			// unloading, so without this a stopped instance leaves every connector badge
+			// showing "connected" on the dashboard beside a false info.connection.
+			for (const name of ["local", "api", "web", "connect", "openapi"]) {
+				this.setState(`info.${name}Connected`, false, true);
+			}
 			callback();
 		} catch (e) {
 			this.logError(e);
@@ -2330,6 +2340,12 @@ class Senec extends utils.Adapter {
 
 		if (Array.isArray(obj)) {
 			for (const [index, value] of obj.entries()) {
+				// Per iteration, not just on entry: every branch below awaits a state write, so
+				// teardown can land between two fields of the same payload and the rest would
+				// otherwise go on writing into an adapter that has already stopped.
+				if (this.unloaded) {
+					return;
+				}
 				const fullKey = keyPrefix ? `${keyPrefix}.${index}` : `${index}`;
 				if (typeof value === "object" && value !== null) {
 					await this.evalPoll(value, pfx, fullKey);
@@ -2341,6 +2357,9 @@ class Senec extends utils.Adapter {
 		}
 
 		for (const [key, value] of Object.entries(obj)) {
+			if (this.unloaded) {
+				return;
+			}
 			const fullKey = keyPrefix ? `${keyPrefix}.${key}` : key;
 			if (typeof value === "object" && value !== null) {
 				// An appliance without a section answers {"SECTION":{"OBJECT_NOT_FOUND":""}} — the
@@ -2879,6 +2898,13 @@ const ValueTyping = (key, value) => {
 	// to fall through to Number("") || 0 and publish a 0 that is indistinguishable from a reading.
 	if (value !== "" && (state_attr[key]?.numtype || (state_attr[key]?.unit && !isNaN(value)))) {
 		const num = Number(value) || 0;
+		// Before either scaling return, not after. `isNaN("Infinity")` is false, so an
+		// out-of-range literal reaches here as a finite-looking string and left by this branch
+		// as Infinity — a non-finite value published on a state declared `number`, which the
+		// later guard never sees because every scaled entry carries a unit and returns here.
+		if (!Number.isFinite(num)) {
+			return null;
+		}
 		const factor = state_attr[key]?.multiply;
 		return factor ? parseFloat((num * factor).toFixed(2)) : num;
 	}
@@ -2909,8 +2935,11 @@ const ValueTyping = (key, value) => {
 		// Only a number can be scaled. A field with a unit but no numtype reaches here still a
 		// string when the appliance sends something non-numeric, and the multiply published NaN
 		// — which the dashboard then had to defend against on every read.
+		// null rather than the raw value: doState derives common.type from typeof, so handing
+		// back a string here flipped a `number` state to `string` and back on the next good
+		// reading, which churns the object and breaks a history binding keyed on the type.
 		if (!Number.isFinite(Number(value))) {
-			return value;
+			return null;
 		}
 		return parseFloat((Number(value) * multiply).toFixed(2));
 	}

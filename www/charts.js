@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, energyFlow, document, getComputedStyle, XMLSerializer, Image */
+/* global app, t, stateIsLive, connectorEnabled, energyFlow, document, getComputedStyle, XMLSerializer, Image */
 /* exported charts */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -48,13 +48,32 @@ var charts = {
 	 *
 	 * @param {object} states - ioBroker state values
 	 */
+	/**
+	 * Read a measurement state, but only while the connector that wrote it is enabled.
+	 *
+	 * Nothing deletes a connector's states when it is switched off, so months-old measurements
+	 * stay in the object database and are indistinguishable from fresh ones by inspection. Every
+	 * other view module applies this test; this one did not, so the tab could pick a disabled
+	 * connector as its source and render its retained values as current.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} key - State id without the adapter namespace
+	 * @returns {string | number | boolean | null | undefined} The value, or undefined when the key is dead or absent
+	 */
+	liveValue: function (states, key) {
+		if (!key || !stateIsLive(key)) {
+			return undefined;
+		}
+		return states[key];
+	},
+
 	findAvailableYears: function (states) {
 		// Find years with actual monthly data (value > 0) for the active source
 		var years = {};
 		var src = this.source;
 
 		for (var key in states) {
-			if (src !== "web") {
+			if (src !== "web" && stateIsLive(key)) {
 				// Check API source
 				var m2 = key.match(
 					/_api\.Anlagen\.[^.]+\.Measurements\.Yearly\.(\d{4})\.monthly\.POWER_CONSUMPTION\.(\d+)$/,
@@ -63,7 +82,7 @@ var charts = {
 					years[m2[1]] = true;
 				}
 			}
-			if (src !== "api") {
+			if (src !== "api" && stateIsLive(key)) {
 				// Check Web source
 				var m = key.match(/_meinsenec\.Measurements\.Yearly\.(\d{4})\.monthly\.consumption\.(\d+)$/);
 				if (m && states[key] > 0) {
@@ -104,7 +123,7 @@ var charts = {
 
 	detectSource: function (states, webTestKey, apiTestKey) {
 		if (this.source === "api") {
-			if (apiTestKey && states[apiTestKey] !== undefined) {
+			if (apiTestKey && this.liveValue(states, apiTestKey) !== undefined) {
 				this.lastSource = "API";
 				return "api";
 			}
@@ -112,7 +131,7 @@ var charts = {
 			return null;
 		}
 		if (this.source === "web") {
-			if (states[webTestKey] !== undefined) {
+			if (this.liveValue(states, webTestKey) !== undefined) {
 				this.lastSource = "Web";
 				return "web";
 			}
@@ -120,11 +139,11 @@ var charts = {
 			return null;
 		}
 		// Auto: API > Web
-		if (apiTestKey && states[apiTestKey] !== undefined) {
+		if (apiTestKey && this.liveValue(states, apiTestKey) !== undefined) {
 			this.lastSource = "API";
 			return "api";
 		}
-		if (states[webTestKey] !== undefined) {
+		if (this.liveValue(states, webTestKey) !== undefined) {
 			this.lastSource = "Web";
 			return "web";
 		}
@@ -157,7 +176,7 @@ var charts = {
 				var type = this.webTypes[i];
 				fullSeries[type] = [];
 				for (var hh = 0; hh < 24; hh++) {
-					var val = states[`${wpfx + type}.hourly.${hh}`];
+					var val = this.liveValue(states, `${wpfx + type}.hourly.${hh}`);
 					fullSeries[type].push(val !== undefined && val !== null ? Number(val) : 0);
 				}
 			}
@@ -166,7 +185,7 @@ var charts = {
 				var webKey = this.apiTypeMap[apiKey];
 				fullSeries[webKey] = [];
 				for (var ah = 0; ah < 24; ah++) {
-					var aVal = states[`${apiPfx + apiKey}.${ah}`];
+					var aVal = this.liveValue(states, `${apiPfx + apiKey}.${ah}`);
 					fullSeries[webKey].push(aVal !== undefined && aVal !== null ? Number(aVal) : 0);
 				}
 			}
@@ -206,7 +225,7 @@ var charts = {
 			var blSeries = [];
 			var hasBl = false;
 			for (var blh = 0; blh < showHours; blh++) {
-				var blVal = states[blKey + blh];
+				var blVal = this.liveValue(states, blKey + blh);
 				if (blVal !== undefined && blVal !== null) {
 					hasBl = true;
 				}
@@ -250,7 +269,7 @@ var charts = {
 				var type = this.webTypes[i];
 				data.series[type] = [];
 				for (var dd = 1; dd <= daysInMonth; dd++) {
-					var val = states[`${wpfx + type}.daily.${dd}`];
+					var val = this.liveValue(states, `${wpfx + type}.daily.${dd}`);
 					data.series[type].push(val !== undefined && val !== null ? Number(val) : 0);
 				}
 			}
@@ -264,7 +283,7 @@ var charts = {
 			var blSeries = [];
 			var hasBl = false;
 			for (var bld = 1; bld <= daysInMonth; bld++) {
-				var blVal = states[blKey + bld];
+				var blVal = this.liveValue(states, blKey + bld);
 				if (blVal !== undefined && blVal !== null) {
 					hasBl = true;
 				}
@@ -307,7 +326,7 @@ var charts = {
 				var type = this.webTypes[i];
 				data.series[type] = [];
 				for (var mm = 1; mm <= 12; mm++) {
-					var val = states[`${wpfx}monthly.${type}.${mm}`];
+					var val = this.liveValue(states, `${wpfx}monthly.${type}.${mm}`);
 					data.series[type].push(val !== undefined && val !== null ? Number(val) : 0);
 				}
 			}
@@ -320,7 +339,7 @@ var charts = {
 			var blSeries = [];
 			var hasBl = false;
 			for (var blm = 1; blm <= 12; blm++) {
-				var blVal = states[`${apiPfx}BATTERY_LEVEL_IN_PERCENT.${blm}`];
+				var blVal = this.liveValue(states, `${apiPfx}BATTERY_LEVEL_IN_PERCENT.${blm}`);
 				if (blVal !== undefined && blVal !== null) {
 					hasBl = true;
 				}
@@ -364,7 +383,7 @@ var charts = {
 			var webKey = this.apiTypeMap[apiKey];
 			data.series[webKey] = [];
 			for (var h = 0; h < 24; h++) {
-				var val = states[`${pfx + apiKey}.${h}`];
+				var val = this.liveValue(states, `${pfx + apiKey}.${h}`);
 				// API measurement values are already in kWh
 				data.series[webKey].push(val !== undefined && val !== null ? Number(val) : 0);
 			}
@@ -376,7 +395,7 @@ var charts = {
 			var webKey = this.apiTypeMap[apiKey];
 			data.series[webKey] = [];
 			for (var d = 1; d <= days; d++) {
-				var val = states[`${pfx + apiKey}.${d}`];
+				var val = this.liveValue(states, `${pfx + apiKey}.${d}`);
 				data.series[webKey].push(val !== undefined && val !== null ? Number(val) : 0);
 			}
 		}
@@ -387,7 +406,7 @@ var charts = {
 			var webKey = this.apiTypeMap[apiKey];
 			data.series[webKey] = [];
 			for (var m = 1; m <= 12; m++) {
-				var val = states[`${pfx + apiKey}.${m}`];
+				var val = this.liveValue(states, `${pfx + apiKey}.${m}`);
 				data.series[webKey].push(val !== undefined && val !== null ? Number(val) : 0);
 			}
 		}
@@ -416,8 +435,14 @@ var charts = {
 		html += '<div class="energy-source">';
 		html += '<select class="chart-compare-select" onchange="charts.onSourceChange(this.value)">';
 		html += `<option value="auto"${this.source === "auto" ? " selected" : ""}>Auto</option>`;
-		html += `<option value="api"${this.source === "api" ? " selected" : ""}>API</option>`;
-		html += `<option value="web"${this.source === "web" ? " selected" : ""}>Web</option>`;
+		// Only connectors that are actually enabled. Offering a switched-off one invited the
+		// user to select a source whose every value is a leftover.
+		if (connectorEnabled("api")) {
+			html += `<option value="api"${this.source === "api" ? " selected" : ""}>API</option>`;
+		}
+		if (connectorEnabled("web")) {
+			html += `<option value="web"${this.source === "web" ? " selected" : ""}>Web</option>`;
+		}
 		html += "</select>";
 		var chartSource = this.lastSource || "";
 		if (chartSource) {

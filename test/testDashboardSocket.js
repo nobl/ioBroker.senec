@@ -52,6 +52,13 @@ function makeSocket() {
 				cb(null, null);
 			}
 		},
+		/** Raise BOTH lifecycle events for one connection, as socket.io-client v2 does. */
+		raiseBoth() {
+			socket.wasConnected = true;
+			(handlers.connect || []).forEach((cb) => cb(true));
+			(handlers.reconnect || []).forEach((cb) => cb(true));
+		},
+
 		/** Raise the lifecycle event the real client would raise. */
 		becomeReady() {
 			const which = socket.wasConnected ? "reconnect" : "connect";
@@ -106,7 +113,6 @@ function loadApp(socket) {
 		localStorage: { getItem: () => null, setItem: noop, removeItem: noop },
 		t: (key) => key,
 		connectorEnabled: () => true,
-		i18n: { lang: "en", init: () => Promise.resolve(), applyAll: noop, has: () => true },
 		liveChart: {
 			resumed: 0,
 			resumeAfterReconnect() {
@@ -129,9 +135,26 @@ function loadApp(socket) {
 		statsViewer: {},
 		console,
 	});
-	vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "www", "app.js"), "utf8"), context, {
-		filename: "app.js",
-	});
+	// i18n.js first, as index.html loads it: it defines the shared globals app.js reads at
+	// evaluation time. Its `t` and `i18n` are replaced below with the stubs this suite wants.
+	for (const name of ["i18n.js", "app.js"]) {
+		vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "www", name), "utf8"), context, {
+			filename: name,
+		});
+	}
+	// The real i18n.init fetches dictionaries over HTTP, which this context has no fetch for —
+	// and the whole recovery sits inside its promise. Replace it after loading, so app.js still
+	// evaluated against the real shared globals i18n.js defines.
+	context.i18n = {
+		lang: "en",
+		init: () => Promise.resolve(),
+		applyAll: noop,
+		has: () => true,
+		// `t` is the real one from i18n.js and delegates here, so the stub needs it: without
+		// it the throw lands inside onSocketReady's promise chain and silently stops the
+		// recovery, which looks exactly like the recovery not running.
+		translate: (key) => key,
+	};
 	context.app.renderDashboard = noop;
 	context.app.render = noop;
 	context.app.renderConnectors = noop;
@@ -185,6 +208,24 @@ describe("dashboard — socket lifecycle", () => {
 		assert.ok(socket.emits.includes("subscribeObjects"), "object subscription re-issued");
 		assert.ok(socket.emits.includes("getStates"), "state cache rebuilt");
 		assert.equal(ctx.liveChart.resumed, 1, "the chart's reconnect gap fill ran exactly once");
+	});
+
+	it("runs the recovery once when a client raises both lifecycle events", async () => {
+		// The web adapter can be configured to serve socket.io-client v2 instead of ioBroker's
+		// own ws client, and v2 forwards `reconnect` to the namespace socket as well as
+		// `connect`. Keying the recovery on the event name ran it twice there — two i18n
+		// loads, two getStates — and the gap fill not at all on a client that raises only one.
+		socket.dbStates = { "senec.0.info.connection": { val: true } };
+		socket.becomeReady();
+		await settle();
+		socket.emits.length = 0;
+
+		socket.raiseBoth();
+		await settle();
+
+		const getStates = socket.emits.filter((name) => name === "getStates").length;
+		assert.equal(getStates, 1, `the recovery ran ${getStates} times for one connection`);
+		assert.equal(ctx.liveChart.resumed, 1, "and the chart gap fill ran exactly once");
 	});
 
 	it("drops a state that disappeared while the socket was down", async () => {

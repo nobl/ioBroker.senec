@@ -380,13 +380,13 @@ describe("dashboard — local OpenAPI energy source", () => {
 	});
 
 	describe("sourceOwnsState", () => {
-		it("accepts only the end-of-cycle markers for the OpenAPI", () => {
+		it("accepts only the cycle-end marker for the OpenAPI", () => {
 			// The sections arrive as a dozen separate writes, so no single one of them
-			// represents a whole reading; the markers the connector writes once the sections
-			// are in do. Both of them: lastCompletePoll is written after lastPoll, so a gate
-			// that waits for completeness never fires on lastPoll alone.
+			// represents a whole reading. `lastPoll` is written last of everything the cycle
+			// writes — after the completeness marker — which is what makes it the one signal
+			// that the cycle has settled.
 			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.info.lastPoll"), true);
-			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.info.lastCompletePoll"), true);
+			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.info.lastCompletePoll"), false);
 			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.meter.gridPower"), false);
 			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.battery.power"), false);
 			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.info.reachable"), false);
@@ -720,6 +720,9 @@ describe("dashboard — values from connectors that are switched off", () => {
 			null,
 			"",
 			[],
+			false,
+			0,
+			NaN,
 			"battery,meter",
 			["battery,meter"],
 			["battery", "meter"],
@@ -728,7 +731,10 @@ describe("dashboard — values from connectors that are switched off", () => {
 			["bess", "evse", "meter"],
 			[" battery ", "meter"],
 		]) {
-			const ctx = withConfig({ openapi_include: configured });
+			// `openapi_use` is along for the ride so the config is never *empty* — an empty one
+			// means "not loaded yet", which openapiSections deliberately answers differently
+			// (see the loading-window test below).
+			const ctx = withConfig({ openapi_use: true, openapi_include: configured });
 			// An absent key is not an empty choice: delete it so the two see the same thing.
 			if (configured === undefined) {
 				delete ctx.app.config.openapi_include;
@@ -739,6 +745,16 @@ describe("dashboard — values from connectors that are switched off", () => {
 				`disagreed on ${JSON.stringify(configured)}`,
 			);
 		}
+	});
+
+	it("shows every OpenAPI section while the configuration is still loading", () => {
+		// connectorEnabled answers "enabled" in this window so the first render is not blank.
+		// openapiSections has to agree: defaulting to the *stored* default instead hid the
+		// bess and wallbox cards on every page load of an install that selects them.
+		const ctx = withConfig({});
+		assert.deepEqual(plain(ctx.openapiSections()), ["battery", "meter", "bess", "bessNameplate", "evse"]);
+		assert.equal(ctx.stateIsLive("_openapi.bess.voltage"), true);
+		assert.equal(ctx.stateIsLive("_openapi.evse.1.chargingPower"), true);
 	});
 
 	it("shows everything while the configuration is still loading", () => {
@@ -848,9 +864,12 @@ describe("dashboard — values from connectors that are switched off", () => {
 describe("dashboard — local OpenAPI live chart", () => {
 	let liveChart;
 	let energyFlow;
+	let app;
 
 	beforeEach(() => {
-		energyFlow = loadWww("energy.js").energyFlow;
+		const energyCtx = loadWww("energy.js");
+		energyFlow = energyCtx.energyFlow;
+		app = energyCtx.app;
 		liveChart = loadWww("livechart.js", {
 			energyFlow,
 			// _mergeHistory repaints when it finishes, so the stub has to answer the lookups the
@@ -887,8 +906,8 @@ describe("dashboard — local OpenAPI live chart", () => {
 			["_openapi.meter.gridPower", 0],
 			["_openapi.meter.houseConsumption", 2000],
 			["_openapi.meter.production", 0],
-			["_openapi.info.lastPoll", "2026-10-26T08:00:00.000Z"],
 			["_openapi.info.lastCompletePoll", "2026-10-26T08:00:00.000Z"],
+			["_openapi.info.lastPoll", "2026-10-26T08:00:00.000Z"],
 		];
 		const CYCLE_TWO = [
 			["_openapi.battery.power", 1000],
@@ -896,8 +915,8 @@ describe("dashboard — local OpenAPI live chart", () => {
 			["_openapi.meter.gridPower", 2200],
 			["_openapi.meter.houseConsumption", 300],
 			["_openapi.meter.production", 3500],
-			["_openapi.info.lastPoll", "2026-10-26T08:01:00.000Z"],
 			["_openapi.info.lastCompletePoll", "2026-10-26T08:01:00.000Z"],
+			["_openapi.info.lastPoll", "2026-10-26T08:01:00.000Z"],
 		];
 
 		/**
@@ -910,11 +929,9 @@ describe("dashboard — local OpenAPI live chart", () => {
 		 */
 		function deliver(states, conns, id, value) {
 			states[id] = value;
-			// app.js holds the recompute back on a bare section write, because a cycle's
-			// sections arrive from separate requests. Replaying that here is the point: a gate
-			// that passes in this helper but not in app.js is a chart that records nothing.
-			const isSection = /^_openapi\.(meter|battery|bess)\./.test(id);
-			if (!(energyFlow.activeSource === "openapi" && isSection)) {
+			energyFlow.noteOpenapiWrite(id);
+			app.states = states;
+			if (!energyFlow.openapiMidCycle(states)) {
 				energyFlow.update(states, conns);
 			}
 			if (energyFlow.activeSource && energyFlow.sourceOwnsState(energyFlow.activeSource, id)) {
@@ -1101,6 +1118,65 @@ describe("dashboard — local OpenAPI live chart", () => {
 			assert.ok(
 				backwards.every((g) => g === -3200),
 				`a term only sampled later was dropped: ${JSON.stringify(backwards.slice(0, 5))}`,
+			);
+		});
+
+		it("does not read a recorded null as a measured zero", () => {
+			// `markDatapointUnavailable` deliberately writes a string into a state the appliance
+			// stopped reporting, and history records it. Coercing that to 0 made it a balance
+			// term — and the balance decides the grid sign, so a real export rendered as an
+			// import of the same magnitude.
+			const T = 1761000000000;
+			const base = {
+				grid: [{ ts: T + 140, val: 3200 }],
+				house: [{ ts: T + 147, val: 300 }],
+				battery: [{ ts: T + 100, val: 0 }],
+			};
+			liveChart.buffer = [];
+			liveChart._mergeHistory({ ...base, pv: [{ ts: T + 152, val: 3500 }] }, "openapi");
+			const good = plain(liveChart.buffer).filter((pt) => pt.grid != null);
+			assert.ok(
+				good.every((pt) => pt.grid === -3200),
+				`3500 W of PV over a 300 W house is an export: ${JSON.stringify(good.map((p) => p.grid))}`,
+			);
+
+			for (const unusable of [null, "not provided by appliance"]) {
+				liveChart.buffer = [];
+				liveChart._mergeHistory({ ...base, pv: [{ ts: T + 152, val: unusable }] }, "openapi");
+				const pts = plain(liveChart.buffer).filter((pt) => pt.grid != null);
+				assert.ok(
+					pts.every((pt) => pt.pv === null || pt.pv === undefined),
+					`${JSON.stringify(unusable)} was published as a PV reading`,
+				);
+			}
+		});
+
+		it("emits one point per cycle, not one per state write", () => {
+			// Each _openapi state is its own setStateChangedAsync at its own millisecond, and
+			// mergeTimelines keys on an exact timestamp — so a cycle arrives as a row per
+			// state, each carrying one field. A point per row inflated the buffer with
+			// near-empty objects, and a surplus-only row (surplus is not a plotted line)
+			// produced a point with no data at all.
+			const T = 1761000000000;
+			liveChart.buffer = [];
+			liveChart._mergeHistory(
+				{
+					battery: [{ ts: T + 0, val: -100 }],
+					soc: [{ ts: T + 3, val: 60 }],
+					grid: [{ ts: T + 140, val: 50 }],
+					house: [{ ts: T + 147, val: 1100 }],
+					pv: [{ ts: T + 152, val: 1000 }],
+					surplus: [{ ts: T + 158, val: 0 }],
+				},
+				"openapi",
+			);
+
+			const pts = plain(liveChart.buffer);
+			assert.equal(pts.length, 1, `one cycle became ${pts.length} points`);
+			assert.deepEqual(
+				{ pv: pts[0].pv, battery: pts[0].battery, house: pts[0].house, soc: pts[0].soc },
+				{ pv: 1000, battery: -100, house: 1100, soc: 60 },
+				"and it carries the whole reading, not one field of it",
 			);
 		});
 

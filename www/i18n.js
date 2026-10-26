@@ -1,6 +1,6 @@
 "use strict";
 
-/* exported i18n, t, escHtml, connectorOfState, connectorEnabled, openapiSections, stateIsLive */
+/* exported i18n, t, escHtml, connectorOfState, connectorEnabled, openapiSections, stateIsLive, OPENAPI_ROUTE_SECTIONS */
 /* global app, document, window */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -323,8 +323,18 @@ var OPENAPI_ROUTE_SECTIONS = ["battery", "meter", "bess", "bessNameplate", "evse
  */
 function openapiSections() {
 	var config = typeof app !== "undefined" && app.config ? app.config : null;
-	var chosen = config ? config.openapi_include : null;
-	if (chosen == null || chosen === "") {
+	// Before the configuration arrives, show everything — the same answer connectorEnabled
+	// gives for the same reason ("so the first render shows the page rather than hiding all of
+	// it"). Falling back to the *default* include list here contradicted it, and hid the bess
+	// and wallbox cards on every page load of an install that polls them.
+	if (!config || !Object.keys(config).length) {
+		return OPENAPI_ROUTE_SECTIONS.slice();
+	}
+	var chosen = config.openapi_include;
+	// `== null` covers undefined and null; the connector additionally treats any other falsy
+	// value as "not configured" via `String(configured || DEFAULT_INCLUDE)`, and the two must
+	// agree or the dashboard hides sections the connector is actively polling.
+	if (!chosen) {
 		chosen = ["battery", "meter"];
 	} else if (!Array.isArray(chosen)) {
 		chosen = [chosen];

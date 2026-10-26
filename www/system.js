@@ -170,15 +170,19 @@ var systemInfo = {
 	renderBatteryLive: function (states) {
 		var dash = energyFlow.apiPrefix();
 
+		// lala.cgi first, matching energyFlow.resolveSource — it polls at 10s against the
+		// OpenAPI's 60s, so it wins wherever both run. Listing the OpenAPI first made this card
+		// show a reading up to a minute older than the diagram beside it, on the same screen,
+		// with nothing to say which was which.
 		var socKeys = [
-			"_openapi.battery.stateOfCharge",
 			"ENERGY.GUI_BAT_DATA_FUEL_CHARGE",
+			"_openapi.battery.stateOfCharge",
 			dash ? `${dash}currently.batteryLevelInPercent` : "",
 			"_meinsenec.Status.acculevel.now",
 		];
-		var powerKeys = ["_openapi.battery.power", "ENERGY.GUI_BAT_DATA_POWER"];
-		var voltKeys = ["_openapi.battery.voltage", "ENERGY.GUI_BAT_DATA_VOLTAGE"];
-		var currKeys = ["_openapi.battery.current", "ENERGY.GUI_BAT_DATA_CURRENT"];
+		var powerKeys = ["ENERGY.GUI_BAT_DATA_POWER", "_openapi.battery.power"];
+		var voltKeys = ["ENERGY.GUI_BAT_DATA_VOLTAGE", "_openapi.battery.voltage"];
+		var currKeys = ["ENERGY.GUI_BAT_DATA_CURRENT", "_openapi.battery.current"];
 		// Not a key chain of its own: energyFlow.resolveBatteryCapacity already ranks the
 		// sources, including the capacity typed into the instance configuration, and its answer
 		// is what the energy flow's time estimates use. Reading the states again here produced a
@@ -1465,9 +1469,10 @@ var systemInfo = {
 				html += this.renderMetric(t("openapi_last_poll"), age, "#757575", "");
 			}
 		}
-		// Only worth a row when it disagrees with lastPoll: the two differ exactly when a cycle
-		// served some sections and not others, which is the case where the energy flow is holding
-		// one section's previous values and nothing else would say so.
+		// Only worth a row when it disagrees with lastPoll. The connector stamps both from one
+		// `cycleStamp` and writes lastPoll last of all (see openapiPollOnce), so an inequality
+		// here means a section genuinely did not answer — not that the two writes were a
+		// round trip apart.
 		if (lastComplete && lastComplete !== lastPoll) {
 			var completeAge = this.formatAge(lastComplete);
 			if (completeAge) {
