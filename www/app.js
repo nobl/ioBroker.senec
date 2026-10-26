@@ -110,31 +110,21 @@ var app = {
 	onSocketLoaded: function () {
 		this.conn = io.connect("", { path: "/socket.io" });
 
+		// Both events, and the distinction is not cosmetic. The client the web adapter serves is
+		// ioBroker's own SocketClient, not socket.io, and it fires these two exclusively:
+		//
+		//     if (this.wasConnected) { reconnectHandlers… } else { connectHandlers…; wasConnected = true }
+		//
+		// So `connect` fires on the first connection and never again. Hanging the recovery off
+		// it alone meant none of it had ever run: after any dropped socket the page kept a state
+		// cache that could no longer shrink, stopped hearing about configuration changes, and
+		// left the chart with a hole it had no other path to ask for. The `reconnected` flag
+		// inside that handler was likewise always false, which is what made it look harmless.
 		this.conn.on("connect", function () {
-			document.getElementById("error-banner").style.display = "none";
-			var reconnected = app._everConnected;
-			app._everConnected = true;
-			// Object subscriptions live on the server side of the socket, so a reconnect loses
-			// them. Subscribing only at setup meant that after one dropped socket the page
-			// stopped noticing configuration changes for the rest of its life — including the
-			// connector enable flags every card now tests before rendering a value.
-			app.conn.emit("subscribeObjects", `system.adapter.${NAMESPACE}`);
-			// Load i18n, config, and states — render once all are ready
-			i18n.init(app.conn).then(function () {
-				i18n.applyAll();
-				// Anything a tab click asked for while the dictionaries were loading
-				// was skipped by _doRender — draw it now that the text is available.
-				app.renderDashboard();
-				app.loadConfig();
-				app.subscribe();
-				// A dropped socket leaves a hole in the middle of the chart buffer. No
-				// other path asks for it: the pan and zoom backfills compare the visible
-				// window against the oldest edge they have requested, which a gap at the
-				// newest edge never trips.
-				if (reconnected) {
-					liveChart.resumeAfterReconnect(app.conn, NAMESPACE, app.connectors);
-				}
-			});
+			app.onSocketReady(false);
+		});
+		this.conn.on("reconnect", function () {
+			app.onSocketReady(true);
 		});
 
 		this.conn.on("disconnect", function () {
@@ -164,6 +154,37 @@ var app = {
 			}
 			app.states[shortId] = state.val;
 			app.onStateUpdate(shortId, state.val);
+		});
+	},
+
+	/**
+	 * Bring the page back up on a socket that has just become usable.
+	 *
+	 * @param {boolean} reconnected - False on the first connection, true on every later one
+	 */
+	onSocketReady: function (reconnected) {
+		document.getElementById("error-banner").style.display = "none";
+		app._everConnected = true;
+		// Object subscriptions live on the server side of the socket, so a reconnect loses them
+		// and they have to be asked for again — including the adapter object carrying the
+		// connector enable flags that every card now tests before rendering a value.
+		app.conn.emit("subscribeObjects", `system.adapter.${NAMESPACE}`);
+		// Load i18n, config, and states — render once all are ready
+		i18n.init(app.conn).then(function () {
+			i18n.applyAll();
+			// Anything a tab click asked for while the dictionaries were loading
+			// was skipped by _doRender — draw it now that the text is available.
+			app.renderDashboard();
+			app.loadConfig();
+			// Rebuilds the state cache from scratch, which is how a state deleted while the
+			// socket was down leaves the page.
+			app.subscribe();
+			// A dropped socket leaves a hole in the middle of the chart buffer. No other path
+			// asks for it: the pan and zoom backfills compare the visible window against the
+			// oldest edge they have requested, which a gap at the newest edge never trips.
+			if (reconnected) {
+				liveChart.resumeAfterReconnect(app.conn, NAMESPACE, app.connectors);
+			}
 		});
 	},
 
