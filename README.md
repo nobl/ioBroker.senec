@@ -157,6 +157,9 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- dependency updates
+
 ### 2.16.2 (2026-10-26)
 - fixed bogus readme
 
