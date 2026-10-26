@@ -3,36 +3,27 @@
  * These browser-global variables are defined across multiple script files
  * loaded together via index.html. This file satisfies IDE type checking.
  *
- * Variables defined in the checked JS files (energy.js, livechart.js,
- * system.js, timeline.js, control.js, charts.js, i18n.js) are NOT
- * re-declared here to avoid TS2403 redeclaration conflicts — their types
- * are inferred from JSDoc annotations in the source files.
+ * Variables defined in the checked JS files (app.js, energy.js, livechart.js,
+ * system.js, timeline.js, control.js, charts.js, i18n.js) are NOT re-declared
+ * here to avoid TS2403 redeclaration conflicts — their types are inferred from
+ * the source files. Only genuinely external globals belong here.
  */
 
 /** Translation function (i18n.js) */
 declare function t(key: string, params?: Record<string, string | number>): string;
 
-/** App controller (index.html — not checked by www/tsconfig) */
-declare var app: {
-	namespace: string;
-	conn: any;
-	states: Record<string, any>;
-	config: Record<string, any>;
-	connected: boolean;
-	activeTab: string;
-	connectors: Record<string, { label: string; stateId: string; active: boolean }>;
-	renderDashboard(): void;
-	renderConnectors(): void;
-	setTlsStatus(msg: string, color: string): void;
-	bindTlsUpload(): void;
-	showError(msg: string): void;
-	_tlsUploadActive?: boolean;
-};
+/** socket.io client, loaded at runtime from ../socket.io/socket.io.js */
+declare const io: { connect(url: string, opts?: Record<string, unknown>): any };
 
-/** Log viewer (index.html — not checked by www/tsconfig) */
-declare var logViewer: {
-	onConfigLoaded(): void;
-};
+interface Window {
+	/** Simulation harness, attached only when the page is opened with ?sim=true */
+	_sim?: { apply(): void };
+}
+
+interface HTMLElement {
+	/** Marks a listener as already attached, so a re-render does not bind it twice */
+	_bound?: boolean;
+}
 
 /** Data point in the live chart buffer */
 interface LiveChartPoint {
