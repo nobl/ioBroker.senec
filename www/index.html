@@ -1165,6 +1165,8 @@
 
 				this.conn.on("connect", function () {
 					document.getElementById("error-banner").style.display = "none";
+					var reconnected = app._everConnected;
+					app._everConnected = true;
 					// Load i18n, config, and states — render once all are ready
 					i18n.init(app.conn).then(function () {
 						i18n.applyAll();
@@ -1173,6 +1175,13 @@
 						app.renderDashboard();
 						app.loadConfig();
 						app.subscribe();
+						// A dropped socket leaves a hole in the middle of the chart buffer. No
+						// other path asks for it: the pan and zoom backfills compare the visible
+						// window against the oldest edge they have requested, which a gap at the
+						// newest edge never trips.
+						if (reconnected) {
+							liveChart.resumeAfterReconnect(app.conn, NAMESPACE, app.connectors);
+						}
 					});
 				});
 
@@ -1244,8 +1253,12 @@
 				this.renderConnectors();
 
 				// Re-render on energy-relevant state changes
+				var isOpenapiPower =
+					shortId.startsWith("_openapi.meter.") || shortId.startsWith("_openapi.battery.");
 				var isEnergyState =
 					shortId.startsWith("ENERGY.GUI_") ||
+					isOpenapiPower ||
+					shortId === "_openapi.info.lastCompletePoll" ||
 					shortId.indexOf("currently.") !== -1 ||
 					shortId.indexOf("today.") !== -1 ||
 					shortId.indexOf("Status.") !== -1 ||
@@ -1260,12 +1273,26 @@
 					shortId.startsWith("PV1.") ||
 					shortId.startsWith("WIZARD.") ||
 					shortId.startsWith("_local.tls.") ||
+					shortId.startsWith("_openapi.tls.") ||
+					shortId.startsWith("_openapi.info.") ||
+					shortId.startsWith("_openapi.bessNameplate.") ||
+					shortId.startsWith("_openapi.evse.") ||
+					shortId.startsWith("_openapi.bess.") ||
 					shortId.indexOf("SystemDetails.") !== -1 ||
 					shortId.indexOf("SystemStatus.") !== -1;
 
 				if (isEnergyState) {
 					energyFlow.update(this.states, this.connectors);
-					liveChart.record();
+					// Only the active source's own states produce a sample. Recording on any
+					// energy state meant a second connector's poll sampled the active source's
+					// data — adding points at the wrong cadence and, when one landed between two
+					// writes of the same OpenAPI cycle, capturing one fresh section beside
+					// sections a minute old. For the OpenAPI the owning state is its
+					// complete-cycle marker, because its sections arrive as a dozen separate
+					// writes and no single one of them is a whole reading.
+					if (energyFlow.activeSource && energyFlow.sourceOwnsState(energyFlow.activeSource, shortId)) {
+						liveChart.record();
+					}
 				}
 				if (this.activeTab === "overview" && (isEnergyState || isSystemState)) {
 					this.renderDashboard();
@@ -1296,7 +1323,14 @@
 
 				this.renderConnectors();
 				this.renderDashboard();
-				liveChart.record(); // first data point from initial state load
+				// First data point from the initial state load — except under the OpenAPI, whose
+				// sections are written one at a time across a 60s cycle, so a snapshot taken
+				// mid-cycle holds one section from this cycle and the rest from the previous one.
+				// Its first point comes from the next complete-cycle marker instead, at most one
+				// interval away.
+				if (energyFlow.activeSource !== "openapi") {
+					liveChart.record();
+				}
 				liveChart.initHistory(this.conn, NAMESPACE, this.connectors);
 			},
 
@@ -1310,6 +1344,9 @@
 				}
 				el.innerHTML = html;
 			},
+
+			/** Whether a socket connection has been established before — set on first connect */
+			_everConnected: false,
 
 			_renderPending: false,
 
@@ -1370,6 +1407,7 @@
 						systemInfo.renderGridQuality(this.states) +
 						systemInfo.renderPvStrings(this.states) +
 						systemInfo.renderWallboxInfo(this.states) +
+						systemInfo.renderOpenapiStatus(this.states) +
 						systemInfo.renderFeatureStatus(this.states) +
 						systemInfo.renderSystemDetails(this.states);
 				}

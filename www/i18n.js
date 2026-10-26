@@ -215,3 +215,30 @@ var i18n = {
 function t(key, params) {
 	return i18n.translate(key, params);
 }
+
+/**
+ * Escape a value for interpolation into markup.
+ *
+ * The dashboard builds its HTML by string concatenation and assigns it through `innerHTML`, so
+ * every value that did not originate in this codebase has to pass through here. That includes
+ * appliance-supplied strings — a model or serial number carrying `<` or `&` would otherwise be
+ * parsed as markup rather than shown.
+ *
+ * Lives in i18n.js because it is loaded before every other dashboard script, which is what lets
+ * the view modules share one copy instead of each keeping its own.
+ *
+ * @param {unknown} value - Any value destined for markup
+ * @returns {string} The value with HTML-significant characters replaced
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function escHtml(value) {
+	if (value === null || value === undefined) {
+		return "";
+	}
+	return String(value)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}

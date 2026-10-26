@@ -1,6 +1,6 @@
 "use strict";
 
-/* global t, energyFlow */
+/* global t, escHtml, energyFlow */
 /* exported systemInfo */
 
 /**
@@ -44,6 +44,11 @@ var systemInfo = {
 				if (keys[i].startsWith("_meinsenec.")) {
 					return "W";
 				}
+				// Before the fallthrough: an unrecognised prefix is reported as local, so an
+				// _openapi key would be credited to lala.cgi.
+				if (keys[i].startsWith("_openapi.")) {
+					return "O";
+				}
 				return "L";
 			}
 		}
@@ -53,14 +58,14 @@ var systemInfo = {
 	/**
 	 * Render a tiny source indicator
 	 *
-	 * @param {string} tag - Source tag (L/A/W)
+	 * @param {string} tag - Source tag (L/O/A/W)
 	 */
 	srcBadge: function (tag) {
 		if (!tag) {
 			return "";
 		}
-		var colors = { L: "#4caf50", A: "#2196f3", W: "#ff9800" };
-		var labels = { L: "Local", A: "API", W: "Web" };
+		var colors = { L: "#4caf50", O: "#00897b", A: "#2196f3", W: "#ff9800" };
+		var labels = { L: "Local", O: "Local OpenAPI", A: "API", W: "Web" };
 		var hasMismatch = tag.indexOf("!") !== -1;
 		var clean = tag.replace(/[! ]/g, "");
 		var html = " ";
@@ -752,6 +757,7 @@ var systemInfo = {
 			"FACTORY.SYS_TYPE_Text",
 			ap ? `${ap}systemOverview.productName` : "",
 			"_meinsenec.Status.produktName",
+			"_openapi.bessNameplate.model",
 		];
 		var product = this.getFirst(states, prodKeys);
 		var fwKeys = ["WIZARD.FIRMWARE_VERSION", as ? `${as}firmwareVersion` : ""];
@@ -867,6 +873,41 @@ var systemInfo = {
 			html += this.renderMetric(t("system_installer_email"), String(installerEmail), "#757575", "A");
 		}
 
+		// Appliance serial. FACTORY.DEVICE_ID spells the same identifier as "st_<digits>",
+		// so the two are shown as one row with whichever connector answered.
+		//
+		// The OpenAPI key comes first here, and last in prodKeys above, deliberately: these two
+		// sources agree on the serial, so either spelling is correct and the shorter "S<digits>"
+		// form reads better — whereas the product name differs between sources, and the local
+		// and cloud names are the ones users recognise from the portal.
+		var serialKeys = ["_openapi.bessNameplate.serialNumber", "FACTORY.DEVICE_ID"];
+		var serial = this.getFirst(states, serialKeys);
+		if (serial) {
+			html += this.renderMetric(
+				t("system_serial"),
+				String(serial),
+				"#757575",
+				this.sourceTag(states, serialKeys),
+			);
+		}
+
+		// Nameplate charge/discharge ratings. Always polled when the connector runs — the
+		// nameplate is its identity section and is not an include-list option — and zeros mean
+		// "not reported" rather than "cannot charge".
+		var chargeMax = this.getFirst(states, ["_openapi.bessNameplate.ratedPower.activeChargePower"]);
+		var dischargeMax = this.getFirst(states, ["_openapi.bessNameplate.ratedPower.activeDischargePower"]);
+		if (chargeMax !== null && Number(chargeMax) > 0) {
+			html += this.renderMetric(t("system_max_charge"), `${Math.round(Number(chargeMax))} W`, "#4caf50", "O");
+		}
+		if (dischargeMax !== null && Number(dischargeMax) > 0) {
+			html += this.renderMetric(
+				t("system_max_discharge"),
+				`${Math.round(Number(dischargeMax))} W`,
+				"#ff9800",
+				"O",
+			);
+		}
+
 		html += "</div></div>";
 		return html;
 	},
@@ -918,6 +959,62 @@ var systemInfo = {
 	},
 
 	/**
+	 * Collect the local OpenAPI wallbox slots that report something.
+	 *
+	 * The appliance reports four slots whether or not a wallbox is attached to any of them, so
+	 * the slots that say "nothing connected, nothing charging, no power" are left out — listing
+	 * all four presents four phantom wallboxes. The channel under each slot is keyed on the id
+	 * the slot reported rather than on its position, so the states are discovered rather than
+	 * counted from zero.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {Array<{id: string, connected: boolean|null, charging: boolean|null, power: number|null}>} Slots with data
+	 */
+	openapiWallboxSlots: function (states) {
+		// This runs on every render, for every user, over the whole state cache — which on a full
+		// install is thousands of keys. A prefix test before anything else keeps the cost to one
+		// string comparison per key; the regex it replaced allocated a match object for every key
+		// it was given.
+		var PFX = "_openapi.evse.";
+		var ids = {};
+		for (var key in states) {
+			if (key.length <= PFX.length || key.slice(0, PFX.length) !== PFX) {
+				continue;
+			}
+			var rest = key.slice(PFX.length);
+			var dot = rest.indexOf(".");
+			if (dot > 0) {
+				ids[rest.slice(0, dot)] = true;
+			}
+		}
+
+		var slots = [];
+		// Numeric where the ids are numbers, which the appliance's slot numbers are — a plain
+		// string sort would order 1, 10, 2.
+		var sorted = Object.keys(ids).sort(function (a, b) {
+			var na = Number(a);
+			var nb = Number(b);
+			if (!isNaN(na) && !isNaN(nb)) {
+				return na - nb;
+			}
+			return a < b ? -1 : a > b ? 1 : 0;
+		});
+		for (var si = 0; si < sorted.length; si++) {
+			var id = sorted[si];
+			var pfx = `_openapi.evse.${id}.`;
+			var connected = this.toBool(this.getFirst(states, [`${pfx}evConnected`]));
+			var charging = this.toBool(this.getFirst(states, [`${pfx}evCharging`]));
+			var rawPower = this.getFirst(states, [`${pfx}chargingPower`]);
+			var power = rawPower === null ? null : Number(rawPower);
+			if (connected !== true && charging !== true && !power) {
+				continue;
+			}
+			slots.push({ id: id, connected: connected, charging: charging, power: power });
+		}
+		return slots;
+	},
+
+	/**
 	 * Render wallbox info card (status, per-phase current)
 	 *
 	 * @param {object} states - ioBroker state values
@@ -930,7 +1027,9 @@ var systemInfo = {
 		var l2Current = this.getFirst(states, ["WALLBOX.L2_CHARGING_CURRENT.0"]);
 		var l3Current = this.getFirst(states, ["WALLBOX.L3_CHARGING_CURRENT.0"]);
 
-		if (evConn === null && l1Current === null) {
+		var openapiSlots = this.openapiWallboxSlots(states);
+
+		if (evConn === null && l1Current === null && openapiSlots.length === 0) {
 			return "";
 		}
 
@@ -964,6 +1063,28 @@ var systemInfo = {
 					html += `<td>${Number(phases[wp]).toFixed(2)} A</td>`;
 					html += "</tr>";
 				}
+			}
+			html += "</table>";
+		}
+
+		// Local OpenAPI slots
+		if (openapiSlots.length > 0) {
+			html += `<table class="grid-phase-table">`;
+			html += '<tr class="grid-header-row">';
+			html += `<th>${this.srcBadge("O")}</th>`;
+			html += `<th>${t("wallbox_ev_connected")}</th>`;
+			html += `<th>${t("wallbox_charging")}</th>`;
+			html += `<th>${t("grid_power")}</th>`;
+			html += "</tr>";
+			for (var oi = 0; oi < openapiSlots.length; oi++) {
+				var slot = openapiSlots[oi];
+				html += "<tr>";
+				html += `<td class="grid-phase-label">${slot.id}</td>`;
+				html += `<td>${slot.connected === null ? "—" : slot.connected ? t("yes") : t("no")}</td>`;
+				html += `<td>${slot.charging === null ? "—" : slot.charging ? t("yes") : t("no")}</td>`;
+				// VA, per the SENEC.Connect schema for the same field — not watts.
+				html += slot.power === null ? "<td>—</td>" : `<td>${Math.round(slot.power)} VA</td>`;
+				html += "</tr>";
 			}
 			html += "</table>";
 		}
@@ -1107,10 +1228,14 @@ var systemInfo = {
 	 * @returns {string} HTML string
 	 */
 	renderMetric: function (label, value, color, src) {
+		// Escaped here rather than at the call sites: this is the single sink every metric row
+		// passes through, and several of the values are strings the appliance chose — a model or
+		// serial number carrying `<` would otherwise be parsed as markup. The source badge is
+		// built by srcBadge and is markup by design, so it is appended after escaping.
 		return (
 			`<div class="system-metric">` +
-			`<div class="system-metric-label">${label}${src ? this.srcBadge(src) : ""}</div>` +
-			`<div class="system-metric-value" style="color:${color}">${value}</div>` +
+			`<div class="system-metric-label">${escHtml(label)}${src ? this.srcBadge(src) : ""}</div>` +
+			`<div class="system-metric-value" style="color:${color}">${escHtml(value)}</div>` +
 			`</div>`
 		);
 	},
@@ -1128,12 +1253,160 @@ var systemInfo = {
 		var text = active ? t("feature_active") : t("feature_inactive");
 		return (
 			`<div class="system-metric">` +
-			`<div class="system-metric-label">${label}${src ? this.srcBadge(src) : ""}</div>` +
-			`<div class="system-metric-value"><span class="status-dot" style="background:${color}"></span>${
-				text
-			}</div>` +
+			`<div class="system-metric-label">${escHtml(label)}${src ? this.srcBadge(src) : ""}</div>` +
+			`<div class="system-metric-value"><span class="status-dot" style="background:${color}"></span>${escHtml(
+				text,
+			)}</div>` +
 			`</div>`
 		);
+	},
+
+	/**
+	 * Render the local OpenAPI connector card.
+	 *
+	 * Its registration has to be approved by the account holder in the portal, and until that
+	 * happens the connector answers nothing — so where the approval stands is the one thing a
+	 * user needs from this card, and the connector badge alone cannot say it.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {string} HTML string
+	 */
+	renderOpenapiStatus: function (states) {
+		var approval = states["_openapi.info.approvalState"];
+		var lastPoll = states["_openapi.info.lastPoll"];
+		var lastComplete = states["_openapi.info.lastCompletePoll"];
+		var fingerprint = states["_openapi.tls.fingerprint"];
+		var connected = states["info.openapiConnected"];
+		var manufacturer = this.getFirst(states, ["_openapi.bessNameplate.manufacturer"]);
+		var capacity = this.getFirst(states, ["_openapi.bessNameplate.designCapacity"]);
+		var acRelay = this.getFirst(states, ["_openapi.bess.acRelayConnected"]);
+
+		if (!approval && !lastPoll && !fingerprint) {
+			return "";
+		}
+
+		// `unregistered` is the state a fresh instance starts in and the state the Forget button
+		// returns to, so it needs a colour and a label of its own — it was previously the one
+		// reachable verdict with neither, and rendered as the raw internal token.
+		var approvalColors = {
+			approved: "#4caf50",
+			pending: "#ff9800",
+			unregistered: "#90a4ae",
+			rejected: "#f44336",
+			error: "#f44336",
+		};
+
+		var html = `<div class="card"><h2>${t("openapi_title")}${this.srcBadge("O")}</h2>`;
+		html += '<div class="system-grid">';
+
+		if (approval) {
+			var key = `openapi_approval_${approval}`;
+			var label = t(key);
+			html += this.renderMetric(
+				t("openapi_approval"),
+				label === key ? String(approval) : label,
+				approvalColors[String(approval)] || "#90a4ae",
+				"",
+			);
+		}
+		// Reachability is a separate axis from approval: the connector leaves approvalState at
+		// "approved" through an outage, because the registration is still approved — it is the
+		// appliance that cannot be reached. Without this row the card reported "Approved" beside
+		// a wall-clock time for as long as the outage lasted.
+		if (connected !== undefined && connected !== null) {
+			html += this.renderMetric(
+				t("openapi_reachable"),
+				connected ? t("yes") : t("no"),
+				connected ? "#4caf50" : "#f44336",
+				"",
+			);
+		}
+		if (lastPoll) {
+			var age = this.formatAge(lastPoll);
+			if (age) {
+				html += this.renderMetric(t("openapi_last_poll"), age, "#757575", "");
+			}
+		}
+		// Only worth a row when it disagrees with lastPoll: the two differ exactly when a cycle
+		// served some sections and not others, which is the case where the energy flow is holding
+		// one section's previous values and nothing else would say so.
+		if (lastComplete && lastComplete !== lastPoll) {
+			var completeAge = this.formatAge(lastComplete);
+			if (completeAge) {
+				html += this.renderMetric(t("openapi_last_complete_poll"), completeAge, "#ff9800", "");
+			}
+		} else if (!lastComplete && lastPoll) {
+			html += this.renderMetric(t("openapi_last_complete_poll"), t("openapi_never"), "#ff9800", "");
+		}
+		if (manufacturer) {
+			html += this.renderMetric(t("openapi_manufacturer"), String(manufacturer), "#757575", "");
+		}
+		if (capacity !== null && Number(capacity) > 0) {
+			html += this.renderMetric(
+				t("openapi_design_capacity"),
+				`${(Number(capacity) / 1000).toFixed(1)} kWh`,
+				"#757575",
+				"",
+			);
+		}
+		if (acRelay !== null) {
+			html += this.renderStatus(t("openapi_ac_relay"), this.toBool(acRelay) === true, "");
+		}
+		if (fingerprint) {
+			html += this.renderMetric(
+				t("tls_fingerprint"),
+				`${String(fingerprint).substring(0, 16)}...`,
+				"#757575",
+				"",
+			);
+		}
+
+		html += "</div>";
+
+		if (String(approval) === "pending") {
+			html += `<div class="stat-label" style="margin-top:12px">${t("openapi_pending_hint")}</div>`;
+		} else if (String(approval) === "unregistered") {
+			html += `<div class="stat-label" style="margin-top:12px">${t("openapi_unregistered_hint")}</div>`;
+		}
+
+		html += "</div>";
+		return html;
+	},
+
+	/**
+	 * Format an ISO timestamp as an age, falling back to a clock time for anything older than a day.
+	 *
+	 * An age is what the reader actually needs here — "3 min ago" against a 60 s poll interval
+	 * says at a glance whether the connector is keeping up, where a bare clock time does not.
+	 * Formatted by hand rather than through toLocaleTimeString, because the dashboard's language
+	 * comes from ioBroker's system configuration and need not match the browser's locale.
+	 *
+	 * @param {string|number} iso - ISO timestamp as stored by the connector
+	 * @returns {string|null} Human-readable age, or null when the value will not parse
+	 */
+	formatAge: function (iso) {
+		var then = new Date(String(iso));
+		if (isNaN(then.getTime())) {
+			return null;
+		}
+		var seconds = Math.round((Date.now() - then.getTime()) / 1000);
+		if (seconds < 0) {
+			seconds = 0;
+		}
+		if (seconds < 90) {
+			return t("age_seconds", { count: seconds });
+		}
+		var minutes = Math.round(seconds / 60);
+		if (minutes < 90) {
+			return t("age_minutes", { count: minutes });
+		}
+		var hours = Math.round(minutes / 60);
+		if (hours < 36) {
+			return t("age_hours", { count: hours });
+		}
+		return `${String(then.getHours()).padStart(2, "0")}:${String(then.getMinutes()).padStart(2, "0")}:${String(
+			then.getSeconds(),
+		).padStart(2, "0")}`;
 	},
 
 	/**
@@ -1184,25 +1457,5 @@ var systemInfo = {
 
 		html += "</div>";
 		return html;
-	},
-
-	/**
-	 * Render all system cards
-	 *
-	 * @param {object} states - ioBroker state values
-	 * @returns {string} HTML string
-	 */
-	renderAll: function (states) {
-		return (
-			this.renderBatteryHealth(states) +
-			this.renderBatteryCycles(states) +
-			this.renderBatteryTemps(states) +
-			this.renderBatteryVoltages(states) +
-			this.renderGridQuality(states) +
-			this.renderPvStrings(states) +
-			this.renderWallboxInfo(states) +
-			this.renderFeatureStatus(states) +
-			this.renderSystemDetails(states)
-		);
 	},
 };

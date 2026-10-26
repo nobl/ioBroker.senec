@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, energyFlow, document, window, requestAnimationFrame */
+/* global app, t, escHtml, energyFlow, document, window, requestAnimationFrame */
 /* exported liveChart */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -77,6 +77,24 @@ var liveChart = {
 	/** Whether a history load is currently in progress */
 	_historyLoading: false,
 
+	/**
+	 * Incremented whenever the source changes, so a load started for the previous source can be
+	 * recognised and discarded when it comes back. Without it, a source switched while a load was
+	 * in flight merged the old source's samples into the new source's buffer, and the load the new
+	 * source needed was dropped by the in-progress guard.
+	 */
+	_loadGeneration: 0,
+
+	/**
+	 * Newest timestamp a history query has covered.
+	 *
+	 * `_historyRequestedTs` tracks the oldest edge, which is what the pan/zoom backfill needs. It
+	 * cannot see a hole in the middle: after a socket reconnect the gap sits between the last
+	 * sample taken before the drop and the first one after it, and every backfill trigger compares
+	 * against the oldest edge only, so nothing ever asked for it.
+	 */
+	_newestHistoryTs: 0,
+
 	/** Queued window expansion (minutes) — executed after current load finishes */
 	_pendingWindowLoad: 0,
 
@@ -131,7 +149,7 @@ var liveChart = {
 	 * _mergeHistory, `line` is the chart line the field contributes to (several
 	 * fields may feed one line, e.g. charge + discharge → battery).
 	 *
-	 * @param {string} src - Active source ("local", "api", "web")
+	 * @param {string} src - Active source ("local", "openapi", "api", "web")
 	 * @returns {Array<{name: string, key: string, line: string}>} Field definitions
 	 */
 	_historyFields: function (src) {
@@ -143,6 +161,18 @@ var liveChart = {
 				{ name: "battery", key: "ENERGY.GUI_BAT_DATA_POWER", line: "battery" },
 				{ name: "wallbox", key: "WALLBOX.APPARENT_CHARGING_POWER.0", line: "wallbox" },
 				{ name: "soc", key: "ENERGY.GUI_BAT_DATA_FUEL_CHARGE", line: "soc" },
+			];
+		}
+		if (src === "openapi") {
+			return [
+				{ name: "pv", key: "_openapi.meter.production", line: "pv" },
+				{ name: "house", key: "_openapi.meter.houseConsumption", line: "house" },
+				{ name: "grid", key: "_openapi.meter.gridPower", line: "grid" },
+				{ name: "battery", key: "_openapi.battery.power", line: "battery" },
+				// Not a line of its own: it supplies the export magnitude when gridPower turns out
+				// to be import-only. See energyFlow.resolveOpenapiGrid.
+				{ name: "surplus", key: "_openapi.meter.powerSurplus", line: "grid" },
+				{ name: "soc", key: "_openapi.battery.stateOfCharge", line: "soc" },
 			];
 		}
 		if (src === "api") {
@@ -235,11 +265,7 @@ var liveChart = {
 	 * @returns {string} Escaped value
 	 */
 	_esc: function (str) {
-		return String(str == null ? "" : str)
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;");
+		return escHtml(str);
 	},
 
 	/**
@@ -305,7 +331,7 @@ var liveChart = {
 	 * @param {function(string): void} [onDone] - called with the resolved source once all states are probed
 	 */
 	discoverHistory: function (conn, namespace, connectors, onDone) {
-		var src = energyFlow.resolveSource(connectors);
+		var src = energyFlow.resolveSource(app.states, connectors);
 		if (!src) {
 			return;
 		}
@@ -356,7 +382,7 @@ var liveChart = {
 		if (this._historyLoaded || this.disabled) {
 			return;
 		}
-		var src = energyFlow.resolveSource(connectors);
+		var src = energyFlow.resolveSource(app.states, connectors);
 		if (!src || this._historyFields(src).length === 0) {
 			// Source not resolvable yet (e.g. API plant id still unknown) — retry on next call
 			return;
@@ -374,12 +400,44 @@ var liveChart = {
 	},
 
 	/**
+	 * Fill the hole a dropped socket left in the middle of the buffer.
+	 *
+	 * Nothing else asks for it: every backfill trigger compares the visible window against
+	 * `_historyRequestedTs`, the oldest edge, which a reconnect gap is nowhere near. `initHistory`
+	 * cannot help either — it is one-shot by design, so it returns immediately after the first
+	 * load of the page.
+	 *
+	 * @param {object} conn - socket.io connection
+	 * @param {string} namespace - adapter namespace
+	 * @param {object} connectors - connector status
+	 */
+	resumeAfterReconnect: function (conn, namespace, connectors) {
+		if (this.disabled) {
+			return;
+		}
+		if (!this._historyLoaded) {
+			// Never loaded at all — the ordinary path still applies.
+			this.initHistory(conn, namespace, connectors);
+			return;
+		}
+		var src = energyFlow.resolveSource(app.states, connectors);
+		if (!src || !this._hasHistory() || !this._newestHistoryTs) {
+			return;
+		}
+		var now = Date.now();
+		if (this._newestHistoryTs >= now) {
+			return;
+		}
+		this._loadHistory(conn, namespace, src, this._newestHistoryTs, now);
+	},
+
+	/**
 	 * Load historical data from the discovered history adapter.
 	 * Supports delta loading — if startOverride/endOverride are given, only that range is fetched.
 	 *
 	 * @param {object} conn - socket.io connection
 	 * @param {string} namespace - adapter namespace
-	 * @param {string} src - active source ("local", "api", "web")
+	 * @param {string} src - active source ("local", "openapi", "api", "web")
 	 * @param {number} [startOverride] - custom start timestamp (for delta loading)
 	 * @param {number} [endOverride] - custom end timestamp (for delta loading)
 	 */
@@ -388,6 +446,7 @@ var liveChart = {
 		if (this._historyLoading) {
 			return;
 		}
+		var generation = this._loadGeneration;
 
 		var fields = this._historyFields(src);
 		if (fields.length === 0) {
@@ -421,6 +480,9 @@ var liveChart = {
 		if (start < this._historyRequestedTs) {
 			this._historyRequestedTs = start;
 		}
+		if (end > this._newestHistoryTs) {
+			this._newestHistoryTs = end;
+		}
 
 		var done = 0;
 		var total = toQuery.length;
@@ -444,6 +506,18 @@ var liveChart = {
 						}
 						done++;
 						if (done === total) {
+							// A load that belongs to a source the user has since left must not
+							// merge into the new source's buffer. Clearing the in-progress flag
+							// is still this callback's job, or nothing would ever load again.
+							if (generation !== liveChart._loadGeneration) {
+								liveChart._historyLoading = false;
+								// The load the new source needed was refused by the in-progress
+								// guard while this one was outstanding. Re-arm it, or the chart
+								// keeps whatever the switch left it with and never backfills.
+								liveChart._historyLoaded = false;
+								liveChart.initHistory(conn, namespace, app.connectors);
+								return;
+							}
 							liveChart._mergeHistory(pending, src);
 						}
 					},
@@ -466,7 +540,7 @@ var liveChart = {
 		if (this._pendingWindowLoad) {
 			var queuedMinutes = this._pendingWindowLoad;
 			this._pendingWindowLoad = 0;
-			var queuedSrc = energyFlow.resolveSource(app.connectors);
+			var queuedSrc = energyFlow.resolveSource(app.states, app.connectors);
 			if (queuedSrc) {
 				var now = Date.now();
 				var newStart = now - queuedMinutes * 60 * 1000;
@@ -606,6 +680,78 @@ var liveChart = {
 					soc: merged[i].soc,
 				});
 			}
+		} else if (src === "openapi") {
+			var oaMerged = mergeTimelines([
+				{ name: "house", data: toSorted(pending.house) },
+				{ name: "pv", data: toSorted(pending.pv) },
+				{ name: "battery", data: toSorted(pending.battery) },
+				{ name: "grid", data: toSorted(pending.grid) },
+				{ name: "surplus", data: toSorted(pending.surplus) },
+				{ name: "soc", data: toSorted(pending.soc) },
+			]);
+			// The balance terms never share a timestamp. Each state is written by its own
+			// setStateChangedAsync, and battery and meter come from two separate HTTP requests, so
+			// history stores each with its own millisecond — while mergeTimelines keys on an exact
+			// match and nulls everything else. Requiring all four at one timestamp therefore
+			// discarded every historical grid value, including the negative ones that need no
+			// balance at all. Carrying the last known term forward across the merged timeline is
+			// what makes the four comparable; they come from the same poll, a few hundred ms apart.
+			// Carried forward from the previous point, and — for the points before a term's own
+			// first sample — back from its earliest one. Without the backward half the first
+			// point of every loaded range had no balance to judge by and was read as an import,
+			// which on an exporting system is the wrong sign at the visible left edge.
+			var firstOf = function (field, abs) {
+				for (var fi = 0; fi < oaMerged.length; fi++) {
+					var v = abs ? nAbs(oaMerged[fi][field]) : oaMerged[fi][field];
+					if (v != null) {
+						return v;
+					}
+				}
+				return null;
+			};
+			var lastHouse = firstOf("house", true);
+			var lastBattery = firstOf("battery", false);
+			var lastPv = firstOf("pv", true);
+			var lastSurplus = firstOf("surplus", false);
+			for (var oi = 0; oi < oaMerged.length; oi++) {
+				var om = oaMerged[oi];
+				var oaHouse = nAbs(om.house);
+				var oaPv = nAbs(om.pv);
+				if (oaHouse != null) {
+					lastHouse = oaHouse;
+				}
+				if (om.battery != null) {
+					lastBattery = om.battery;
+				}
+				if (oaPv != null) {
+					lastPv = oaPv;
+				}
+				if (om.surplus != null) {
+					lastSurplus = om.surplus;
+				}
+				var oaGrid = null;
+				if (om.grid != null) {
+					if (om.grid < 0) {
+						// Signed reading — definitive on its own, no balance needed.
+						oaGrid = om.grid;
+					} else if (lastHouse != null && lastBattery != null && lastPv != null) {
+						oaGrid = energyFlow.resolveOpenapiGrid(om.grid, lastHouse, lastBattery, lastPv, lastSurplus);
+					} else {
+						// Before the first sample of a term: keep the measured magnitude rather
+						// than dropping the point, and read it as an import.
+						oaGrid = Math.abs(om.grid);
+					}
+				}
+				points.push({
+					ts: om.ts,
+					pv: oaPv,
+					battery: om.battery,
+					grid: oaGrid,
+					house: oaHouse,
+					wallbox: null,
+					soc: om.soc,
+				});
+			}
 		} else if (src === "api") {
 			var apiMerged = mergeTimelines([
 				{ name: "house", data: toSorted(pending.house) },
@@ -712,7 +858,7 @@ var liveChart = {
 		var viewWindowMs = liveChart.window * 60 * 1000;
 		var viewStart = Date.now() - liveChart.viewOffset - viewWindowMs;
 		if (viewStart < liveChart._historyRequestedTs && liveChart._hasHistory()) {
-			var viewSrc = energyFlow.resolveSource(app.connectors);
+			var viewSrc = energyFlow.resolveSource(app.states, app.connectors);
 			if (viewSrc) {
 				setTimeout(
 					function (s, src2, t1, t2) {
@@ -1351,7 +1497,7 @@ var liveChart = {
 		this.window = minutes;
 		// Load history when expanding to a larger window
 		if (minutes > oldWindow && this._hasHistory()) {
-			var src = energyFlow.resolveSource(app.connectors);
+			var src = energyFlow.resolveSource(app.states, app.connectors);
 			if (src) {
 				if (this._historyLoading) {
 					// A load is in progress — queue a full reload for the new window
@@ -1590,7 +1736,7 @@ var liveChart = {
 		// Lazy-load: if view is near the edge of buffered data, trigger history load
 		var viewStart = Date.now() - liveChart.viewOffset - windowMs;
 		if (viewStart < liveChart._historyRequestedTs && liveChart._hasHistory() && !liveChart._historyLoading) {
-			var src = energyFlow.resolveSource(app.connectors);
+			var src = energyFlow.resolveSource(app.states, app.connectors);
 			if (src) {
 				liveChart._loadHistory(app.conn, app.namespace, src, viewStart, liveChart._historyRequestedTs);
 			}
@@ -1637,7 +1783,7 @@ var liveChart = {
 			var windowMs = liveChart.window * 60 * 1000;
 			var viewStart = Date.now() - liveChart.viewOffset - windowMs;
 			if (viewStart < liveChart._historyRequestedTs) {
-				var src = energyFlow.resolveSource(app.connectors);
+				var src = energyFlow.resolveSource(app.states, app.connectors);
 				if (src) {
 					liveChart._loadHistory(app.conn, app.namespace, src, viewStart, liveChart._historyRequestedTs);
 				}
@@ -1706,7 +1852,7 @@ var liveChart = {
 
 		// Load history if zooming out past what we have
 		if (newWindow > oldWindow && liveChart._hasHistory() && !liveChart._historyLoading) {
-			var src = energyFlow.resolveSource(app.connectors);
+			var src = energyFlow.resolveSource(app.states, app.connectors);
 			if (src) {
 				var now = Date.now();
 				var newStart = now - liveChart.viewOffset - newWindow * 60 * 1000;

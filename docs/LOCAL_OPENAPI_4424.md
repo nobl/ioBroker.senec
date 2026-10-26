@@ -165,6 +165,25 @@ Points worth knowing before trusting any of it:
   not `0`, so any consumer has to handle nulls. `apparentPower`, `voltage` and `current` do
   carry values, but `voltage: 79` against the battery's own `52.2` suggests they describe a
   different measurement point than `/v1/battery` does.
+- **`meter.gridPower`'s direction is undecided.** Every sample on record was taken while
+  importing, so nothing distinguishes "signed, positive means import" from "a magnitude, with
+  the surplus fields carrying feed-in" — and `powerSurplus` existing at all argues for the
+  second, since it would be redundant under a signed convention. The sample above does settle
+  the magnitude: `1181 = 244 + 850.8 + 91` balances to within five watts.
+
+  `energyFlow.resolveOpenapiGrid` therefore reads it in three steps, correct under both
+  conventions: a negative value is a signed reading and is trusted as it stands; otherwise the
+  direction comes from the power balance (`houseConsumption + battery − production`), which is
+  sign-correct wherever the metered magnitude is; and when the direction is export while
+  `gridPower` reads zero, the field is import-only and `powerSurplus` supplies the magnitude.
+  The balance has a 50 W band around zero inside which no direction is claimed — a working
+  figure with headroom over the 5 W residual in the sample above, not a measured noise floor.
+
+  **Settling this needs one export-time reading.** On an appliance polled by both local
+  connectors while feeding in, capture `_openapi.meter.gridPower`,
+  `_openapi.meter.powerSurplus`, `_openapi.meter.fullRangePowerSurplus` and
+  `ENERGY.GUI_GRID_POW` in the same second. `gridPower ≈ −|GUI_GRID_POW|` means the field is
+  signed; `gridPower ≈ 0` with `powerSurplus ≈ |GUI_GRID_POW|` means it is import-only.
 - **`/v1/evse` always reports four slots.** All four appear with `evConnected: false` on an
   appliance with no wallbox at all, so the array length says nothing about how many wallboxes
   exist. Presence has to be inferred from the values, not the count.

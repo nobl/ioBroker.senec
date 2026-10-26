@@ -42,7 +42,7 @@ var energyFlow = {
 		externalBattery: [], // array of { power, label } — signed: +charge/-discharge
 	},
 
-	source: "auto", // "auto", "local", "api", "web"
+	source: "auto", // "auto", "local", "openapi", "api", "web"
 	period: "today", // "today", "month", "year"
 
 	/** @type {string|null} */ activeSource: null, // which source is actually providing data
@@ -58,6 +58,13 @@ var energyFlow = {
 			grid: "ENERGY.GUI_GRID_POW", // signed: positive=import, negative=export
 			house: "ENERGY.GUI_HOUSE_POW",
 			soc: "ENERGY.GUI_BAT_DATA_FUEL_CHARGE",
+		},
+		openapi: {
+			pv: "_openapi.meter.production",
+			battery: "_openapi.battery.power", // signed: positive=charge, negative=discharge
+			grid: "_openapi.meter.gridPower", // direction resolved by resolveOpenapiGrid
+			house: "_openapi.meter.houseConsumption",
+			soc: "_openapi.battery.stateOfCharge",
 		},
 		// API and Web use dynamic prefixes — resolved at runtime
 	},
@@ -93,23 +100,75 @@ var energyFlow = {
 	},
 
 	/**
+	 * State ids each source needs before it can describe a power flow.
+	 *
+	 * A connector reports itself connected as soon as it has read anything at all, which is right
+	 * for a connection state and not enough to select a source: the local OpenAPI counts a
+	 * nameplate-only cycle as a success, and the App API reports connected before a plant has been
+	 * discovered. Selecting such a source drew a diagram of zeros over a working connector.
+	 *
+	 * Checked with `some`, not `every`, so one failed section does not disqualify a source that is
+	 * otherwise reporting.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} src - Source name
+	 * @returns {boolean} Whether the source has published any power reading
+	 */
+	sourceHasPower: function (states, src) {
+		var keys;
+		if (src === "openapi") {
+			keys = [this.stateMap.openapi.pv, this.stateMap.openapi.house, this.stateMap.openapi.battery];
+		} else if (src === "local") {
+			keys = [this.stateMap.local.pv, this.stateMap.local.house, this.stateMap.local.battery];
+		} else if (src === "api") {
+			// resolveSource is also called directly, outside update(), so the plant id may not
+			// have been discovered yet. Discovering here keeps those callers correct and costs a
+			// scan only until the id is known.
+			if (!this.apiAnlagenId) {
+				this.discoverApiId(states);
+			}
+			var apfx = this.apiPrefix();
+			if (!apfx) {
+				return false;
+			}
+			keys = [`${apfx}currently.powerGenerationInW`, `${apfx}currently.powerConsumptionInW`];
+		} else if (src === "web") {
+			keys = ["_meinsenec.Status.powergenerated.now", "_meinsenec.Status.consumption.now"];
+		} else {
+			return false;
+		}
+		for (var i = 0; i < keys.length; i++) {
+			if (states[keys[i]] !== undefined && states[keys[i]] !== null) {
+				return true;
+			}
+		}
+		return false;
+	},
+
+	/**
 	 * Determine which source to use based on priority and connectivity
 	 *
+	 * @param {object} states - ioBroker state values
 	 * @param {object} connectors - Connector status objects
 	 */
-	resolveSource: function (connectors) {
+	resolveSource: function (states, connectors) {
 		if (this.source !== "auto") {
 			return this.source;
 		}
-		// Priority: local > api > web
-		if (connectors.local.active) {
-			return "local";
-		}
-		if (connectors.api.active) {
-			return "api";
-		}
-		if (connectors.web.active) {
-			return "web";
+		// Priority: local > openapi > api > web. The local connector polls at 10s by default
+		// against the OpenAPI's 60s, so it wins where both run; the OpenAPI is still a local
+		// reading and outranks either cloud connector.
+		//
+		// Only `openapi` is null-guarded: `app.connectors` always defines all five keys, but a
+		// caller written before this source existed does not, and the dashboard is served from the
+		// object DB so a stale page can outlive the adapter that matches it. The other three
+		// predate every caller.
+		var order = ["local", "openapi", "api", "web"];
+		for (var i = 0; i < order.length; i++) {
+			var name = order[i];
+			if (connectors[name] && connectors[name].active && this.sourceHasPower(states, name)) {
+				return name;
+			}
 		}
 		return null;
 	},
@@ -144,7 +203,8 @@ var energyFlow = {
 	 */
 	update: function (states, connectors) {
 		this.discoverApiId(states);
-		var src = this.resolveSource(connectors);
+		var src = this.resolveSource(states, connectors);
+		var changed = src !== this.activeSource;
 		this.activeSource = src;
 
 		if (!src) {
@@ -152,12 +212,32 @@ var energyFlow = {
 			return;
 		}
 
+		// An automatic switch — a connector dropping out and another taking over — has to reset
+		// the chart the same way the dropdown does. The sources do not produce their grid value
+		// the same way (one is the device's own signed figure, another is derived from a power
+		// balance), so a buffer holding both steps sign-wise with no cause in the plant, and the
+		// history discovery left behind belongs to the previous source's state ids.
+		if (changed) {
+			this.resetChart();
+		}
+
+		// Each reader reports whether it actually found any of its mapped states. Asserting
+		// hasData regardless published a diagram of zeros, or the previous source's values, as a
+		// current reading — and it silently defeated the guard updateFromApi already had.
+		var found = false;
 		if (src === "local") {
-			this.updateFromLocal(states);
+			found = this.updateFromLocal(states);
+		} else if (src === "openapi") {
+			found = this.updateFromOpenapi(states);
 		} else if (src === "api") {
-			this.updateFromApi(states);
+			found = this.updateFromApi(states);
 		} else if (src === "web") {
-			this.updateFromWeb(states);
+			found = this.updateFromWeb(states);
+		}
+
+		if (!found) {
+			this.hasData = false;
+			return;
 		}
 
 		// Current autarky — API provides it natively, otherwise calculate
@@ -177,8 +257,29 @@ var energyFlow = {
 		this.hasData = true;
 	},
 
+	/**
+	 * Discard chart state that belongs to the source we have just stopped using.
+	 *
+	 * Shared by the dropdown and by an automatic switch, so the two cannot drift apart — which is
+	 * how the automatic path came to do none of this.
+	 */
+	resetChart: function () {
+		if (typeof liveChart === "undefined") {
+			return;
+		}
+		liveChart.buffer = [];
+		liveChart._historyLoaded = false;
+		liveChart._historyStatus = {};
+		liveChart._historyRequestedTs = Infinity;
+		liveChart._newestHistoryTs = 0;
+		liveChart._loadGeneration++;
+	},
+
 	updateFromLocal: function (states) {
 		var map = this.stateMap.local;
+		if (!this.sourceHasPower(states, "local")) {
+			return false;
+		}
 		this.data.pv = Math.abs(this.getState(states, map.pv));
 		this.data.battery = this.getState(states, map.battery); // already signed
 		this.data.grid = this.getState(states, map.grid); // already signed
@@ -193,13 +294,114 @@ var energyFlow = {
 				this.data.wallbox += v;
 			}
 		}
+		return true;
+	},
+
+	/**
+	 * Residual in W inside which the power balance is noise rather than a direction.
+	 *
+	 * A working figure with headroom over the 5 W residual measured on the one recorded import
+	 * sample; no export sample exists yet, so it is not derived from the spread of real residuals.
+	 * The measurement itself is in docs/LOCAL_OPENAPI_4424.md.
+	 */
+	openapiGridDeadband: 50,
+
+	/**
+	 * Resolve the signed grid power reported by the local OpenAPI.
+	 *
+	 * `meter.gridPower` has only been observed while importing, so whether it carries a sign or a
+	 * magnitude is undecided — and the appliance reports `powerSurplus` separately, which would be
+	 * redundant under a signed convention. Three readings, in order:
+	 *
+	 * 1. A negative value is a signed reading and is trusted as it stands.
+	 * 2. Otherwise the direction comes from the power balance, which is sign-correct wherever the
+	 *    metered magnitude is. The band around zero yields 0 rather than defaulting to import,
+	 *    because the sign of a near-zero balance is noise either way.
+	 * 3. When the direction is export but `gridPower` reads 0, the field is import-only and
+	 *    `powerSurplus` carries the feed-in; that figure becomes the magnitude. Correct under both
+	 *    candidate conventions, since a signed field never reaches this branch.
+	 *
+	 * Known limit: the SENEC.Connect schema specifies the matching `consumption` field as
+	 * excluding the wallbox load. If the local meter aggregates that way too, the balance reads
+	 * low while a wallbox charges and can mistake an import for an export.
+	 *
+	 * @param {number} gridPower - meter.gridPower as reported
+	 * @param {number} house - meter.houseConsumption in W
+	 * @param {number} battery - battery.power in W, positive = charging
+	 * @param {number} production - meter.production in W
+	 * @param {number} [surplus] - meter.powerSurplus in W, when reported
+	 * @returns {number} Grid power in W, positive = import
+	 */
+	resolveOpenapiGrid: function (gridPower, house, battery, production, surplus) {
+		if (gridPower < 0) {
+			return gridPower;
+		}
+		// What the grid has to supply: the house load plus whatever charges the battery, less
+		// what the PV generates. Negative means the appliance has power left over.
+		var balance = house + battery - production;
+		var magnitude = Math.abs(gridPower);
+		if (balance < -this.openapiGridDeadband) {
+			// Exporting. A gridPower of 0 here means the field does not carry feed-in at all.
+			var feedIn = magnitude > 0 ? magnitude : Math.abs(Number(surplus) || 0);
+			// Not `-feedIn`: negating zero yields -0, which is a confusing value to hand a
+			// renderer for "nothing is flowing".
+			return feedIn === 0 ? 0 : -feedIn;
+		}
+		if (balance > this.openapiGridDeadband) {
+			return magnitude;
+		}
+		// Inside the band the direction is not established. Returning the magnitude here claimed
+		// an import for every balance between -deadband and 0, which rendered a genuine sub-50 W
+		// export as an import of the same size.
+		return magnitude === 0 ? 0 : magnitude;
+	},
+
+	updateFromOpenapi: function (states) {
+		var map = this.stateMap.openapi;
+		// The connector omits a state rather than publishing a fabricated zero for a value the
+		// appliance did not report, and a section left out of the include list is never written at
+		// all. Reading those absences as 0 drew a diagram of zeros labelled with a fresh
+		// timestamp, and a missing battery term inverted the grid direction.
+		var pv = this.getStateOrNull(states, map.pv);
+		var house = this.getStateOrNull(states, map.house);
+		var battery = this.getStateOrNull(states, map.battery);
+		var grid = this.getStateOrNull(states, map.grid);
+		if (pv === null && house === null && battery === null) {
+			return false;
+		}
+
+		this.data.pv = pv === null ? 0 : Math.abs(pv);
+		this.data.battery = battery === null ? 0 : battery; // already signed
+		this.data.house = house === null ? 0 : Math.abs(house);
+		// Every balance term has to be present for the direction to mean anything. Without them
+		// the magnitude is still a measurement, so it is shown as an import — the common case —
+		// rather than being guessed from an incomplete balance.
+		this.data.grid =
+			grid === null
+				? 0
+				: pv !== null && house !== null && battery !== null
+					? this.resolveOpenapiGrid(
+							grid,
+							this.data.house,
+							this.data.battery,
+							this.data.pv,
+							this.getStateOrNull(states, "_openapi.meter.powerSurplus"),
+						)
+					: Math.abs(grid);
+		this.data.soc = this.getStateOrNull(states, map.soc);
+		this.data.batteryCapacity = this.resolveBatteryCapacity(states);
+		// The flow diagram branches the wallbox off the house node, so it needs a house figure
+		// that already contains the charging load. Nothing establishes that the local meter
+		// aggregates that way, so the wallbox stays out of the flow math and `_openapi.evse.*`
+		// is reported on the system tab instead.
+		this.data.wallbox = 0;
+		return true;
 	},
 
 	updateFromApi: function (states) {
 		var pfx = this.apiPrefix();
 		if (!pfx) {
-			this.hasData = false;
-			return;
+			return false;
 		}
 
 		this.data.pv = this.getState(states, `${pfx}currently.powerGenerationInW`);
@@ -213,11 +415,15 @@ var energyFlow = {
 		this.data.soc = this.getStateOrNull(states, `${pfx}currently.batteryLevelInPercent`);
 		this.data.wallbox = this.getState(states, `${pfx}currently.wallboxInW`);
 		this.data.batteryCapacity = this.resolveBatteryCapacity(states);
+		return true;
 	},
 
 	updateFromWeb: function (states) {
 		// Web connector stores power values in kW — multiply by 1000 to normalize to W
 		var pfx = "_meinsenec.Status.";
+		if (!this.sourceHasPower(states, "web")) {
+			return false;
+		}
 		this.data.pv = this.getState(states, `${pfx}powergenerated.now`) * 1000;
 		// accuexport = export power to battery (charge), accuimport = import power from battery (discharge)
 		var charge = this.getState(states, `${pfx}accuexport.now`) * 1000;
@@ -230,6 +436,7 @@ var energyFlow = {
 		this.data.soc = this.getStateOrNull(states, `${pfx}acculevel.now`); // % — no conversion
 		this.data.wallbox = 0; // Web connector doesn't provide live wallbox power
 		this.data.batteryCapacity = this.resolveBatteryCapacity(states);
+		return true;
 	},
 
 	/**
@@ -328,7 +535,13 @@ var energyFlow = {
 			this.data.autarky = this.getStateOrNull(states, "_meinsenec.Autarky.day");
 			this.data.autarkyWeek = this.getStateOrNull(states, "_meinsenec.Autarky.week");
 			this.data.autarkyAll = this.getStateOrNull(states, "_meinsenec.Autarky.all");
+			return;
 		}
+
+		// No source for today's totals — the month and year paths already clear here, and leaving
+		// this one to return kept a disconnected cloud connector's last figures on display. An
+		// install running only a local connector has no source for them at all.
+		this.clearTotals();
 	},
 
 	updateTotalsMonth: function (states) {
@@ -464,9 +677,10 @@ var energyFlow = {
 	},
 
 	/**
-	 * Resolve battery capacity: API > Web > config (fallback)
+	 * Resolve battery capacity in kWh: API > Web > configured value > OpenAPI nameplate
 	 *
 	 * @param {object} states - ioBroker state values
+	 * @returns {number|null} Capacity in kWh, or null when no source reports one
 	 */
 	resolveBatteryCapacity: function (states) {
 		// API SystemDetails
@@ -485,10 +699,22 @@ var energyFlow = {
 			return webCap;
 		}
 
-		// Config as last resort (for local-only users)
+		// An explicitly configured capacity, which the user typed and the cloud sources above do
+		// not have. It outranks the nameplate below because whether the local listener's
+		// designCapacity covers the whole pack or one module is unverified — see
+		// docs/LOCAL_OPENAPI_4424.md — so a per-module figure would silently halve every battery
+		// time estimate on a multi-module system and discard the user's correction with it.
 		var configCap = app.config.battery_capacity;
 		if (configCap && configCap > 0) {
 			return configCap;
+		}
+
+		// Local OpenAPI nameplate, in Wh. Always polled — it is the connector's identity section —
+		// so this is the last resort rather than an optional extra. The `> 0` test keeps a zero
+		// from being read as a real capacity and driving the battery time estimates.
+		var openapiCap = this.getStateOrNull(states, "_openapi.bessNameplate.designCapacity");
+		if (openapiCap && openapiCap > 0) {
+			return openapiCap / 1000;
 		}
 
 		return null;
@@ -505,6 +731,14 @@ var energyFlow = {
 
 		if (this.activeSource === "local") {
 			isoStr = states["info.lastPoll.HighPrio"] || null;
+		} else if (this.activeSource === "openapi") {
+			// The complete-cycle marker, not `lastPoll`: the connector stamps that one as soon as
+			// any one section answered, so a cycle whose meter route failed would report the
+			// current time next to a diagram holding the previous cycle's meter values.
+			// No fallback to `lastPoll` on purpose: an install whose meter route keeps failing
+			// would otherwise keep reporting a fresh time forever, which is the thing being fixed.
+			// Showing no time is the honest answer, and the Local OpenAPI card carries the detail.
+			isoStr = states["_openapi.info.lastCompletePoll"] || null;
 		} else if (this.activeSource === "api") {
 			isoStr = states["_api.info.lastPoll.Dashboard"] || null;
 		} else if (this.activeSource === "web") {
@@ -604,6 +838,7 @@ var energyFlow = {
 		html += '<select id="energy-source" onchange="energyFlow.onSourceChange(this.value)">';
 		html += `<option value="auto"${this.source === "auto" ? " selected" : ""}>Auto</option>`;
 		html += `<option value="local"${this.source === "local" ? " selected" : ""}>Local</option>`;
+		html += `<option value="openapi"${this.source === "openapi" ? " selected" : ""}>OpenAPI</option>`;
 		html += `<option value="api"${this.source === "api" ? " selected" : ""}>API</option>`;
 		html += `<option value="web"${this.source === "web" ? " selected" : ""}>Web</option>`;
 		html += "</select>";
@@ -1209,14 +1444,42 @@ var energyFlow = {
 		);
 	},
 
+	/**
+	 * State ids that belong to each source, as a prefix or exact-id test.
+	 *
+	 * Used to decide whether an arriving state change should produce a chart sample. Recording on
+	 * any energy state meant another connector's poll sampled the active source's data — adding
+	 * duplicates at the wrong cadence, and occasionally catching the OpenAPI mid-cycle with one
+	 * section refreshed and the rest a minute old.
+	 *
+	 * The OpenAPI entry is deliberately only its complete-cycle marker: its sections arrive as a
+	 * dozen separate writes, so no individual one of them represents a whole reading.
+	 *
+	 * @param {string} src - Source name
+	 * @param {string} shortId - State id without the adapter namespace
+	 * @returns {boolean} Whether the state belongs to that source
+	 */
+	sourceOwnsState: function (src, shortId) {
+		if (src === "openapi") {
+			return shortId === "_openapi.info.lastCompletePoll";
+		}
+		if (src === "local") {
+			return shortId.startsWith("ENERGY.GUI_") || shortId.startsWith("WALLBOX.");
+		}
+		if (src === "api") {
+			return shortId.startsWith("_api.") && shortId.indexOf("currently.") !== -1;
+		}
+		if (src === "web") {
+			return shortId.startsWith("_meinsenec.Status.");
+		}
+		return false;
+	},
+
 	onSourceChange: function (val) {
 		this.source = val;
+		// Before update(), so update()'s own activeSource-change reset does not fight this one.
+		this.resetChart();
 		this.update(app.states, app.connectors);
-		// Reset live chart buffer for new source
-		liveChart.buffer = [];
-		liveChart._historyLoaded = false;
-		liveChart._historyStatus = {};
-		liveChart._historyRequestedTs = Infinity;
 		liveChart.record();
 		liveChart.initHistory(app.conn, app.namespace, app.connectors);
 		app.renderDashboard();

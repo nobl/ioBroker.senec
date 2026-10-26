@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, document, window */
+/* global app, t, escHtml, document, window */
 /* exported statsViewer */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -990,10 +990,6 @@ var statsViewer = {
 	 * @returns {string} Escaped value
 	 */
 	_esc: function (str) {
-		return String(str == null ? "" : str)
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;");
+		return escHtml(str);
 	},
 };

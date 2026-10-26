@@ -114,6 +114,16 @@ function makeAdapter(over = {}) {
 	adapter.getStateAsync = async () => null;
 	adapter.decrypt = (value) => value;
 	adapter.encrypt = (value) => value;
+	// doState's object cache, and the object tree the prune walks. `objects` is the tree as the
+	// object DB holds it; `deleted` records what the prune asked to remove, in order.
+	adapter.knownObjects = new Map();
+	adapter.objects = {};
+	adapter.deleted = [];
+	adapter.getAdapterObjectsAsync = async () => adapter.objects;
+	adapter.delObjectAsync = async (id) => {
+		adapter.deleted.push(id);
+		delete adapter.objects[id];
+	};
 	// openapiInit is the only thing on these paths that asks, so the counter is a precise probe
 	// for "the registration path was entered again", and answering `false` makes it stop there.
 	adapter.localHostConfigured = () => {
@@ -906,5 +916,108 @@ describe("local OpenAPI connector: life cycle", () => {
 				"and the user is told the entry may still be there",
 			);
 		});
+	});
+});
+
+describe("local OpenAPI connector: a cycle that served only part of what it asked for", () => {
+	// `lastPoll` is stamped as soon as one section answered, which is right for the connection
+	// state and wrong for a consumer that reads several sections as one reading: a cycle where
+	// /v1/battery answered and /v1/meter did not leaves the meter states at the previous cycle's
+	// values. The dashboard combined them and derived a grid direction from the mismatch, so the
+	// complete-cycle marker exists to tell the two apart.
+	it("stamps lastPoll but not lastCompletePoll", async () => {
+		const adapter = makeAdapter({
+			getStateAsync: tokenStored(),
+			openapiClient: appliance((path) =>
+				path === "/v1/meter" ? { status: 503, data: "Service Unavailable" } : answers({ power: -850 }),
+			),
+		});
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		assert.ok(lastWrite(adapter, "_openapi.info.lastPoll"), "a section answered, so the poll counts");
+		assert.equal(
+			lastWrite(adapter, "_openapi.info.lastCompletePoll"),
+			undefined,
+			"but not every requested section did",
+		);
+		assert.equal(adapter.openapiConnected, true, "a partial cycle still holds the connection up");
+	});
+
+	it("stamps both when every requested section answers", async () => {
+		const adapter = makeAdapter({
+			getStateAsync: tokenStored(),
+			openapiClient: appliance(() => answers({ power: -850 })),
+		});
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		assert.ok(lastWrite(adapter, "_openapi.info.lastPoll"));
+		assert.ok(lastWrite(adapter, "_openapi.info.lastCompletePoll"));
+	});
+});
+
+describe("local OpenAPI connector: wallbox slots that stop being reported", () => {
+	// A shrunk collection is a real removal. The appliance reports four slots whether or not
+	// anything is attached, so a slot that disappears has genuinely gone — and its states, left
+	// behind, kept a car on display as connected and drawing its last power indefinitely.
+
+	/**
+	 * @param {object} adapter - Adapter double
+	 * @param {Array<string>} slots - Slot keys to populate the object tree with
+	 */
+	function withSlots(adapter, slots) {
+		for (const slot of slots) {
+			adapter.objects[`senec.0._openapi.evse.${slot}`] = { type: "channel" };
+			for (const field of ["evConnected", "evCharging", "chargingPower"]) {
+				adapter.objects[`senec.0._openapi.evse.${slot}.${field}`] = { type: "state" };
+				adapter.knownObjects.set(`_openapi.evse.${slot}.${field}`, { common: {} });
+			}
+		}
+	}
+
+	it("removes the slots absent from the response and keeps the rest", async () => {
+		const adapter = makeAdapter();
+		withSlots(adapter, ["1", "2", "3"]);
+
+		await openapi.pruneOpenapiWallboxes(adapter, ["1", "3"]);
+
+		assert.ok(
+			adapter.deleted.every((id) => id.startsWith("senec.0._openapi.evse.2")),
+			`only slot 2 should go, deleted: ${JSON.stringify(adapter.deleted)}`,
+		);
+		assert.equal(adapter.deleted.length, 4, "the channel and its three states");
+		assert.ok(adapter.objects["senec.0._openapi.evse.1.evConnected"], "slot 1 stays");
+		assert.ok(adapter.objects["senec.0._openapi.evse.3.evConnected"], "slot 3 stays");
+	});
+
+	it("clears doState's object cache, so a returning slot is recreated with its metadata", async () => {
+		const adapter = makeAdapter();
+		withSlots(adapter, ["1"]);
+
+		await openapi.pruneOpenapiWallboxes(adapter, []);
+
+		assert.equal(adapter.knownObjects.size, 0, "a cached object would be written back without one");
+	});
+
+	it("removes everything when the section is no longer requested", async () => {
+		const adapter = makeAdapter();
+		withSlots(adapter, ["1", "2", "3", "4"]);
+
+		await openapi.pruneOpenapiWallboxes(adapter, []);
+
+		assert.equal(Object.keys(adapter.objects).length, 0);
+	});
+
+	it("leaves states under other sections alone", async () => {
+		const adapter = makeAdapter();
+		withSlots(adapter, ["1"]);
+		adapter.objects["senec.0._openapi.meter.gridPower"] = { type: "state" };
+		adapter.objects["senec.0._openapi.battery.power"] = { type: "state" };
+
+		await openapi.pruneOpenapiWallboxes(adapter, []);
+
+		assert.ok(adapter.objects["senec.0._openapi.meter.gridPower"]);
+		assert.ok(adapter.objects["senec.0._openapi.battery.power"]);
 	});
 });
