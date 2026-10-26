@@ -220,6 +220,11 @@ export interface SenecAdapter extends AdapterClass {
     openapiCycleRunning: boolean;
     /** Consecutive transport failures, so the retry interval grows during a long outage */
     openapiTransportFailures: number;
+    /**
+     * True once the wallbox states have been swept since `evse` left the include list.
+     * The sweep walks every object the instance owns, so it must not run once per poll.
+     */
+    openapiEvseCleared: boolean;
 
     // ── GUI / misc ────────────────────────────────────────────────────
     guiLang: string;

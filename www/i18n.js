@@ -1,6 +1,6 @@
 "use strict";
 
-/* exported i18n, t */
+/* exported i18n, t, escHtml */
 /* global document, window */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -230,6 +230,9 @@ function t(key, params) {
  * @param {unknown} value - Any value destined for markup
  * @returns {string} The value with HTML-significant characters replaced
  */
+// Called from the view modules, which the linter cannot see across: the dashboard has no module
+// system, so every shared helper is an unreferenced global here. Remove the suppression if these
+// files ever gain imports.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function escHtml(value) {
 	if (value === null || value === undefined) {

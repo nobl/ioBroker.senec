@@ -1199,11 +1199,21 @@
 				this.conn.emit("subscribeObjects", "system.adapter." + NAMESPACE);
 
 				this.conn.on("stateChange", function (id, state) {
-					if (state && id.startsWith(NAMESPACE + ".")) {
-						var shortId = id.substring(NAMESPACE.length + 1);
-						app.states[shortId] = state.val;
-						app.onStateUpdate(shortId, state.val);
+					if (!id.startsWith(NAMESPACE + ".")) {
+						return;
 					}
+					var shortId = id.substring(NAMESPACE.length + 1);
+					if (!state) {
+						// A deletion. Dropping it from the cache rather than ignoring it is what
+						// lets a collection shrink on an open page: the adapter removes a wallbox
+						// slot the appliance has stopped reporting, and a retained value would go
+						// on rendering that slot as connected and charging until a reload.
+						delete app.states[shortId];
+						app.onStateUpdate(shortId, null);
+						return;
+					}
+					app.states[shortId] = state.val;
+					app.onStateUpdate(shortId, state.val);
 				});
 			},
 
@@ -1244,6 +1254,11 @@
 				if (shortId === "info.connection") {
 					this.connected = !!val;
 				}
+				// The only thing that can change the set of wallbox slots, so it is also the only
+				// place that has to invalidate the memoised scan of them.
+				if (shortId.startsWith("_openapi.evse.")) {
+					systemInfo.evseDirty();
+				}
 				for (var key in this.connectors) {
 					if (shortId === this.connectors[key].stateId) {
 						this.connectors[key].active = !!val;
@@ -1283,13 +1298,8 @@
 
 				if (isEnergyState) {
 					energyFlow.update(this.states, this.connectors);
-					// Only the active source's own states produce a sample. Recording on any
-					// energy state meant a second connector's poll sampled the active source's
-					// data — adding points at the wrong cadence and, when one landed between two
-					// writes of the same OpenAPI cycle, capturing one fresh section beside
-					// sections a minute old. For the OpenAPI the owning state is its
-					// complete-cycle marker, because its sections arrive as a dozen separate
-					// writes and no single one of them is a whole reading.
+					// Only the active source's own states produce a sample — see
+					// energyFlow.sourceOwnsState for which those are, and why.
 					if (energyFlow.activeSource && energyFlow.sourceOwnsState(energyFlow.activeSource, shortId)) {
 						liveChart.record();
 					}

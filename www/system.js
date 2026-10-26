@@ -970,22 +970,39 @@ var systemInfo = {
 	 * @param {object} states - ioBroker state values
 	 * @returns {Array<{id: string, connected: boolean|null, charging: boolean|null, power: number|null}>} Slots with data
 	 */
+	/** Slot ids discovered by the last scan, or null when a scan is due. */
+	_evseIds: null,
+
+	/**
+	 * Discard the memoised slot ids. Called when an `_openapi.evse.*` state arrives or is removed,
+	 * which is the only thing that can change them.
+	 */
+	evseDirty: function () {
+		this._evseIds = null;
+	},
+
 	openapiWallboxSlots: function (states) {
-		// This runs on every render, for every user, over the whole state cache — which on a full
-		// install is thousands of keys. A prefix test before anything else keeps the cost to one
-		// string comparison per key; the regex it replaced allocated a match object for every key
-		// it was given.
-		var PFX = "_openapi.evse.";
+		// Reached on every render, for every user, and the cache holds thousands of keys on a full
+		// install — so the ids are memoised and rediscovered only when evseDirty() says so. The
+		// values below are read from `states` every time; only the key scan is cached.
+		if (this._evseIds === null) {
+			var PFX = "_openapi.evse.";
+			var found = {};
+			for (var key in states) {
+				if (key.length <= PFX.length || key.slice(0, PFX.length) !== PFX) {
+					continue;
+				}
+				var rest = key.slice(PFX.length);
+				var dot = rest.indexOf(".");
+				if (dot > 0) {
+					found[rest.slice(0, dot)] = true;
+				}
+			}
+			this._evseIds = Object.keys(found);
+		}
 		var ids = {};
-		for (var key in states) {
-			if (key.length <= PFX.length || key.slice(0, PFX.length) !== PFX) {
-				continue;
-			}
-			var rest = key.slice(PFX.length);
-			var dot = rest.indexOf(".");
-			if (dot > 0) {
-				ids[rest.slice(0, dot)] = true;
-			}
+		for (var ii = 0; ii < this._evseIds.length; ii++) {
+			ids[this._evseIds[ii]] = true;
 		}
 
 		var slots = [];
@@ -1285,9 +1302,8 @@ var systemInfo = {
 			return "";
 		}
 
-		// `unregistered` is the state a fresh instance starts in and the state the Forget button
-		// returns to, so it needs a colour and a label of its own — it was previously the one
-		// reachable verdict with neither, and rendered as the raw internal token.
+		// Every verdict openapiReportApproval can write needs an entry here; one without falls
+		// back to the grey below and to its own raw state string as a label.
 		var approvalColors = {
 			approved: "#4caf50",
 			pending: "#ff9800",
@@ -1311,8 +1327,7 @@ var systemInfo = {
 		}
 		// Reachability is a separate axis from approval: the connector leaves approvalState at
 		// "approved" through an outage, because the registration is still approved — it is the
-		// appliance that cannot be reached. Without this row the card reported "Approved" beside
-		// a wall-clock time for as long as the outage lasted.
+		// appliance that cannot be reached.
 		if (connected !== undefined && connected !== null) {
 			html += this.renderMetric(
 				t("openapi_reachable"),

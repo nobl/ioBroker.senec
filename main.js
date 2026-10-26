@@ -93,6 +93,11 @@ class Senec extends utils.Adapter {
 		this.openapiBusy = false;
 		this.openapiCycleRunning = false;
 		this.openapiTransportFailures = 0;
+		/**
+		 * Whether the wallbox states have already been swept since `evse` left the include list.
+		 * The sweep walks every object the instance owns, so it must not run once per poll.
+		 */
+		this.openapiEvseCleared = false;
 		this.connectVia = "https://";
 		this.unloaded = false;
 		/** Waiters parked by delay(), so unload can wake them instead of leaving them pending. */

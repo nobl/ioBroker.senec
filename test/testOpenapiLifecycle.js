@@ -944,6 +944,23 @@ describe("local OpenAPI connector: a cycle that served only part of what it aske
 		assert.equal(adapter.openapiConnected, true, "a partial cycle still holds the connection up");
 	});
 
+	it("stamps the marker even when only the nameplate route fails", async () => {
+		// The nameplate is added by buildOpenapiInclude rather than chosen by the user, and
+		// carries identity rather than measurement. A firmware that refuses that one route must
+		// not withhold the marker from a consumer reading only battery and meter — which, since
+		// the marker is the dashboard's chart trigger, would stop recording entirely.
+		const adapter = makeAdapter({
+			getStateAsync: tokenStored(),
+			openapiClient: appliance((path) =>
+				path === "/v1/bess/nameplate" ? { status: 500, data: "nope" } : answers({ power: -850 }),
+			),
+		});
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		assert.ok(lastWrite(adapter, "_openapi.info.lastCompletePoll"), "battery and meter both answered");
+	});
+
 	it("stamps both when every requested section answers", async () => {
 		const adapter = makeAdapter({
 			getStateAsync: tokenStored(),
@@ -1007,6 +1024,28 @@ describe("local OpenAPI connector: wallbox slots that stop being reported", () =
 		await openapi.pruneOpenapiWallboxes(adapter, []);
 
 		assert.equal(Object.keys(adapter.objects).length, 0);
+	});
+
+	it("sweeps for an unrequested section once, not on every cycle", async () => {
+		// The sweep walks every object this instance owns. `evse` is not in the default include
+		// list, so an unguarded sweep would pay that cost once per poll interval, for ever,
+		// with nothing to find.
+		const adapter = makeAdapter({
+			getStateAsync: tokenStored(),
+			openapiClient: appliance(() => answers({ power: -850 })),
+		});
+		let sweeps = 0;
+		const objects = adapter.getAdapterObjectsAsync;
+		adapter.getAdapterObjectsAsync = async () => {
+			sweeps++;
+			return objects();
+		};
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		assert.equal(sweeps, 1, `swept ${sweeps} times across three cycles`);
 	});
 
 	it("leaves states under other sections alone", async () => {

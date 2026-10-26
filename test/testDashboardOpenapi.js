@@ -180,12 +180,23 @@ describe("dashboard — local OpenAPI energy source", () => {
 			assert.equal(energyFlow.resolveOpenapiGrid(2150, 500, 0, 2500), -2150);
 		});
 
-		it("claims no direction inside the deadband, either way", () => {
-			// IMP-001: the band used to be one-sided, so every balance between -50 and 0 was
-			// reported as an import — turning a genuine sub-50 W export into an import of the
-			// same size.
-			assert.equal(energyFlow.resolveOpenapiGrid(30, 100, 0, 130), 30);
-			assert.equal(energyFlow.resolveOpenapiGrid(30, 130, 0, 100), 30);
+		it("claims no direction for a small flow the balance cannot place", () => {
+			// IMP-001. The band is symmetric about zero: a balance of -30 and a balance of +30
+			// must give the same answer, because neither establishes a direction. A one-sided
+			// band reported a genuine sub-50 W export as an import of the same size.
+			assert.equal(energyFlow.resolveOpenapiGrid(30, 130, 0, 100), 0, "balance +30");
+			assert.equal(energyFlow.resolveOpenapiGrid(30, 100, 0, 130), 0, "balance -30");
+			assert.equal(energyFlow.resolveOpenapiGrid(30, 100, 0, 100), 0, "balance 0");
+			// Outside the band the direction is established again, in both directions.
+			assert.equal(energyFlow.resolveOpenapiGrid(200, 300, 0, 100), 200);
+			assert.equal(energyFlow.resolveOpenapiGrid(200, 100, 0, 300), -200);
+		});
+
+		it("keeps a large measurement the balance cannot place, rather than zeroing it", () => {
+			// The wallbox-exclusion case named in the JSDoc: if the local meter's house figure
+			// omits a charging wallbox, the balance goes flat while real power flows. Discarding
+			// a 2 kW reading there would be worse than mislabelling its direction.
+			assert.equal(energyFlow.resolveOpenapiGrid(2000, 100, 0, 100), 2000);
 		});
 
 		it("takes the export magnitude from powerSurplus when gridPower is import-only", () => {
@@ -249,6 +260,17 @@ describe("dashboard — local OpenAPI energy source", () => {
 			assert.equal(energyFlow.getLastUpdateTime(partial), null);
 			const complete = { ...partial, "_openapi.info.lastCompletePoll": "2026-10-26T08:30:15.000Z" };
 			assert.match(energyFlow.getLastUpdateTime(complete), /^\d{2}:\d{2}:\d{2}$/);
+		});
+
+		it("refuses to describe a flow when the App API has a plant but no dashboard data", () => {
+			// DEF-010: a plant id can be discovered from a SystemDetails poll while the dashboard
+			// section has published nothing. The prefix guard passed on the id alone, so absent
+			// states were read as zeros — and that held even for an explicitly selected source,
+			// which bypasses resolveSource's own check.
+			energyFlow.source = "api";
+			energyFlow.update({ "_api.Anlagen.1.SystemDetails.batteryPack.maxCapacityInKwh": 10 }, connectors(["api"]));
+			assert.equal(energyFlow.apiPrefix(), "_api.Anlagen.1.Dashboard.");
+			assert.equal(energyFlow.hasData, false);
 		});
 
 		it("refuses to describe a flow when no power section was published", () => {
@@ -471,7 +493,7 @@ describe("dashboard — local OpenAPI system cards", () => {
 		});
 	});
 
-	describe("wallbox slot ordering", () => {
+	describe("wallbox slot ordering and memoisation", () => {
 		it("orders slots numerically, not as strings", () => {
 			// IMP-006: a plain sort put 10 between 1 and 2.
 			const states = {};
@@ -481,6 +503,31 @@ describe("dashboard — local OpenAPI system cards", () => {
 			assert.deepEqual(
 				plain(systemInfo.openapiWallboxSlots(states)).map((slot) => slot.id),
 				["1", "2", "10"],
+			);
+		});
+
+		it("rediscovers the slots only after evseDirty, and re-reads their values every time", () => {
+			// IMP-007: the key scan is memoised, so a slot appearing or disappearing has to
+			// invalidate it — but a slot's *values* must never be cached, or the card would
+			// freeze at whatever it first rendered.
+			const states = { "_openapi.evse.1.chargingPower": 1000 };
+			assert.equal(plain(systemInfo.openapiWallboxSlots(states)).length, 1);
+
+			states["_openapi.evse.2.chargingPower"] = 2000;
+			assert.equal(plain(systemInfo.openapiWallboxSlots(states)).length, 1, "stale until invalidated");
+			systemInfo.evseDirty();
+			assert.equal(plain(systemInfo.openapiWallboxSlots(states)).length, 2);
+
+			// A value change needs no invalidation.
+			states["_openapi.evse.1.chargingPower"] = 7400;
+			assert.equal(plain(systemInfo.openapiWallboxSlots(states))[0].power, 7400);
+
+			// A slot whose states are deleted drops out once invalidated.
+			delete states["_openapi.evse.2.chargingPower"];
+			systemInfo.evseDirty();
+			assert.deepEqual(
+				plain(systemInfo.openapiWallboxSlots(states)).map((slot) => slot.id),
+				["1"],
 			);
 		});
 	});
@@ -667,6 +714,34 @@ describe("dashboard — local OpenAPI live chart", () => {
 			const points = plain(liveChart.buffer).filter((pt) => pt.grid != null);
 			assert.equal(points.length, 5);
 			assert.ok(points.every((pt) => pt.grid === -1800));
+		});
+
+		it("pairs each grid sample with its own cycle's terms, not the previous cycle's", () => {
+			// The meter section is written after the battery section, so it sorts later; a term
+			// carried only forward paired each grid sample with the previous cycle's house and
+			// PV, which inverts the sign of the first point after every direction reversal.
+			const T0 = 1761000000000;
+			const cycles = [
+				{ grid: 900, house: 1000, pv: 100, battery: 0 }, // importing
+				{ grid: 900, house: 1000, pv: 100, battery: 0 },
+				{ grid: 2200, house: 300, pv: 3500, battery: 1000 }, // exporting from here
+				{ grid: 2200, house: 300, pv: 3500, battery: 1000 },
+			];
+			const pending = { grid: [], house: [], pv: [], battery: [] };
+			cycles.forEach((cycle, i) => {
+				const base = T0 + i * 60000;
+				pending.battery.push({ ts: base + 0, val: cycle.battery });
+				pending.grid.push({ ts: base + 140, val: cycle.grid });
+				pending.house.push({ ts: base + 147, val: cycle.house });
+				pending.pv.push({ ts: base + 152, val: cycle.pv });
+			});
+
+			liveChart.buffer = [];
+			liveChart._mergeHistory(pending, "openapi");
+			const grids = plain(liveChart.buffer)
+				.filter((pt) => pt.grid != null)
+				.map((pt) => pt.grid);
+			assert.deepEqual(grids, [900, 900, -2200, -2200], `got ${JSON.stringify(grids)}`);
 		});
 
 		it("keeps the measured magnitude when a balance term was never recorded", () => {

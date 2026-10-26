@@ -107,8 +107,8 @@ var energyFlow = {
 	 * nameplate-only cycle as a success, and the App API reports connected before a plant has been
 	 * discovered. Selecting such a source drew a diagram of zeros over a working connector.
 	 *
-	 * Checked with `some`, not `every`, so one failed section does not disqualify a source that is
-	 * otherwise reporting.
+	 * Any one of a source's power states is enough, so a single failed section does not
+	 * disqualify a source that is otherwise reporting.
 	 *
 	 * @param {object} states - ioBroker state values
 	 * @param {string} src - Source name
@@ -221,9 +221,9 @@ var energyFlow = {
 			this.resetChart();
 		}
 
-		// Each reader reports whether it actually found any of its mapped states. Asserting
+		// Each reader reports whether any of its mapped power states is present. Asserting
 		// hasData regardless published a diagram of zeros, or the previous source's values, as a
-		// current reading — and it silently defeated the guard updateFromApi already had.
+		// current reading.
 		var found = false;
 		if (src === "local") {
 			found = this.updateFromLocal(states);
@@ -255,13 +255,21 @@ var energyFlow = {
 		this.updateDayTotals(states);
 
 		this.hasData = true;
+
+		// Discovery has to be started again for the new source, not merely discarded. resetChart
+		// empties `_historyStatus`, which is what every backfill trigger tests through
+		// `_hasHistory()` — so without this the chart is left clean and permanently empty, with
+		// no path back to its history until the page is reloaded.
+		if (changed) {
+			this.rearmChart();
+		}
 	},
 
 	/**
 	 * Discard chart state that belongs to the source we have just stopped using.
 	 *
-	 * Shared by the dropdown and by an automatic switch, so the two cannot drift apart — which is
-	 * how the automatic path came to do none of this.
+	 * Resetting and re-arming are separate because the dropdown has to reset before `update()`
+	 * runs and re-arm after it, while an automatic switch does both from inside `update()`.
 	 */
 	resetChart: function () {
 		if (typeof liveChart === "undefined") {
@@ -273,6 +281,20 @@ var energyFlow = {
 		liveChart._historyRequestedTs = Infinity;
 		liveChart._newestHistoryTs = 0;
 		liveChart._loadGeneration++;
+	},
+
+	/**
+	 * Record a first point for the new source and rediscover which of its states are logged.
+	 *
+	 * Both are no-ops until a source is resolved and its data has been read, which is why this
+	 * runs at the end of `update()` rather than beside `resetChart`.
+	 */
+	rearmChart: function () {
+		if (typeof liveChart === "undefined" || typeof app === "undefined" || !app.conn) {
+			return;
+		}
+		liveChart.record();
+		liveChart.initHistory(app.conn, app.namespace, app.connectors);
 	},
 
 	updateFromLocal: function (states) {
@@ -315,8 +337,8 @@ var energyFlow = {
 	 *
 	 * 1. A negative value is a signed reading and is trusted as it stands.
 	 * 2. Otherwise the direction comes from the power balance, which is sign-correct wherever the
-	 *    metered magnitude is. The band around zero yields 0 rather than defaulting to import,
-	 *    because the sign of a near-zero balance is noise either way.
+	 *    metered magnitude is. Inside the deadband the balance places nothing: a magnitude also
+	 *    inside the band reads as 0, and a larger one is kept and read as an import.
 	 * 3. When the direction is export but `gridPower` reads 0, the field is import-only and
 	 *    `powerSurplus` carries the feed-in; that figure becomes the magnitude. Correct under both
 	 *    candidate conventions, since a signed field never reaches this branch.
@@ -350,10 +372,15 @@ var energyFlow = {
 		if (balance > this.openapiGridDeadband) {
 			return magnitude;
 		}
-		// Inside the band the direction is not established. Returning the magnitude here claimed
-		// an import for every balance between -deadband and 0, which rendered a genuine sub-50 W
-		// export as an import of the same size.
-		return magnitude === 0 ? 0 : magnitude;
+		// Inside the band the balance establishes no direction. When the meter's own magnitude is
+		// inside it too, nothing meaningful is flowing either way and zero is the honest answer.
+		if (magnitude <= this.openapiGridDeadband) {
+			return 0;
+		}
+		// A magnitude well outside the band with a flat balance is the wallbox-exclusion case in
+		// the note above: the measurement is real even though the balance cannot place it, so it
+		// is kept rather than discarded, read as the import it usually is.
+		return magnitude;
 	},
 
 	updateFromOpenapi: function (states) {
@@ -400,7 +427,10 @@ var energyFlow = {
 
 	updateFromApi: function (states) {
 		var pfx = this.apiPrefix();
-		if (!pfx) {
+		// A discovered plant id is not a reading: the id can come from a SystemDetails poll while
+		// the dashboard section has published nothing, and reading those absences as zero drew a
+		// diagram of zeros. Checked the same way as every other source.
+		if (!pfx || !this.sourceHasPower(states, "api")) {
 			return false;
 		}
 
@@ -538,9 +568,8 @@ var energyFlow = {
 			return;
 		}
 
-		// No source for today's totals — the month and year paths already clear here, and leaving
-		// this one to return kept a disconnected cloud connector's last figures on display. An
-		// install running only a local connector has no source for them at all.
+		// No source for today's totals, which is the normal state of an install running only a
+		// local connector. Cleared rather than left behind, as the month and year paths do.
 		this.clearTotals();
 	},
 
@@ -1447,13 +1476,11 @@ var energyFlow = {
 	/**
 	 * State ids that belong to each source, as a prefix or exact-id test.
 	 *
-	 * Used to decide whether an arriving state change should produce a chart sample. Recording on
-	 * any energy state meant another connector's poll sampled the active source's data — adding
-	 * duplicates at the wrong cadence, and occasionally catching the OpenAPI mid-cycle with one
-	 * section refreshed and the rest a minute old.
+	 * Used to decide whether an arriving state change should produce a chart sample: only the
+	 * active source's own states may, or another connector's poll samples this one's data.
 	 *
-	 * The OpenAPI entry is deliberately only its complete-cycle marker: its sections arrive as a
-	 * dozen separate writes, so no individual one of them represents a whole reading.
+	 * The OpenAPI entry is deliberately only its complete-cycle marker, because its sections
+	 * arrive as a dozen separate writes and no individual one of them is a whole reading.
 	 *
 	 * @param {string} src - Source name
 	 * @param {string} shortId - State id without the adapter namespace
@@ -1480,8 +1507,9 @@ var energyFlow = {
 		// Before update(), so update()'s own activeSource-change reset does not fight this one.
 		this.resetChart();
 		this.update(app.states, app.connectors);
-		liveChart.record();
-		liveChart.initHistory(app.conn, app.namespace, app.connectors);
+		// Unconditional, because the user may well have picked the source auto had already
+		// resolved — in which case update() saw no change and re-armed nothing.
+		this.rearmChart();
 		app.renderDashboard();
 	},
 

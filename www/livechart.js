@@ -78,6 +78,15 @@ var liveChart = {
 	_historyLoading: false,
 
 	/**
+	 * How far apart two OpenAPI history samples may be and still count as one reading.
+	 *
+	 * The connector writes its sections across one cycle, a few hundred milliseconds end to end,
+	 * against a minimum poll interval of 10 s — so anything inside a couple of seconds came from
+	 * the same cycle and nothing from an adjacent cycle can be mistaken for it.
+	 */
+	OPENAPI_CYCLE_TOLERANCE_MS: 2000,
+
+	/**
 	 * Incremented whenever the source changes, so a load started for the previous source can be
 	 * recognised and discarded when it comes back. Without it, a source switched while a load was
 	 * in flight merged the old source's samples into the new source's buffer, and the load the new
@@ -689,57 +698,58 @@ var liveChart = {
 				{ name: "surplus", data: toSorted(pending.surplus) },
 				{ name: "soc", data: toSorted(pending.soc) },
 			]);
-			// The balance terms never share a timestamp. Each state is written by its own
-			// setStateChangedAsync, and battery and meter come from two separate HTTP requests, so
-			// history stores each with its own millisecond — while mergeTimelines keys on an exact
-			// match and nulls everything else. Requiring all four at one timestamp therefore
-			// discarded every historical grid value, including the negative ones that need no
-			// balance at all. Carrying the last known term forward across the merged timeline is
-			// what makes the four comparable; they come from the same poll, a few hundred ms apart.
-			// Carried forward from the previous point, and — for the points before a term's own
-			// first sample — back from its earliest one. Without the backward half the first
-			// point of every loaded range had no balance to judge by and was read as an import,
-			// which on an exporting system is the wrong sign at the visible left edge.
-			var firstOf = function (field, abs) {
+			// The balance terms never share a timestamp: each state is written by its own
+			// setStateChangedAsync, and battery and meter come from two separate HTTP requests,
+			// while mergeTimelines keys on an exact match and nulls everything else. The terms of
+			// one poll land a few hundred ms apart, so each point takes the nearest sample of
+			// each term within OPENAPI_CYCLE_TOLERANCE_MS rather than requiring coincidence.
+			// Nearest in either direction, not last-seen: a term carried only forward pairs each
+			// grid sample with the *previous* cycle's house and PV, because the meter section is
+			// written after the battery section and therefore sorts later. That inverts the sign
+			// of the first point after every direction reversal.
+			var nearWithin = function (field, ts, abs) {
+				var best = null;
+				var bestGap = this.OPENAPI_CYCLE_TOLERANCE_MS + 1;
 				for (var fi = 0; fi < oaMerged.length; fi++) {
-					var v = abs ? nAbs(oaMerged[fi][field]) : oaMerged[fi][field];
-					if (v != null) {
-						return v;
+					var raw = abs ? nAbs(oaMerged[fi][field]) : oaMerged[fi][field];
+					if (raw == null) {
+						continue;
+					}
+					var gap = Math.abs(oaMerged[fi].ts - ts);
+					if (gap < bestGap) {
+						bestGap = gap;
+						best = raw;
 					}
 				}
-				return null;
-			};
-			var lastHouse = firstOf("house", true);
-			var lastBattery = firstOf("battery", false);
-			var lastPv = firstOf("pv", true);
-			var lastSurplus = firstOf("surplus", false);
+				return best;
+			}.bind(this);
 			for (var oi = 0; oi < oaMerged.length; oi++) {
 				var om = oaMerged[oi];
 				var oaHouse = nAbs(om.house);
 				var oaPv = nAbs(om.pv);
-				if (oaHouse != null) {
-					lastHouse = oaHouse;
-				}
-				if (om.battery != null) {
-					lastBattery = om.battery;
-				}
-				if (oaPv != null) {
-					lastPv = oaPv;
-				}
-				if (om.surplus != null) {
-					lastSurplus = om.surplus;
-				}
 				var oaGrid = null;
 				if (om.grid != null) {
 					if (om.grid < 0) {
 						// Signed reading — definitive on its own, no balance needed.
 						oaGrid = om.grid;
-					} else if (lastHouse != null && lastBattery != null && lastPv != null) {
-						oaGrid = energyFlow.resolveOpenapiGrid(om.grid, lastHouse, lastBattery, lastPv, lastSurplus);
 					} else {
-						// Before the first sample of a term: keep the measured magnitude rather
-						// than dropping the point, and read it as an import.
-						oaGrid = Math.abs(om.grid);
+						var nHouse = oaHouse != null ? oaHouse : nearWithin("house", om.ts, true);
+						var nBattery = om.battery != null ? om.battery : nearWithin("battery", om.ts, false);
+						var nPv = oaPv != null ? oaPv : nearWithin("pv", om.ts, true);
+						if (nHouse != null && nBattery != null && nPv != null) {
+							oaGrid = energyFlow.resolveOpenapiGrid(
+								om.grid,
+								nHouse,
+								nBattery,
+								nPv,
+								om.surplus != null ? om.surplus : nearWithin("surplus", om.ts, false),
+							);
+						} else {
+							// No balance within tolerance — a term that is not logged at all, or a
+							// gap in the range. Keep the measurement and read it as an import
+							// rather than dropping the point.
+							oaGrid = Math.abs(om.grid);
+						}
 					}
 				}
 				points.push({

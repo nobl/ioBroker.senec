@@ -176,8 +176,10 @@ Points worth knowing before trusting any of it:
   direction comes from the power balance (`houseConsumption + battery − production`), which is
   sign-correct wherever the metered magnitude is; and when the direction is export while
   `gridPower` reads zero, the field is import-only and `powerSurplus` supplies the magnitude.
-  The balance has a 50 W band around zero inside which no direction is claimed — a working
-  figure with headroom over the 5 W residual in the sample above, not a measured noise floor.
+  The balance has a 50 W band around zero inside which it places nothing: a metered magnitude
+  also inside the band reads as zero, and a larger one is kept and read as an import. 50 W is a
+  working figure with headroom over the 5 W residual in the sample above, not a measured noise
+  floor.
 
   **Settling this needs one export-time reading.** On an appliance polled by both local
   connectors while feeding in, capture `_openapi.meter.gridPower`,
