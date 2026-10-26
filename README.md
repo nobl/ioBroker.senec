@@ -157,7 +157,7 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 2.16.2 (2026-10-26)
 - fixed bogus readme
 
 ### 2.16.1 (2026-10-26)
@@ -198,9 +198,6 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 - Change: The SENEC App API login writes the names of the fields it posts in each step to the debug log. The values are not logged. Whether the adapter returns the form the SSO served is the first thing a refused login has to be checked against, and reconstructing it needed a separate script run on the reporter's machine.
 - Change: The login names the account it is attempted with, masked to the first character and the domain. A login that is refused while the credentials are known to be correct could not previously be checked against the address the adapter actually uses.
 - Change: The steps of the App API login ask the SSO for a page rather than for JSON. Every step of the login is answered with an HTML page, while the shared client asks for JSON, which suits the mein-senec.de calls and the token endpoint. The token requests now state that expectation themselves instead of relying on the shared default.
-- Dependency updates
-
-### 2.15.4 (2026-09-12)
 - Dependency updates
 
 ### [Former Updates](CHANGELOG_OLD.md)
