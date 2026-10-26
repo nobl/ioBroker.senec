@@ -353,9 +353,8 @@ describe("local OpenAPI: registering with the appliance", () => {
 				config: { openapi_auto_approve: true },
 				getStateAsync: tokenStored(),
 				openapiExpectedDeviceId: null,
-				// Unpinned, which is the state a fresh process is actually in. The harness
-				// default is a placeholder that matches no real certificate, and a certificate
-				// that does not match the pin is now refused outright rather than adopted.
+				// Unpinned, which is the state a fresh process is actually in — the harness
+				// default is a placeholder standing in for "already pinned".
 				openapiFingerprint: null,
 				openapiClient: appliance(() => presenting(`S${THIS_APPLIANCE}`)),
 			});

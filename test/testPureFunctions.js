@@ -1842,32 +1842,34 @@ describe("local OpenAPI client", () => {
 			assert.equal(a.openapiIdentityMismatch, false);
 		});
 
-		// Unlike lala.cgi's TOFU, this connector sends a bearer token on every request — and
-		// sends it before the response carrying this certificate arrives. A peer presenting a
-		// different certificate has therefore already been handed one credential; adopting its
-		// fingerprint would hand it every later one too.
-		it("refuses a changed certificate instead of re-pinning it", async () => {
+		// Reported and then accepted. Refusing a renewed certificate was tried and reverted:
+		// the identity check above already refuses a certificate naming a different appliance,
+		// first contact pins before any token is sent, and the token is read-only on an
+		// appliance whose port 443 needs no authentication at all — so refusing bought nothing
+		// and would have taken the connector offline on every legitimate renewal.
+		it("warns about a changed certificate and then re-pins it", async () => {
 			const a = adapter({ openapiFingerprint: fingerprintOf("cert-one") });
 			await openapi.openapiVerifyPeer(a, cert("S209719282544", "cert-two"));
 			assert.ok(
-				a.logs.some(([level, msg]) => level === "error" && /certificate on port 4424 changed/.test(msg)),
+				a.logs.some(([level, msg]) => level === "warn" && /certificate on port 4424 changed/.test(msg)),
 				"a swapped certificate has to be said out loud",
 			);
-			assert.equal(a.openapiFingerprint, fingerprintOf("cert-one"), "the pin is kept");
-			assert.equal(a.openapiIdentityMismatch, true, "and the connector stops talking to it");
-			assert.deepEqual(a.states, [], "the new fingerprint is not written down");
+			assert.equal(a.openapiFingerprint, fingerprintOf("cert-two"), "and then accepted");
+			assert.equal(a.openapiIdentityMismatch, false, "the connector keeps talking to it");
+			assert.deepEqual(a.states, [["_openapi.tls.fingerprint", fingerprintOf("cert-two")]]);
 		});
 
-		it("names the way back when it refuses a changed certificate", async () => {
-			// Refusing without saying how to recover would strand an appliance whose
-			// certificate was genuinely renewed.
-			const a = adapter({ openapiFingerprint: fingerprintOf("cert-one") });
-			await openapi.openapiVerifyPeer(a, cert("S209719282544", "cert-two"));
-			assert.ok(a.logs.some(([, msg]) => /forget\s+the token/.test(msg)));
+		it("still refuses a certificate that names a different appliance", async () => {
+			// This is the check that actually protects the connector, and it is unconditional.
+			const a = adapter({
+				openapiExpectedDeviceId: "209719282544",
+				openapiFingerprint: fingerprintOf("cert-one"),
+			});
+			await openapi.openapiVerifyPeer(a, cert("S999999999999", "cert-two"));
+			assert.equal(a.openapiIdentityMismatch, true);
+			assert.equal(a.openapiFingerprint, fingerprintOf("cert-one"), "and it does not re-pin");
 		});
 
-		// The handshake is the only identity available to an instance that polls nothing from
-		// lala.cgi and holds no approved token — which is the state auto-approval works from.
 		it("adopts the appliance identity from the certificate when nothing else knows it", async () => {
 			const a = adapter();
 			await openapi.openapiVerifyPeer(a, cert("S209719282544"));

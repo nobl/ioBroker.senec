@@ -201,7 +201,6 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 - Fix: A stopped instance no longer shows every connector as connected on the dashboard.
 - Fix: Values are no longer published as `Infinity` for a state declared numeric, and a value that cannot be read as a number no longer changes the state's declared type — which breaks recording in InfluxDB.
 - Fix: Several states could still be written during shutdown, after the adapter had reported itself stopped.
-- Fix: A changed certificate on port 4424 is now refused rather than adopted. Unlike `lala.cgi`, this connector sends a token with every request, so a device presenting an unexpected certificate has already been given a credential. If the appliance genuinely has a new certificate, forget the token in the settings and register again.
 - Fix: A log warning about a response this version cannot read is written once per condition rather than once per poll.
 - Fix: The *Battery (now)* card and the energy flow beside it no longer disagree by up to a minute when both local connectors are enabled.
 - Fix: The dashboard no longer hides the `bess` and wallbox rows for a moment on every page load, and reads the OpenAPI section list the same way the connector does for every stored shape of that setting.
