@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, escHtml, stateIsLive, connectorEnabled, liveChart */
+/* global app, t, escHtml, stateIsLive, connectorOfState, connectorEnabled, liveChart */
 /* exported energyFlow */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -1570,19 +1570,22 @@ var energyFlow = {
 	},
 
 	/**
-	 * State ids that belong to each source, as a prefix or exact-id test.
+	 * Whether an arriving state change is a whole reading from the given source.
 	 *
-	 * Used to decide whether an arriving state change should produce a chart sample: only the
-	 * active source's own states may, or another connector's poll samples this one's data.
-	 *
-	 * The OpenAPI entry is deliberately only its complete-cycle marker, because its sections
-	 * arrive as a dozen separate writes and no individual one of them is a whole reading.
+	 * Two questions, and only the second is this function's own. Which connector writes a
+	 * state is `connectorOfState`, the single authority on the id prefixes; what remains here
+	 * is the narrowing — a connector writes far more than its power readings, and sampling the
+	 * chart on a serial number or a temperature would plot the previous reading again under a
+	 * new timestamp.
 	 *
 	 * @param {string} src - Source name
 	 * @param {string} shortId - State id without the adapter namespace
 	 * @returns {boolean} Whether the state belongs to that source
 	 */
 	sourceOwnsState: function (src, shortId) {
+		if (connectorOfState(shortId) !== src) {
+			return false;
+		}
 		if (src === "openapi") {
 			// The end-of-cycle markers, which the connector writes after the sections. Not the
 			// individual section writes: they arrive a dozen at a time from separate requests,
@@ -1596,10 +1599,10 @@ var energyFlow = {
 			return shortId.startsWith("ENERGY.GUI_") || shortId.startsWith("WALLBOX.");
 		}
 		if (src === "api") {
-			return shortId.startsWith("_api.") && shortId.indexOf("currently.") !== -1;
+			return shortId.indexOf("currently.") !== -1;
 		}
 		if (src === "web") {
-			return shortId.startsWith("_meinsenec.Status.");
+			return shortId.indexOf(".Status.") !== -1;
 		}
 		return false;
 	},

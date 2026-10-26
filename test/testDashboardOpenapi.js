@@ -414,9 +414,23 @@ describe("dashboard — local OpenAPI energy source", () => {
 		});
 
 		it("does not let one source claim another's states", () => {
+			// The prefix half of this is connectorOfState's single answer now, not a second
+			// list kept in step by hand — so these are the cases that would drift if it were.
 			assert.equal(energyFlow.sourceOwnsState("openapi", "ENERGY.GUI_HOUSE_POW"), false);
 			assert.equal(energyFlow.sourceOwnsState("local", "_openapi.info.lastPoll"), false);
+			assert.equal(energyFlow.sourceOwnsState("api", "_meinsenec.Status.consumption.now"), false);
+			assert.equal(energyFlow.sourceOwnsState("web", "_api.Anlagen.1.Dashboard.currently.gridDrawInW"), false);
+			assert.equal(energyFlow.sourceOwnsState("local", "_meinsenec.Status.consumption.now"), false);
+			// The cases the connector test is actually load-bearing for: the narrowing alone
+			// would accept these, because a segment named `currently.` or `.Status.` is not
+			// unique to the connector that coined it. SENEC.Connect is the one that bit the
+			// badge code, which had no branch for it at all.
+			assert.equal(energyFlow.sourceOwnsState("api", "_connect.Systems.X.currently.gridPower"), false);
+			assert.equal(energyFlow.sourceOwnsState("web", "_connect.Systems.X.Status.consumption"), false);
 			assert.equal(energyFlow.sourceOwnsState("local", "ENERGY.GUI_HOUSE_POW"), true);
+			// A connector writes far more than its power readings; only the readings may sample.
+			assert.equal(energyFlow.sourceOwnsState("local", "BMS.SYSTEM_SOH"), false);
+			assert.equal(energyFlow.sourceOwnsState("api", "_api.Anlagen.1.SystemDetails.batteryPack.x"), false);
 			assert.equal(energyFlow.sourceOwnsState("web", "_meinsenec.Status.consumption.now"), true);
 			assert.equal(energyFlow.sourceOwnsState("api", "_api.Anlagen.1.Dashboard.currently.gridDrawInW"), true);
 		});
