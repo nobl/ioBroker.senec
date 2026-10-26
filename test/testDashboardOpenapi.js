@@ -51,7 +51,22 @@ function translate(key, params) {
 function loadWww(file, extraGlobals = {}) {
 	const context = vm.createContext({
 		app: { states: {}, config: {}, connectors: {} },
-		liveChart: {},
+		// energy.js resets the chart on every source change, so the stub needs the whole
+		// surface it reaches for. A bare {} let a missing member go unnoticed until it was
+		// a function call rather than a property write.
+		liveChart: {
+			buffer: [],
+			_lastTs: 0,
+			_loadGeneration: 0,
+			_historyLoaded: false,
+			_historyLoading: false,
+			_historyStatus: {},
+			_historyRequestedTs: Infinity,
+			_newestHistoryTs: 0,
+			_clearLoadTimer() {},
+			record() {},
+			initHistory() {},
+		},
 		navigator: { language: "en" },
 		...extraGlobals,
 	});
@@ -241,13 +256,11 @@ describe("dashboard — local OpenAPI energy source", () => {
 			assert.equal(energyFlow.data.wallbox, 0);
 		});
 
-		it("takes the battery capacity from the nameplate in kWh", () => {
+		it("never takes the battery capacity from the nameplate", () => {
+			// designCapacity is one module. Reading it as the pack made every time-to-full and
+			// time-to-empty short by the module count, and the module count is not available
+			// from this connector at all.
 			energyFlow.update({ ...states, "_openapi.bessNameplate.designCapacity": 5000 }, connectors(["openapi"]));
-			assert.equal(energyFlow.data.batteryCapacity, 5);
-		});
-
-		it("treats a zeroed nameplate capacity as not reported", () => {
-			energyFlow.update({ ...states, "_openapi.bessNameplate.designCapacity": 0 }, connectors(["openapi"]));
 			assert.equal(energyFlow.data.batteryCapacity, null);
 		});
 
@@ -299,11 +312,11 @@ describe("dashboard — local OpenAPI energy source", () => {
 			assert.equal(energyFlow.data.grid, 500);
 		});
 
-		it("keeps an explicitly configured capacity ahead of the nameplate", () => {
-			// TEST-004 / RISK-001: whether designCapacity covers the pack or one module is
-			// unverified, so a value the user typed must not be silently replaced by it.
+		it("takes a configured capacity and never the per-module nameplate figure", () => {
+			// designCapacity describes one module, so it is not a pack capacity and nothing
+			// falls back to it; a value the user typed is the only local source.
 			energyFlow.update({ ...states, "_openapi.bessNameplate.designCapacity": 5000 }, connectors(["openapi"]));
-			assert.equal(energyFlow.data.batteryCapacity, 5);
+			assert.equal(energyFlow.data.batteryCapacity, null);
 			app.config.battery_capacity = 10;
 			try {
 				energyFlow.update(
@@ -318,17 +331,42 @@ describe("dashboard — local OpenAPI energy source", () => {
 	});
 
 	describe("sourceOwnsState", () => {
-		it("accepts only the complete-cycle marker for the OpenAPI", () => {
-			// DEF-006: the sections arrive as a dozen separate writes, so no single one of them
-			// represents a whole reading.
+		it("accepts only the end-of-cycle markers for the OpenAPI", () => {
+			// The sections arrive as a dozen separate writes, so no single one of them
+			// represents a whole reading; the markers the connector writes once the sections
+			// are in do. Both of them: lastCompletePoll is written after lastPoll, so a gate
+			// that waits for completeness never fires on lastPoll alone.
+			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.info.lastPoll"), true);
 			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.info.lastCompletePoll"), true);
 			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.meter.gridPower"), false);
-			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.info.lastPoll"), false);
+			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.battery.power"), false);
+			assert.equal(energyFlow.sourceOwnsState("openapi", "_openapi.info.reachable"), false);
+		});
+
+		it("treats a cycle as complete only when both markers agree", () => {
+			// A cycle in which one section failed leaves lastCompletePoll at the previous
+			// stamp, so the two differ and the sample is a mix of two cycles.
+			assert.equal(energyFlow.openapiCycleComplete({}), false);
+			assert.equal(energyFlow.openapiCycleComplete({ "_openapi.info.lastPoll": "12:00:30" }), false);
+			assert.equal(
+				energyFlow.openapiCycleComplete({
+					"_openapi.info.lastPoll": "12:00:30",
+					"_openapi.info.lastCompletePoll": "11:59:30",
+				}),
+				false,
+			);
+			assert.equal(
+				energyFlow.openapiCycleComplete({
+					"_openapi.info.lastPoll": "12:00:30",
+					"_openapi.info.lastCompletePoll": "12:00:30",
+				}),
+				true,
+			);
 		});
 
 		it("does not let one source claim another's states", () => {
 			assert.equal(energyFlow.sourceOwnsState("openapi", "ENERGY.GUI_HOUSE_POW"), false);
-			assert.equal(energyFlow.sourceOwnsState("local", "_openapi.info.lastCompletePoll"), false);
+			assert.equal(energyFlow.sourceOwnsState("local", "_openapi.info.lastPoll"), false);
 			assert.equal(energyFlow.sourceOwnsState("local", "ENERGY.GUI_HOUSE_POW"), true);
 			assert.equal(energyFlow.sourceOwnsState("web", "_meinsenec.Status.consumption.now"), true);
 			assert.equal(energyFlow.sourceOwnsState("api", "_api.Anlagen.1.Dashboard.currently.gridDrawInW"), true);
@@ -340,7 +378,13 @@ describe("dashboard — local OpenAPI system cards", () => {
 	let systemInfo;
 
 	beforeEach(() => {
-		systemInfo = loadWww("system.js", { energyFlow: { apiAnlagenId: null } }).systemInfo;
+		// The wallbox cards read `_openapi.evse.*`, and a state only counts as live when its
+		// section is one the connector polls, so the include list has to name evse here — as an
+		// instance showing wallbox slots necessarily does.
+		systemInfo = loadWww("system.js", {
+			energyFlow: { apiAnlagenId: null },
+			app: { states: {}, connectors: {}, config: { openapi_include: ["battery", "meter", "bess", "evse"] } },
+		}).systemInfo;
 	});
 
 	it("credits an OpenAPI state to the OpenAPI, not to lala.cgi", () => {
@@ -608,6 +652,38 @@ describe("dashboard — values from connectors that are switched off", () => {
 		assert.equal(systemInfo.sourceTag(states, ["FACTORY.SYS_TYPE_Text", "_openapi.bessNameplate.model"]), "O");
 	});
 
+	it("hands the system tab an empty TLS card when lala.cgi is off", () => {
+		// The TLS card used to render unconditionally, defaulting the mode to "none" — so the
+		// system tab's container was never empty and the tab could not be hidden, whatever the
+		// connectors were doing. The upload it offers only affects lala.cgi.
+		const states = { "_local.tls.mode": "tofu", "_local.tls.fingerprint": "ab".repeat(16) };
+		assert.equal(systemInfo.renderTlsStatus(states), "", "lala.cgi is off in this fixture");
+
+		const withLocal = withConfig({ lala_use: true });
+		assert.match(withLocal.systemInfo.renderTlsStatus(states), /TOFU/, "and renders while it is on");
+	});
+
+	it("drops the OpenAPI card when its connector is switched off", () => {
+		const states = {
+			"_openapi.info.approvalState": "approved",
+			"_openapi.info.lastPoll": "2026-08-01T08:00:00.000Z",
+			"_openapi.tls.fingerprint": "cd".repeat(16),
+		};
+		assert.match(systemInfo.renderOpenapiStatus(states), /openapi_title|Local OpenAPI/);
+
+		const off = withConfig({ openapi_use: false });
+		assert.equal(off.systemInfo.renderOpenapiStatus(states), "", "a months-old approval is not a status");
+	});
+
+	it("keeps the control tree visible when lala.cgi is off", () => {
+		// A command is dispatched to whichever connector can carry it, so `control.` belongs to
+		// no single one. Attributing it to lala.cgi hid the whole Control tab.
+		assert.equal(energyFlow.activeSource, null, "no source resolved in this fixture");
+		const ctx = withConfig({ lala_use: false, web_use: true });
+		assert.equal(ctx.connectorOfState("control.emergencyPower.enabled"), null);
+		assert.equal(ctx.stateIsLive("control.emergencyPower.enabled"), true);
+	});
+
 	it("returns nothing when every source for a row is switched off", () => {
 		const states = { "BMS.SYSTEM_SOH": 100, "BMS.MODULE_COUNT": 2 };
 		assert.equal(systemInfo.getFirst(states, ["BMS.SYSTEM_SOH"]), null);
@@ -715,9 +791,17 @@ describe("dashboard — local OpenAPI live chart", () => {
 		 */
 		function deliver(states, conns, id, value) {
 			states[id] = value;
-			energyFlow.update(states, conns);
+			// app.js holds the recompute back on a bare section write, because a cycle's
+			// sections arrive from separate requests. Replaying that here is the point: a gate
+			// that passes in this helper but not in app.js is a chart that records nothing.
+			const isSection = /^_openapi\.(meter|battery|bess)\./.test(id);
+			if (!(energyFlow.activeSource === "openapi" && isSection)) {
+				energyFlow.update(states, conns);
+			}
 			if (energyFlow.activeSource && energyFlow.sourceOwnsState(energyFlow.activeSource, id)) {
-				liveChart.record();
+				if (energyFlow.activeSource !== "openapi" || energyFlow.openapiCycleComplete(states)) {
+					liveChart.record();
+				}
 			}
 		}
 
@@ -859,6 +943,46 @@ describe("dashboard — local OpenAPI live chart", () => {
 				.filter((pt) => pt.grid != null)
 				.map((pt) => pt.grid);
 			assert.deepEqual(grids, [900, 900, -2200, -2200], `got ${JSON.stringify(grids)}`);
+		});
+
+		it("carries a term that stopped being logged across the whole range", () => {
+			// setStateChangedAsync records nothing when a value does not change, so a battery
+			// idling at 0 W is written once and then never again. The direction still has to
+			// resolve from it hours later, or the whole export reads as an import.
+			const T0 = 1761000000000;
+			const pending = { grid: [], house: [], pv: [], battery: [{ ts: T0, val: 0 }] };
+			for (let i = 0; i < 40; i++) {
+				const base = T0 + i * 60000;
+				pending.grid.push({ ts: base + 140, val: 3200 });
+				pending.house.push({ ts: base + 147, val: 300 });
+				pending.pv.push({ ts: base + 152, val: 3500 });
+			}
+
+			liveChart.buffer = [];
+			liveChart._mergeHistory(pending, "openapi");
+			const grids = plain(liveChart.buffer)
+				.filter((pt) => pt.grid != null)
+				.map((pt) => pt.grid);
+			assert.equal(grids.length, 40);
+			// 3500 W of PV, 300 W of house, nothing charging: an export, at every point.
+			assert.ok(
+				grids.every((g) => g === -3200),
+				`a carried-forward battery term was dropped: ${JSON.stringify(grids.slice(0, 5))}`,
+			);
+
+			// The same when the one sample lands at the far end of the range, so every grid
+			// point precedes it and there is nothing to carry forward from.
+			pending.battery = [{ ts: T0 + 39 * 60000, val: 0 }];
+			liveChart.buffer = [];
+			liveChart._mergeHistory(pending, "openapi");
+			const backwards = plain(liveChart.buffer)
+				.filter((pt) => pt.grid != null)
+				.map((pt) => pt.grid);
+			assert.equal(backwards.length, 40);
+			assert.ok(
+				backwards.every((g) => g === -3200),
+				`a term only sampled later was dropped: ${JSON.stringify(backwards.slice(0, 5))}`,
+			);
 		});
 
 		it("keeps the measured magnitude when a balance term was never recorded", () => {

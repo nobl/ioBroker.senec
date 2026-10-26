@@ -744,6 +744,44 @@ describe("local OpenAPI connector: life cycle", () => {
 			assert.deepEqual(adapter.armed, [], "and nothing is armed to fire after it");
 			assert.equal(adapter.openapiCycleRunning, false, "the cycle flag is released whatever happened");
 		});
+
+		it("writes no tail state when unload lands on the last route of the cycle", async () => {
+			// Setting `unloaded` on the first response is caught by the loop guard, so the code
+			// after the loop — the poll markers, the connection state, the approval report — is
+			// never reached. Unloading on the last route is what exercises it.
+			// Two things have to line up for the tail to be reachable at all, and both are the
+			// reason the earlier test does not reach it. The route has to be the last entry of
+			// READ_ROUTES — the loop tests `unloaded` at the top of every iteration, so an
+			// earlier one is caught there — which means `/v1/evse`, and therefore an include
+			// list that asks for it. And the unload has to land *after* the loop's second check,
+			// which sits right after the JSON parse; the writes are what follow it. So it is
+			// `evalPoll`, the next await, that unloads here.
+			const adapter = makeAdapter({
+				config: { openapi_include: ["battery", "meter", "bess", "bessNameplate", "evse"] },
+				getStateAsync: tokenStored(),
+			});
+			adapter.openapiClient = appliance((path) =>
+				path === "/v1/evse" ? answers([{ id: "1" }]) : answers({ stateOfCharge: 47 }),
+			);
+			adapter.evalPoll = async (obj, pfx) => {
+				adapter.polled.push([pfx, obj]);
+				if (Object.keys(obj)[0] === "evse") {
+					adapter.unloaded = true;
+				}
+			};
+
+			await openapi.openapiPoll(adapter);
+
+			assert.ok(adapter.openapiClient.calls.includes("/v1/evse"), "the cycle reached the last route");
+			const written = adapter.states.map(([id]) => id);
+			assert.deepEqual(
+				written.filter((id) => id.startsWith("_openapi.info.") || id === "info.connection"),
+				[],
+				`the tail wrote into an unloading adapter: ${JSON.stringify(written)}`,
+			);
+			assert.deepEqual(adapter.armed, [], "and nothing is armed to fire after it");
+			assert.equal(adapter.openapiCycleRunning, false, "the cycle flag is released whatever happened");
+		});
 	});
 
 	describe("openapiInit", () => {
@@ -961,7 +999,10 @@ describe("local OpenAPI connector: a cycle that served only part of what it aske
 		assert.ok(lastWrite(adapter, "_openapi.info.lastCompletePoll"), "battery and meter both answered");
 	});
 
-	it("stamps both when every requested section answers", async () => {
+	it("stamps both from one timestamp when every requested section answers", async () => {
+		// Equal, not merely both present. The dashboard decides whether a cycle is complete by
+		// comparing them, so two stamps taken a millisecond apart would mark every healthy
+		// cycle as partial — and withhold every chart sample.
 		const adapter = makeAdapter({
 			getStateAsync: tokenStored(),
 			openapiClient: appliance(() => answers({ power: -850 })),
@@ -969,8 +1010,10 @@ describe("local OpenAPI connector: a cycle that served only part of what it aske
 
 		await withoutWaiting(() => openapi.openapiPoll(adapter));
 
-		assert.ok(lastWrite(adapter, "_openapi.info.lastPoll"));
-		assert.ok(lastWrite(adapter, "_openapi.info.lastCompletePoll"));
+		const polled = lastWrite(adapter, "_openapi.info.lastPoll");
+		const complete = lastWrite(adapter, "_openapi.info.lastCompletePoll");
+		assert.ok(polled, "the cycle stamped lastPoll");
+		assert.equal(complete, polled, "and lastCompletePoll carries the identical stamp");
 	});
 });
 
@@ -1046,6 +1089,29 @@ describe("local OpenAPI connector: wallbox slots that stop being reported", () =
 		await withoutWaiting(() => openapi.openapiPoll(adapter));
 
 		assert.equal(sweeps, 1, `swept ${sweeps} times across three cycles`);
+	});
+
+	it("keeps every slot when the response shape is not recognised", async () => {
+		// A 200 whose body is neither the array nor the object the appliance is known to send
+		// used to key an empty slot list — which the prune reads as "no slot was reported" and
+		// deletes all four, along with the history bindings on their states. The section is
+		// treated as not served instead.
+		const adapter = makeAdapter({
+			config: { openapi_include: ["battery", "meter", "evse"] },
+			getStateAsync: tokenStored(),
+			openapiClient: appliance((path) =>
+				path === "/v1/evse" ? answers("a string where a collection belongs") : answers({ power: -850 }),
+			),
+		});
+		withSlots(adapter, ["1", "2", "3", "4"]);
+
+		await withoutWaiting(() => openapi.openapiPoll(adapter));
+
+		assert.deepEqual(adapter.deleted, [], "an unreadable body is not evidence that a slot has gone");
+		assert.ok(adapter.objects["senec.0._openapi.evse.1.evConnected"], "slot 1 survives");
+		assert.ok(adapter.objects["senec.0._openapi.evse.4.evConnected"], "slot 4 survives");
+		// And the cycle is not called complete: a section that could not be read did not answer.
+		assert.equal(lastWrite(adapter, "_openapi.info.lastCompletePoll"), undefined);
 	});
 
 	it("leaves states under other sections alone", async () => {

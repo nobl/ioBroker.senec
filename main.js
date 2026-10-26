@@ -98,6 +98,7 @@ class Senec extends utils.Adapter {
 		 * The sweep walks every object the instance owns, so it must not run once per poll.
 		 */
 		this.openapiEvseCleared = false;
+		this.openapiEvseSlots = "";
 		this.connectVia = "https://";
 		this.unloaded = false;
 		/** Waiters parked by delay(), so unload can wake them instead of leaving them pending. */
@@ -629,6 +630,12 @@ class Senec extends utils.Adapter {
 	 * and per-connector info.*Connected states.
 	 */
 	async updateConnectionStatus() {
+		// Reached from every client's error and retry paths, which can resolve after unload has
+		// already closed the object database. Writing then logs a torrent of "adapter is not
+		// connected" for a status nothing will read.
+		if (this.unloaded) {
+			return;
+		}
 		const configured = {
 			local: !!this.config.lala_use,
 			api: !!this.config.api_use,
@@ -2899,7 +2906,13 @@ const ValueTyping = (key, value) => {
 	} else if (isIP) {
 		return DecToIP(value);
 	} else if (multiply !== 1) {
-		return parseFloat((value * multiply).toFixed(2));
+		// Only a number can be scaled. A field with a unit but no numtype reaches here still a
+		// string when the appliance sends something non-numeric, and the multiply published NaN
+		// — which the dashboard then had to defend against on every read.
+		if (!Number.isFinite(Number(value))) {
+			return value;
+		}
+		return parseFloat((Number(value) * multiply).toFixed(2));
 	}
 	return value;
 };

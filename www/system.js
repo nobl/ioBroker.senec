@@ -1,6 +1,6 @@
 "use strict";
 
-/* global t, escHtml, stateIsLive, energyFlow */
+/* global t, escHtml, stateIsLive, connectorOfState, energyFlow */
 /* exported systemInfo */
 
 /**
@@ -33,6 +33,9 @@ var systemInfo = {
 		return null;
 	},
 
+	/** The badge letter for each connector, keyed as `connectorOfState` names them. */
+	BADGE_LETTER: { local: "L", openapi: "O", api: "A", web: "W", connect: "C" },
+
 	/**
 	 * Detect which connector a state key comes from
 	 *
@@ -47,18 +50,11 @@ var systemInfo = {
 				continue;
 			}
 			if (states[keys[i]] !== undefined && states[keys[i]] !== null) {
-				if (keys[i].startsWith("_api.")) {
-					return "A";
-				}
-				if (keys[i].startsWith("_meinsenec.")) {
-					return "W";
-				}
-				// Before the fallthrough: an unrecognised prefix is reported as local, so an
-				// _openapi key would be credited to lala.cgi.
-				if (keys[i].startsWith("_openapi.")) {
-					return "O";
-				}
-				return "L";
+				// Through connectorOfState rather than a second list of prefixes. The two had
+				// already diverged: this one had no `_connect.` branch, so a SENEC.Connect state
+				// was badged L — and the only reason that was invisible is that no row names one
+				// yet.
+				return this.BADGE_LETTER[connectorOfState(keys[i])] || "L";
 			}
 		}
 		return "";
@@ -73,8 +69,8 @@ var systemInfo = {
 		if (!tag) {
 			return "";
 		}
-		var colors = { L: "#4caf50", O: "#00897b", A: "#2196f3", W: "#ff9800" };
-		var labels = { L: "Local", O: "Local OpenAPI", A: "API", W: "Web" };
+		var colors = { L: "#4caf50", O: "#00897b", A: "#2196f3", W: "#ff9800", C: "#7e57c2" };
+		var labels = { L: "Local", O: "Local OpenAPI", A: "API", W: "Web", C: "SENEC.Connect" };
 		var hasMismatch = tag.indexOf("!") !== -1;
 		var clean = tag.replace(/[! ]/g, "");
 		var html = " ";
@@ -1414,11 +1410,13 @@ var systemInfo = {
 	 * @returns {string} HTML string
 	 */
 	renderOpenapiStatus: function (states) {
-		var approval = states["_openapi.info.approvalState"];
-		var lastPoll = states["_openapi.info.lastPoll"];
-		var lastComplete = states["_openapi.info.lastCompletePoll"];
-		var fingerprint = states["_openapi.tls.fingerprint"];
-		var connected = states["info.openapiConnected"];
+		// Through getFirst like every other row, so the card disappears with its connector
+		// instead of reporting a months-old approval and fingerprint as the current state.
+		var approval = this.getFirst(states, ["_openapi.info.approvalState"]);
+		var lastPoll = this.getFirst(states, ["_openapi.info.lastPoll"]);
+		var lastComplete = this.getFirst(states, ["_openapi.info.lastCompletePoll"]);
+		var fingerprint = this.getFirst(states, ["_openapi.tls.fingerprint"]);
+		var connected = this.getFirst(states, ["info.openapiConnected"]);
 		var manufacturer = this.getFirst(states, ["_openapi.bessNameplate.manufacturer"]);
 		var capacity = this.getFirst(states, ["_openapi.bessNameplate.designCapacity"]);
 		var acRelay = this.getFirst(states, ["_openapi.bess.acRelayConnected"]);
@@ -1453,7 +1451,7 @@ var systemInfo = {
 		// Reachability is a separate axis from approval: the connector leaves approvalState at
 		// "approved" through an outage, because the registration is still approved — it is the
 		// appliance that cannot be reached.
-		if (connected !== undefined && connected !== null) {
+		if (connected !== null) {
 			html += this.renderMetric(
 				t("openapi_reachable"),
 				connected ? t("yes") : t("no"),
@@ -1569,9 +1567,14 @@ var systemInfo = {
 		if (hours < 36) {
 			return t("age_hours", { count: hours });
 		}
-		return `${String(then.getHours()).padStart(2, "0")}:${String(then.getMinutes()).padStart(2, "0")}:${String(
-			then.getSeconds(),
-		).padStart(2, "0")}`;
+		// With the date. A bare time of day read as current at a glance, which is exactly the
+		// wrong impression for a poll that last succeeded days ago.
+		return then.toLocaleString(undefined, {
+			month: "short",
+			day: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+		});
 	},
 
 	/**
@@ -1581,8 +1584,16 @@ var systemInfo = {
 	 * @returns {string} HTML string
 	 */
 	renderTlsStatus: function (states) {
-		var mode = states["_local.tls.mode"] || "none";
-		var fingerprint = states["_local.tls.fingerprint"] || "";
+		var liveMode = this.getFirst(states, ["_local.tls.mode"]);
+		var liveFingerprint = this.getFirst(states, ["_local.tls.fingerprint"]);
+		// The certificate this card is about is the one lala.cgi presents, and the upload below
+		// only affects that connector. With it switched off the card described a validation mode
+		// nothing was validating, and offered an upload that would change nothing.
+		if (liveMode === null && liveFingerprint === null) {
+			return "";
+		}
+		var mode = liveMode || "none";
+		var fingerprint = liveFingerprint === null ? "" : String(liveFingerprint);
 
 		var modeLabels = {
 			user: t("tls_mode_user"),

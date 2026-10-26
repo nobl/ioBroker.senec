@@ -78,13 +78,24 @@ var liveChart = {
 	_historyLoading: false,
 
 	/**
-	 * How far apart two OpenAPI history samples may be and still count as one reading.
+	 * How close two samples must be to count as the same moment when merging.
 	 *
-	 * The connector writes its sections across one cycle, a few hundred milliseconds end to end,
-	 * against a minimum poll interval of 10 s — so anything inside a couple of seconds came from
-	 * the same cycle and nothing from an adjacent cycle can be mistaken for it.
+	 * Below the 2 s throttle in `record`, so two live points are never collapsed into one, and
+	 * far below the shortest poll interval, so two genuine readings are never collapsed either.
 	 */
-	OPENAPI_CYCLE_TOLERANCE_MS: 2000,
+	MERGE_DEDUPE_MS: 1000,
+
+	/** Pending release of `_historyLoading`, in case the getHistory emit is never acked */
+	_loadTimer: null,
+
+	/**
+	 * How long to wait for a getHistory reply before assuming it will not come.
+	 *
+	 * Generous on purpose: a 30-day range against an SQL backend on a Raspberry Pi takes tens
+	 * of seconds, and releasing the flag early only costs a duplicate query, while releasing it
+	 * too late costs nothing but a slower recovery from a dropped socket.
+	 */
+	HISTORY_ACK_TIMEOUT_MS: 90000,
 
 	/**
 	 * Incremented whenever the source changes, so a load started for the previous source can be
@@ -95,7 +106,11 @@ var liveChart = {
 	_loadGeneration: 0,
 
 	/**
-	 * Newest timestamp a history query has covered.
+	 * Newest moment the buffer holds data for, whether a query covered it or `record` collected it.
+	 *
+	 * Both, deliberately: it is what `resumeAfterReconnect` asks history for the other side of, so
+	 * leaving it behind while the page collected live samples made the gap fill re-request minutes
+	 * the page already had.
 	 *
 	 * `_historyRequestedTs` tracks the oldest edge, which is what the pan/zoom backfill needs. It
 	 * cannot see a hole in the middle: after a socket reconnect the gap sits between the last
@@ -353,15 +368,27 @@ var liveChart = {
 
 		this._historyStatus = {};
 		var checked = 0;
+		// Discovery is a dozen outstanding getObject calls, and a source switch between the
+		// first and the last of them empties `_historyStatus` underneath them. Without this,
+		// a stale callback re-creates the entry it was probing — so the new source's chart
+		// reports a line it does not have, and `onDone` fires a backfill for the old source.
+		var generation = this._loadGeneration;
 
 		var checkOne = function (field) {
 			liveChart._historyStatus[field.name] = { key: field.key, line: field.line, instance: null };
 			conn.emit("getObject", `${namespace}.${field.key}`, function (err, obj) {
+				if (generation !== liveChart._loadGeneration) {
+					return;
+				}
+				var entry = liveChart._historyStatus[field.name];
+				if (!entry) {
+					return;
+				}
 				if (!err && obj && obj.common && obj.common.custom) {
 					// First enabled instance wins — history/sql/influxdb are equivalent here
 					for (var inst in obj.common.custom) {
 						if (obj.common.custom[inst] && obj.common.custom[inst].enabled) {
-							liveChart._historyStatus[field.name].instance = inst;
+							entry.instance = inst;
 							break;
 						}
 					}
@@ -478,6 +505,22 @@ var liveChart = {
 		}
 
 		this._historyLoading = true;
+		// socket.io does not time out an un-acked emit, and `_historyLoading` is the flag every
+		// backfill trigger tests before asking for more. A getHistory lost to an adapter restart
+		// or a dropped socket therefore wedges the chart for the life of the page: no further
+		// load is ever attempted, and nothing on screen says why. Releasing the flag lets the
+		// next trigger retry; a late reply is discarded by the generation check below.
+		if (this._loadTimer) {
+			clearTimeout(this._loadTimer);
+		}
+		// The generation is deliberately not bumped: a reply that arrives late is still this
+		// source's own data for a range it still wants, and bumping would also discard any
+		// discovery in flight.
+		this._loadTimer = setTimeout(function () {
+			if (generation === liveChart._loadGeneration) {
+				liveChart._historyLoading = false;
+			}
+		}, this.HISTORY_ACK_TIMEOUT_MS);
 
 		var windowMs = this.window * 60 * 1000;
 		var start = startOverride != null ? startOverride : Date.now() - windowMs;
@@ -519,6 +562,7 @@ var liveChart = {
 							// merge into the new source's buffer. Clearing the in-progress flag
 							// is still this callback's job, or nothing would ever load again.
 							if (generation !== liveChart._loadGeneration) {
+								liveChart._clearLoadTimer();
 								liveChart._historyLoading = false;
 								// The load the new source needed was refused by the in-progress
 								// guard while this one was outstanding. Re-arm it, or the chart
@@ -536,6 +580,35 @@ var liveChart = {
 	},
 
 	/**
+	 * Drop the pending release of `_historyLoading`.
+	 */
+	_clearLoadTimer: function () {
+		if (this._loadTimer) {
+			clearTimeout(this._loadTimer);
+			this._loadTimer = null;
+		}
+	},
+
+	/**
+	 * How far apart two OpenAPI samples may be and still count as one poll cycle.
+	 *
+	 * Half the poll interval is the widest window in which the nearest sample is necessarily
+	 * from the same cycle, so it is the correctness bound; the 5 s cap keeps a skipped cycle
+	 * from pulling in its neighbour, since the sections of one cycle land a few hundred
+	 * milliseconds apart however slow the appliance is. The floor keeps that spread inside the
+	 * window if someone configures a one-second interval.
+	 *
+	 * @returns {number} Window in milliseconds
+	 */
+	_cycleWindowMs: function () {
+		var seconds = Number(app.config && app.config.openapi_interval);
+		if (!Number.isFinite(seconds) || seconds <= 0) {
+			seconds = 60;
+		}
+		return Math.max(500, Math.min((seconds * 1000) / 2, 5000));
+	},
+
+	/**
 	 * Merge history results into the buffer.
 	 * Aligns timestamps across multiple state histories.
 	 *
@@ -543,6 +616,7 @@ var liveChart = {
 	 * @param {string} src - Source type
 	 */
 	_mergeHistory: function (pending, src) {
+		this._clearLoadTimer();
 		this._historyLoading = false;
 
 		// If a window expansion was queued while loading, execute it now
@@ -698,31 +772,73 @@ var liveChart = {
 				{ name: "surplus", data: toSorted(pending.surplus) },
 				{ name: "soc", data: toSorted(pending.soc) },
 			]);
-			// The balance terms never share a timestamp: each state is written by its own
-			// setStateChangedAsync, and battery and meter come from two separate HTTP requests,
-			// while mergeTimelines keys on an exact match and nulls everything else. The terms of
-			// one poll land a few hundred ms apart, so each point takes the nearest sample of
-			// each term within OPENAPI_CYCLE_TOLERANCE_MS rather than requiring coincidence.
-			// Nearest in either direction, not last-seen: a term carried only forward pairs each
-			// grid sample with the *previous* cycle's house and PV, because the meter section is
-			// written after the battery section and therefore sorts later. That inverts the sign
-			// of the first point after every direction reversal.
-			var nearWithin = function (field, ts, abs) {
-				var best = null;
-				var bestGap = this.OPENAPI_CYCLE_TOLERANCE_MS + 1;
-				for (var fi = 0; fi < oaMerged.length; fi++) {
-					var raw = abs ? nAbs(oaMerged[fi][field]) : oaMerged[fi][field];
-					if (raw == null) {
-						continue;
-					}
-					var gap = Math.abs(oaMerged[fi].ts - ts);
-					if (gap < bestGap) {
-						bestGap = gap;
-						best = raw;
+
+			// Two properties of the recorded data shape this.
+			//
+			// The balance terms never share a timestamp with the grid sample: each state is
+			// written by its own setStateChangedAsync from a different request, and
+			// mergeTimelines keys on an exact match. So a term has to be looked up, not read
+			// off the row.
+			//
+			// And an unchanged value is not recorded at all — that is what setStateChangedAsync
+			// means — so there may be no sample anywhere near the grid point. A battery sitting
+			// at 0 while a full pack exports stops being logged entirely, which is exactly when
+			// the direction matters most.
+			//
+			// Hence two tiers, in this order. Nearest sample within one cycle width, in either
+			// direction, wins: the meter section is written after the battery section and
+			// therefore sorts later, so a term carried only forward pairs each grid sample with
+			// the *previous* cycle's house and PV, and inverts the sign of the first point after
+			// every direction reversal. Only when no sample falls inside that window does the
+			// last known value carry forward without limit — there, a stale reading beats no
+			// reading, because the alternative is discarding the point.
+			var cycleWindow = this._cycleWindowMs();
+			var seriesOf = function (field, abs) {
+				var out = [];
+				for (var si = 0; si < oaMerged.length; si++) {
+					var raw = abs ? nAbs(oaMerged[si][field]) : oaMerged[si][field];
+					if (raw != null) {
+						out.push({ ts: oaMerged[si].ts, val: raw });
 					}
 				}
-				return best;
-			}.bind(this);
+				return out;
+			};
+			var series = {
+				house: seriesOf("house", true),
+				battery: seriesOf("battery", false),
+				pv: seriesOf("pv", true),
+				surplus: seriesOf("surplus", false),
+			};
+
+			// Binary search, not a scan over every sample: scanning here was quadratic in the
+			// number of cycles, which at the 30-day zoom is ~43k points per term and froze the
+			// tab for minutes.
+			var valueAt = function (field, ts) {
+				var arr = series[field];
+				if (!arr.length) {
+					return null;
+				}
+				var lo = 0;
+				var hi = arr.length - 1;
+				var prev = -1;
+				while (lo <= hi) {
+					var mid = (lo + hi) >> 1;
+					if (arr[mid].ts <= ts) {
+						prev = mid;
+						lo = mid + 1;
+					} else {
+						hi = mid - 1;
+					}
+				}
+				var next = prev + 1;
+				var gapPrev = prev >= 0 ? ts - arr[prev].ts : Infinity;
+				var gapNext = next < arr.length ? arr[next].ts - ts : Infinity;
+				if (gapPrev <= cycleWindow || gapNext <= cycleWindow) {
+					return gapNext < gapPrev ? arr[next].val : arr[prev].val;
+				}
+				return prev >= 0 ? arr[prev].val : arr[0].val;
+			};
+
 			for (var oi = 0; oi < oaMerged.length; oi++) {
 				var om = oaMerged[oi];
 				var oaHouse = nAbs(om.house);
@@ -733,21 +849,21 @@ var liveChart = {
 						// Signed reading — definitive on its own, no balance needed.
 						oaGrid = om.grid;
 					} else {
-						var nHouse = oaHouse != null ? oaHouse : nearWithin("house", om.ts, true);
-						var nBattery = om.battery != null ? om.battery : nearWithin("battery", om.ts, false);
-						var nPv = oaPv != null ? oaPv : nearWithin("pv", om.ts, true);
+						var nHouse = oaHouse != null ? oaHouse : valueAt("house", om.ts);
+						var nBattery = om.battery != null ? om.battery : valueAt("battery", om.ts);
+						var nPv = oaPv != null ? oaPv : valueAt("pv", om.ts);
 						if (nHouse != null && nBattery != null && nPv != null) {
 							oaGrid = energyFlow.resolveOpenapiGrid(
 								om.grid,
 								nHouse,
 								nBattery,
 								nPv,
-								om.surplus != null ? om.surplus : nearWithin("surplus", om.ts, false),
+								om.surplus != null ? om.surplus : valueAt("surplus", om.ts),
 							);
 						} else {
-							// No balance within tolerance — a term that is not logged at all, or a
-							// gap in the range. Keep the measurement and read it as an import
-							// rather than dropping the point.
+							// A term with no sample anywhere in the range — not recorded at all,
+							// by any adapter. The magnitude is still a measurement, so the point
+							// is kept rather than dropped, read as the commoner direction.
 							oaGrid = Math.abs(om.grid);
 						}
 					}
@@ -835,21 +951,31 @@ var liveChart = {
 			return;
 		}
 
-		// Merge history into buffer — avoid duplicates, maintain sort order
-		var latestHistoryTs = points[points.length - 1].ts;
-		var oldestHistoryTs = points[0].ts;
-		// Find existing buffer points that are outside the new history range
-		var before = [];
-		var after = [];
-		for (var li = 0; li < this.buffer.length; li++) {
-			if (this.buffer[li].ts < oldestHistoryTs) {
-				before.push(this.buffer[li]);
-			} else if (this.buffer[li].ts > latestHistoryTs) {
-				after.push(this.buffer[li]);
+		// Merge the two sorted series rather than letting history replace its whole span.
+		// Dropping every buffer point between the oldest and newest loaded sample erased live
+		// points the history adapter had not written out yet — the recorder flushes on its own
+		// schedule, so a reconnect gap fill ending at `now` routinely returns less than the page
+		// had already collected, and the chart lost minutes it was displaying a moment earlier.
+		// Where both carry the same moment, history wins: it is what was stored, and the live
+		// point is only this page's reading of it.
+		var stitched = [];
+		var mbi = 0;
+		var mpi = 0;
+		while (mbi < this.buffer.length || mpi < points.length) {
+			if (mpi >= points.length) {
+				stitched.push(this.buffer[mbi++]);
+			} else if (mbi >= this.buffer.length) {
+				stitched.push(points[mpi++]);
+			} else if (Math.abs(this.buffer[mbi].ts - points[mpi].ts) <= this.MERGE_DEDUPE_MS) {
+				stitched.push(points[mpi++]);
+				mbi++;
+			} else if (this.buffer[mbi].ts < points[mpi].ts) {
+				stitched.push(this.buffer[mbi++]);
+			} else {
+				stitched.push(points[mpi++]);
 			}
 		}
-
-		this.buffer = before.concat(points, after);
+		this.buffer = stitched;
 
 		// Trim to max — only at live view so panned-back data isn't lost
 		if (this.viewOffset === 0 && this.buffer.length > this.maxPoints) {
@@ -923,6 +1049,14 @@ var liveChart = {
 			wallbox: d.wallbox || 0,
 			soc: d.soc, // percent, null when the source does not report it
 		});
+
+		// The page now holds data for this moment, so a reconnect must not ask history for it.
+		// `_newestHistoryTs` is the only record of where the covered range ends; leaving it at
+		// the last query's end made resumeAfterReconnect re-request every minute the page had
+		// been collecting live, which the merge then had to reconcile against itself.
+		if (now > this._newestHistoryTs) {
+			this._newestHistoryTs = now;
+		}
 
 		// Trim to max buffer size — only when at live view, so panned-back data isn't lost
 		if (this.viewOffset === 0 && this.buffer.length > this.maxPoints) {

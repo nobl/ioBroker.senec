@@ -1378,10 +1378,24 @@ describe("local OpenAPI client", () => {
 			assert.deepEqual(Object.keys(openapi.keyOpenapiWallboxes(body.devices)), ["1", "2"]);
 		});
 
-		it("returns nothing for a body that carries no devices", () => {
-			for (const empty of [null, undefined, {}, { devices: null }, 7, "x"]) {
-				assert.deepEqual(openapi.keyOpenapiWallboxes(empty), {});
+		it("returns null for a body whose shape it does not recognise", () => {
+			// Null rather than an empty map, and the difference is destructive: the caller
+			// deletes the slots absent from the response, so `{}` reads as "the appliance
+			// reports no slots" and takes every wallbox object — and the history settings
+			// attached to it — with it.
+			for (const unrecognised of [null, undefined, {}, { devices: null }, { devices: "x" }, 7, "x"]) {
+				assert.equal(
+					openapi.keyOpenapiWallboxes(unrecognised),
+					null,
+					`${JSON.stringify(unrecognised)} is not a readable collection`,
+				);
 			}
+		});
+
+		it("returns an empty map for a collection that is genuinely empty", () => {
+			// Distinct from the above: the appliance answered, and said there are no slots.
+			assert.deepEqual(openapi.keyOpenapiWallboxes([]), {});
+			assert.deepEqual(openapi.keyOpenapiWallboxes({ devices: [] }), {});
 		});
 
 		// Falling back to the position keeps a slot with no usable id from colliding with another.

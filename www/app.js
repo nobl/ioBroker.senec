@@ -114,6 +114,11 @@ var app = {
 			document.getElementById("error-banner").style.display = "none";
 			var reconnected = app._everConnected;
 			app._everConnected = true;
+			// Object subscriptions live on the server side of the socket, so a reconnect loses
+			// them. Subscribing only at setup meant that after one dropped socket the page
+			// stopped noticing configuration changes for the rest of its life — including the
+			// connector enable flags every card now tests before rendering a value.
+			app.conn.emit("subscribeObjects", `system.adapter.${NAMESPACE}`);
 			// Load i18n, config, and states — render once all are ready
 			i18n.init(app.conn).then(function () {
 				i18n.applyAll();
@@ -143,8 +148,6 @@ var app = {
 				app.renderDashboard();
 			}
 		});
-		this.conn.emit("subscribeObjects", `system.adapter.${NAMESPACE}`);
-
 		this.conn.on("stateChange", function (id, state) {
 			if (!id.startsWith(`${NAMESPACE}.`)) {
 				return;
@@ -170,6 +173,10 @@ var app = {
 				app.config = obj.native;
 				logViewer.onConfigLoaded();
 				eventTimeline.fetchEvents();
+				// Every card now tests the connector enable flags before showing a value, and
+				// those flags live in this config. Whatever was drawn before it arrived was
+				// drawn against an empty config, so it has to be drawn again.
+				app.renderDashboard();
 			}
 		});
 	},
@@ -183,14 +190,23 @@ var app = {
 				return;
 			}
 
+			// Replaced, not merged. A state deleted while the socket was down is simply absent
+			// from the reply, and merging left it in the cache for the life of the page — so a
+			// wallbox slot the appliance had stopped reporting, or a connector's states after it
+			// was switched off, went on rendering as current.
+			/** @type {Record<string, string | number | boolean | null>} */
+			var fresh = {};
 			if (states) {
 				for (var id in states) {
 					if (states[id] && id.startsWith(`${NAMESPACE}.`)) {
-						var shortId = id.substring(NAMESPACE.length + 1);
-						app.states[shortId] = states[id].val;
+						fresh[id.substring(NAMESPACE.length + 1)] = states[id].val;
 					}
 				}
 			}
+			app.states = fresh;
+			// The set of wallbox slots is memoised off the state ids, and this is the one place
+			// that can change all of them at once.
+			systemInfo.evseDirty();
 
 			app.connected = !!app.states["info.connection"];
 			app.render();
@@ -215,11 +231,23 @@ var app = {
 		this.renderConnectors();
 
 		// Re-render on energy-relevant state changes
-		var isOpenapiPower = shortId.startsWith("_openapi.meter.") || shortId.startsWith("_openapi.battery.");
+		// The OpenAPI publishes a cycle one section at a time, from separate requests, so any
+		// single section write is a half-updated reading. Recomputing on one of them drew a
+		// fresh battery value against the previous cycle's meter — which inverts the grid
+		// direction, because the direction is derived from the balance of the two. The
+		// end-of-cycle marker is the only point at which the set is coherent.
+		var isOpenapiSection =
+			shortId.startsWith("_openapi.meter.") ||
+			shortId.startsWith("_openapi.battery.") ||
+			shortId.startsWith("_openapi.bess.");
+		// Both markers, because the connector writes `lastPoll` first and `lastCompletePoll`
+		// only afterwards: on `lastPoll` the completeness test below still sees the previous
+		// cycle's stamp, so keying the recompute on `lastPoll` alone recorded nothing at all.
+		var isOpenapiCycleEnd = shortId === "_openapi.info.lastPoll" || shortId === "_openapi.info.lastCompletePoll";
 		var isEnergyState =
 			shortId.startsWith("ENERGY.GUI_") ||
-			isOpenapiPower ||
-			shortId === "_openapi.info.lastCompletePoll" ||
+			isOpenapiSection ||
+			isOpenapiCycleEnd ||
 			shortId.indexOf("currently.") !== -1 ||
 			shortId.indexOf("today.") !== -1 ||
 			shortId.indexOf("Status.") !== -1 ||
@@ -241,11 +269,20 @@ var app = {
 			shortId.indexOf("SystemStatus.") !== -1;
 
 		if (isEnergyState) {
-			energyFlow.update(this.states, this.connectors);
+			// Under the OpenAPI, hold the recompute until the cycle marker rather than running
+			// it on each section. Other sources publish a reading in one write and need no wait.
+			var holdForCycle = energyFlow.activeSource === "openapi" && isOpenapiSection;
+			if (!holdForCycle) {
+				energyFlow.update(this.states, this.connectors);
+			}
 			// Only the active source's own states produce a sample — see
-			// energyFlow.sourceOwnsState for which those are, and why.
+			// energyFlow.sourceOwnsState for which those are, and why. A cycle that did not
+			// serve every section is shown, so the page never silently freezes, but it is not
+			// recorded: a chart point mixing two cycles cannot be told from a real one later.
 			if (energyFlow.activeSource && energyFlow.sourceOwnsState(energyFlow.activeSource, shortId)) {
-				liveChart.record();
+				if (energyFlow.activeSource !== "openapi" || energyFlow.openapiCycleComplete(this.states)) {
+					liveChart.record();
+				}
 			}
 		}
 		if (this.activeTab === "overview" && (isEnergyState || isSystemState)) {
@@ -429,10 +466,11 @@ var app = {
 	/**
 	 * Hide the tabs whose cards all declined to render.
 	 *
-	 * Driven by what was actually produced rather than by a table of which connector
-	 * feeds which tab: the cards already return an empty string when none of their
-	 * sources is available, so emptiness is the same question asked once, and a card
-	 * added later is covered without touching this.
+	 * Two tests, and a tab needs both. `tabConnectors` names the connectors a tab's content can
+	 * come from, where there is such a list, and short-circuits before the DOM is consulted at
+	 * all — so a card added to one of those tabs is *not* covered automatically. Otherwise the
+	 * test is whether anything was produced, which the cards answer by returning an empty
+	 * string when none of their sources is live.
 	 */
 	syncTabVisibility: function () {
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -445,7 +483,10 @@ var app = {
 				possible &&
 				self.tabContainers[name].some(function (id) {
 					var el = document.getElementById(id);
-					return el && el.innerHTML.trim() !== "";
+					// childElementCount, not innerHTML: the cards are element nodes, and
+					// serialising every container's markup on each render just to ask whether
+					// it is empty is a cost that stays invisible until the tree is large.
+					return !!el && el.childElementCount > 0;
 				});
 			var button = /** @type {HTMLElement|null} */ (document.querySelector(`.nav-tab[data-tab="${name}"]`));
 			if (!button) {

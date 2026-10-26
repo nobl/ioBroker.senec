@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, stateIsLive, connectorEnabled, liveChart */
+/* global app, t, escHtml, stateIsLive, connectorEnabled, liveChart */
 /* exported energyFlow */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -144,8 +144,11 @@ var energyFlow = {
 		} else {
 			return false;
 		}
+		// A reading, not merely a present state: a field carrying an unavailability marker is
+		// not a power value, and selecting a source on the strength of one draws a diagram of
+		// zeros — the thing this test exists to prevent.
 		for (var i = 0; i < keys.length; i++) {
-			if (this.liveValue(states, keys[i]) !== undefined && this.liveValue(states, keys[i]) !== null) {
+			if (this.getStateOrNull(states, keys[i]) !== null) {
 				return true;
 			}
 		}
@@ -188,7 +191,13 @@ var energyFlow = {
 	 */
 	getState: function (states, key) {
 		var val = this.liveValue(states, key);
-		return val !== undefined && val !== null ? Number(val) : 0;
+		if (val === undefined || val === null) {
+			return 0;
+		}
+		// See getStateOrNull: a non-numeric value must not become NaN. Zero is this accessor's
+		// established answer for "nothing to read".
+		var num = Number(val);
+		return Number.isFinite(num) ? num : 0;
 	},
 
 	/**
@@ -199,7 +208,16 @@ var energyFlow = {
 	 */
 	getStateOrNull: function (states, key) {
 		var val = this.liveValue(states, key);
-		return val !== undefined && val !== null ? Number(val) : null;
+		if (val === undefined || val === null) {
+			return null;
+		}
+		// Not merely Number(). A W-unit field carrying a non-numeric string — which the
+		// appliance's own unavailability markers are, and which `state_attr` does not stop for a
+		// field with a unit but no numtype — yields NaN, and NaN fails every comparison silently:
+		// the grid balance stops resolving, both deadband tests fall through, and the magnitude
+		// is read as an import. Absent is the honest reading of a value that is not a number.
+		var num = Number(val);
+		return Number.isFinite(num) ? num : null;
 	},
 
 	/**
@@ -270,6 +288,13 @@ var energyFlow = {
 
 		if (!found) {
 			this.hasData = false;
+			// The reset above emptied `_historyStatus`, which is what every backfill trigger
+			// tests through `_hasHistory()`. Returning without re-arming leaves the chart with
+			// no path back to its history until the page is reloaded — the same trap the
+			// re-arm at the end of this function exists to avoid.
+			if (changed) {
+				this.rearmChart();
+			}
 			return;
 		}
 
@@ -313,7 +338,13 @@ var energyFlow = {
 		liveChart._historyStatus = {};
 		liveChart._historyRequestedTs = Infinity;
 		liveChart._newestHistoryTs = 0;
+		// The 2 s throttle in `record` is keyed on wall-clock time, not on the source, so a
+		// switch made within 2 s of the old source's last point threw away the new source's
+		// first one — and `rearmChart` is the only thing that records it.
+		liveChart._lastTs = 0;
 		liveChart._loadGeneration++;
+		liveChart._clearLoadTimer();
+		liveChart._historyLoading = false;
 	},
 
 	/**
@@ -326,7 +357,13 @@ var energyFlow = {
 		if (typeof liveChart === "undefined" || typeof app === "undefined" || !app.conn) {
 			return;
 		}
-		liveChart.record();
+		// Not during an incomplete OpenAPI cycle. Its sections are a dozen separate writes, so
+		// a reading taken mid-cycle mixes this cycle's values with the previous one's — which is
+		// tolerable in the diagram, where it is labelled as such, but not on a chart whose
+		// x-axis is the claim being made. The next complete cycle is one interval away.
+		if (this.activeSource !== "openapi" || this.openapiCycleComplete(app.states)) {
+			liveChart.record();
+		}
 		liveChart.initHistory(app.conn, app.namespace, app.connectors);
 	},
 
@@ -739,7 +776,7 @@ var energyFlow = {
 	},
 
 	/**
-	 * Resolve battery capacity in kWh: API > Web > configured value > OpenAPI nameplate
+	 * Resolve battery capacity in kWh: API > Web > configured value
 	 *
 	 * @param {object} states - ioBroker state values
 	 * @returns {number|null} Capacity in kWh, or null when no source reports one
@@ -762,23 +799,18 @@ var energyFlow = {
 		}
 
 		// An explicitly configured capacity, which the user typed and the cloud sources above do
-		// not have. It outranks the nameplate below because whether the local listener's
-		// designCapacity covers the whole pack or one module is unverified — see
-		// docs/LOCAL_OPENAPI_4424.md — so a per-module figure would silently halve every battery
-		// time estimate on a multi-module system and discard the user's correction with it.
+		// not have.
 		var configCap = app.config.battery_capacity;
 		if (configCap && configCap > 0) {
 			return configCap;
 		}
 
-		// Local OpenAPI nameplate, in Wh. Always polled — it is the connector's identity section —
-		// so this is the last resort rather than an optional extra. The `> 0` test keeps a zero
-		// from being read as a real capacity and driving the battery time estimates.
-		var openapiCap = this.getStateOrNull(states, "_openapi.bessNameplate.designCapacity");
-		if (openapiCap && openapiCap > 0) {
-			return openapiCap / 1000;
-		}
-
+		// No fallback to `_openapi.bessNameplate.designCapacity`. It is one module rather than
+		// the pack — measured, see docs/LOCAL_OPENAPI_4424.md — and the module count is only
+		// readable from lala.cgi or the App API, so on an OpenAPI-only instance the pack size
+		// cannot be derived from it. Using it halved every time-to-full and time-to-empty on
+		// the two-module appliance it was measured on. No estimate is better than a wrong one;
+		// the figure is still shown, labelled as per-module, on the Local OpenAPI card.
 		return null;
 	},
 
@@ -911,6 +943,11 @@ var energyFlow = {
 		var lastUpdate = this.getLastUpdateTime(app.states);
 		if (lastUpdate) {
 			html += `<span class="energy-source-label">${t("energy_last_update", { time: lastUpdate })}</span>`;
+		} else if (this.activeSource === "openapi" && app.states["_openapi.info.lastPoll"]) {
+			// The connector is answering but not every section is. Say so: the figures below are
+			// a mix of this cycle and the last complete one, and without this the only signal
+			// would be the absence of a time, which reads as a rendering glitch.
+			html += `<span class="energy-source-label" style="color:#ff9800">${t("energy_partial_cycle")}</span>`;
 		}
 		html += "</div></div>";
 
@@ -1325,7 +1362,7 @@ var energyFlow = {
 		svg += `<text x="${pos.x}" y="${pos.y + 10}" text-anchor="middle" fill="var(--color-text)" font-size="13" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${value}</text>`;
 
 		// Label below circle
-		svg += `<text x="${pos.x}" y="${pos.y + r + 16}" text-anchor="middle" fill="var(--color-text-secondary)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${label}</text>`;
+		svg += `<text x="${pos.x}" y="${pos.y + r + 16}" text-anchor="middle" fill="var(--color-text-secondary)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escHtml(label)}</text>`;
 
 		svg += "</g>";
 		return svg;
@@ -1369,12 +1406,14 @@ var energyFlow = {
 		// Power value (same position as other nodes)
 		svg += `<text x="${pos.x}" y="${pos.y + 10}" text-anchor="middle" fill="var(--color-text)" font-size="13" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${this.formatPower(power)}</text>`;
 
-		// Label below: "Battery · 86%"  + optional time estimate
+		// Label below: "Battery · 86%"  + optional time estimate. Escaped at the sink below,
+		// because an external battery contributes its configured name here and SVG text is as
+		// happy to parse markup as HTML is.
 		var label = customLabel || t("energy_battery");
 		if (socRounded !== null) {
 			label += ` \u00b7 ${socRounded}%`;
 		}
-		svg += `<text x="${pos.x}" y="${pos.y + r + 16}" text-anchor="middle" fill="var(--color-text-secondary)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${label}</text>`;
+		svg += `<text x="${pos.x}" y="${pos.y + r + 16}" text-anchor="middle" fill="var(--color-text-secondary)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escHtml(label)}</text>`;
 
 		var timeEst = this.getBatteryTimeEstimate(soc, capacity, power);
 		if (timeEst) {
@@ -1507,6 +1546,23 @@ var energyFlow = {
 	},
 
 	/**
+	 * Whether the OpenAPI's latest cycle delivered every section it asked for.
+	 *
+	 * The connector stamps both markers from one timestamp, so equality is exact: they differ
+	 * only when a section failed or answered with nothing. A cycle that did not complete leaves
+	 * some sections holding the previous cycle's values, which is why the flow is marked partial
+	 * rather than presented as a measurement.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {boolean} True when the last poll served every requested section
+	 */
+	openapiCycleComplete: function (states) {
+		var polled = states["_openapi.info.lastPoll"];
+		var complete = states["_openapi.info.lastCompletePoll"];
+		return !!polled && complete === polled;
+	},
+
+	/**
 	 * State ids that belong to each source, as a prefix or exact-id test.
 	 *
 	 * Used to decide whether an arriving state change should produce a chart sample: only the
@@ -1521,7 +1577,13 @@ var energyFlow = {
 	 */
 	sourceOwnsState: function (src, shortId) {
 		if (src === "openapi") {
-			return shortId === "_openapi.info.lastCompletePoll";
+			// The end-of-cycle markers, which the connector writes after the sections. Not the
+			// individual section writes: they arrive a dozen at a time from separate requests,
+			// and sampling on one of them pairs a fresh value with the rest of the previous
+			// cycle. Both markers count because `lastCompletePoll` is written after `lastPoll`,
+			// so it is the later of the two that carries a complete cycle — whether this one is
+			// complete is a separate question, see openapiCycleComplete.
+			return shortId === "_openapi.info.lastPoll" || shortId === "_openapi.info.lastCompletePoll";
 		}
 		if (src === "local") {
 			return shortId.startsWith("ENERGY.GUI_") || shortId.startsWith("WALLBOX.");

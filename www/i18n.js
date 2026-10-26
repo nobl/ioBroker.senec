@@ -1,15 +1,26 @@
 "use strict";
 
-/* exported i18n, t, escHtml, connectorOfState, connectorEnabled, stateIsLive */
+/* exported i18n, t, escHtml, connectorOfState, connectorEnabled, openapiSections, stateIsLive */
 /* global app, document, window */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
 /**
- * Lightweight i18n runtime for the SENEC web dashboard.
+ * The dashboard's shared primitives — loaded first in the page, so everything else may use them.
  *
- * Loads JSON dictionaries from www/i18n/ and provides:
+ * Translation:
  * - t(key, params?) — translate a key with optional placeholder substitution
  * - i18n.applyAll() — scan DOM for data-i18n attributes and apply translations
+ *
+ * Escaping:
+ * - escHtml(value) — for every sink that interpolates appliance- or user-supplied text
+ *
+ * Which connector a value belongs to, and whether it may be shown at all. Nothing deletes a
+ * connector's states when it is switched off, so a stale value is indistinguishable from a fresh
+ * one by inspection; these answer that question in one place for every card:
+ * - connectorOfState(id) — the connector that writes a state, by id prefix
+ * - connectorEnabled(connector) — whether the instance configuration still has it on
+ * - openapiSections() — which OpenAPI sections are being polled
+ * - stateIsLive(id) — the two above combined, which is the test every accessor applies
  */
 
 var i18n = {
@@ -258,7 +269,10 @@ function connectorOfState(id) {
 			return CONNECTOR_PREFIXES[i].connector;
 		}
 	}
-	if (id.indexOf("_external.") === 0 || id.indexOf("info.") === 0) {
+	// `control.` is the adapter's own command surface, not any one connector's readings: a
+	// command is dispatched to whichever connector can carry it, so attributing these to
+	// lala.cgi hid the whole Control tab whenever local polling was switched off.
+	if (id.indexOf("_external.") === 0 || id.indexOf("info.") === 0 || id.indexOf("control.") === 0) {
 		return null;
 	}
 	// Everything else is a device section written by the lala.cgi connector: ENERGY, BMS, PV1,
@@ -290,6 +304,51 @@ function connectorEnabled(connector) {
 }
 
 /**
+ * Every section the local OpenAPI connector has a route for.
+ *
+ * A name that matches none of these is dropped rather than honoured, exactly as the connector
+ * drops it: each section is a route of its own, so an unknown name polls nothing.
+ */
+var OPENAPI_ROUTE_SECTIONS = ["battery", "meter", "bess", "bessNameplate", "evse"];
+
+/**
+ * Sections the local OpenAPI connector polls, given the configured include list.
+ *
+ * `buildOpenapiInclude` in lib/openapi-client.js is the authority; this mirrors it, including
+ * the two shapes a stored value takes. An absent key means the user never chose, and defaults
+ * to battery and meter; an empty array means they deselected everything, which leaves the
+ * identity section the connector adds for itself and nothing more.
+ *
+ * @returns {Array<string>} Section names currently being polled
+ */
+function openapiSections() {
+	var config = typeof app !== "undefined" && app.config ? app.config : null;
+	var chosen = config ? config.openapi_include : null;
+	if (chosen == null || chosen === "") {
+		chosen = ["battery", "meter"];
+	} else if (!Array.isArray(chosen)) {
+		chosen = [chosen];
+	}
+	var wanted = {};
+	chosen.forEach(function (entry) {
+		// Split on commas whichever shape it arrived in: the multi-select seeds itself from the
+		// field's string default, so a stored value can be the single element ["battery,meter"].
+		String(entry)
+			.split(",")
+			.forEach(function (name) {
+				var trimmed = name.trim();
+				if (trimmed) {
+					wanted[trimmed] = true;
+				}
+			});
+	});
+	wanted.bessNameplate = true;
+	return OPENAPI_ROUTE_SECTIONS.filter(function (section) {
+		return wanted[section];
+	});
+}
+
+/**
  * Whether a state may be read for display.
  *
  * A state a disabled connector wrote is still in the object database — nothing deletes it when
@@ -305,7 +364,24 @@ function connectorEnabled(connector) {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function stateIsLive(id) {
 	var owner = connectorOfState(id);
-	return owner === null || connectorEnabled(owner);
+	if (owner === null) {
+		return true;
+	}
+	if (!connectorEnabled(owner)) {
+		return false;
+	}
+	// Connector granularity is not enough for the local OpenAPI: its sections are individually
+	// selectable, nothing deletes the states of a section the user removes, and the completeness
+	// marker only covers the sections still being asked for. Without this, a deselected `meter`
+	// left month-old production and consumption values feeding the energy flow beside a live
+	// battery reading, under the current timestamp.
+	if (owner === "openapi") {
+		var section = id.slice("_openapi.".length).split(".")[0];
+		if (section !== "info" && section !== "tls") {
+			return openapiSections().indexOf(section) !== -1;
+		}
+	}
+	return true;
 }
 
 /**
