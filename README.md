@@ -180,10 +180,11 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
 - Fix: A state deleted while the browser's socket was down stayed on the page for the life of the tab — the state list was merged into the cache rather than replacing it, so a removed wallbox slot came back on reconnect. Configuration changes also stopped arriving after the first reconnect, because the object subscription was never re-issued.
 - Fix: The *TLS Certificate* and *Local OpenAPI* cards read their states without the staleness check every other row applies, so they reported a months-old registration and fingerprint as the current state — and, because the TLS card always rendered something, the *System* tab could never be hidden.
 - Fix: The *Control* tab is no longer hidden when `lala.cgi` polling is switched off. A command is dispatched to whichever connector can carry it, so the control states belong to no single connector.
-- Fix: A poll age older than 36 hours showed a bare time of day, which read as current at a glance. It now carries the date.
+- Fix: A poll age older than 36 hours showed a bare time of day, which read as current at a glance. It now carries the date, in the dashboard's language.
 - Fix: A non-numeric value where a power reading belongs no longer propagates as `NaN` through the energy flow, where it failed every comparison silently and made an export read as an import. It is treated as no reading, and the adapter no longer publishes `NaN` when scaling one.
 - Fix: An external energy source's configured name is now escaped where it is drawn into the energy-flow diagram.
 - Fix: Connection status is no longer recalculated after the instance has started unloading.
+- Fix: The energy flow's *incomplete poll* warning appeared only on an installation that had never completed a cycle — the one case where it is least needed. It now shows whenever the latest cycle did not serve every section, beside the time of the last complete one rather than instead of it.
 - Dependency updates
 
 ### 2.16.0 (2026-10-25)

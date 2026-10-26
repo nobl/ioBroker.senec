@@ -1,6 +1,6 @@
 "use strict";
 
-/* global t, escHtml, stateIsLive, connectorOfState, energyFlow */
+/* global i18n, t, escHtml, stateIsLive, connectorOfState, energyFlow */
 /* exported systemInfo */
 
 /**
@@ -1568,8 +1568,9 @@ var systemInfo = {
 			return t("age_hours", { count: hours });
 		}
 		// With the date. A bare time of day read as current at a glance, which is exactly the
-		// wrong impression for a poll that last succeeded days ago.
-		return then.toLocaleString(undefined, {
+		// wrong impression for a poll that last succeeded days ago. Formatted in the dashboard's
+		// own language rather than the browser's, like every other label on the page.
+		return then.toLocaleString(i18n.lang, {
 			month: "short",
 			day: "numeric",
 			hour: "2-digit",

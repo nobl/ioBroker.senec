@@ -943,10 +943,17 @@ var energyFlow = {
 		var lastUpdate = this.getLastUpdateTime(app.states);
 		if (lastUpdate) {
 			html += `<span class="energy-source-label">${t("energy_last_update", { time: lastUpdate })}</span>`;
-		} else if (this.activeSource === "openapi" && app.states["_openapi.info.lastPoll"]) {
-			// The connector is answering but not every section is. Say so: the figures below are
-			// a mix of this cycle and the last complete one, and without this the only signal
-			// would be the absence of a time, which reads as a rendering glitch.
+		}
+		// Beside the time, not instead of it. The time shown for the OpenAPI is the last
+		// *complete* cycle's, so a partial cycle displays a stale one — and as an `else if` this
+		// warning only ever appeared on an install that had never completed a cycle at all,
+		// which is the one case where the stale time is not the problem. The question is whether
+		// the latest cycle served every section, which is what openapiCycleComplete answers.
+		if (
+			this.activeSource === "openapi" &&
+			app.states["_openapi.info.lastPoll"] &&
+			!this.openapiCycleComplete(app.states)
+		) {
 			html += `<span class="energy-source-label" style="color:#ff9800">${t("energy_partial_cycle")}</span>`;
 		}
 		html += "</div></div>";

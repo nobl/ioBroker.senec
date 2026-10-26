@@ -330,6 +330,55 @@ describe("dashboard — local OpenAPI energy source", () => {
 		});
 	});
 
+	describe("the partial-cycle notice", () => {
+		const states = {
+			"_openapi.meter.production": 3500,
+			"_openapi.meter.houseConsumption": 300,
+			"_openapi.meter.gridPower": 2200,
+			"_openapi.battery.power": 1000,
+			"_openapi.battery.stateOfCharge": 47,
+		};
+
+		/**
+		 * Render the energy flow for one pair of poll markers.
+		 *
+		 * @param {string|undefined} polled - `_openapi.info.lastPoll`
+		 * @param {string|undefined} complete - `_openapi.info.lastCompletePoll`
+		 * @returns {string} The rendered card
+		 */
+		function renderWith(polled, complete) {
+			const withMarkers = { ...states };
+			if (polled !== undefined) {
+				withMarkers["_openapi.info.lastPoll"] = polled;
+			}
+			if (complete !== undefined) {
+				withMarkers["_openapi.info.lastCompletePoll"] = complete;
+			}
+			energyFlow.update(withMarkers, connectors(["openapi"]));
+			app.states = withMarkers;
+			return energyFlow.render();
+		}
+
+		it("warns when the latest cycle did not serve every section", () => {
+			// The case that matters, and the one an `else if` on the update time could not
+			// reach: a cycle fails after healthy ones, so lastCompletePoll is present but
+			// stale — the diagram shows an old time, and without this nothing says so.
+			const html = renderWith("2026-10-26T12:01:00.000Z", "2026-10-26T12:00:00.000Z");
+			assert.match(html, /Incomplete poll/, "a stale complete-marker is still a partial cycle");
+		});
+
+		it("warns when no cycle has ever completed", () => {
+			assert.match(renderWith("2026-10-26T12:01:00.000Z", undefined), /Incomplete poll/);
+		});
+
+		it("says nothing on a healthy cycle", () => {
+			const stamp = "2026-10-26T12:01:00.000Z";
+			const html = renderWith(stamp, stamp);
+			assert.doesNotMatch(html, /Incomplete poll/, "every healthy cycle would carry the warning");
+			assert.match(html, /Last update/, "and the time is shown instead");
+		});
+	});
+
 	describe("sourceOwnsState", () => {
 		it("accepts only the end-of-cycle markers for the OpenAPI", () => {
 			// The sections arrive as a dozen separate writes, so no single one of them
@@ -436,6 +485,29 @@ describe("dashboard — local OpenAPI system cards", () => {
 			assert.equal(slots.length, 1);
 			assert.equal(slots[0].id, "3");
 			assert.equal(slots[0].connected, null);
+		});
+	});
+
+	describe("formatAge", () => {
+		it("keeps the date once the age passes the relative wording", () => {
+			// A bare time of day read as current at a glance — the wrong impression for a poll
+			// that last succeeded days ago, which is exactly when it matters most.
+			const old = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+			const text = systemInfo.formatAge(old.toISOString());
+			// The day of the month is the part that distinguishes it from a time of day.
+			assert.match(String(text), new RegExp(String(old.getDate())), `no date in ${text}`);
+			assert.doesNotMatch(String(text), /ago/);
+		});
+
+		it("still words a recent age relatively", () => {
+			assert.match(String(systemInfo.formatAge(new Date(Date.now() - 30000).toISOString())), /s ago/);
+			assert.match(String(systemInfo.formatAge(new Date(Date.now() - 600000).toISOString())), /min ago/);
+			assert.match(String(systemInfo.formatAge(new Date(Date.now() - 7200000).toISOString())), /h ago/);
+		});
+
+		it("returns null for something that is not a date", () => {
+			assert.equal(systemInfo.formatAge("not a date"), null);
+			assert.equal(systemInfo.formatAge(undefined), null);
 		});
 	});
 
@@ -620,6 +692,39 @@ describe("dashboard — values from connectors that are switched off", () => {
 		// adapter-level. Both must stay visible whatever the connectors are doing.
 		assert.equal(ctx.connectorOfState("_external.pv.0.power"), null);
 		assert.equal(ctx.connectorOfState("info.openapiConnected"), null);
+	});
+
+	it("resolves the OpenAPI include list exactly as the connector does", () => {
+		// The browser cannot call buildOpenapiInclude, so it mirrors it — and the mirror had
+		// drifted three ways at once: an absent key resolved to nothing live rather than the
+		// default, the single-element ["battery,meter"] shape the multi-select actually stores
+		// matched no section, and an unknown name was honoured instead of dropped. Both run in
+		// Node, so the two can simply be compared.
+		const openapi = require("../lib/openapi-client.js");
+		for (const configured of [
+			undefined,
+			null,
+			"",
+			[],
+			"battery,meter",
+			["battery,meter"],
+			["battery", "meter"],
+			["evse"],
+			["battery", "nonsense"],
+			["bess", "evse", "meter"],
+			[" battery ", "meter"],
+		]) {
+			const ctx = withConfig({ openapi_include: configured });
+			// An absent key is not an empty choice: delete it so the two see the same thing.
+			if (configured === undefined) {
+				delete ctx.app.config.openapi_include;
+			}
+			assert.deepEqual(
+				plain(ctx.openapiSections()),
+				openapi.buildOpenapiInclude(configured),
+				`disagreed on ${JSON.stringify(configured)}`,
+			);
+		}
 	});
 
 	it("shows everything while the configuration is still loading", () => {
