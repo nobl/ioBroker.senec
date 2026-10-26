@@ -1396,6 +1396,7 @@
 				var batteryEl = document.getElementById("battery-container");
 				if (batteryEl) {
 					batteryEl.innerHTML =
+						systemInfo.renderBatteryLive(this.states) +
 						systemInfo.renderBatteryHealth(this.states) +
 						systemInfo.renderBatteryCycles(this.states) +
 						systemInfo.renderBatteryTemps(this.states) +
@@ -1430,6 +1431,73 @@
 
 				var controlEl = document.getElementById("control-container");
 				if (controlEl) controlEl.innerHTML = controls.render(this.states);
+
+				this.syncTabVisibility();
+			},
+
+			/**
+			 * Containers each tab is built from. A tab with none of them filled has nothing to
+			 * show and is hidden.
+			 *
+			 * Overview and the appliance logs are not listed: the overview states its own "no
+			 * data" case and is the landing tab, and the log viewer reads the appliance directly
+			 * from a configured address rather than from any connector's states.
+			 */
+			tabContainers: {
+				battery: ["battery-container"],
+				charts: ["charts-container"],
+				system: ["system-container", "tls-container"],
+				control: ["control-container"],
+				statistics: ["statistics-container"],
+			},
+
+			/**
+			 * Connectors that can feed a tab at all, where emptiness alone cannot decide it.
+			 *
+			 * These three keep rendering a frame — period buttons, a plant picker, an
+			 * explanatory line — when they have nothing, so the container is never empty and
+			 * the DOM test below would always keep them. Which connector supplies them is a
+			 * question about the configuration, so it is answered from the configuration:
+			 * measurements come from the two cloud connectors, the statistics download from
+			 * mein-senec.de, and a control command from whichever connector can carry it.
+			 */
+			tabConnectors: {
+				charts: ["api", "web"],
+				statistics: ["web"],
+				control: ["local", "api", "web"],
+			},
+
+			/**
+			 * Hide the tabs whose cards all declined to render.
+			 *
+			 * Driven by what was actually produced rather than by a table of which connector
+			 * feeds which tab: the cards already return an empty string when none of their
+			 * sources is available, so emptiness is the same question asked once, and a card
+			 * added later is covered without touching this.
+			 */
+			syncTabVisibility: function () {
+				var self = this;
+				var hidTheActiveTab = false;
+				Object.keys(this.tabContainers).forEach(function (name) {
+					var sources = self.tabConnectors[name];
+					var possible = !sources || sources.some(connectorEnabled);
+					var filled =
+						possible &&
+						self.tabContainers[name].some(function (id) {
+							var el = document.getElementById(id);
+							return el && el.innerHTML.trim() !== "";
+						});
+					var button = document.querySelector('.nav-tab[data-tab="' + name + '"]');
+					if (!button) return;
+					button.hidden = !filled;
+					if (!filled && self.activeTab === name) hidTheActiveTab = true;
+				});
+				// Standing on a tab that has just emptied — a connector switched off, say —
+				// would otherwise leave a blank page with no tab marked active.
+				if (hidTheActiveTab) {
+					var overview = document.querySelector('.nav-tab[data-tab="overview"]');
+					if (overview) self.switchTab(overview);
+				}
 			},
 
 			/**

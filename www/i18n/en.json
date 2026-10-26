@@ -206,5 +206,16 @@
     "age_hours": "{count} h ago",
     "openapi_manufacturer": "Manufacturer",
     "openapi_design_capacity": "Design Capacity",
-    "openapi_ac_relay": "AC Relay"
+    "openapi_ac_relay": "AC Relay",
+    "battery_now": "Battery (now)",
+    "battery_soc": "State of Charge",
+    "battery_capacity": "Capacity",
+    "wallbox_limitation": "Limitation",
+    "openapi_ac_apparent": "AC Apparent Power",
+    "openapi_ac_voltage": "AC Voltage",
+    "openapi_ac_current": "AC Current",
+    "openapi_surplus": "Power Surplus",
+    "openapi_surplus_full": "Power Surplus (full range)",
+    "system_max_reactive_charge": "Max Reactive Charge Power",
+    "system_max_reactive_discharge": "Max Reactive Discharge Power"
 }

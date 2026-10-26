@@ -44,7 +44,7 @@ function translate(key, params) {
  * tests exercise the code that actually ships. Its `t` is then replaced by the stub above, which
  * reads the dictionary from disk instead of fetching it.
  *
- * @param {string} file - File name under www/
+ * @param {string|Array<string>} file - File name(s) under www/, loaded in page order
  * @param {object} [extraGlobals] - Globals the file expects to find
  * @returns {object} The context, carrying whatever the file declared
  */
@@ -55,7 +55,7 @@ function loadWww(file, extraGlobals = {}) {
 		navigator: { language: "en" },
 		...extraGlobals,
 	});
-	for (const name of ["i18n.js", file]) {
+	for (const name of ["i18n.js", ...(Array.isArray(file) ? file : [file])]) {
 		const source = fs.readFileSync(path.join(__dirname, "..", "www", name), "utf8");
 		vm.runInContext(source, context, { filename: name });
 	}
@@ -378,7 +378,13 @@ describe("dashboard — local OpenAPI system cards", () => {
 			};
 			const slots = systemInfo.openapiWallboxSlots(states);
 			assert.equal(slots.length, 1);
-			assert.deepEqual(plain(slots[0]), { id: "1", connected: true, charging: true, power: 7400 });
+			assert.deepEqual(plain(slots[0]), {
+				id: "1",
+				connected: true,
+				charging: true,
+				power: 7400,
+				limitation: null,
+			});
 		});
 
 		it("keeps a slot drawing power with no connection flag reported", () => {
@@ -530,6 +536,117 @@ describe("dashboard — local OpenAPI system cards", () => {
 				["1"],
 			);
 		});
+	});
+});
+
+describe("dashboard — values from connectors that are switched off", () => {
+	// Nothing deletes a connector's states when it is disabled, so every card went on rendering
+	// whatever it last wrote. On the development appliance that meant an energy flow and a whole
+	// battery tab built from lala.cgi values two months old, presented as current readings.
+	let systemInfo;
+	let energyFlow;
+
+	/**
+	 * @param {object} config - Instance configuration to expose as app.config
+	 * @returns {object} The loaded context
+	 */
+	function withConfig(config) {
+		// Both modules in one context, as the page loads them: system.js reads the real
+		// energyFlow for prefixes and formatting, and both share one `app.config`.
+		const ctx = loadWww(["energy.js", "system.js"]);
+		ctx.app.config = config;
+		return ctx;
+	}
+
+	beforeEach(() => {
+		const ctx = withConfig({ lala_use: false, openapi_use: true, api_use: false, web_use: false });
+		systemInfo = ctx.systemInfo;
+		energyFlow = ctx.energyFlow;
+	});
+
+	it("maps each state id to the connector that writes it", () => {
+		const ctx = withConfig({});
+		assert.equal(ctx.connectorOfState("ENERGY.GUI_HOUSE_POW"), "local");
+		assert.equal(ctx.connectorOfState("BMS.SYSTEM_SOH"), "local");
+		assert.equal(ctx.connectorOfState("_openapi.meter.gridPower"), "openapi");
+		assert.equal(ctx.connectorOfState("_api.Anlagen.1.Dashboard.currently.gridDrawInW"), "api");
+		assert.equal(ctx.connectorOfState("_meinsenec.Status.consumption.now"), "web");
+		assert.equal(ctx.connectorOfState("_connect.Systems.X.battery.power"), "connect");
+		// Not a connector's: an external source mirrors another adapter, and info.* is
+		// adapter-level. Both must stay visible whatever the connectors are doing.
+		assert.equal(ctx.connectorOfState("_external.pv.0.power"), null);
+		assert.equal(ctx.connectorOfState("info.openapiConnected"), null);
+	});
+
+	it("shows everything while the configuration is still loading", () => {
+		// The config arrives over the socket after the first render. Defaulting to "hide" would
+		// blank the page for that moment.
+		const ctx = withConfig({});
+		assert.equal(ctx.stateIsLive("ENERGY.GUI_HOUSE_POW"), true);
+		assert.equal(ctx.stateIsLive("_api.Anlagen.1.Dashboard.currently.gridDrawInW"), true);
+	});
+
+	it("counts an enabled connector as available even when it is not connected", () => {
+		// The user's rule: a connector with connection trouble keeps its place on the page, or
+		// the cards it feeds would vanish and reappear as the connection flaps.
+		const ctx = withConfig({ lala_use: true });
+		ctx.app.states = { "info.localConnected": false };
+		assert.equal(ctx.stateIsLive("ENERGY.GUI_HOUSE_POW"), true);
+	});
+
+	it("skips a disabled connector's value but keeps a later source that is enabled", () => {
+		// The row names several sources in preference order. Only the row whose every source is
+		// switched off may disappear.
+		const states = {
+			"FACTORY.SYS_TYPE_Text": "stale local name",
+			"_openapi.bessNameplate.model": "SENEC.Home V3 hybrid LFP",
+		};
+		assert.equal(
+			systemInfo.getFirst(states, ["FACTORY.SYS_TYPE_Text", "_openapi.bessNameplate.model"]),
+			"SENEC.Home V3 hybrid LFP",
+		);
+		assert.equal(systemInfo.sourceTag(states, ["FACTORY.SYS_TYPE_Text", "_openapi.bessNameplate.model"]), "O");
+	});
+
+	it("returns nothing when every source for a row is switched off", () => {
+		const states = { "BMS.SYSTEM_SOH": 100, "BMS.MODULE_COUNT": 2 };
+		assert.equal(systemInfo.getFirst(states, ["BMS.SYSTEM_SOH"]), null);
+		assert.equal(systemInfo.renderBatteryHealth(states), "", "the whole card has to go");
+	});
+
+	it("builds a battery card from the OpenAPI when lala.cgi is off", () => {
+		// The values were being polled and shown nowhere, while the card above displayed a
+		// two-month-old voltage and current from a connector that is switched off.
+		const html = systemInfo.renderBatteryLive({
+			"_openapi.battery.stateOfCharge": 36,
+			"_openapi.battery.power": -2367.86,
+			"_openapi.battery.voltage": 51.7,
+			"_openapi.battery.current": -45.8,
+			"BMS.SYSTEM_SOH": 100,
+		});
+		assert.match(html, /51\.7 V/);
+		assert.match(html, /-45\.8 A/);
+		assert.match(html, /36%/);
+	});
+
+	it("does not take today's totals from a disabled cloud connector", () => {
+		// updateTotalsToday tests for the API states directly, so a leftover _api tree took that
+		// branch and showed yesterday's cloud figures beside a live local reading.
+		energyFlow.period = "today";
+		energyFlow.update(
+			{
+				"_openapi.meter.production": 261,
+				"_openapi.meter.houseConsumption": 2925,
+				"_openapi.battery.power": -2367,
+				"_api.Anlagen.1.Dashboard.today.powerGenerationInWh": 2300,
+				"_api.Anlagen.1.Dashboard.today.powerConsumptionInWh": 18900,
+			},
+			connectors(["openapi"]),
+		);
+		assert.equal(energyFlow.activeSource, "openapi");
+		assert.equal(energyFlow.apiPrefix(), null, "a disabled API must not yield a plant prefix");
+		assert.equal(energyFlow.data.todayPv, null);
+		assert.equal(energyFlow.data.todayConsumption, null);
 	});
 });
 

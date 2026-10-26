@@ -144,7 +144,7 @@ inferred ones:
 // /v1/meter
 {"gridPower":91,"consumption":1181,"production":244,"powerSurplus":0,"fullRangePowerSurplus":0}
 
-// /v1/bess — activePower and reactivePower are null, not zero
+// /v1/bess — activePower and reactivePower were null here, and 0 a day later
 {"apparentPower":-237,"activePower":null,"reactivePower":null,
  "voltage":79,"current":-3,"acRelayConnected":true}
 
@@ -161,10 +161,11 @@ inferred ones:
 
 Points worth knowing before trusting any of it:
 
-- **`/v1/bess` is partly unimplemented.** `activePower` and `reactivePower` come back `null`,
-  not `0`, so any consumer has to handle nulls. `apparentPower`, `voltage` and `current` do
-  carry values, but `voltage: 79` against the battery's own `52.2` suggests they describe a
-  different measurement point than `/v1/battery` does.
+- **`/v1/bess` reports `activePower` and `reactivePower` inconsistently.** They were recorded
+  as `null` on 2026-10-25 and as `0` on the same appliance on 2026-10-26, so a consumer has to
+  handle both — a null is not a measurement, and the zero may not be one either. `apparentPower`,
+  `voltage` and `current` do carry values, but `voltage: 79` against the battery's own `52.2`
+  suggests they describe a different measurement point than `/v1/battery` does.
 - **`meter.gridPower`'s direction is undecided.** Every sample on record was taken while
   importing, so nothing distinguishes "signed, positive means import" from "a magnitude, with
   the surplus fields carrying feed-in" — and `powerSurplus` existing at all argues for the
@@ -195,9 +196,19 @@ Points worth knowing before trusting any of it:
 - **`ratedPower` is populated on this appliance** — charge 2500 W, discharge 4600 W — where
   it has been reported elsewhere as all zeros. So it is sometimes meaningful and sometimes
   not; treat zeros as "not reported" rather than "cannot charge".
-- `designCapacity` is in **watt-hours**, and per the SENEC.Connect schema for the same field
-  it is meant to include sibling units — so `5000` reads as 5 kWh for the whole pack. Whether
-  the local listener honours the "includes siblings" part is unverified.
+- **`designCapacity` is one module, not the pack.** It is in watt-hours, and the SENEC.Connect
+  schema says the field includes sibling units — but the local listener does not honour that.
+  Measured on the V3 above on 2026-10-26: `designCapacity` reports `5000` while `BMS.MODULE_COUNT`
+  from `lala.cgi` is `2`, and both `_meinsenec.AccuState.capacity` and the capacity the owner had
+  configured say 10 kWh. Two independent sources against the listener's one, in exactly a 2:1
+  ratio with the module count.
+
+  So this field must not be used as a pack capacity. Anything deriving a state of charge in kWh,
+  or a time to full or empty, would be wrong by the number of modules — which is why the
+  dashboard ranks an explicitly configured capacity above it (`energyFlow.resolveBatteryCapacity`)
+  and the Local OpenAPI card labels it as the nameplate figure rather than as the battery's
+  capacity. Multiplying by a module count is only possible when `lala.cgi` also runs, so on an
+  OpenAPI-only installation there is no way to recover the pack total from the appliance.
 - **`state` must not be mapped through the SENEC.Connect enum.** That API documents the
   battery `state` field as `0 = OK, 1 = error`. This appliance reports `state: 1` while
   discharging normally at 850 W with a healthy SoC, and a second, unrelated V3 has been

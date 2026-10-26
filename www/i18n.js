@@ -1,7 +1,7 @@
 "use strict";
 
-/* exported i18n, t, escHtml */
-/* global document, window */
+/* exported i18n, t, escHtml, connectorOfState, connectorEnabled, stateIsLive */
+/* global app, document, window */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
 /**
@@ -214,6 +214,98 @@ var i18n = {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function t(key, params) {
 	return i18n.translate(key, params);
+}
+
+/**
+ * Which connector writes a given state, by id prefix.
+ *
+ * The prefixes are the adapter's own namespacing: every connector but `lala.cgi` writes under
+ * one of its own, and the local connector writes the unprefixed device sections at the root.
+ * Order matters only in that the prefixed entries must be tested before the root fallback.
+ */
+var CONNECTOR_PREFIXES = [
+	{ prefix: "_api.", connector: "api" },
+	{ prefix: "_meinsenec.", connector: "web" },
+	{ prefix: "_openapi.", connector: "openapi" },
+	{ prefix: "_connect.", connector: "connect" },
+	{ prefix: "_local.", connector: "local" },
+];
+
+/** Config flag that enables each connector, as `io-package.json` names it. */
+var CONNECTOR_CONFIG_KEY = {
+	local: "lala_use",
+	openapi: "openapi_use",
+	api: "api_use",
+	web: "web_use",
+	connect: "connect_use",
+};
+
+/**
+ * The connector that owns a state, or null when nothing owns it.
+ *
+ * Null means "always show": `_external.*` mirrors another adapter's states and has nothing to
+ * do with a SENEC connector, and `info.*` is adapter-level rather than connector-level.
+ *
+ * @param {string} id - State id without the adapter namespace
+ * @returns {string|null} Connector name, or null when the state is not a connector's
+ */
+function connectorOfState(id) {
+	if (!id) {
+		return null;
+	}
+	for (var i = 0; i < CONNECTOR_PREFIXES.length; i++) {
+		if (id.indexOf(CONNECTOR_PREFIXES[i].prefix) === 0) {
+			return CONNECTOR_PREFIXES[i].connector;
+		}
+	}
+	if (id.indexOf("_external.") === 0 || id.indexOf("info.") === 0) {
+		return null;
+	}
+	// Everything else is a device section written by the lala.cgi connector: ENERGY, BMS, PV1,
+	// WALLBOX, FACTORY, WIZARD, TEMPMEASURE, FEATURES and the rest.
+	return "local";
+}
+
+/**
+ * Whether a connector is switched on in the instance configuration.
+ *
+ * Deliberately the configuration and not `info.<name>Connected`: a connector that is enabled
+ * but currently failing still owns its states and must keep its place on the page, or every
+ * card it feeds would vanish and reappear as the connection flaps.
+ *
+ * Answers true while the configuration is still loading, so the first render shows the page
+ * rather than hiding all of it.
+ *
+ * @param {string} connector - Connector name
+ * @returns {boolean} Whether its states may be displayed
+ */
+
+function connectorEnabled(connector) {
+	var config = typeof app !== "undefined" && app.config ? app.config : null;
+	if (!config || !Object.keys(config).length) {
+		return true;
+	}
+	var key = CONNECTOR_CONFIG_KEY[connector];
+	return key ? config[key] !== false : true;
+}
+
+/**
+ * Whether a state may be read for display.
+ *
+ * A state a disabled connector wrote is still in the object database — nothing deletes it when
+ * the connector is switched off — so without this check every card goes on rendering the last
+ * value it ever saw, with no sign that it is months old.
+ *
+ * Applied per state id rather than per card, because a row may name several sources in
+ * preference order: as long as one of them belongs to an enabled connector, the row stays.
+ *
+ * @param {string} id - State id without the adapter namespace
+ * @returns {boolean} Whether the value behind this id is from a connector still in use
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function stateIsLive(id) {
+	var owner = connectorOfState(id);
+	return owner === null || connectorEnabled(owner);
 }
 
 /**

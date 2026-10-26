@@ -1,6 +1,6 @@
 "use strict";
 
-/* global t, escHtml, energyFlow */
+/* global t, escHtml, stateIsLive, energyFlow */
 /* exported systemInfo */
 
 /**
@@ -18,6 +18,13 @@ var systemInfo = {
 	 */
 	getFirst: function (states, keys) {
 		for (var i = 0; i < keys.length; i++) {
+			// Skipped rather than returned: a state a switched-off connector wrote is still in
+			// the object database, months old, and indistinguishable from a fresh one. The test
+			// is per key, so a row naming several sources keeps whichever of them is still in
+			// use — only the row whose every source is switched off disappears.
+			if (!keys[i] || !stateIsLive(keys[i])) {
+				continue;
+			}
 			var val = states[keys[i]];
 			if (val !== undefined && val !== null) {
 				return val;
@@ -34,7 +41,9 @@ var systemInfo = {
 	 */
 	sourceTag: function (states, keys) {
 		for (var i = 0; i < keys.length; i++) {
-			if (!keys[i]) {
+			// Same skip as getFirst, so the badge names the connector that actually supplied the
+			// value rather than one whose leftover state getFirst has just passed over.
+			if (!keys[i] || !stateIsLive(keys[i])) {
 				continue;
 			}
 			if (states[keys[i]] !== undefined && states[keys[i]] !== null) {
@@ -149,6 +158,94 @@ var systemInfo = {
 		}
 
 		return `<div class="system-mode-badge" style="border-color:${color};color:${color}">${modeText}</div>`;
+	},
+
+	/**
+	 * Render the battery's present electrical state.
+	 *
+	 * Every row names each connector that can supply it, in preference order, so the card fills
+	 * from whichever are switched on. It exists because the cards below are `lala.cgi`-only and
+	 * leave an installation running another connector with no battery readings at all, while
+	 * the values sit unread under `_openapi.battery.*`.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {string} HTML string
+	 */
+	renderBatteryLive: function (states) {
+		var dash = energyFlow.apiPrefix();
+
+		var socKeys = [
+			"_openapi.battery.stateOfCharge",
+			"ENERGY.GUI_BAT_DATA_FUEL_CHARGE",
+			dash ? `${dash}currently.batteryLevelInPercent` : "",
+			"_meinsenec.Status.acculevel.now",
+		];
+		var powerKeys = ["_openapi.battery.power", "ENERGY.GUI_BAT_DATA_POWER"];
+		var voltKeys = ["_openapi.battery.voltage", "ENERGY.GUI_BAT_DATA_VOLTAGE"];
+		var currKeys = ["_openapi.battery.current", "ENERGY.GUI_BAT_DATA_CURRENT"];
+		// Not a key chain of its own: energyFlow.resolveBatteryCapacity already ranks the
+		// sources, including the capacity typed into the instance configuration, and its answer
+		// is what the energy flow's time estimates use. Reading the states again here produced a
+		// card that disagreed with the diagram beside it.
+		var capacityKwh = energyFlow.resolveBatteryCapacity(states);
+
+		var soc = this.getFirst(states, socKeys);
+		var power = this.getFirst(states, powerKeys);
+		var volt = this.getFirst(states, voltKeys);
+		var curr = this.getFirst(states, currKeys);
+		var relay = this.getFirst(states, ["_openapi.bess.acRelayConnected"]);
+
+		if (soc === null && power === null && volt === null && curr === null && capacityKwh === null) {
+			return "";
+		}
+
+		var html = `<div class="card"><h2>${t("battery_now")}</h2>`;
+		html += '<div class="system-grid">';
+
+		if (soc !== null) {
+			var socVal = Number(soc);
+			html += this.renderMetric(
+				t("battery_soc"),
+				`${Math.round(socVal)}%`,
+				socVal > 20 ? "#4caf50" : "#ff9800",
+				this.sourceTag(states, socKeys),
+			);
+		}
+		if (power !== null) {
+			// Signed the way every connector reports it: positive charges the battery.
+			var pw = Number(power);
+			html += this.renderMetric(
+				pw >= 0 ? t("battery_charging") : t("battery_discharging"),
+				energyFlow.formatPower(pw),
+				pw >= 0 ? "#4caf50" : "#ff9800",
+				this.sourceTag(states, powerKeys),
+			);
+		}
+		if (volt !== null) {
+			html += this.renderMetric(
+				t("grid_voltage"),
+				`${Number(volt).toFixed(1)} V`,
+				"#757575",
+				this.sourceTag(states, voltKeys),
+			);
+		}
+		if (curr !== null) {
+			html += this.renderMetric(
+				t("grid_current"),
+				`${Number(curr).toFixed(1)} A`,
+				"#757575",
+				this.sourceTag(states, currKeys),
+			);
+		}
+		if (capacityKwh !== null && capacityKwh > 0) {
+			html += this.renderMetric(t("battery_capacity"), `${capacityKwh.toFixed(1)} kWh`, "#757575", "");
+		}
+		if (relay !== null) {
+			html += this.renderStatus(t("openapi_ac_relay"), this.toBool(relay) === true, "O");
+		}
+
+		html += "</div></div>";
+		return html;
 	},
 
 	/**
@@ -907,6 +1004,24 @@ var systemInfo = {
 				"O",
 			);
 		}
+		var reactiveCharge = this.getFirst(states, ["_openapi.bessNameplate.ratedPower.reactiveChargePower"]);
+		var reactiveDischarge = this.getFirst(states, ["_openapi.bessNameplate.ratedPower.reactiveDischargePower"]);
+		if (reactiveCharge !== null && Number(reactiveCharge) > 0) {
+			html += this.renderMetric(
+				t("system_max_reactive_charge"),
+				`${Math.round(Number(reactiveCharge))} var`,
+				"#757575",
+				"O",
+			);
+		}
+		if (reactiveDischarge !== null && Number(reactiveDischarge) > 0) {
+			html += this.renderMetric(
+				t("system_max_reactive_discharge"),
+				`${Math.round(Number(reactiveDischarge))} var`,
+				"#757575",
+				"O",
+			);
+		}
 
 		html += "</div></div>";
 		return html;
@@ -968,7 +1083,7 @@ var systemInfo = {
 	 * counted from zero.
 	 *
 	 * @param {object} states - ioBroker state values
-	 * @returns {Array<{id: string, connected: boolean|null, charging: boolean|null, power: number|null}>} Slots with data
+	 * @returns {Array<object>} Slots that report something, each with id, connected, charging, power and limitation
 	 */
 	/** Slot ids discovered by the last scan, or null when a scan is due. */
 	_evseIds: null,
@@ -1023,10 +1138,17 @@ var systemInfo = {
 			var charging = this.toBool(this.getFirst(states, [`${pfx}evCharging`]));
 			var rawPower = this.getFirst(states, [`${pfx}chargingPower`]);
 			var power = rawPower === null ? null : Number(rawPower);
+			var limitation = this.getFirst(states, [`${pfx}limitationStatus`]);
 			if (connected !== true && charging !== true && !power) {
 				continue;
 			}
-			slots.push({ id: id, connected: connected, charging: charging, power: power });
+			slots.push({
+				id: id,
+				connected: connected,
+				charging: charging,
+				power: power,
+				limitation: limitation,
+			});
 		}
 		return slots;
 	},
@@ -1092,15 +1214,18 @@ var systemInfo = {
 			html += `<th>${t("wallbox_ev_connected")}</th>`;
 			html += `<th>${t("wallbox_charging")}</th>`;
 			html += `<th>${t("grid_power")}</th>`;
+			html += `<th>${t("wallbox_limitation")}</th>`;
 			html += "</tr>";
 			for (var oi = 0; oi < openapiSlots.length; oi++) {
 				var slot = openapiSlots[oi];
 				html += "<tr>";
-				html += `<td class="grid-phase-label">${slot.id}</td>`;
+				html += `<td class="grid-phase-label">${escHtml(slot.id)}</td>`;
 				html += `<td>${slot.connected === null ? "—" : slot.connected ? t("yes") : t("no")}</td>`;
 				html += `<td>${slot.charging === null ? "—" : slot.charging ? t("yes") : t("no")}</td>`;
 				// VA, per the SENEC.Connect schema for the same field — not watts.
 				html += slot.power === null ? "<td>—</td>" : `<td>${Math.round(slot.power)} VA</td>`;
+				// The appliance's own code; no enum for it has been published, so it is shown raw.
+				html += slot.limitation === null ? "<td>—</td>" : `<td>${escHtml(slot.limitation)}</td>`;
 				html += "</tr>";
 			}
 			html += "</table>";
@@ -1366,6 +1491,31 @@ var systemInfo = {
 		}
 		if (acRelay !== null) {
 			html += this.renderStatus(t("openapi_ac_relay"), this.toBool(acRelay) === true, "");
+		}
+		// The /v1/bess section measures the AC side, at a different point from the battery's own
+		// figures above — its voltage reads around 80 V where the battery reports about 52 V — so
+		// it belongs here rather than mixed into the battery card.
+		var acPower = this.getFirst(states, ["_openapi.bess.apparentPower"]);
+		if (acPower !== null) {
+			html += this.renderMetric(t("openapi_ac_apparent"), `${Math.round(Number(acPower))} VA`, "#757575", "");
+		}
+		var acVolt = this.getFirst(states, ["_openapi.bess.voltage"]);
+		if (acVolt !== null) {
+			html += this.renderMetric(t("openapi_ac_voltage"), `${Number(acVolt).toFixed(1)} V`, "#757575", "");
+		}
+		var acCurr = this.getFirst(states, ["_openapi.bess.current"]);
+		if (acCurr !== null) {
+			html += this.renderMetric(t("openapi_ac_current"), `${Number(acCurr).toFixed(1)} A`, "#757575", "");
+		}
+		// What the appliance offers a surplus-consuming device. Shown because the energy flow
+		// uses it only as a fallback for the export magnitude, so it is otherwise invisible.
+		var surplus = this.getFirst(states, ["_openapi.meter.powerSurplus"]);
+		var surplusFull = this.getFirst(states, ["_openapi.meter.fullRangePowerSurplus"]);
+		if (surplus !== null) {
+			html += this.renderMetric(t("openapi_surplus"), `${Math.round(Number(surplus))} W`, "#757575", "");
+		}
+		if (surplusFull !== null && Number(surplusFull) !== Number(surplus)) {
+			html += this.renderMetric(t("openapi_surplus_full"), `${Math.round(Number(surplusFull))} W`, "#757575", "");
 		}
 		if (fingerprint) {
 			html += this.renderMetric(

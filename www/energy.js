@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, liveChart */
+/* global app, t, stateIsLive, connectorEnabled, liveChart */
 /* exported energyFlow */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -75,6 +75,13 @@ var energyFlow = {
 	 * @param {object} states - ioBroker state values
 	 */
 	discoverApiId: function (states) {
+		// A disabled App API leaves its whole _api.Anlagen tree behind. Discovering an id from it
+		// would hand every `${apiPrefix()}` chain in the dashboard a live-looking prefix over
+		// stale data — including the day totals, which test for the states directly.
+		if (!connectorEnabled("api")) {
+			this.apiAnlagenId = null;
+			return;
+		}
 		var fallback = null;
 		for (var key in states) {
 			var m = key.match(/^_api\.Anlagen\.([^.]+)\./);
@@ -138,7 +145,7 @@ var energyFlow = {
 			return false;
 		}
 		for (var i = 0; i < keys.length; i++) {
-			if (states[keys[i]] !== undefined && states[keys[i]] !== null) {
+			if (this.liveValue(states, keys[i]) !== undefined && this.liveValue(states, keys[i]) !== null) {
 				return true;
 			}
 		}
@@ -180,7 +187,7 @@ var energyFlow = {
 	 * @param {string} key - State ID
 	 */
 	getState: function (states, key) {
-		var val = states[key];
+		var val = this.liveValue(states, key);
 		return val !== undefined && val !== null ? Number(val) : 0;
 	},
 
@@ -191,8 +198,34 @@ var energyFlow = {
 	 * @param {string} key - State ID
 	 */
 	getStateOrNull: function (states, key) {
-		var val = states[key];
+		var val = this.liveValue(states, key);
 		return val !== undefined && val !== null ? Number(val) : null;
+	},
+
+	/**
+	 * Read a state only if the connector that writes it is still switched on.
+	 *
+	 * Nothing deletes a connector's states when it is disabled, so without this the flow and
+	 * the totals go on rendering whatever that connector last wrote — on a long-disabled
+	 * connector, values months old presented as a current measurement.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} key - State ID
+	 * @returns {unknown} The value, or undefined when its connector is switched off
+	 */
+	liveValue: function (states, key) {
+		return stateIsLive(key) ? states[key] : undefined;
+	},
+
+	/**
+	 * Whether a state is present AND written by a connector that is still switched on.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} key - State ID
+	 * @returns {boolean} True when the value may be used
+	 */
+	hasLive: function (states, key) {
+		return this.liveValue(states, key) !== undefined;
 	},
 
 	/**
@@ -538,7 +571,7 @@ var energyFlow = {
 	updateTotalsToday: function (states) {
 		// Try API Dashboard first (values in Wh → convert to kWh)
 		var pfx = this.apiPrefix();
-		if (pfx && states[`${pfx}today.powerGenerationInWh`] !== undefined) {
+		if (pfx && this.hasLive(states, `${pfx}today.powerGenerationInWh`)) {
 			this.data.todayPv = this.getState(states, `${pfx}today.powerGenerationInWh`) / 1000;
 			this.data.todayConsumption = this.getState(states, `${pfx}today.powerConsumptionInWh`) / 1000;
 			this.data.todayGridImport = this.getState(states, `${pfx}today.gridDrawInWh`) / 1000;
@@ -554,7 +587,7 @@ var energyFlow = {
 
 		// Try Web Status (values already in kWh)
 		var wpfx = "_meinsenec.Status.";
-		if (states[`${wpfx}powergenerated.today`] !== undefined) {
+		if (this.hasLive(states, `${wpfx}powergenerated.today`)) {
 			this.data.todayPv = this.getStateOrNull(states, `${wpfx}powergenerated.today`);
 			this.data.todayConsumption = this.getStateOrNull(states, `${wpfx}consumption.today`);
 			this.data.todayGridImport = this.getStateOrNull(states, `${wpfx}gridimport.today`);
@@ -576,7 +609,7 @@ var energyFlow = {
 	updateTotalsMonth: function (states) {
 		// Web measurements: _meinsenec.Measurements.Monthly.current_month.{type}
 		var wpfx = "_meinsenec.Measurements.Monthly.current_month.";
-		if (states[`${wpfx}powergenerated`] !== undefined) {
+		if (this.hasLive(states, `${wpfx}powergenerated`)) {
 			this.data.todayPv = this.getStateOrNull(states, `${wpfx}powergenerated`);
 			this.data.todayConsumption = this.getStateOrNull(states, `${wpfx}consumption`);
 			this.data.todayGridImport = this.getStateOrNull(states, `${wpfx}gridimport`);
@@ -592,7 +625,7 @@ var energyFlow = {
 		var pfx = this.apiPrefix();
 		if (pfx) {
 			var apfx = pfx.replace("Dashboard.", "Measurements.Monthly.current_month.");
-			if (states[`${apfx}powerGenerationInWh`] !== undefined) {
+			if (this.hasLive(states, `${apfx}powerGenerationInWh`)) {
 				this.data.todayPv = this.getState(states, `${apfx}powerGenerationInWh`) / 1000;
 				this.data.todayConsumption = this.getState(states, `${apfx}powerConsumptionInWh`) / 1000;
 				this.data.todayGridImport = this.getState(states, `${apfx}gridDrawInWh`) / 1000;
@@ -616,7 +649,7 @@ var energyFlow = {
 
 		// Web measurements: _meinsenec.Measurements.Yearly.{year}.{type}
 		var wpfx = `_meinsenec.Measurements.Yearly.${year}.`;
-		if (states[`${wpfx}powergenerated`] !== undefined) {
+		if (this.hasLive(states, `${wpfx}powergenerated`)) {
 			this.data.todayPv = this.getStateOrNull(states, `${wpfx}powergenerated`);
 			this.data.todayConsumption = this.getStateOrNull(states, `${wpfx}consumption`);
 			this.data.todayGridImport = this.getStateOrNull(states, `${wpfx}gridimport`);
@@ -632,7 +665,7 @@ var energyFlow = {
 		var pfx = this.apiPrefix();
 		if (pfx) {
 			var apfx = pfx.replace("Dashboard.", `Measurements.Yearly.${year}.`);
-			if (states[`${apfx}powerGenerationInWh`] !== undefined) {
+			if (this.hasLive(states, `${apfx}powerGenerationInWh`)) {
 				this.data.todayPv = this.getState(states, `${apfx}powerGenerationInWh`) / 1000;
 				this.data.todayConsumption = this.getState(states, `${apfx}powerConsumptionInWh`) / 1000;
 				this.data.todayGridImport = this.getState(states, `${apfx}gridDrawInWh`) / 1000;
