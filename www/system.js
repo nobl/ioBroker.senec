@@ -1549,10 +1549,16 @@ var systemInfo = {
 	 * Formatted by hand rather than through toLocaleTimeString, because the dashboard's language
 	 * comes from ioBroker's system configuration and need not match the browser's locale.
 	 *
-	 * @param {string|number} iso - ISO timestamp as stored by the connector
+	 * Accepts whatever `getFirst` can return, because a state the connector has not written
+	 * yet reads back as a boolean or null rather than as a timestamp.
+	 *
+	 * @param {string|number|boolean|null|undefined} iso - ISO timestamp as stored by the connector
 	 * @returns {string|null} Human-readable age, or null when the value will not parse
 	 */
 	formatAge: function (iso) {
+		if (typeof iso !== "string" && typeof iso !== "number") {
+			return null;
+		}
 		var then = new Date(String(iso));
 		if (isNaN(then.getTime())) {
 			return null;

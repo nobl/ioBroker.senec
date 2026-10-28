@@ -25,6 +25,11 @@ interface HTMLElement {
 	_bound?: boolean;
 }
 
+interface HTMLCanvasElement {
+	/** The statistics chart's own equivalent of `_bound`, on the canvas it binds to */
+	_statsBound?: boolean;
+}
+
 /** Data point in the live chart buffer */
 interface LiveChartPoint {
 	ts: number;

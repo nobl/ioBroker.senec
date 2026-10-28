@@ -257,13 +257,16 @@ var statsViewer = {
 	 * @returns {Array<{ts: number, label: string, v: Array<number|null>}>} Display rows
 	 */
 	view: function () {
+		// `label` is filled in below, once the rows that survive filtering and collapsing are
+		// known; it is declared here so the row type matches what this returns.
+		/** @type {Array<{ts: number, label: string, v: Array<number|null>}>} */
 		var out = [];
 		var i;
 		for (i = 0; i < this.ts.length; i++) {
 			if (this.day !== "all" && this._dayKey(this.ts[i]) !== this.day) {
 				continue;
 			}
-			out.push({ ts: this.ts[i], v: this.rows[i] });
+			out.push({ ts: this.ts[i], label: "", v: this.rows[i] });
 		}
 
 		if (this.resolution === "hourly") {
@@ -294,7 +297,7 @@ var statsViewer = {
 						}
 						mean.push(n ? Math.round((sum / n) * 1000) / 1000 : null);
 					}
-					return { ts: k, v: mean };
+					return { ts: k, label: "", v: mean };
 				});
 		}
 
@@ -334,6 +337,7 @@ var statsViewer = {
 	 * @returns {Record<number, {min: number, max: number, mean: number}>} Stats by column index
 	 */
 	summary: function (rows) {
+		/** @type {Record<number, {min: number, max: number, mean: number}>} */
 		var res = {};
 		for (var c = 1; c < this.header.length; c++) {
 			if (!this.visible[c]) {
