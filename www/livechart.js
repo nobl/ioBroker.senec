@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, escHtml, energyFlow, document, window, requestAnimationFrame */
+/* global app, t, escHtml, chartColors, energyFlow, document, window, requestAnimationFrame */
 /* exported liveChart */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -28,14 +28,19 @@ var liveChart = {
 		soc: false,
 	},
 
-	/** Line colors — match energy flow diagram */
-	colors: {
-		pv: "#f9a825",
-		house: "#e65100",
-		grid: "#1565c0",
-		battery: "#2e7d32",
-		wallbox: "#7e57c2",
-		soc: "#00897b",
+	/**
+	 * Shared palette entry behind each line.
+	 *
+	 * `grid` and `battery` are signed here — one line crossing zero — so they map to the
+	 * palette's undirected line entries rather than to its import/export pair.
+	 */
+	_colorKeys: {
+		pv: "pv",
+		house: "house",
+		grid: "gridLine",
+		battery: "batteryLine",
+		wallbox: "wallbox",
+		soc: "batterySoc",
 	},
 
 	/** Whether the chart is paused */
@@ -285,10 +290,12 @@ var liveChart = {
 					liveChart._historyRequestedTs = Infinity;
 					liveChart._loadHistory(app.conn, app.namespace, src);
 				}
-				app.renderDashboard();
+				// Named, not `this`: discoverHistory calls this back bare, so in strict mode
+				// `this` is undefined here.
+				liveChart.refresh();
 			});
 		}
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	/**
@@ -344,7 +351,7 @@ var liveChart = {
 			}
 			html +=
 				`<div class="history-info-line">` +
-				`<div class="history-info-title"><span class="chart-toggle-dot" style="background:${this.colors[line]}"></span>${t(labelKeys[line])}</div>` +
+				`<div class="history-info-title"><span class="chart-toggle-dot" style="background:${this.color(line)}"></span>${t(labelKeys[line])}</div>` +
 				`${rows}</div>`;
 		}
 
@@ -446,7 +453,7 @@ var liveChart = {
 				liveChart._loadHistory(conn, namespace, src);
 			}
 			if (liveChart._infoOpen) {
-				app.renderDashboard();
+				liveChart.refresh();
 			}
 		});
 	},
@@ -1090,12 +1097,7 @@ var liveChart = {
 		}
 
 		// Update only live chart container
-		var el = document.getElementById("livechart-container");
-		if (el) {
-			el.innerHTML = this.render();
-			this.bindDrag();
-			this.paintCanvas();
-		}
+		this.refresh();
 
 		// After merge, check if current view still needs more data (user panned further during load)
 		var viewWindowMs = liveChart.window * 60 * 1000;
@@ -1288,11 +1290,19 @@ var liveChart = {
 			var key = lines[li];
 			var active = this.visible[key] ? " active" : "";
 			html +=
-				`<button class="chart-toggle${active}" style="--toggle-color:${this.colors[key]}" ` +
+				`<button class="chart-toggle${active}" style="--toggle-color:${this.color(key)}" ` +
 				`onclick="liveChart.toggleLine('${key}')">` +
-				`<span class="chart-toggle-dot" style="background:${this.colors[key]}"></span>${t(labelKeys[key])}</button>`;
+				`<span class="chart-toggle-dot" style="background:${this.color(key)}"></span>${t(labelKeys[key])}</button>`;
 		}
+		var colorsCls = this._colorsOpen ? " active" : "";
+		html +=
+			`<button class="chart-toggle${colorsCls}" style="--toggle-color:#757575" onclick="liveChart.toggleColors()">` +
+			`<span class="chart-toggle-dot" style="background:#757575"></span>${t("colors_title")}</button>`;
 		html += "</div>";
+
+		if (this._colorsOpen) {
+			html += chartColors.renderEditor("liveChart", this._colorRows());
+		}
 
 		if (this._infoOpen) {
 			html += this.renderHistoryInfo();
@@ -1520,7 +1530,7 @@ var liveChart = {
 
 		if (this.visible.soc) {
 			ctx.font = "10px sans-serif";
-			ctx.fillStyle = this.colors.soc;
+			ctx.fillStyle = this.color("soc");
 			ctx.textAlign = "left";
 			ctx.textBaseline = "middle";
 			for (var pct = 0; pct <= 100; pct += 25) {
@@ -1556,7 +1566,7 @@ var liveChart = {
 			// Draw dot
 			ctx.beginPath();
 			ctx.arc(tp.x, tp.y, 4, 0, Math.PI * 2);
-			ctx.fillStyle = this.colors[tp.key];
+			ctx.fillStyle = this.color(tp.key);
 			ctx.fill();
 
 			// Draw tooltip box
@@ -1622,7 +1632,7 @@ var liveChart = {
 		// Store for tooltip lookup
 		this._tooltipData[key] = points;
 
-		var color = this.colors[key];
+		var color = this.color(key);
 
 		// Draw the line using monotone cubic bezier curves
 		var tangentData = this.monotoneTangents(points);
@@ -1670,6 +1680,42 @@ var liveChart = {
 
 	getLabelKey: function (key) {
 		return this._lineLabels[key] || key;
+	},
+
+	/**
+	 * Current color of one line.
+	 *
+	 * @param {string} key - Line key
+	 * @returns {string} CSS color
+	 */
+	color: function (key) {
+		return chartColors.get(this._colorKeys[key] || key);
+	},
+
+	/**
+	 * The palette entries this chart offers, in the order its toggles appear.
+	 *
+	 * @returns {string[]} Palette keys
+	 */
+	_colorRows: function () {
+		var keys = [];
+		for (var key in this._lineLabels) {
+			keys.push(this._colorKeys[key]);
+		}
+		return keys;
+	},
+
+	/**
+	 * Redraw the card in place.
+	 *
+	 * Also the path the periodic render takes, so the canvas is always repainted against
+	 * the markup that was just written rather than the previous frame's.
+	 */
+	refresh: function () {
+		if (chartColors.fill("livechart-container", this.render.bind(this))) {
+			this.bindDrag();
+			this.paintCanvas();
+		}
 	},
 
 	// Compute monotone cubic Hermite tangents (Fritsch-Carlson method).
@@ -1770,7 +1816,7 @@ var liveChart = {
 				}
 			}
 		}
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	togglePause: function () {
@@ -1779,12 +1825,12 @@ var liveChart = {
 			// Same hole as a collapsed chart, for the same reason.
 			this._fillCollectionGap();
 		}
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	toggleLine: function (key) {
 		this.visible[key] = !this.visible[key];
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	toggleDisabled: function () {
@@ -1800,7 +1846,7 @@ var liveChart = {
 				this.initHistory(app.conn, app.namespace, app.connectors);
 			}
 		}
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	/**
@@ -1829,7 +1875,7 @@ var liveChart = {
 		this.viewOffset = 0;
 		// _historyRequestedTs is deliberately kept: snapping forward needs no older data,
 		// and the range it covers has already been fetched
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	/** Whether document-level drag listeners are installed */
@@ -2075,7 +2121,7 @@ var liveChart = {
 				}
 			}
 		}
-		app.renderDashboard();
+		liveChart.refresh();
 	},
 
 	// Get X in logical canvas coords from mouse or single-touch event
@@ -2152,3 +2198,6 @@ var liveChart = {
 		liveChart.paintCanvas();
 	},
 };
+
+// The editor behaves identically for every chart, so its handlers come from one place.
+chartColors.bindOwner("liveChart", liveChart);

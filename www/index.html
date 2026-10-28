@@ -623,6 +623,41 @@
 				opacity: 1;
 			}
 
+			.color-editor {
+				display: flex;
+				gap: 6px 14px;
+				flex-wrap: wrap;
+				align-items: center;
+				margin-bottom: 12px;
+				padding: 10px 12px;
+				border: 1px solid var(--color-border);
+				border-radius: 6px;
+				background: var(--color-bg);
+				font-size: 12px;
+			}
+
+			.color-editor-row {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				color: var(--color-text-secondary);
+				cursor: pointer;
+			}
+
+			.color-editor-error {
+				color: var(--color-error);
+			}
+
+			.color-editor-row input[type="color"] {
+				width: 28px;
+				height: 20px;
+				padding: 0;
+				border: 1px solid var(--color-border);
+				border-radius: 4px;
+				background: none;
+				cursor: pointer;
+			}
+
 			.history-info {
 				margin-bottom: 12px;
 				padding: 10px 12px;
@@ -1244,6 +1279,7 @@
 		</main>
 
 		<script src="i18n.js"></script>
+		<script src="colors.js"></script>
 		<script src="energy.js"></script>
 		<script src="livechart.js"></script>
 		<script src="timeline.js"></script>

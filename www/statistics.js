@@ -953,7 +953,10 @@ var statsViewer = {
 	},
 
 	/**
-	 * Stable colour per column, reusing the chart palette.
+	 * Stable colour per column.
+	 *
+	 * Its own list, deliberately not the shared chart palette: these colours are handed out
+	 * by column position, and a column carries no data type to look a palette entry up by.
 	 *
 	 * @param {number} i - Column index
 	 * @returns {string} CSS colour

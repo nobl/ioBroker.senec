@@ -59,6 +59,16 @@ function makeSocket() {
 			(handlers.reconnect || []).forEach((cb) => cb(true));
 		},
 
+		/**
+		 * Deliver a state change exactly as the web adapter would.
+		 *
+		 * @param {string} id - Fully qualified state id
+		 * @param {object|null} state - The new state, or null for a deletion
+		 */
+		raiseState(id, state) {
+			(handlers.stateChange || []).forEach((cb) => cb(id, state));
+		},
+
 		/** Raise the lifecycle event the real client would raise. */
 		becomeReady() {
 			const which = socket.wasConnected ? "reconnect" : "connect";
@@ -79,6 +89,8 @@ function makeSocket() {
  */
 function loadApp(socket) {
 	const noop = () => undefined;
+	// The palette coalesces its repaints onto an animation frame, so the suite drives them.
+	const frames = [];
 	const el = () => ({
 		style: {},
 		hidden: false,
@@ -109,7 +121,7 @@ function loadApp(socket) {
 			matchMedia: () => ({ matches: false, addEventListener: noop, addListener: noop }),
 		},
 		navigator: { language: "en" },
-		requestAnimationFrame: noop,
+		requestAnimationFrame: (cb) => frames.push(cb),
 		localStorage: { getItem: () => null, setItem: noop, removeItem: noop },
 		t: (key) => key,
 		connectorEnabled: () => true,
@@ -120,6 +132,10 @@ function loadApp(socket) {
 			},
 			record: noop,
 			initHistory: noop,
+			refreshes: 0,
+			refresh() {
+				this.refreshes++;
+			},
 		},
 		energyFlow: { update: noop, resolveSource: () => null, activeSource: null, sourceOwnsState: () => false },
 		systemInfo: {
@@ -130,14 +146,19 @@ function loadApp(socket) {
 		},
 		eventTimeline: { fetchEvents: noop },
 		logViewer: { onConfigLoaded: noop },
-		charts: {},
+		charts: {
+			refreshes: 0,
+			refresh() {
+				this.refreshes++;
+			},
+		},
 		controls: { isLocked: () => false },
 		statsViewer: {},
 		console,
 	});
 	// i18n.js first, as index.html loads it: it defines the shared globals app.js reads at
 	// evaluation time. Its `t` and `i18n` are replaced below with the stubs this suite wants.
-	for (const name of ["i18n.js", "app.js"]) {
+	for (const name of ["i18n.js", "colors.js", "app.js"]) {
 		vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "www", name), "utf8"), context, {
 			filename: name,
 		});
@@ -154,6 +175,10 @@ function loadApp(socket) {
 		// it the throw lands inside onSocketReady's promise chain and silently stops the
 		// recovery, which looks exactly like the recovery not running.
 		translate: (key) => key,
+	};
+	context.runFrames = () => {
+		const queued = frames.splice(0, frames.length);
+		queued.forEach((cb) => cb());
 	};
 	context.app.renderDashboard = noop;
 	context.app.render = noop;
@@ -246,5 +271,80 @@ describe("dashboard — socket lifecycle", () => {
 
 		assert.ok(!("_openapi.evse.1.chargingPower" in app.states), "the stale slot is gone");
 		assert.ok(ctx.systemInfo.dirtied > 0, "and the memoised slot scan was invalidated");
+	});
+
+	describe("a chart palette arriving over the socket", () => {
+		/**
+		 * Bring the page up with an empty palette.
+		 *
+		 * @returns {Promise<void>} Resolves once the first recovery has settled
+		 */
+		async function ready() {
+			socket.dbStates = { "senec.0.info.connection": { val: true } };
+			socket.becomeReady();
+			await settle();
+			ctx.liveChart.refreshes = 0;
+			ctx.charts.refreshes = 0;
+			// Rebuilding the state cache invalidates the memoised wallbox scan; that belongs to
+			// coming up, not to anything these cases do afterwards.
+			ctx.systemInfo.dirtied = 0;
+		}
+
+		it("adopts a palette another page picked, and repaints both charts", async () => {
+			// The headline behaviour: a color changed on a phone reaches a wall tablet without a
+			// reload. It arrives here, through the same handler as every device reading.
+			await ready();
+
+			socket.raiseState("senec.0._dashboard.colors", { val: '{"pv":"#010203"}', ack: true });
+			ctx.runFrames();
+
+			assert.equal(ctx.chartColors.get("pv"), "#010203");
+			assert.equal(ctx.liveChart.refreshes, 1);
+			assert.equal(ctx.charts.refreshes, 1);
+		});
+
+		it("does not repaint when the adapter acks back a palette already applied", async () => {
+			// Every pick produces an ack carrying the same value. Repainting on it would redraw
+			// both charts a second time for every single color the user chooses.
+			await ready();
+			socket.raiseState("senec.0._dashboard.colors", { val: '{"pv":"#010203"}', ack: true });
+			ctx.runFrames();
+			ctx.liveChart.refreshes = 0;
+			ctx.charts.refreshes = 0;
+
+			socket.raiseState("senec.0._dashboard.colors", { val: '{"pv":"#010203"}', ack: true });
+			ctx.runFrames();
+
+			assert.equal(ctx.liveChart.refreshes, 0);
+			assert.equal(ctx.charts.refreshes, 0);
+		});
+
+		it("does not treat the palette as a device reading", async () => {
+			// It carries no measurement, so none of the energy recompute applies to it.
+			await ready();
+			let updates = 0;
+			ctx.energyFlow.update = () => {
+				updates++;
+			};
+
+			socket.raiseState("senec.0._dashboard.colors", { val: '{"house":"#040506"}', ack: true });
+			ctx.runFrames();
+
+			assert.equal(updates, 0);
+			assert.equal(ctx.systemInfo.dirtied, 0);
+		});
+
+		it("takes the stored palette on a reconnect, so a page joins with the shared colors", async () => {
+			await ready();
+			socket.dbStates = {
+				"senec.0.info.connection": { val: true },
+				"senec.0._dashboard.colors": { val: '{"house":"#070809"}' },
+			};
+
+			socket.becomeReady();
+			await settle();
+
+			assert.equal(ctx.chartColors.get("house"), "#070809");
+		});
 	});
 });

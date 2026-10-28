@@ -30,6 +30,23 @@ interface HTMLCanvasElement {
 	_statsBound?: boolean;
 }
 
+/**
+ * A chart module the shared color editor can be installed on (colors.js `bindOwner`).
+ * The chart supplies the two members that genuinely differ between charts; `bindOwner`
+ * installs the rest, which is why those are optional here.
+ */
+interface ColorOwner {
+	/** Palette entries this chart offers, in the order its toggles appear */
+	_colorRows(): string[];
+	/** Redraw this chart's own container, bypassing the hold an open editor applies */
+	refresh(): void;
+	_colorsOpen?: boolean;
+	_colorOwner?: string;
+	toggleColors?(): void;
+	onColorChange?(key: string, value: string): void;
+	resetColors?(): void;
+}
+
 /** Data point in the live chart buffer */
 interface LiveChartPoint {
 	ts: number;

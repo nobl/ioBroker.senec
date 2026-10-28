@@ -300,7 +300,7 @@ Features:
 
 **Energy Flow Diagram** — Live SVG visualization showing power flow between PV, battery, grid, house, and wallbox. Animated curved paths with power-proportional thickness. Battery SOC gauge with fill level. Operating mode badge. Time estimates (until empty/full). Period totals (today/month/year) with autarky percentage. Data source selector (Auto/Local/API/Web).
 
-**Live Power Curve** — Real-time line chart showing power over time for all five metrics (PV, house, grid, battery, wallbox). Smooth monotone cubic interpolation between data points. Time window presets from 10 minutes to 24 hours, plus mouse wheel zoom (5min–30 days, downsampled for performance). Drag to pan through history with lazy loading and midnight date markers. Toggle individual lines, including an optional battery level line (off by default) drawn against its own right-hand 0–100 % axis. Pause/disable controls. Click "Live" to snap back to real-time. If a history adapter (InfluxDB, SQL, or History) is enabled on the power states, the chart backfills with historical data on page load. Each state is resolved on its own, so they may be recorded by different history adapters, and a state without recording only affects its own line. The ⓘ button lists the states behind every line together with the history adapter recording them — use it to find out why a line has no past data.
+**Live Power Curve** — Real-time line chart showing power over time for all five metrics (PV, house, grid, battery, wallbox). Smooth monotone cubic interpolation between data points. Time window presets from 10 minutes to 24 hours, plus mouse wheel zoom (5min–30 days, downsampled for performance). Drag to pan through history with lazy loading and midnight date markers. Toggle individual lines, including an optional battery level line (off by default) drawn against its own right-hand 0–100 % axis. Pause/disable controls. Click "Live" to snap back to real-time. If a history adapter (InfluxDB, SQL, or History) is enabled on the power states, the chart backfills with historical data on page load. Each state is resolved on its own, so they may be recorded by different history adapters, and a state without recording only affects its own line. The ⓘ button lists the states behind every line together with the history adapter recording them — use it to find out why a line has no past data. The **Colors** button sets the color of each line, with **Default colors** to put them back; a type keeps one color across every chart that draws it, and the palette is stored in the adapter rather than the browser, so every page pointed at the instance shares it.
 
 ![Live Power Curve](media/dashboard-live-chart.png)
 
@@ -341,6 +341,7 @@ Features:
 - Data table view
 - PNG image export
 - Auto-update mode
+- Series colors, behind the **Colors** button, with **Default colors** to put them back. Comparison series are absent from the picker on purpose: a comparison is drawn in its own type's color at reduced opacity, so it follows whatever that type is set to.
 
 ![Charts - Year](media/dashboard-charts-year.png)
 
@@ -405,7 +406,7 @@ Requires the device IP to be configured (even if the Local connector is not enab
 
 ## State Reference
 
-The adapter creates states organized by connector and data section. All states are read-only unless explicitly marked as control states.
+The adapter creates states organized by connector and data section. All states are read-only unless the table below marks them writable.
 
 ### Connection & Status (`info.*`)
 
@@ -430,6 +431,12 @@ The adapter creates states organized by connector and data section. All states a
 | `_local.tls.userCaPem` | string | yes | User-uploaded CA certificate PEM (encrypted) |
 | `_local.tls.cachedCaPem` | string | no | CA certificate PEM downloaded from mein-senec.de (encrypted) |
 | `_local.tls.certFetchFailed` | boolean | yes | Set to `false` to trigger a new CA download attempt |
+
+### Web Dashboard Settings (`_dashboard.*`)
+
+| State | Type | Write | Description |
+|-------|------|:-----:|-------------|
+| `_dashboard.colors` | string | yes | Chart series colors picked in the web dashboard, as a JSON object of palette entry to `#rrggbb`. Only entries that differ from the built-in default are stored. Written by the dashboard and held by the adapter, which never acts on it — it lives here rather than in the browser so every page pointed at the instance shares one palette. Entries the dashboard does not recognise are ignored when it loads. |
 
 ### Local States
 

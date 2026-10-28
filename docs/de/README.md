@@ -303,7 +303,7 @@ Funktionen:
 **Energiefluss-Diagramm** — Live-SVG-Visualisierung der Energieflüsse zwischen PV, Batterie, Netz, Haus und Wallbox. Animierte Flusspfade mit leistungsproportionaler Dicke. Batterie-SOC-Anzeige mit Füllstand. Betriebsmodus-Badge. Zeitschätzungen (bis leer/voll). Periodensummen (Heute/Monat/Jahr) mit Autarkie-Prozent. Datenquellen-Auswahl (Auto/Lokal/API/Web).
 
 
-**Live-Leistungskurve** — Echtzeit-Liniendiagramm der Leistung über die Zeit für alle fünf Messwerte (PV, Haus, Netz, Batterie, Wallbox). Glatte monotone kubische Interpolation zwischen Datenpunkten. Zeitfenster-Voreinstellungen von 10 Minuten bis 24 Stunden, plus Mausrad-Zoom (5min–30 Tage, heruntergesampelt für Performance). Ziehen zum Blättern durch die Historie mit Lazy-Loading und Mitternachts-Datumsmarkern. Einzelne Linien ein-/ausblendbar, inklusive einer optionalen Ladezustandslinie (standardmäßig aus) auf einer eigenen rechten 0–100-%-Achse. Pause-/Deaktivierungsschalter. „Live"-Button zum Zurückspringen zur Echtzeit. Bei aktiviertem History-Adapter (InfluxDB, SQL oder History) auf den Leistungs-States wird das Diagramm beim Laden mit historischen Daten vorbefüllt. Jeder State wird einzeln aufgelöst — States können also von unterschiedlichen History-Adaptern aufgezeichnet werden, und ein nicht aufgezeichneter State betrifft nur seine eigene Linie. Der ⓘ-Button listet die States hinter jeder Linie zusammen mit dem aufzeichnenden History-Adapter auf — damit lässt sich nachvollziehen, warum eine Linie keine Vergangenheitsdaten hat.
+**Live-Leistungskurve** — Echtzeit-Liniendiagramm der Leistung über die Zeit für alle fünf Messwerte (PV, Haus, Netz, Batterie, Wallbox). Glatte monotone kubische Interpolation zwischen Datenpunkten. Zeitfenster-Voreinstellungen von 10 Minuten bis 24 Stunden, plus Mausrad-Zoom (5min–30 Tage, heruntergesampelt für Performance). Ziehen zum Blättern durch die Historie mit Lazy-Loading und Mitternachts-Datumsmarkern. Einzelne Linien ein-/ausblendbar, inklusive einer optionalen Ladezustandslinie (standardmäßig aus) auf einer eigenen rechten 0–100-%-Achse. Pause-/Deaktivierungsschalter. „Live"-Button zum Zurückspringen zur Echtzeit. Bei aktiviertem History-Adapter (InfluxDB, SQL oder History) auf den Leistungs-States wird das Diagramm beim Laden mit historischen Daten vorbefüllt. Jeder State wird einzeln aufgelöst — States können also von unterschiedlichen History-Adaptern aufgezeichnet werden, und ein nicht aufgezeichneter State betrifft nur seine eigene Linie. Der ⓘ-Button listet die States hinter jeder Linie zusammen mit dem aufzeichnenden History-Adapter auf — damit lässt sich nachvollziehen, warum eine Linie keine Vergangenheitsdaten hat. Der **Farben**-Button legt die Farbe jeder Linie fest, **Standardfarben** setzt sie zurück; ein Typ behält seine Farbe in jedem Diagramm, das ihn zeichnet, und die Palette liegt im Adapter statt im Browser — alle Seiten, die auf die Instanz zeigen, teilen sie sich.
 
 ![Live-Leistungskurve](media/dashboard-live-chart.png)
 
@@ -344,6 +344,7 @@ Funktionen:
 - Datentabelle
 - PNG-Bildexport
 - Auto-Update-Modus
+- Reihenfarben hinter dem **Farben**-Button, mit **Standardfarben** zum Zurücksetzen. Vergleichsreihen fehlen in der Auswahl mit Absicht: ein Vergleich wird in der Farbe seines eigenen Typs mit reduzierter Deckkraft gezeichnet und folgt damit automatisch dessen Einstellung.
 
 ![Diagramme - Jahr](media/dashboard-charts-year.png)
 
@@ -408,7 +409,7 @@ Erfordert eine konfigurierte Geräte-IP (auch wenn der lokale Konnektor nicht ak
 
 ## State-Referenz
 
-Der Adapter erstellt States, organisiert nach Konnektor und Datenbereich. Alle States sind schreibgeschützt, sofern nicht explizit als Steuerungs-States gekennzeichnet.
+Der Adapter erstellt States, organisiert nach Konnektor und Datenbereich. Alle States sind schreibgeschützt, sofern sie in den folgenden Tabellen nicht als beschreibbar gekennzeichnet sind.
 
 ### Verbindung & Status (`info.*`)
 
@@ -433,6 +434,12 @@ Der Adapter erstellt States, organisiert nach Konnektor und Datenbereich. Alle S
 | `_local.tls.userCaPem` | string | ja | Vom Benutzer hochgeladenes CA-Zertifikat (PEM, verschlüsselt) |
 | `_local.tls.cachedCaPem` | string | nein | Von mein-senec.de heruntergeladenes CA-Zertifikat (PEM, verschlüsselt) |
 | `_local.tls.certFetchFailed` | boolean | ja | Auf `false` setzen um einen neuen CA-Download-Versuch auszulösen |
+
+### Web-Dashboard-Einstellungen (`_dashboard.*`)
+
+| State | Typ | Schreiben | Beschreibung |
+|-------|-----|:---------:|--------------|
+| `_dashboard.colors` | string | ja | Im Web-Dashboard gewählte Diagrammfarben, als JSON-Objekt von Paletteneintrag zu `#rrggbb`. Gespeichert werden nur Einträge, die vom eingebauten Standard abweichen. Das Dashboard schreibt den Wert, der Adapter hält ihn nur und wertet ihn nie aus — er liegt hier statt im Browser, damit alle Seiten derselben Instanz dieselbe Palette verwenden. Einträge, die das Dashboard nicht kennt, werden beim Laden ignoriert. |
 
 ### Lokale States
 

@@ -2,7 +2,7 @@
 
 /* exported app, logViewer, toggleTheme */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
-/* global io, i18n, t, connectorEnabled, OPENAPI_ROUTE_SECTIONS, energyFlow, liveChart, eventTimeline, charts, systemInfo, controls, statsViewer, document, window, requestAnimationFrame, FileReader, XMLHttpRequest */
+/* global io, i18n, t, connectorEnabled, OPENAPI_ROUTE_SECTIONS, chartColors, energyFlow, liveChart, eventTimeline, charts, systemInfo, controls, statsViewer, document, window, requestAnimationFrame, FileReader, XMLHttpRequest */
 
 /**
  * Dashboard entry point: socket wiring, state cache, tab handling and the render loop.
@@ -31,6 +31,14 @@ const OPENAPI_POWER_SECTIONS = OPENAPI_ROUTE_SECTIONS.filter(function (section) 
 var app = {
 	namespace: NAMESPACE,
 	conn: null,
+
+	/**
+	 * Whether the socket is currently usable for a write.
+	 *
+	 * `conn` survives an outage, so it answers "was a socket ever made", not "will this
+	 * emit arrive". Writes need the second question.
+	 */
+	socketLive: false,
 	states: {},
 	config: {},
 	connected: false,
@@ -148,6 +156,10 @@ var app = {
 		});
 
 		this.conn.on("disconnect", function () {
+			// `conn` stays in place across an outage, so it is not a usable liveness test.
+			// Anything that writes has to know, or it reports a write as delivered that the
+			// client either dropped or will flush at an unknown later time.
+			app.socketLive = false;
 			app.showError(t("disconnected"));
 		});
 
@@ -190,6 +202,7 @@ var app = {
 		this._readyFor = this.conn;
 		var reconnected = this._hasConnected;
 		this._hasConnected = true;
+		this.socketLive = true;
 		document.getElementById("error-banner").style.display = "none";
 		// Object subscriptions live on the server side of the socket, so a reconnect loses them
 		// and they have to be asked for again — including the adapter object carrying the
@@ -262,6 +275,7 @@ var app = {
 				}
 			}
 			app.states = fresh;
+			chartColors.applyFromState(app.states[chartColors.STATE_ID]);
 			// The set of wallbox slots is memoised off the state ids, and this is the one place
 			// that can change all of them at once.
 			systemInfo.evseDirty();
@@ -275,6 +289,14 @@ var app = {
 	},
 
 	onStateUpdate: function (shortId, val) {
+		// Carries no device reading, so none of the recompute below applies to it. Another
+		// browser picking a color arrives here too, which is what keeps two open pages in step.
+		if (shortId === chartColors.STATE_ID) {
+			if (chartColors.applyFromState(val)) {
+				chartColors.refreshCharts();
+			}
+			return;
+		}
 		if (shortId === "info.connection") {
 			this.connected = !!val;
 		}
@@ -445,11 +467,12 @@ var app = {
 		}
 		el.innerHTML = energyFlow.render(systemInfo.renderOperatingMode(this.states));
 
-		var liveEl = document.getElementById("livechart-container");
-		if (liveEl && !liveChart._dragging && !liveChart._pinching) {
-			liveEl.innerHTML = liveChart.render();
-			liveChart.bindDrag();
-			liveChart.paintCanvas();
+		// An open color editor holds this redraw off. Replacing the markup under a native
+		// color dialog detaches the input it was opened from, and the editor's own controls
+		// would lose focus on every poll. Every control inside the two cards redraws through
+		// its own module's `refresh()`, which is not held, so nothing else freezes with it.
+		if (!liveChart._dragging && !liveChart._pinching && !liveChart._colorsOpen) {
+			liveChart.refresh();
 		}
 
 		var timelineEl = document.getElementById("timeline-container");
@@ -467,9 +490,8 @@ var app = {
 				systemInfo.renderBatteryVoltages(this.states);
 		}
 
-		var chartsEl = document.getElementById("charts-container");
-		if (chartsEl) {
-			chartsEl.innerHTML = charts.render(this.states);
+		if (!charts._colorsOpen) {
+			charts.refresh();
 		}
 
 		var statsEl = document.getElementById("statistics-container");

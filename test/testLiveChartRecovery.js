@@ -101,7 +101,7 @@ function loadChart(socket) {
 		navigator: { language: "en" },
 		console,
 	});
-	for (const name of ["i18n.js", "energy.js", "livechart.js"]) {
+	for (const name of ["i18n.js", "colors.js", "energy.js", "livechart.js"]) {
 		vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "www", name), "utf8"), context, {
 			filename: name,
 		});
@@ -255,5 +255,20 @@ describe("live chart — recovery when the socket misbehaves", () => {
 		liveChart.togglePause();
 
 		assert.ok(socket.count("getHistory") > 0, "resuming left the hole in place");
+	});
+
+	it("redraws the card when the history-info probes come back", () => {
+		// The probe completion runs as a bare callback, so a `this`-qualified redraw there
+		// throws under strict mode and the panel never shows the status it was opened for.
+		let refreshes = 0;
+		liveChart.refresh = () => {
+			refreshes++;
+		};
+
+		liveChart.toggleInfo();
+		assert.ok(socket.outstanding() > 0, "opening the panel probes the recording status");
+		socket.flush();
+
+		assert.ok(refreshes > 0, "the panel is redrawn with what the probes found");
 	});
 });

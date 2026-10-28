@@ -66,13 +66,13 @@ function loadChain(config = { openapi_use: true, lala_use: false, api_use: false
 		requestAnimationFrame: (cb) => frames.push(cb),
 		io: { connect: () => ({ on: noop, emit: noop }) },
 		eventTimeline: { render: () => "", fetchEvents: noop },
-		charts: { render: () => "", paintChart: noop, bindZoom: noop },
+		charts: { render: () => "", refresh: noop, paintChart: noop, bindZoom: noop },
 		controls: { render: () => "", isLocked: () => false, bind: noop },
 		statsViewer: { render: () => "", paintChart: noop },
 		logViewer: { onConfigLoaded: noop },
 		console,
 	});
-	for (const name of ["i18n.js", "energy.js", "livechart.js", "system.js", "app.js"]) {
+	for (const name of ["i18n.js", "colors.js", "energy.js", "livechart.js", "system.js", "app.js"]) {
 		vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "www", name), "utf8"), context, {
 			filename: name,
 		});
@@ -199,5 +199,50 @@ describe("dashboard — the real state-update chain", () => {
 		deliver("_openapi.info.lastPoll", "2026-10-26T08:02:00.000Z");
 
 		assert.match(ctx.dashboardEl.innerHTML, /Incomplete poll/);
+	});
+
+	describe("the hold an open colour editor puts on the periodic render", () => {
+		/**
+		 * Count every redraw the periodic render performs, without changing what it does.
+		 *
+		 * @returns {{live: number, charts: number}} Live counters, read after `deliver`
+		 */
+		function countRefreshes() {
+			const counts = { live: 0, charts: 0 };
+			ctx.liveChart.refresh = () => {
+				counts.live++;
+			};
+			ctx.charts.refresh = () => {
+				counts.charts++;
+			};
+			return counts;
+		}
+
+		it("redraws both charts on an ordinary state update", () => {
+			// The control case. Without it the next two cases would also pass with the render
+			// path removed entirely.
+			const counts = countRefreshes();
+			deliver("ENERGY.GUI_HOUSE_POW", 500);
+			assert.ok(counts.live > 0, "live chart redrawn");
+			assert.ok(counts.charts > 0, "measurement chart redrawn");
+		});
+
+		it("leaves the live chart alone while its colour editor is open", () => {
+			// Replacing the markup would detach the `<input type="color">` the user has a
+			// native picker open on, and drops focus from the editor on every poll.
+			const counts = countRefreshes();
+			ctx.liveChart._colorsOpen = true;
+			deliver("ENERGY.GUI_HOUSE_POW", 500);
+			assert.equal(counts.live, 0, "live chart held");
+			assert.ok(counts.charts > 0, "the other chart is unaffected");
+		});
+
+		it("leaves the measurement chart alone while its colour editor is open", () => {
+			const counts = countRefreshes();
+			ctx.charts._colorsOpen = true;
+			deliver("ENERGY.GUI_HOUSE_POW", 500);
+			assert.equal(counts.charts, 0, "measurement chart held");
+			assert.ok(counts.live > 0, "the other chart is unaffected");
+		});
 	});
 });

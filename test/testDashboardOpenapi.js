@@ -70,7 +70,8 @@ function loadWww(file, extraGlobals = {}) {
 		navigator: { language: "en" },
 		...extraGlobals,
 	});
-	for (const name of ["i18n.js", ...(Array.isArray(file) ? file : [file])]) {
+	// colors.js alongside it: the view modules ask it for every series color they draw.
+	for (const name of ["i18n.js", "colors.js", ...(Array.isArray(file) ? file : [file])]) {
 		const source = fs.readFileSync(path.join(__dirname, "..", "www", name), "utf8");
 		vm.runInContext(source, context, { filename: name });
 	}

@@ -59,6 +59,15 @@ const TRANSLATION_PREFIXES = [
 	/^_openapi\.(.+)$/, // _openapi.<section>.<field>
 ];
 
+/**
+ * Size bound on the dashboard's chart-colour palette.
+ *
+ * It holds at most ten `"name":"#rrggbb"` pairs, so a kilobyte is already far past anything
+ * the dashboard can produce. The state is writable by anything on the host, and the adapter
+ * re-broadcasts whatever it acks to every subscriber.
+ */
+const DASHBOARD_COLORS_MAX_CHARS = 1024;
+
 // process.on("unhandledRejection", (reason, _promise) => {
 // 	console.error("Unhandled Promise Rejection:", reason);
 // });
@@ -226,94 +235,95 @@ class Senec extends utils.Adapter {
 	 * Is called when databases are connected and adapter received configuration.
 	 */
 	async onReady() {
-		// load axios-cookiejar-support dynamically (ESM compatible)
-		if (!wrapper) {
-			const mod = await import("axios-cookiejar-support");
-			wrapper = mod.wrapper;
-		}
-
-		// Reset the connection indicators during startup
-		await this.setState("info.connection", false, true);
-		await this.setObjectNotExistsAsync("info.connectionStatus", {
-			type: "state",
-			common: {
-				role: "text",
-				name: "Connection status (all/partial/none)",
-				type: "string",
-				read: true,
-				write: false,
-				def: "none",
-			},
-			native: {},
-		});
-		await this.setState("info.connectionStatus", "none", true);
-		await this.setObjectNotExistsAsync("info.localConnected", {
-			type: "state",
-			common: {
-				role: "indicator.connected",
-				name: "Local (lala.cgi) connected",
-				type: "boolean",
-				read: true,
-				write: false,
-				def: false,
-			},
-			native: {},
-		});
-		await this.setObjectNotExistsAsync("info.apiConnected", {
-			type: "state",
-			common: {
-				role: "indicator.connected",
-				name: "SENEC App API connected",
-				type: "boolean",
-				read: true,
-				write: false,
-				def: false,
-			},
-			native: {},
-		});
-		await this.setObjectNotExistsAsync("info.webConnected", {
-			type: "state",
-			common: {
-				role: "indicator.connected",
-				name: "mein-senec.de connected",
-				type: "boolean",
-				read: true,
-				write: false,
-				def: false,
-			},
-			native: {},
-		});
-		await this.setObjectNotExistsAsync("info.connectConnected", {
-			type: "state",
-			common: {
-				role: "indicator.connected",
-				name: "SENEC.Connect connected",
-				type: "boolean",
-				read: true,
-				write: false,
-				def: false,
-			},
-			native: {},
-		});
-		await this.setObjectNotExistsAsync("info.openapiConnected", {
-			type: "state",
-			common: {
-				role: "indicator.connected",
-				name: "Local OpenAPI connected",
-				type: "boolean",
-				read: true,
-				write: false,
-				def: false,
-			},
-			native: {},
-		});
-		await this.setState("info.localConnected", false, true);
-		await this.setState("info.apiConnected", false, true);
-		await this.setState("info.webConnected", false, true);
-		await this.setState("info.connectConnected", false, true);
-		await this.setState("info.openapiConnected", false, true);
-
 		try {
+			// load axios-cookiejar-support dynamically (ESM compatible)
+			if (!wrapper) {
+				const mod = await import("axios-cookiejar-support");
+				wrapper = mod.wrapper;
+			}
+
+			// Reset the connection indicators during startup
+			await this.setState("info.connection", false, true);
+			await this.setObjectNotExistsAsync("info.connectionStatus", {
+				type: "state",
+				common: {
+					role: "text",
+					name: "Connection status (all/partial/none)",
+					type: "string",
+					read: true,
+					write: false,
+					def: "none",
+				},
+				native: {},
+			});
+			await this.setState("info.connectionStatus", "none", true);
+			await this.setObjectNotExistsAsync("info.localConnected", {
+				type: "state",
+				common: {
+					role: "indicator.connected",
+					name: "Local (lala.cgi) connected",
+					type: "boolean",
+					read: true,
+					write: false,
+					def: false,
+				},
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("info.apiConnected", {
+				type: "state",
+				common: {
+					role: "indicator.connected",
+					name: "SENEC App API connected",
+					type: "boolean",
+					read: true,
+					write: false,
+					def: false,
+				},
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("info.webConnected", {
+				type: "state",
+				common: {
+					role: "indicator.connected",
+					name: "mein-senec.de connected",
+					type: "boolean",
+					read: true,
+					write: false,
+					def: false,
+				},
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("info.connectConnected", {
+				type: "state",
+				common: {
+					role: "indicator.connected",
+					name: "SENEC.Connect connected",
+					type: "boolean",
+					read: true,
+					write: false,
+					def: false,
+				},
+				native: {},
+			});
+			await this.setObjectNotExistsAsync("info.openapiConnected", {
+				type: "state",
+				common: {
+					role: "indicator.connected",
+					name: "Local OpenAPI connected",
+					type: "boolean",
+					read: true,
+					write: false,
+					def: false,
+				},
+				native: {},
+			});
+			await this.setState("info.localConnected", false, true);
+			await this.setState("info.apiConnected", false, true);
+			await this.setState("info.webConnected", false, true);
+			await this.setState("info.connectConnected", false, true);
+			await this.setState("info.openapiConnected", false, true);
+			await this.initDashboardStates();
+
 			this.checkConfig();
 
 			const apiConcurrencyStart = Math.max(1, Number(this.config.api_concurrency_start) || 1);
@@ -624,7 +634,14 @@ class Senec extends utils.Adapter {
 			}
 		} catch (error) {
 			this.logError(error, "❌ Adapter startup failed");
-			await this.updateConnectionStatus();
+			// The guarded region includes the creation of the states this reports through, so
+			// a failure early enough leaves them absent — and this reporting attempt is the
+			// one thing that must not throw on top of the error it is reporting.
+			try {
+				await this.updateConnectionStatus();
+			} catch (statusError) {
+				this.logError(statusError, "❌ Could not report the startup failure");
+			}
 		}
 	}
 
@@ -795,6 +812,36 @@ class Senec extends utils.Adapter {
 		// Subscribe to user-writable TLS states for runtime changes
 		await this.subscribeStatesAsync("_local.tls.certFetchFailed");
 		await this.subscribeStatesAsync("_local.tls.userCaPem");
+	}
+
+	/**
+	 * Create the states the web dashboard stores its own settings in.
+	 *
+	 * The adapter never reads them — it only holds them, so that every browser pointed at
+	 * this instance shares one set instead of each keeping its own in local storage.
+	 */
+	async initDashboardStates() {
+		await this.setObjectNotExistsAsync("_dashboard", {
+			type: "channel",
+			common: { name: "Web dashboard settings" },
+			native: {},
+		});
+		await this.setObjectNotExistsAsync("_dashboard.colors", {
+			type: "state",
+			common: {
+				role: "json",
+				name: "Chart series colors picked in the web dashboard",
+				type: "string",
+				read: true,
+				write: true,
+				def: "{}",
+			},
+			native: {},
+		});
+		if (this.unloaded) {
+			return;
+		}
+		await this.subscribeStatesAsync("_dashboard.colors");
 	}
 
 	/**
@@ -1223,6 +1270,11 @@ class Senec extends utils.Adapter {
 		if (!state) {
 			return;
 		}
+		// Every branch below either writes state or starts a request. A change delivered while
+		// the instance is tearing down must not schedule work that outlives it.
+		if (this.unloaded) {
+			return;
+		}
 
 		// TLS certFetchFailed reset — user wants to retry CA download
 		if (id === `${this.namespace}._local.tls.certFetchFailed` && state.val === false && !state.ack) {
@@ -1254,6 +1306,24 @@ class Senec extends utils.Adapter {
 				await this.writeTlsState("_local.tls.userCaPem", ""); // clear invalid cert
 				this.log.warn("[Local] ⚠️ TLS: Uploaded CA cert did not validate the device. Cert rejected.");
 			}
+			return;
+		}
+
+		// Web dashboard settings — stored on behalf of the browsers, never acted on here.
+		// Validated before the ack even though the dashboard also filters on read, because
+		// the state is writable by anything on the host and `common.type` is `string`:
+		// acking a number or an object would settle a value that contradicts its own object.
+		if (id === `${this.namespace}._dashboard.colors` && !state.ack) {
+			if (typeof state.val !== "string" || state.val.length > DASHBOARD_COLORS_MAX_CHARS) {
+				this.log.warn(
+					`[Dashboard] Ignored a chart-colour write that is not a string of at most ${DASHBOARD_COLORS_MAX_CHARS} characters`,
+				);
+				return;
+			}
+			// Debug, not info: this fires on every colour the user picks. Without it a write
+			// that never arrives leaves no trace on either side of the socket.
+			this.log.debug(`[Dashboard] Chart colours stored: ${state.val}`);
+			await this.setState("_dashboard.colors", state.val, true);
 			return;
 		}
 

@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, stateIsLive, connectorEnabled, energyFlow, document, getComputedStyle, XMLSerializer, Image */
+/* global app, t, chartColors, stateIsLive, connectorEnabled, energyFlow, document, getComputedStyle, XMLSerializer, Image */
 /* exported charts */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -14,13 +14,16 @@ var charts = {
 	webTypes: ["powergenerated", "consumption", "gridimport", "gridexport", "accuimport", "accuexport"],
 
 	typeConfig: {
-		powergenerated: { color: "#f9a825", labelKey: "total_pv" },
-		consumption: { color: "#e65100", labelKey: "total_consumption" },
-		gridimport: { color: "#c62828", labelKey: "total_grid_import" },
-		gridexport: { color: "#1565c0", labelKey: "total_grid_export" },
-		accuimport: { color: "#00897b", labelKey: "total_battery_discharge" },
-		accuexport: { color: "#2e7d32", labelKey: "total_battery_charge" },
+		powergenerated: { colorKey: "pv", labelKey: "total_pv" },
+		consumption: { colorKey: "house", labelKey: "total_consumption" },
+		gridimport: { colorKey: "gridImport", labelKey: "total_grid_import" },
+		gridexport: { colorKey: "gridExport", labelKey: "total_grid_export" },
+		accuimport: { colorKey: "batteryDischarge", labelKey: "total_battery_discharge" },
+		accuexport: { colorKey: "batteryCharge", labelKey: "total_battery_charge" },
 	},
+
+	/** Palette entry behind the battery level overlay, which is not one of the bar types */
+	BATTERY_LEVEL_KEY: "batterySoc",
 
 	// Which types are visible (user can toggle)
 	visible: {
@@ -456,17 +459,19 @@ var charts = {
 		for (var j = 0; j < this.webTypes.length; j++) {
 			var wt = this.webTypes[j];
 			var cfg = this.typeConfig[wt];
+			var cfgColor = this.color(wt);
 			var active = this.visible[wt] ? " active" : "";
 			html +=
 				`<button class="chart-toggle${active}" ` +
-				`style="--toggle-color:${cfg.color}" ` +
+				`style="--toggle-color:${cfgColor}" ` +
 				`onclick="charts.toggleType('${wt}')">` +
-				`<span class="chart-toggle-dot" style="background:${cfg.color}"></span>${t(cfg.labelKey)}</button>`;
+				`<span class="chart-toggle-dot" style="background:${cfgColor}"></span>${t(cfg.labelKey)}</button>`;
 		}
+		var blColor = chartColors.get(this.BATTERY_LEVEL_KEY);
 		var blCls = this.showBatteryLevel ? " active" : "";
 		html +=
-			`<button class="chart-toggle${blCls}" style="--toggle-color:#7e57c2" onclick="charts.toggleBatteryLevel()">` +
-			`<span class="chart-toggle-dot" style="background:#7e57c2"></span>${t("chart_battery_level")}</button>`;
+			`<button class="chart-toggle${blCls}" style="--toggle-color:${blColor}" onclick="charts.toggleBatteryLevel()">` +
+			`<span class="chart-toggle-dot" style="background:${blColor}"></span>${t("chart_battery_level")}</button>`;
 		var stackedCls = this.stacked ? " active" : "";
 		html +=
 			`<button class="chart-toggle${stackedCls}" style="--toggle-color:#757575" onclick="charts.toggleStacked()">` +
@@ -499,7 +504,15 @@ var charts = {
 		html +=
 			`<button class="chart-toggle${autoUpdateCls}" style="--toggle-color:#757575" onclick="charts.toggleAutoUpdate()">` +
 			`<span class="chart-toggle-dot" style="background:#757575"></span>${t("log_live")}</button>`;
+		var colorsCls = this._colorsOpen ? " active" : "";
+		html +=
+			`<button class="chart-toggle${colorsCls}" style="--toggle-color:#757575" onclick="charts.toggleColors()">` +
+			`<span class="chart-toggle-dot" style="background:#757575"></span>${t("colors_title")}</button>`;
 		html += "</div>";
+
+		if (this._colorsOpen) {
+			html += chartColors.renderEditor("charts", this._colorRows());
+		}
 
 		if (!result.current) {
 			html += `<div class="stat-label">${t("chart_no_data")}</div>`;
@@ -750,7 +763,7 @@ var charts = {
 			var barH = (val / maxVal) * plotH;
 			if (barH > 0.5) {
 				stackY -= barH;
-				svg += `<rect x="${barX.toFixed(1)}" y="${stackY.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="${this.typeConfig[type].color}" opacity="${opacity}" rx="1">`;
+				svg += `<rect x="${barX.toFixed(1)}" y="${stackY.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="${this.color(type)}" opacity="${opacity}" rx="1">`;
 				svg += `<title>${t(this.typeConfig[type].labelKey)}: ${val.toFixed(2)} kWh</title>`;
 				svg += "</rect>";
 			}
@@ -772,7 +785,7 @@ var charts = {
 
 			for (var bi = 0; bi < totalTypes; bi++) {
 				var type = visibleTypes[bi];
-				var color = this.typeConfig[type].color;
+				var color = this.color(type);
 
 				// Comparison bar (semi-transparent, before current)
 				if (compData) {
@@ -834,11 +847,13 @@ var charts = {
 			return "";
 		}
 
+		var blColor = chartColors.get(this.BATTERY_LEVEL_KEY);
+
 		// Right-side % axis (only for primary, not comparison)
 		if (!isComparison) {
 			for (var pct = 0; pct <= 100; pct += 25) {
 				var yPos = padT + plotH - (pct / 100) * plotH;
-				svg += `<text x="${chartW - padR + 5}" y="${yPos + 4}" text-anchor="start" fill="#7e57c2" font-size="10">${pct}%</text>`;
+				svg += `<text x="${chartW - padR + 5}" y="${yPos + 4}" text-anchor="start" fill="${blColor}" font-size="10">${pct}%</text>`;
 			}
 		}
 
@@ -851,11 +866,11 @@ var charts = {
 		for (var pi = 0; pi < points.length; pi++) {
 			pathD += `${pi === 0 ? "M" : "L"}${points[pi].x.toFixed(1)},${points[pi].y.toFixed(1)}`;
 		}
-		svg += `<path d="${pathD}" fill="none" stroke="#7e57c2" stroke-width="2" opacity="${opacity}" stroke-linejoin="round" stroke-linecap="round"${dash}/>`;
+		svg += `<path d="${pathD}" fill="none" stroke="${blColor}" stroke-width="2" opacity="${opacity}" stroke-linejoin="round" stroke-linecap="round"${dash}/>`;
 
 		// Dots with tooltips
 		for (var di = 0; di < points.length; di++) {
-			svg += `<circle cx="${points[di].x.toFixed(1)}" cy="${points[di].y.toFixed(1)}" r="3" fill="#7e57c2" opacity="${opacity}">`;
+			svg += `<circle cx="${points[di].x.toFixed(1)}" cy="${points[di].y.toFixed(1)}" r="3" fill="${blColor}" opacity="${opacity}">`;
 			svg += `<title>${label}: ${Math.round(points[di].val)}%</title>`;
 			svg += "</circle>";
 		}
@@ -920,7 +935,8 @@ var charts = {
 		for (var ti = 0; ti < visibleTypes.length; ti++) {
 			var type = visibleTypes[ti];
 			var cfg = this.typeConfig[type];
-			html += `<tr><td class="chart-table-label"><span class="chart-toggle-dot" style="background:${cfg.color}"></span> ${t(cfg.labelKey)}</td>`;
+			var rowColor = this.color(type);
+			html += `<tr><td class="chart-table-label"><span class="chart-toggle-dot" style="background:${rowColor}"></span> ${t(cfg.labelKey)}</td>`;
 			for (var vi = 0; vi < data.series[type].length; vi++) {
 				var val = data.series[type][vi];
 				html += `<td>${val > 0 ? val.toFixed(2) : ""}</td>`;
@@ -929,7 +945,7 @@ var charts = {
 
 			// Comparison row
 			if (compData && compData.series[type]) {
-				html += `<tr class="chart-table-comp"><td class="chart-table-label" style="opacity:0.5"><span class="chart-toggle-dot" style="background:${cfg.color}"></span> ${t(cfg.labelKey)} (${result.compLabel})</td>`;
+				html += `<tr class="chart-table-comp"><td class="chart-table-label" style="opacity:0.5"><span class="chart-toggle-dot" style="background:${rowColor}"></span> ${t(cfg.labelKey)} (${result.compLabel})</td>`;
 				for (var ci = 0; ci < compData.series[type].length; ci++) {
 					var cVal = compData.series[type][ci];
 					html += `<td style="opacity:0.5">${cVal > 0 ? cVal.toFixed(2) : ""}</td>`;
@@ -940,7 +956,8 @@ var charts = {
 
 		// Battery level row
 		if (this.showBatteryLevel && data.batteryLevel) {
-			html += `<tr><td class="chart-table-label"><span class="chart-toggle-dot" style="background:#7e57c2"></span> ${t("chart_battery_level")}</td>`;
+			var blColor = chartColors.get(this.BATTERY_LEVEL_KEY);
+			html += `<tr><td class="chart-table-label"><span class="chart-toggle-dot" style="background:${blColor}"></span> ${t("chart_battery_level")}</td>`;
 			for (var bli = 0; bli < data.batteryLevel.length; bli++) {
 				var blv = data.batteryLevel[bli];
 				html += `<td>${blv !== null && blv > 0 ? `${Math.round(blv)}%` : ""}</td>`;
@@ -948,7 +965,7 @@ var charts = {
 			html += "</tr>";
 
 			if (compData && compData.batteryLevel) {
-				html += `<tr class="chart-table-comp"><td class="chart-table-label" style="opacity:0.5"><span class="chart-toggle-dot" style="background:#7e57c2"></span> ${t("chart_battery_level")} (${result.compLabel})</td>`;
+				html += `<tr class="chart-table-comp"><td class="chart-table-label" style="opacity:0.5"><span class="chart-toggle-dot" style="background:${blColor}"></span> ${t("chart_battery_level")} (${result.compLabel})</td>`;
 				for (var cbli = 0; cbli < compData.batteryLevel.length; cbli++) {
 					var cblv = compData.batteryLevel[cbli];
 					html += `<td style="opacity:0.5">${cblv !== null && cblv > 0 ? `${Math.round(cblv)}%` : ""}</td>`;
@@ -963,12 +980,12 @@ var charts = {
 
 	toggleTable: function () {
 		this.showTable = !this.showTable;
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	toggleAutoUpdate: function () {
 		this.autoUpdate = !this.autoUpdate;
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	scrollToLatest: function () {
@@ -980,17 +997,17 @@ var charts = {
 
 	onPeriodChange: function (val) {
 		this.period = val;
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	onSourceChange: function (val) {
 		this.source = val;
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	toggleType: function (type) {
 		this.visible[type] = !this.visible[type];
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	toggleStacked: function () {
@@ -1001,22 +1018,67 @@ var charts = {
 				this.visible[k] = true;
 			}
 		}
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	toggleCompare: function () {
 		this.compare = !this.compare;
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	toggleBatteryLevel: function () {
 		this.showBatteryLevel = !this.showBatteryLevel;
-		app.renderDashboard();
+		this.refresh();
+	},
+
+	/**
+	 * Current color of one measurement type.
+	 *
+	 * @param {string} type - Measurement type key
+	 * @returns {string} CSS color
+	 */
+	color: function (type) {
+		var cfg = this.typeConfig[type];
+		return chartColors.get(cfg ? cfg.colorKey : type);
+	},
+
+	/**
+	 * The palette entries this chart offers, in the order its toggles appear.
+	 *
+	 * The comparison series are deliberately absent: a comparison is drawn in its own
+	 * type's color at reduced opacity, so it follows the type and has nothing to pick.
+	 *
+	 * @returns {string[]} Palette keys
+	 */
+	_colorRows: function () {
+		var keys = [];
+		for (var i = 0; i < this.webTypes.length; i++) {
+			keys.push(this.typeConfig[this.webTypes[i]].colorKey);
+		}
+		keys.push(this.BATTERY_LEVEL_KEY);
+		return keys;
+	},
+
+	/**
+	 * Redraw the card in place — also the path the periodic render takes.
+	 *
+	 * The horizontal scroll is carried across, because a repaint the user did not ask for —
+	 * a color another page picked, or their own pick — would otherwise throw away the part
+	 * of the history they had scrolled back to look at.
+	 */
+	refresh: function () {
+		var before = document.querySelector("#charts-container .chart-scroll");
+		var scrollLeft = before ? before.scrollLeft : 0;
+		chartColors.fill("charts-container", this.render.bind(this, app.states));
+		var after = document.querySelector("#charts-container .chart-scroll");
+		if (after && scrollLeft) {
+			after.scrollLeft = scrollLeft;
+		}
 	},
 
 	onCompareYearChange: function (val) {
 		this.compareYear = Number(val);
-		app.renderDashboard();
+		this.refresh();
 	},
 
 	exportImage: function () {
@@ -1081,3 +1143,6 @@ var charts = {
 		img.src = url;
 	},
 };
+
+// The editor behaves identically for every chart, so its handlers come from one place.
+chartColors.bindOwner("charts", charts);
