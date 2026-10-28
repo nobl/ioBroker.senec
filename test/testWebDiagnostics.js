@@ -59,7 +59,6 @@ async function makeAdapter(config = {}) {
 			adapter.written.push([id, val]);
 		},
 		async setState() {},
-		async setStateAsync() {},
 		async getStateAsync() {
 			return null;
 		},

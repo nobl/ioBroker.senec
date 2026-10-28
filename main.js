@@ -656,11 +656,11 @@ class Senec extends utils.Adapter {
 		};
 
 		// Update per-connector indicators
-		await this.setStateAsync("info.localConnected", connected.local, true);
-		await this.setStateAsync("info.apiConnected", connected.api, true);
-		await this.setStateAsync("info.webConnected", connected.web, true);
-		await this.setStateAsync("info.connectConnected", connected.connect, true);
-		await this.setStateAsync("info.openapiConnected", connected.openapi, true);
+		await this.setState("info.localConnected", connected.local, true);
+		await this.setState("info.apiConnected", connected.api, true);
+		await this.setState("info.webConnected", connected.web, true);
+		await this.setState("info.connectConnected", connected.connect, true);
+		await this.setState("info.openapiConnected", connected.openapi, true);
 
 		// Count configured vs connected
 		const configuredCount = Object.values(configured).filter(Boolean).length;
@@ -674,8 +674,8 @@ class Senec extends utils.Adapter {
 			status = "partial";
 		}
 
-		await this.setStateAsync("info.connection", anyConnected, true);
-		await this.setStateAsync("info.connectionStatus", status, true);
+		await this.setState("info.connection", anyConnected, true);
+		await this.setState("info.connectionStatus", status, true);
 	}
 
 	/** Standard HTTPS agent options for local SENEC device */
@@ -737,7 +737,7 @@ class Senec extends utils.Adapter {
 	 */
 	async writeTlsState(id, val) {
 		const encrypted = val ? this.encrypt(val) : "";
-		await this.setStateAsync(id, encrypted, true);
+		await this.setState(id, encrypted, true);
 	}
 
 	async initTlsStates() {
@@ -885,7 +885,7 @@ class Senec extends utils.Adapter {
 			if (result.valid) {
 				this.swapLocalAgent(userAgent);
 				this._localTlsMode = "user";
-				await this.setStateAsync("_local.tls.mode", "user", true);
+				await this.setState("_local.tls.mode", "user", true);
 				this.log.info("[Local] ✅ TLS: Using user-uploaded CA cert.");
 				return;
 			}
@@ -901,7 +901,7 @@ class Senec extends utils.Adapter {
 			if (result.valid) {
 				this.swapLocalAgent(cachedAgent);
 				this._localTlsMode = "cached";
-				await this.setStateAsync("_local.tls.mode", "cached", true);
+				await this.setState("_local.tls.mode", "cached", true);
 				this.log.info("[Local] ✅ TLS: Using cached CA cert from mein-senec.de.");
 				return;
 			}
@@ -917,7 +917,7 @@ class Senec extends utils.Adapter {
 		if (!deviceFp) {
 			this.log.warn("[Local] ⚠️ Could not reach device for TLS fingerprint probe.");
 			this._localTlsMode = "none";
-			await this.setStateAsync("_local.tls.mode", "none", true);
+			await this.setState("_local.tls.mode", "none", true);
 			return;
 		}
 
@@ -925,7 +925,7 @@ class Senec extends utils.Adapter {
 		const tofuAgent = new https.Agent({ ...this._localAgentOptions, rejectUnauthorized: false }); // CodeQL: intentional — TOFU fingerprint validation provides identity verification
 		this.swapLocalAgent(tofuAgent);
 		this._localTlsMode = "tofu";
-		await this.setStateAsync("_local.tls.mode", "tofu", true);
+		await this.setState("_local.tls.mode", "tofu", true);
 
 		if (storedFp && storedFp === deviceFp) {
 			// Step 3: Stored fingerprint matches
@@ -998,7 +998,7 @@ class Senec extends utils.Adapter {
 			const pem = await webClient.webFetchCaCert(this);
 			if (!pem) {
 				this.log.warn("[Local] TLS: Could not find SenecGui-Root cert on mein-senec.de.");
-				await this.setStateAsync("_local.tls.certFetchFailed", true, true);
+				await this.setState("_local.tls.certFetchFailed", true, true);
 				return;
 			}
 
@@ -1009,7 +1009,7 @@ class Senec extends utils.Adapter {
 				// Success — upgrade from TOFU to cached CA
 				this.swapLocalAgent(testAgent);
 				this._localTlsMode = "cached";
-				await this.setStateAsync("_local.tls.mode", "cached", true);
+				await this.setState("_local.tls.mode", "cached", true);
 				await this.writeTlsState("_local.tls.cachedCaPem", pem);
 				this.log.info(
 					"[Local] ✅ TLS: Downloaded and validated CA cert from mein-senec.de. Upgraded to CA validation.",
@@ -1017,11 +1017,11 @@ class Senec extends utils.Adapter {
 			} else {
 				testAgent.destroy();
 				this.log.warn("[Local] TLS: Downloaded cert did not validate device. Staying on TOFU.");
-				await this.setStateAsync("_local.tls.certFetchFailed", true, true);
+				await this.setState("_local.tls.certFetchFailed", true, true);
 			}
 		} catch (e) {
 			this.log.warn(`[Local] TLS: CA cert download failed: ${e.message}. Staying on TOFU.`);
-			await this.setStateAsync("_local.tls.certFetchFailed", true, true);
+			await this.setState("_local.tls.certFetchFailed", true, true);
 		}
 	}
 
@@ -1246,7 +1246,7 @@ class Senec extends utils.Adapter {
 			if (result.valid) {
 				this.swapLocalAgent(testAgent);
 				this._localTlsMode = "user";
-				await this.setStateAsync("_local.tls.mode", "user", true);
+				await this.setState("_local.tls.mode", "user", true);
 				await this.writeTlsState("_local.tls.userCaPem", pem); // encrypt and ack
 				this.log.info("[Local] ✅ TLS: User-uploaded CA cert validated. Upgraded to CA validation.");
 			} else {

@@ -41,7 +41,6 @@ function makeAdapter(config, extra = {}) {
 		async subscribeStatesAsync(pattern) {
 			adapter.subscribed.push(pattern);
 		},
-		async setStateAsync() {},
 		async setState() {},
 		async doState() {},
 		async createSocketControlsForIndex(i) {

@@ -83,7 +83,7 @@ async function rollOver(endedDayTag, nowIso, tz) {
 		async evalPoll(values, pfx, keyPrefix) {
 			adapter.evalPollCalls.push({ pfx, keyPrefix, values });
 		},
-		async setStateAsync(id, val) {
+		async setState(id, val) {
 			if (val === null) {
 				adapter.clearedStates.push(id);
 			}

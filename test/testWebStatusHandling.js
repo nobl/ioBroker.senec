@@ -65,7 +65,6 @@ function makeAdapter(opts = {}) {
 			adapter.writtenStates.push([id, val]);
 		},
 		async setState() {},
-		async setStateAsync() {},
 		async getStateAsync() {
 			return null;
 		},

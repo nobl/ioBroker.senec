@@ -84,7 +84,7 @@ function makeAdapter(succeedsFor) {
 		async getStateAsync() {
 			return null;
 		},
-		async setStateAsync() {},
+		async setState() {},
 	};
 
 	adapter.apiClient = {
