@@ -268,11 +268,31 @@ describe("dashboard — local OpenAPI energy source", () => {
 			// DEF-003: lastPoll is stamped as soon as one section answered, so a cycle whose
 			// meter route failed would report the current time beside the previous cycle's
 			// meter values. Showing nothing is the honest answer for that case.
+			//
+			// The stamp is taken from the clock rather than written down, because the formatter
+			// renders a bare time only for the local day: a fixed date passes on one day and in
+			// one timezone, and reads as an ordinary regression failure every other day.
+			const today = new Date().toISOString();
 			energyFlow.update(states, connectors(["openapi"]));
-			const partial = { ...states, "_openapi.info.lastPoll": "2026-10-26T08:30:15.000Z" };
+			const partial = { ...states, "_openapi.info.lastPoll": today };
 			assert.equal(energyFlow.getLastUpdateTime(partial), null);
-			const complete = { ...partial, "_openapi.info.lastCompletePoll": "2026-10-26T08:30:15.000Z" };
+			const complete = { ...partial, "_openapi.info.lastCompletePoll": today };
 			assert.match(energyFlow.getLastUpdateTime(complete), /^\d{2}:\d{2}:\d{2}$/);
+		});
+
+		it("dates a complete poll that did not happen today, so it cannot read as current", () => {
+			// The counterpart to the case above, and the reason it cannot simply assert a bare
+			// time for every input: a stamp from days ago must not render as a time of day.
+			const old = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+			energyFlow.update(states, connectors(["openapi"]));
+			const complete = {
+				...states,
+				"_openapi.info.lastPoll": old,
+				"_openapi.info.lastCompletePoll": old,
+			};
+			const shown = energyFlow.getLastUpdateTime(complete);
+			assert.doesNotMatch(shown, /^\d{2}:\d{2}:\d{2}$/);
+			assert.match(shown, /\d/);
 		});
 
 		it("refuses to describe a flow when the App API has a plant but no dashboard data", () => {
