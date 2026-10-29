@@ -814,6 +814,37 @@ var energyFlow = {
 	},
 
 	/**
+	 * Whether a candidate period lies strictly after the one currently running, at whatever
+	 * granularity the caller is checking (pass `month`/`day` as null above the checked level).
+	 *
+	 * A cloud-side staleness bug can leave a future day/month/year holding a stray value in the
+	 * state tree (a shrinking month inheriting a longer one's trailing days is one observed
+	 * case); the picker must never offer such a period regardless of what the stored states say,
+	 * so this check is independent of `stateIsLive`/`> 0` filtering.
+	 *
+	 * @param {number} year - Candidate calendar year
+	 * @param {number|null} month - Candidate calendar month, 1-12, or null to check year only
+	 * @param {number|null} day - Candidate day of month, or null to check year/month only
+	 * @returns {boolean} True when the candidate is later than the running period
+	 */
+	isFuturePeriod: function (year, month, day) {
+		var now = new Date();
+		if (year !== now.getFullYear()) {
+			return year > now.getFullYear();
+		}
+		if (month === null) {
+			return false;
+		}
+		if (month !== now.getMonth() + 1) {
+			return month > now.getMonth() + 1;
+		}
+		if (day === null) {
+			return false;
+		}
+		return day > now.getDate();
+	},
+
+	/**
 	 * Totals for a specific stepped-to day. Only the current and previous month keep a daily
 	 * breakdown, so a day outside that window clears the totals the same way an unstored month or
 	 * year does. The portal publishes no per-day self-sufficiency figure, so its totals always
@@ -1140,6 +1171,11 @@ var energyFlow = {
 				if (monthly && (month < 1 || month > 12)) {
 					continue;
 				}
+				// Stale state-tree values can outlive the period they belong to (see
+				// isFuturePeriod) — never offer a period later than the one running.
+				if (this.isFuturePeriod(year, month, null)) {
+					continue;
+				}
 				seen[monthly ? `${year}-${month}` : String(year)] = { year: year, month: month, day: null };
 			}
 		}
@@ -1238,6 +1274,11 @@ var energyFlow = {
 			}
 			var day = Number(m[1]);
 			if (day < 1 || day > 31) {
+				continue;
+			}
+			// Stale state-tree values can outlive the period they belong to (see
+			// isFuturePeriod) — never offer a day later than the one running.
+			if (this.isFuturePeriod(year, month, day)) {
 				continue;
 			}
 			add(year, month, day);
