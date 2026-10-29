@@ -56,6 +56,8 @@ var energyFlow = {
 	periodYear: null,
 	/** @type {number|null} Month 1-12 of periodYear, or null for the running month. */
 	periodMonth: null,
+	/** @type {number|null} Day of periodYear/periodMonth, or null for the running day. */
+	periodDay: null,
 
 	/** @type {string|null} */ activeSource: null, // which source is actually providing data
 
@@ -679,6 +681,13 @@ var energyFlow = {
 	},
 
 	updateTotalsToday: function (states) {
+		// A stepped-to day reads its own totals from the Monthly daily subtrees; the running day
+		// keeps the Dashboard path below, which is polled far more often.
+		if (this.periodDay !== null) {
+			this.updateTotalsDay(states, this.periodYear, this.periodMonth, this.periodDay);
+			return;
+		}
+
 		// Try API Dashboard first (values in Wh → convert to kWh)
 		var pfx = this.apiPrefix();
 		if (pfx && this.hasLive(states, `${pfx}today.powerGenerationInWh`)) {
@@ -753,6 +762,94 @@ var energyFlow = {
 			out[field] = this.getStateOrNull(states, pfx + this.totalsKeys[field][src] + suffix);
 		}
 		return out;
+	},
+
+	/**
+	 * Read one day's six totals, in kWh, from a Monthly daily subtree.
+	 *
+	 * Mirrors readTotals, but the two sources disagree on where the day index sits: the portal
+	 * nests it under the metric (`{webKey}.daily.{day}`), the App API nests the metric under it
+	 * (`daily.{apiKey}.{day}`). totalsKeys still supplies the metric spelling for each source; only
+	 * the position of `.daily.{day}` differs, so this builds the id itself per source instead of
+	 * reusing readTotals's single trailing suffix.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} pfx - Subtree prefix, ending in a dot (e.g. "…Monthly.current_month.")
+	 * @param {string} src - "web" or "api"
+	 * @param {number} day - Day of month, 1-31
+	 * @returns {object|null} Totals by data field, or null when the subtree holds nothing live
+	 */
+	readDailyTotals: function (states, pfx, src, day) {
+		var build =
+			src === "web"
+				? function (key) {
+						return `${pfx}${key}.daily.${day}`;
+					}
+				: function (key) {
+						return `${pfx}daily.${key}.${day}`;
+					};
+		if (!this.hasLive(states, build(this.totalsKeys.todayConsumption[src]))) {
+			return null;
+		}
+		var out = {};
+		for (var field in this.totalsKeys) {
+			out[field] = this.getStateOrNull(states, build(this.totalsKeys[field][src]));
+		}
+		return out;
+	},
+
+	/**
+	 * The calendar month immediately before the given one, carrying the year across a January
+	 * rollover.
+	 *
+	 * @param {number} year - Calendar year
+	 * @param {number} month - Calendar month, 1-12
+	 * @returns {{year: number, month: number}} The preceding month
+	 */
+	previousMonthOf: function (year, month) {
+		return month === 1 ? { year: year - 1, month: 12 } : { year: year, month: month - 1 };
+	},
+
+	/**
+	 * Totals for a specific stepped-to day. Only the current and previous month keep a daily
+	 * breakdown, so a day outside that window clears the totals the same way an unstored month or
+	 * year does. Neither cloud publishes a per-day self-sufficiency figure, so it is always derived.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {number} year - Calendar year of the day
+	 * @param {number} month - Calendar month (1-12) of the day
+	 * @param {number} day - Day of month
+	 */
+	updateTotalsDay: function (states, year, month, day) {
+		var now = new Date();
+		var curYear = now.getFullYear();
+		var curMonth = now.getMonth() + 1;
+		var prev = this.previousMonthOf(curYear, curMonth);
+		var key =
+			year === curYear && month === curMonth
+				? "current_month"
+				: year === prev.year && month === prev.month
+					? "previous_month"
+					: null;
+		if (!key) {
+			this.clearTotals();
+			return;
+		}
+
+		var wTotals = this.readDailyTotals(states, `_meinsenec.Measurements.Monthly.${key}.`, "web", day);
+		if (wTotals) {
+			this.applyTotals(wTotals, null);
+			return;
+		}
+		var apfx = this.apiMeasurementPrefix();
+		if (apfx) {
+			var aTotals = this.readDailyTotals(states, `${apfx}Monthly.${key}.`, "api", day);
+			if (aTotals) {
+				this.applyTotals(aTotals, null);
+				return;
+			}
+		}
+		this.clearTotals();
 	},
 
 	/**
@@ -877,10 +974,13 @@ var energyFlow = {
 	 * which leaves the running period as the single entry and hides the arrows.
 	 *
 	 * @param {object} states - ioBroker state values
-	 * @param {string} period - "month" or "year"
-	 * @returns {Array<{year: number, month: number|null}>} Reachable periods
+	 * @param {string} period - "today", "month" or "year"
+	 * @returns {Array<{year: number, month: number|null, day: number|null}>} Reachable periods
 	 */
 	availablePeriods: function (states, period) {
+		if (period === "today") {
+			return this.availableDays(states);
+		}
 		var monthly = period === "month";
 		var sources = [{ pfx: "_meinsenec.Measurements.", key: "consumption" }];
 		var api = this.apiMeasurementPrefix();
@@ -896,6 +996,7 @@ var energyFlow = {
 		seen[monthly ? `${now.getFullYear()}-${curMonth}` : String(now.getFullYear())] = {
 			year: now.getFullYear(),
 			month: curMonth,
+			day: null,
 		};
 
 		for (var si = 0; si < sources.length; si++) {
@@ -919,7 +1020,7 @@ var energyFlow = {
 				if (monthly && (month < 1 || month > 12)) {
 					continue;
 				}
-				seen[monthly ? `${year}-${month}` : String(year)] = { year: year, month: month };
+				seen[monthly ? `${year}-${month}` : String(year)] = { year: year, month: month, day: null };
 			}
 		}
 
@@ -933,27 +1034,127 @@ var energyFlow = {
 	},
 
 	/**
+	 * Days the arrows can reach, oldest first, plus the running day unconditionally.
+	 *
+	 * Only the current and previous month keep a daily breakdown on either cloud — see
+	 * updateTotalsDay — so this scans exactly those two Monthly subtrees instead of a date range.
+	 * A local-only installation stores neither, which leaves the running day as the single entry
+	 * and hides the arrows, same as availablePeriods does for month and year.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {Array<{year: number, month: number, day: number}>} Reachable days
+	 */
+	availableDays: function (states) {
+		var seen = {};
+		var now = new Date();
+		var add = function (year, month, day) {
+			seen[`${year}-${month}-${day}`] = { year: year, month: month, day: day };
+		};
+		add(now.getFullYear(), now.getMonth() + 1, now.getDate());
+
+		var prev = this.previousMonthOf(now.getFullYear(), now.getMonth() + 1);
+		var periods = [
+			{ key: "current_month", year: now.getFullYear(), month: now.getMonth() + 1 },
+			{ key: "previous_month", year: prev.year, month: prev.month },
+		];
+
+		var webKey = this.totalsKeys.todayConsumption.web;
+		var apiKey = this.totalsKeys.todayConsumption.api;
+		var apfx = this.apiMeasurementPrefix();
+
+		for (var pi = 0; pi < periods.length; pi++) {
+			var per = periods[pi];
+			this.scanDayKeys(
+				states,
+				`_meinsenec.Measurements.Monthly.${per.key}.`,
+				new RegExp(`^${webKey}\\.daily\\.(\\d{1,2})$`),
+				per.year,
+				per.month,
+				add,
+			);
+			if (apfx) {
+				this.scanDayKeys(
+					states,
+					`${apfx}Monthly.${per.key}.`,
+					new RegExp(`^daily\\.${apiKey}\\.(\\d{1,2})$`),
+					per.year,
+					per.month,
+					add,
+				);
+			}
+		}
+
+		var out = Object.keys(seen).map(function (k) {
+			return seen[k];
+		});
+		out.sort(function (a, b) {
+			return a.year - b.year || a.month - b.month || a.day - b.day;
+		});
+		return out;
+	},
+
+	/**
+	 * Scan one Monthly subtree for day indices carrying a live, positive total.
+	 *
+	 * Factored out of availableDays because the day index sits in a different place in the id for
+	 * each source — the caller supplies the already-anchored pattern — while the live/positive
+	 * check it runs is the same one availablePeriods uses for month and year.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} pfx - Subtree prefix, ending in a dot
+	 * @param {RegExp} re - Pattern matching the day index in the tail after pfx
+	 * @param {number} year - Calendar year the subtree belongs to
+	 * @param {number} month - Calendar month the subtree belongs to
+	 * @param {(year: number, month: number, day: number) => void} add - Records one reachable day
+	 */
+	scanDayKeys: function (states, pfx, re, year, month, add) {
+		for (var id in states) {
+			if (id.lastIndexOf(pfx, 0) !== 0 || !stateIsLive(id) || !(Number(states[id]) > 0)) {
+				continue;
+			}
+			var m = re.exec(id.slice(pfx.length));
+			if (!m) {
+				continue;
+			}
+			var day = Number(m[1]);
+			if (day < 1 || day > 31) {
+				continue;
+			}
+			add(year, month, day);
+		}
+	},
+
+	/**
 	 * The period the totals currently describe, with the running period resolved to a date.
 	 *
-	 * @returns {{year: number, month: number|null}} Selected period
+	 * @returns {{year: number, month: number|null, day: number|null}} Selected period
 	 */
 	selectedPeriod: function () {
 		var now = new Date();
+		if (this.period === "today") {
+			return this.periodDay === null
+				? { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() }
+				: { year: this.periodYear, month: this.periodMonth, day: this.periodDay };
+		}
 		var month = null;
 		if (this.period === "month") {
 			month = this.periodMonth !== null ? this.periodMonth : now.getMonth() + 1;
 		}
-		return { year: this.periodYear !== null ? this.periodYear : now.getFullYear(), month: month };
+		return { year: this.periodYear !== null ? this.periodYear : now.getFullYear(), month: month, day: null };
 	},
 
 	/**
-	 * @param {Array<{year: number, month: number|null}>} list - Periods from availablePeriods
-	 * @param {{year: number, month: number|null}} sel - Period to locate
+	 * @param {Array<{year: number, month: number|null, day: number|null}>} list - Periods from availablePeriods
+	 * @param {{year: number, month: number|null, day: number|null}} sel - Period to locate
 	 * @returns {number} Index of sel, or the last index when it is not listed
 	 */
 	indexOfPeriod: function (list, sel) {
 		for (var i = 0; i < list.length; i++) {
-			if (list[i].year === sel.year && (sel.month === null || list[i].month === sel.month)) {
+			if (
+				list[i].year === sel.year &&
+				(sel.month === null || list[i].month === sel.month) &&
+				(sel.day === null || list[i].day === sel.day)
+			) {
 				return i;
 			}
 		}
@@ -961,20 +1162,32 @@ var energyFlow = {
 	},
 
 	/**
-	 * @param {{year: number, month: number|null}} p - Period to name
-	 * @returns {string} The period in the dashboard's language, e.g. "October 2025" or "2024"
+	 * @param {{year: number, month: number|null, day: number|null}} p - Period to name
+	 * @returns {string} The period in the dashboard's language, e.g. "6 October 2025", "October 2025" or "2024"
 	 */
 	formatPeriod: function (p) {
+		if (p.day) {
+			return new Date(p.year, p.month - 1, p.day).toLocaleDateString(i18n.lang, {
+				day: "numeric",
+				month: "long",
+				year: "numeric",
+			});
+		}
 		if (p.month === null) {
 			return String(p.year);
 		}
 		return new Date(p.year, p.month - 1, 1).toLocaleString(i18n.lang, { month: "long", year: "numeric" });
 	},
 
-	/** @returns {string} Card title: the generic label while on the running period, else the date */
+	/**
+	 * Card title: always the concrete period, except the running day, which keeps its generic
+	 * "Today" label since naming today's date there would just restate the system clock.
+	 *
+	 * @returns {string} The title
+	 */
 	periodTitle: function () {
-		if (this.periodYear === null && this.periodMonth === null) {
-			return this.periodLabel(this.period);
+		if (this.period === "today" && this.periodDay === null) {
+			return t("period_today");
 		}
 		return this.formatPeriod(this.selectedPeriod());
 	},
@@ -1758,8 +1971,15 @@ var energyFlow = {
 		return svg;
 	},
 
+	/**
+	 * Tab label for a granularity. "today" reads as "Day" here — a granularity, not a date — since
+	 * periodTitle names the actual selected date right beside it.
+	 *
+	 * @param {string} p - "today", "month" or "year"
+	 * @returns {string} The tab's label
+	 */
 	periodLabel: function (p) {
-		return t(`period_${p}`);
+		return p === "today" ? t("period_day") : t(`period_${p}`);
 	},
 
 	renderDayTotals: function (d) {
@@ -1801,10 +2021,14 @@ var energyFlow = {
 
 		if (d.autarky !== null) {
 			var autarkyParts = [`${Math.round(d.autarky)}%`];
-			if (d.autarkyWeek !== null && this.period === "today") {
+			// Lifetime/week figures the cloud reports for the running day only — showing them next
+			// to a stepped-to day's derived autarky would pair today's week/all-time with another
+			// day's own total.
+			var isRunningToday = this.period === "today" && this.periodDay === null;
+			if (d.autarkyWeek !== null && isRunningToday) {
 				autarkyParts.push(`${t("period_week")}: ${Math.round(d.autarkyWeek)}%`);
 			}
-			if (d.autarkyAll !== null && this.period === "today") {
+			if (d.autarkyAll !== null && isRunningToday) {
 				autarkyParts.push(`${t("period_all")}: ${Math.round(d.autarkyAll)}%`);
 			}
 			html += this.renderTotalItem(t("total_self_sufficiency"), null, "#157c00", autarkyParts.join(" · "));
@@ -1815,23 +2039,20 @@ var energyFlow = {
 	},
 
 	/**
-	 * The generic label reads as a sentence fragment and is lowercased for it; a stepped-to date
-	 * is a proper name and keeps its capitals.
+	 * The generic "today" label reads as a sentence fragment and is lowercased for it; a concrete
+	 * date — every month, every year, and any other day — is a proper name and keeps its capitals.
 	 *
 	 * @returns {string} The period as it should appear inside the no-data sentence
 	 */
 	periodNoDataLabel: function () {
-		if (this.periodYear === null && this.periodMonth === null) {
-			return this.periodLabel(this.period).toLowerCase();
+		if (this.period === "today" && this.periodDay === null) {
+			return t("period_today").toLowerCase();
 		}
 		return this.formatPeriod(this.selectedPeriod());
 	},
 
 	/** @returns {string} Arrows stepping to the adjacent stored period, or nothing to step to */
 	renderPeriodSteps: function () {
-		if (this.period === "today") {
-			return "";
-		}
 		var list = this.availablePeriods(app.states, this.period);
 		if (list.length < 2) {
 			return "";
@@ -1844,7 +2065,7 @@ var energyFlow = {
 	},
 
 	/**
-	 * @param {{year: number, month: number|null}|undefined} target - Period the arrow leads to
+	 * @param {{year: number, month: number|null, day: number|null}|undefined} target - Period the arrow leads to
 	 * @param {number} dir - -1 for older, 1 for newer
 	 * @param {string} glyph - Arrow character
 	 * @returns {string} HTML string
@@ -1978,6 +2199,7 @@ var energyFlow = {
 		// no meaning as a year, and the tab's own label would otherwise be a lie.
 		this.periodYear = null;
 		this.periodMonth = null;
+		this.periodDay = null;
 		this.update(app.states, app.connectors);
 		app.renderDashboard();
 	},
@@ -1995,9 +2217,12 @@ var energyFlow = {
 		}
 		var now = new Date();
 		var running =
-			target.year === now.getFullYear() && (target.month === null || target.month === now.getMonth() + 1);
+			target.year === now.getFullYear() &&
+			(target.month === null || target.month === now.getMonth() + 1) &&
+			(target.day === null || target.day === now.getDate());
 		this.periodYear = running ? null : target.year;
 		this.periodMonth = running ? null : target.month;
+		this.periodDay = running ? null : target.day;
 		this.update(app.states, app.connectors);
 		app.renderDashboard();
 	},
