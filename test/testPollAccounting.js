@@ -125,9 +125,9 @@ const DASHBOARD_ONLY = {
 	shouldRunHeavy: false,
 	today: new Date(2026, 0, 15),
 	yesterday: new Date(2026, 0, 14),
-	currentMonth: new Date(Date.UTC(2026, 0, 1)),
-	lastMonth: new Date(Date.UTC(2025, 11, 1)),
-	utcYear: 2026,
+	currentMonth: new Date(2026, 0, 1),
+	lastMonth: new Date(2025, 11, 1),
+	localYear: 2026,
 };
 
 describe("API poll accounting", () => {

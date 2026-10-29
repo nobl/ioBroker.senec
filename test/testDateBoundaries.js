@@ -13,7 +13,7 @@
  * getters — and sends the pair as an absolute ISO range. The window it produces is therefore
  * the plant's local calendar day, and the context has to name that same day.
  *
- * The month and year fields are deliberately left on UTC; see the final test.
+ * The month and year fields follow the same rule; see the final test.
  */
 
 const assert = require("node:assert/strict");
@@ -227,14 +227,164 @@ describe("API poll context day boundaries", () => {
 		});
 	});
 
-	it("month and year stay on UTC, matching their own consumers", () => {
-		// doMeasurementsMonth reads date.getUTCFullYear()/getUTCMonth() and doMeasurementsYear
-		// builds its range with Date.UTC. Moving these to local without changing those
-		// functions would silently shift the window by the UTC offset, so the split is
-		// deliberate and pinned here rather than quietly "made consistent".
+	it("month and year are local, matching their own consumers", () => {
+		// doMeasurementsMonth reads the date back with local getters and doMeasurementsYear
+		// builds its range from a local year number, so the context must name the plant's own
+		// calendar month/year, not UTC's. At this instant Europe/Berlin (CEST, UTC+2) is
+		// already into 1 September locally.
 		const ctx = contextAt("2026-08-31T22:30:00Z", "Europe/Berlin");
-		assert.equal(ctx.currentMonth.toISOString(), "2026-08-01T00:00:00.000Z");
-		assert.equal(ctx.lastMonth.toISOString(), "2026-07-01T00:00:00.000Z");
-		assert.equal(ctx.utcYear, 2026);
+		assert.equal(ctx.currentMonth.toISOString(), "2026-08-31T22:00:00.000Z", "local 1 September, 00:00 CEST");
+		assert.equal(ctx.lastMonth.toISOString(), "2026-07-31T22:00:00.000Z", "local 1 August, 00:00 CEST");
+		assert.equal(ctx.localYear, 2026);
+	});
+
+	describe("the window doMeasurementsYear derives from a year", () => {
+		/**
+		 * Capture the request window doMeasurementsYear actually sends to the API for a given
+		 * year and resolution, by running the real function against a stubbed apiGet — the
+		 * window must track the resolution, so the test exercises the real branch rather than a
+		 * copy of its arithmetic.
+		 *
+		 * @param {number} year - Calendar year
+		 * @param {boolean} months - true for the MONTH-resolution breakdown request, false for YEAR
+		 * @returns {Promise<{ start: Date, end: Date }>} The measurement window actually requested
+		 */
+		async function windowFor(year, months) {
+			const apiClientModule = require("../lib/api-client");
+			const originalApiGet = apiClientModule.apiGet;
+			let captured;
+
+			apiClientModule.apiGet = async (_adapter, url) => {
+				const match = /from=([^&]+)&to=([^&]+)/.exec(url);
+				captured = {
+					start: new Date(decodeURIComponent(match[1])),
+					end: new Date(decodeURIComponent(match[2])),
+				};
+				return { data: { timeSeries: [], measurements: [] } };
+			};
+
+			try {
+				const adapter = {
+					log: { debug() {}, silly() {} },
+					config: {},
+					rebuildRunning: false,
+					getStateAsync: async () => null,
+				};
+				await measurements.doMeasurementsYear(adapter, "anlage-1", year, months);
+			} finally {
+				apiClientModule.apiGet = originalApiGet;
+			}
+
+			return captured;
+		}
+
+		it("resolution=YEAR (the year total) builds a UTC year window, not a local one", async () => {
+			await withClock("2026-06-15T10:00:00Z", "Europe/Berlin", async () => {
+				const { start, end } = await windowFor(2025, false);
+
+				assert.equal(start.toISOString(), "2025-01-01T00:00:00.000Z", "UTC start of the year");
+				assert.equal(end.toISOString(), "2025-12-31T23:59:59.999Z", "UTC end of the year");
+			});
+		});
+
+		it("resolution=MONTH (the monthly breakdown) builds a local year window, not a UTC one", async () => {
+			await withClock("2026-06-15T10:00:00Z", "Europe/Berlin", async () => {
+				const { start, end } = await windowFor(2025, true);
+
+				// Europe/Berlin is UTC+1 in January, so local midnight 1 Jan 2025 is 2024-12-31T23:00Z.
+				assert.equal(start.toISOString(), "2024-12-31T23:00:00.000Z", "local midnight start of the year");
+				assert.equal(end.toISOString(), "2025-12-31T22:59:59.999Z", "local end of the year");
+			});
+		});
+	});
+
+	describe("doSumMeasurements buckets by local calendar, not UTC", () => {
+		/**
+		 * Run doSumMeasurements against a scripted timeSeries and capture what it hands to evalPoll.
+		 *
+		 * @param {Array<{date: string, values: number[]}>} entries - Fixture timeSeries entries
+		 * @returns {Promise<{sums: object, prefix: string}>} What evalPoll was called with
+		 */
+		async function sumMonthly(entries) {
+			let captured = { sums: {}, prefix: "" };
+			const adapter = {
+				log: { debug() {}, silly() {} },
+				async evalPoll(sums, prefix) {
+					captured = { sums, prefix };
+				},
+			};
+			const data = {
+				measurements: ["POWER_CONSUMPTION"],
+				timeSeries: entries.map((e) => ({ date: e.date, measurements: { values: [e.value] } })),
+			};
+
+			await measurements.doSumMeasurements(adapter, data, "anlage-1", "pfx.", "year.monthly");
+			return captured;
+		}
+
+		it("a local month boundary lands in its own slot and year, not the UTC-shifted one", () => {
+			// 2025-12-31T23:00:00.000Z is 1 January 2026, 00:00 local in Europe/Berlin (CET).
+			// The old getUTCMonth()/getUTCFullYear() code buckets this into slot 12 of year 2025.
+			return withClock("2026-06-01T00:00:00Z", "Europe/Berlin", async () => {
+				const { sums, prefix } = await sumMonthly([{ date: "2025-12-31T23:00:00.000Z", value: 10 }]);
+
+				assert.equal(prefix, "pfx.2026.monthly.", "stored under the local year, not 2025");
+				assert.equal(sums.POWER_CONSUMPTION[1], 10, "January lands in slot 1");
+				assert.equal(sums.POWER_CONSUMPTION[12], 0, "nothing lands in December");
+			});
+		});
+
+		it("January does not absorb February", () => {
+			// Local 1 January and local 1 February boundaries, both CET in Europe/Berlin.
+			return withClock("2026-06-01T00:00:00Z", "Europe/Berlin", async () => {
+				const { sums } = await sumMonthly([
+					{ date: "2025-12-31T23:00:00.000Z", value: 100 },
+					{ date: "2026-01-31T23:00:00.000Z", value: 200 },
+				]);
+
+				assert.equal(sums.POWER_CONSUMPTION[1], 100, "January keeps only its own value");
+				assert.equal(sums.POWER_CONSUMPTION[2], 200, "February is not merged into January");
+			});
+		});
+	});
+
+	describe("doSumMeasurements buckets the YEAR total by UTC, not local", () => {
+		/**
+		 * Run doSumMeasurements for a YEAR-resolution total against a scripted timeSeries and
+		 * capture what it hands to evalPoll.
+		 *
+		 * @param {Array<{date: string, value: number}>} entries - Fixture timeSeries entries
+		 * @returns {Promise<{sums: object, prefix: string}>} What evalPoll was called with
+		 */
+		async function sumYear(entries) {
+			let captured = { sums: {}, prefix: "" };
+			const adapter = {
+				log: { debug() {}, silly() {} },
+				async evalPoll(sums, prefix) {
+					captured = { sums, prefix };
+				},
+				async getStateAsync() {
+					return null;
+				},
+				async doState() {},
+			};
+			const data = {
+				measurements: ["POWER_CONSUMPTION"],
+				timeSeries: entries.map((e) => ({ date: e.date, measurements: { values: [e.value] } })),
+			};
+
+			await measurements.doSumMeasurements(adapter, data, "anlage-1", "pfx.", "year");
+			return captured;
+		}
+
+		it("a year's single UTC-anchored bucket files under its own year from a timezone behind UTC", async () => {
+			// The cloud's YEAR bucket starts at 2025-01-01T00:00:00Z. A local getter in a
+			// timezone behind UTC (America/New_York, UTC-5 in January) reads that instant as
+			// 31 December 2024 and would file the year's total under 2024.
+			await withClock("2026-06-15T10:00:00Z", "America/New_York", async () => {
+				const { prefix } = await sumYear([{ date: "2025-01-01T00:00:00.000Z", value: 1234 }]);
+				assert.equal(prefix, "pfx.2025.", "stored under the UTC year, not the local year");
+			});
+		});
 	});
 });
