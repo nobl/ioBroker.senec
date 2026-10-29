@@ -970,24 +970,6 @@ var systemInfo = {
 			html += this.renderMetric(t("system_installer_email"), String(installerEmail), "#757575", "A");
 		}
 
-		// Appliance serial. FACTORY.DEVICE_ID spells the same identifier as "st_<digits>",
-		// so the two are shown as one row with whichever connector answered.
-		//
-		// The OpenAPI key comes first here, and last in prodKeys above, deliberately: these two
-		// sources agree on the serial, so either spelling is correct and the shorter "S<digits>"
-		// form reads better — whereas the product name differs between sources, and the local
-		// and cloud names are the ones users recognise from the portal.
-		var serialKeys = ["_openapi.bessNameplate.serialNumber", "FACTORY.DEVICE_ID"];
-		var serial = this.getFirst(states, serialKeys);
-		if (serial) {
-			html += this.renderMetric(
-				t("system_serial"),
-				String(serial),
-				"#757575",
-				this.sourceTag(states, serialKeys),
-			);
-		}
-
 		// Nameplate charge/discharge ratings. Always polled when the connector runs — the
 		// nameplate is its identity section and is not an include-list option — and zeros mean
 		// "not reported" rather than "cannot charge".
@@ -1020,6 +1002,26 @@ var systemInfo = {
 				`${Math.round(Number(reactiveDischarge))} var`,
 				"#757575",
 				"O",
+			);
+		}
+
+		// Appliance serial. FACTORY.DEVICE_ID spells the same identifier as "st_<digits>",
+		// so the two are shown as one row with whichever connector answered. It is rendered
+		// last and full-width because it is the longest value in the card.
+		//
+		// The OpenAPI key comes first here, and last in prodKeys above, deliberately: these two
+		// sources agree on the serial, so either spelling is correct and the shorter "S<digits>"
+		// form reads better — whereas the product name differs between sources, and the local
+		// and cloud names are the ones users recognise from the portal.
+		var serialKeys = ["_openapi.bessNameplate.serialNumber", "FACTORY.DEVICE_ID"];
+		var serial = this.getFirst(states, serialKeys);
+		if (serial) {
+			html += this.renderMetric(
+				t("system_serial"),
+				String(serial),
+				"#757575",
+				this.sourceTag(states, serialKeys),
+				"system-metric-full",
 			);
 		}
 
@@ -1367,15 +1369,16 @@ var systemInfo = {
 	 * @param {string|number} value - Metric value
 	 * @param {string} color - Accent color
 	 * @param {string} src - Source tag (L/A/W)
+	 * @param {string} [cls] - Extra class for the row, e.g. "system-metric-full"
 	 * @returns {string} HTML string
 	 */
-	renderMetric: function (label, value, color, src) {
+	renderMetric: function (label, value, color, src, cls) {
 		// Escaped here rather than at the call sites: this is the single sink every metric row
 		// passes through, and several of the values are strings the appliance chose — a model or
 		// serial number carrying `<` would otherwise be parsed as markup. The source badge is
 		// built by srcBadge and is markup by design, so it is appended after escaping.
 		return (
-			`<div class="system-metric">` +
+			`<div class="system-metric${cls ? ` ${cls}` : ""}">` +
 			`<div class="system-metric-label">${escHtml(label)}${src ? this.srcBadge(src) : ""}</div>` +
 			`<div class="system-metric-value" style="color:${color}">${escHtml(value)}</div>` +
 			`</div>`

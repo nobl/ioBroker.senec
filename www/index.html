@@ -767,6 +767,12 @@
 
 			.system-metric {
 				padding: 8px 0;
+				min-width: 0;
+			}
+
+			/* Spans every generated track, so a long identifier gets the card's full width. */
+			.system-metric-full {
+				grid-column: 1 / -1;
 			}
 
 			.system-metric-label {
@@ -775,12 +781,17 @@
 				margin-bottom: 2px;
 			}
 
+			/* `anywhere` rather than `break-word`: only `anywhere` feeds the break opportunities
+			   into min-content sizing, which is what has to shrink before a serial number or an
+			   e-mail address stops painting over the neighbouring grid cell. */
 			.system-metric-value {
 				font-size: 15px;
 				font-weight: 600;
 				display: flex;
 				align-items: center;
+				flex-wrap: wrap;
 				gap: 6px;
+				overflow-wrap: anywhere;
 			}
 
 			.grid-meter-heading {

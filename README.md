@@ -157,6 +157,10 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- Fixed: Long values in the web dashboard's *System* card no longer paint over the cell beside them — a serial number or an installer e-mail address wraps inside its own column instead. The serial number is also shown last, on a line of its own, since it is the longest value in the card.
+- dependency updates
+
 ### 2.16.4 (2026-10-28)
 - New: **Chart colors can be changed.** The *Live Power* chart and the *Measurement History* tab each carry a **Colors** button that opens a picker per series, plus a **Default colors** button that puts them all back. A type keeps one color across both charts, so setting PV once is enough; a comparison series has nothing to pick, because it is drawn in its own type's color. The palette is stored in the adapter, not in the browser, so a phone and a wall tablet looking at the same system agree on it — and a color changed on one page appears on any other page that is open.
 - Change: Battery charge level is drawn in one color now rather than two — the live chart's state-of-charge line takes the purple the measurement history already used, and the live chart's wallbox line moves to the shade the energy flow's wallbox total uses, so the two are still told apart. Both are pickable.
