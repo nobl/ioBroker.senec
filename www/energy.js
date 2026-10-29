@@ -45,6 +45,18 @@ var energyFlow = {
 	source: "auto", // "auto", "local", "openapi", "api", "web"
 	period: "today", // "today", "month", "year"
 
+	/**
+	 * Period stepped to by the arrows, or null for the running period.
+	 *
+	 * Null rather than the current year/month so that a dashboard left open across midnight on
+	 * New Year's Eve follows the clock instead of pinning itself to the year it was opened in.
+	 *
+	 * @type {number|null}
+	 */
+	periodYear: null,
+	/** @type {number|null} Month 1-12 of periodYear, or null for the running month. */
+	periodMonth: null,
+
 	/** @type {string|null} */ activeSource: null, // which source is actually providing data
 
 	/** True between the first section write of an OpenAPI cycle and its `lastPoll` marker. */
@@ -126,6 +138,11 @@ var energyFlow = {
 	/** Get the API state prefix for the discovered system */
 	apiPrefix: function () {
 		return this.apiAnlagenId ? `_api.Anlagen.${this.apiAnlagenId}.Dashboard.` : null;
+	},
+
+	/** Get the API Measurements prefix for the discovered system */
+	apiMeasurementPrefix: function () {
+		return this.apiAnlagenId ? `_api.Anlagen.${this.apiAnlagenId}.Measurements.` : null;
 	},
 
 	/**
@@ -699,37 +716,118 @@ var energyFlow = {
 		this.clearTotals();
 	},
 
+	/**
+	 * State name each period total carries, per source.
+	 *
+	 * The Measurements tree stores the cloud's own measurement keys in kWh, which is a different
+	 * spelling and a different unit from the `…InWh` fields of the Dashboard tree that today's
+	 * totals read. The two must not be mixed.
+	 */
+	totalsKeys: {
+		todayPv: { web: "powergenerated", api: "POWER_GENERATION" },
+		todayConsumption: { web: "consumption", api: "POWER_CONSUMPTION" },
+		todayGridImport: { web: "gridimport", api: "GRID_IMPORT" },
+		todayGridExport: { web: "gridexport", api: "GRID_EXPORT" },
+		todayBatteryCharge: { web: "accuexport", api: "BATTERY_IMPORT" },
+		todayBatteryDischarge: { web: "accuimport", api: "BATTERY_EXPORT" },
+	},
+
+	/**
+	 * Read one period's six totals, in kWh, from a Measurements subtree.
+	 *
+	 * Every subtree this reads — yearly, the monthly breakdown and the per-year all-time series —
+	 * spells its states `{prefix}{key}{suffix}`, so one reader serves all of them.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} pfx - Subtree prefix, ending in a dot
+	 * @param {string} src - "web" or "api"
+	 * @param {string} suffix - Trailing index, e.g. ".7" for July, or "" for a plain total
+	 * @returns {object|null} Totals by data field, or null when the subtree holds nothing live
+	 */
+	readTotals: function (states, pfx, src, suffix) {
+		if (!this.hasLive(states, pfx + this.totalsKeys.todayConsumption[src] + suffix)) {
+			return null;
+		}
+		var out = {};
+		for (var field in this.totalsKeys) {
+			out[field] = this.getStateOrNull(states, pfx + this.totalsKeys[field][src] + suffix);
+		}
+		return out;
+	},
+
+	/**
+	 * Apply a period's totals, deriving autarky when the cloud does not report it.
+	 *
+	 * @param {object} totals - Totals from readTotals
+	 * @param {number|null} autarky - Reported self-sufficiency, or null to derive it
+	 */
+	applyTotals: function (totals, autarky) {
+		for (var field in this.totalsKeys) {
+			this.data[field] = totals[field];
+		}
+		// No measurements subtree carries a wallbox total; that series lives under its own
+		// WallboxMeasurements tree.
+		this.data.todayWallbox = null;
+		this.data.autarky = autarky !== null ? autarky : this.calcAutarkyFromTotals(totals);
+	},
+
+	/**
+	 * Self-sufficiency of a completed period, from its energy totals.
+	 *
+	 * Generation that neither left for the grid nor went into the battery was consumed directly;
+	 * adding what the battery gave back yields the share of consumption that the grid did not
+	 * supply. Only the running period is reported by the cloud, so every stepped-to period is
+	 * derived this way and may differ slightly from the portal's own figure.
+	 *
+	 * @param {object} tot - Totals from readTotals
+	 * @returns {number|null} Self-sufficiency in percent, or null when consumption is unknown
+	 */
+	calcAutarkyFromTotals: function (tot) {
+		var consumption = tot.todayConsumption;
+		if (!consumption || consumption <= 0) {
+			return null;
+		}
+		var selfSupplied =
+			(tot.todayPv || 0) -
+			(tot.todayGridExport || 0) -
+			(tot.todayBatteryCharge || 0) +
+			(tot.todayBatteryDischarge || 0);
+		return Math.max(0, Math.min(100, (selfSupplied / consumption) * 100));
+	},
+
 	updateTotalsMonth: function (states) {
-		// Web measurements: _meinsenec.Measurements.Monthly.current_month.{type}
-		var wpfx = "_meinsenec.Measurements.Monthly.current_month.";
-		if (this.hasLive(states, `${wpfx}powergenerated`)) {
-			this.data.todayPv = this.getStateOrNull(states, `${wpfx}powergenerated`);
-			this.data.todayConsumption = this.getStateOrNull(states, `${wpfx}consumption`);
-			this.data.todayGridImport = this.getStateOrNull(states, `${wpfx}gridimport`);
-			this.data.todayGridExport = this.getStateOrNull(states, `${wpfx}gridexport`);
-			this.data.todayBatteryCharge = this.getStateOrNull(states, `${wpfx}accuexport`);
-			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuimport`);
-			this.data.todayWallbox = null;
-			this.data.autarky = this.getStateOrNull(states, "_meinsenec.Autarky.month");
-			return;
+		var now = new Date();
+		var year = this.periodYear !== null ? this.periodYear : now.getFullYear();
+		var month = this.periodMonth !== null ? this.periodMonth : now.getMonth() + 1;
+		var current = year === now.getFullYear() && month === now.getMonth() + 1;
+		var apfx = this.apiMeasurementPrefix();
+
+		// The running month has a subtree of its own, polled more often than the yearly
+		// breakdown that covers every other month.
+		if (current) {
+			var wCur = this.readTotals(states, "_meinsenec.Measurements.Monthly.current_month.", "web", "");
+			if (wCur) {
+				this.applyTotals(wCur, this.getStateOrNull(states, "_meinsenec.Autarky.month"));
+				return;
+			}
+			if (apfx) {
+				var aCur = this.readTotals(states, `${apfx}Monthly.current_month.`, "api", "");
+				if (aCur) {
+					this.applyTotals(aCur, null);
+					return;
+				}
+			}
 		}
 
-		// API measurements: _api.Anlagen.{id}.Measurements.Monthly.current_month.{key}
-		var pfx = this.apiPrefix();
-		if (pfx) {
-			var apfx = pfx.replace("Dashboard.", "Measurements.Monthly.current_month.");
-			if (this.hasLive(states, `${apfx}powerGenerationInWh`)) {
-				this.data.todayPv = this.getState(states, `${apfx}powerGenerationInWh`) / 1000;
-				this.data.todayConsumption = this.getState(states, `${apfx}powerConsumptionInWh`) / 1000;
-				this.data.todayGridImport = this.getState(states, `${apfx}gridDrawInWh`) / 1000;
-				this.data.todayGridExport = this.getState(states, `${apfx}gridFeedInInWh`) / 1000;
-				this.data.todayBatteryCharge = this.getState(states, `${apfx}batteryChargeInWh`) / 1000;
-				this.data.todayBatteryDischarge = this.getState(states, `${apfx}batteryDischargeInWh`) / 1000;
-				this.data.todayWallbox = this.getStateOrNull(states, `${apfx}wallboxInWh`);
-				if (this.data.todayWallbox !== null) {
-					this.data.todayWallbox /= 1000;
-				}
-				this.data.autarky = null;
+		var wMonth = this.readTotals(states, `_meinsenec.Measurements.Yearly.${year}.monthly.`, "web", `.${month}`);
+		if (wMonth) {
+			this.applyTotals(wMonth, current ? this.getStateOrNull(states, "_meinsenec.Autarky.month") : null);
+			return;
+		}
+		if (apfx) {
+			var aMonth = this.readTotals(states, `${apfx}Yearly.${year}.monthly.`, "api", `.${month}`);
+			if (aMonth) {
+				this.applyTotals(aMonth, null);
 				return;
 			}
 		}
@@ -738,43 +836,147 @@ var energyFlow = {
 	},
 
 	updateTotalsYear: function (states) {
-		var year = new Date().getFullYear();
+		var now = new Date();
+		var year = this.periodYear !== null ? this.periodYear : now.getFullYear();
+		var current = year === now.getFullYear();
+		var reported = current ? this.getStateOrNull(states, "_meinsenec.Autarky.year") : null;
 
-		// Web measurements: _meinsenec.Measurements.Yearly.{year}.{type}
-		var wpfx = `_meinsenec.Measurements.Yearly.${year}.`;
-		if (this.hasLive(states, `${wpfx}powergenerated`)) {
-			this.data.todayPv = this.getStateOrNull(states, `${wpfx}powergenerated`);
-			this.data.todayConsumption = this.getStateOrNull(states, `${wpfx}consumption`);
-			this.data.todayGridImport = this.getStateOrNull(states, `${wpfx}gridimport`);
-			this.data.todayGridExport = this.getStateOrNull(states, `${wpfx}gridexport`);
-			this.data.todayBatteryCharge = this.getStateOrNull(states, `${wpfx}accuexport`);
-			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuimport`);
-			this.data.todayWallbox = null;
-			this.data.autarky = this.getStateOrNull(states, "_meinsenec.Autarky.year");
+		var wYear = this.readTotals(states, `_meinsenec.Measurements.Yearly.${year}.`, "web", "");
+		if (wYear) {
+			this.applyTotals(wYear, reported);
 			return;
 		}
 
-		// API measurements: _api.Anlagen.{id}.Measurements.Yearly.{year}.{key}
-		var pfx = this.apiPrefix();
-		if (pfx) {
-			var apfx = pfx.replace("Dashboard.", `Measurements.Yearly.${year}.`);
-			if (this.hasLive(states, `${apfx}powerGenerationInWh`)) {
-				this.data.todayPv = this.getState(states, `${apfx}powerGenerationInWh`) / 1000;
-				this.data.todayConsumption = this.getState(states, `${apfx}powerConsumptionInWh`) / 1000;
-				this.data.todayGridImport = this.getState(states, `${apfx}gridDrawInWh`) / 1000;
-				this.data.todayGridExport = this.getState(states, `${apfx}gridFeedInInWh`) / 1000;
-				this.data.todayBatteryCharge = this.getState(states, `${apfx}batteryChargeInWh`) / 1000;
-				this.data.todayBatteryDischarge = this.getState(states, `${apfx}batteryDischargeInWh`) / 1000;
-				this.data.todayWallbox = this.getStateOrNull(states, `${apfx}wallboxInWh`);
-				if (this.data.todayWallbox !== null) {
-					this.data.todayWallbox /= 1000;
-				}
-				this.data.autarky = null;
+		// The web connector polls the Yearly subtree for the current and previous year only, but
+		// its all-time poll stores a value per year for the whole life of the plant.
+		var wAll = this.readTotals(states, "_meinsenec.Measurements.AllTime.", "web", `.${year}`);
+		if (wAll) {
+			this.applyTotals(wAll, reported);
+			return;
+		}
+
+		var apfx = this.apiMeasurementPrefix();
+		if (apfx) {
+			var aYear = this.readTotals(states, `${apfx}Yearly.${year}.`, "api", "");
+			if (aYear) {
+				this.applyTotals(aYear, reported);
 				return;
 			}
 		}
 
 		this.clearTotals();
+	},
+
+	/**
+	 * Periods the arrows can reach, oldest first.
+	 *
+	 * Built from the states that are actually stored rather than from a date range, because the
+	 * two connectors cover different spans: the App API reaches back to its rebuild start year,
+	 * while the portal keeps a per-year total for the whole life of the plant but a monthly
+	 * breakdown for the current and previous year only. A local-only installation stores neither,
+	 * which leaves the running period as the single entry and hides the arrows.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} period - "month" or "year"
+	 * @returns {Array<{year: number, month: number|null}>} Reachable periods
+	 */
+	availablePeriods: function (states, period) {
+		var monthly = period === "month";
+		var sources = [{ pfx: "_meinsenec.Measurements.", key: "consumption" }];
+		var api = this.apiMeasurementPrefix();
+		if (api) {
+			sources.push({ pfx: api, key: "POWER_CONSUMPTION" });
+		}
+
+		var seen = {};
+		var now = new Date();
+		// The running period is always reachable, so the arrows can come back to it even before
+		// the slow poll that fills its history subtree has run.
+		var curMonth = monthly ? now.getMonth() + 1 : null;
+		seen[monthly ? `${now.getFullYear()}-${curMonth}` : String(now.getFullYear())] = {
+			year: now.getFullYear(),
+			month: curMonth,
+		};
+
+		for (var si = 0; si < sources.length; si++) {
+			var pfx = sources[si].pfx;
+			var key = sources[si].key;
+			var breakdown = monthly
+				? new RegExp(`^Yearly\\.(\\d{4})\\.monthly\\.${key}\\.(\\d{1,2})$`)
+				: new RegExp(`^Yearly\\.(\\d{4})\\.${key}$`);
+			var allTime = monthly ? null : new RegExp(`^AllTime\\.${key}\\.(\\d{4})$`);
+			for (var id in states) {
+				if (id.lastIndexOf(pfx, 0) !== 0 || !stateIsLive(id) || !(Number(states[id]) > 0)) {
+					continue;
+				}
+				var tail = id.slice(pfx.length);
+				var m = breakdown.exec(tail) || (allTime ? allTime.exec(tail) : null);
+				if (!m) {
+					continue;
+				}
+				var year = Number(m[1]);
+				var month = monthly ? Number(m[2]) : null;
+				if (monthly && (month < 1 || month > 12)) {
+					continue;
+				}
+				seen[monthly ? `${year}-${month}` : String(year)] = { year: year, month: month };
+			}
+		}
+
+		var out = Object.keys(seen).map(function (k) {
+			return seen[k];
+		});
+		out.sort(function (a, b) {
+			return a.year - b.year || (a.month || 0) - (b.month || 0);
+		});
+		return out;
+	},
+
+	/**
+	 * The period the totals currently describe, with the running period resolved to a date.
+	 *
+	 * @returns {{year: number, month: number|null}} Selected period
+	 */
+	selectedPeriod: function () {
+		var now = new Date();
+		var month = null;
+		if (this.period === "month") {
+			month = this.periodMonth !== null ? this.periodMonth : now.getMonth() + 1;
+		}
+		return { year: this.periodYear !== null ? this.periodYear : now.getFullYear(), month: month };
+	},
+
+	/**
+	 * @param {Array<{year: number, month: number|null}>} list - Periods from availablePeriods
+	 * @param {{year: number, month: number|null}} sel - Period to locate
+	 * @returns {number} Index of sel, or the last index when it is not listed
+	 */
+	indexOfPeriod: function (list, sel) {
+		for (var i = 0; i < list.length; i++) {
+			if (list[i].year === sel.year && (sel.month === null || list[i].month === sel.month)) {
+				return i;
+			}
+		}
+		return list.length - 1;
+	},
+
+	/**
+	 * @param {{year: number, month: number|null}} p - Period to name
+	 * @returns {string} The period in the dashboard's language, e.g. "October 2025" or "2024"
+	 */
+	formatPeriod: function (p) {
+		if (p.month === null) {
+			return String(p.year);
+		}
+		return new Date(p.year, p.month - 1, 1).toLocaleString(i18n.lang, { month: "long", year: "numeric" });
+	},
+
+	/** @returns {string} Card title: the generic label while on the running period, else the date */
+	periodTitle: function () {
+		if (this.periodYear === null && this.periodMonth === null) {
+			return this.periodLabel(this.period);
+		}
+		return this.formatPeriod(this.selectedPeriod());
 	},
 
 	clearTotals: function () {
@@ -1563,7 +1765,7 @@ var energyFlow = {
 	renderDayTotals: function (d) {
 		var html = '<div class="day-totals">';
 		html += '<div class="day-totals-header">';
-		html += `<div class="day-totals-title">${this.periodLabel(this.period)}</div>`;
+		html += `<div class="day-totals-title">${escHtml(this.periodTitle())}</div>`;
 		html += '<div class="day-totals-tabs">';
 		var periods = ["today", "month", "year"];
 		for (var i = 0; i < periods.length; i++) {
@@ -1573,11 +1775,12 @@ var energyFlow = {
 				p,
 			)}</button>`;
 		}
+		html += this.renderPeriodSteps();
 		html += "</div></div>";
 
 		if (d.todayPv === null && d.todayConsumption === null) {
 			html += `<div class="stat-label">${t("period_no_data", {
-				period: this.periodLabel(this.period).toLowerCase(),
+				period: this.periodNoDataLabel(),
 			})}</div>`;
 			html += "</div>";
 			return html;
@@ -1609,6 +1812,53 @@ var energyFlow = {
 
 		html += "</div></div>";
 		return html;
+	},
+
+	/**
+	 * The generic label reads as a sentence fragment and is lowercased for it; a stepped-to date
+	 * is a proper name and keeps its capitals.
+	 *
+	 * @returns {string} The period as it should appear inside the no-data sentence
+	 */
+	periodNoDataLabel: function () {
+		if (this.periodYear === null && this.periodMonth === null) {
+			return this.periodLabel(this.period).toLowerCase();
+		}
+		return this.formatPeriod(this.selectedPeriod());
+	},
+
+	/** @returns {string} Arrows stepping to the adjacent stored period, or nothing to step to */
+	renderPeriodSteps: function () {
+		if (this.period === "today") {
+			return "";
+		}
+		var list = this.availablePeriods(app.states, this.period);
+		if (list.length < 2) {
+			return "";
+		}
+		var idx = this.indexOfPeriod(list, this.selectedPeriod());
+		return (
+			`<span class="period-steps">${this.renderPeriodStep(list[idx - 1], -1, "‹")}` +
+			`${this.renderPeriodStep(list[idx + 1], 1, "›")}</span>`
+		);
+	},
+
+	/**
+	 * @param {{year: number, month: number|null}|undefined} target - Period the arrow leads to
+	 * @param {number} dir - -1 for older, 1 for newer
+	 * @param {string} glyph - Arrow character
+	 * @returns {string} HTML string
+	 */
+	renderPeriodStep: function (target, dir, glyph) {
+		if (!target) {
+			return `<button class="period-tab period-step" disabled>${glyph}</button>`;
+		}
+		// Titled with the period it leads to rather than with "previous"/"next", which says more
+		// and keeps the card free of strings that would need translating.
+		return (
+			`<button class="period-tab period-step" title="${escHtml(this.formatPeriod(target))}" ` +
+			`onclick="energyFlow.onPeriodStep(${dir})">${glyph}</button>`
+		);
 	},
 
 	renderTotalItem: function (label, value, color, customValue) {
@@ -1724,6 +1974,30 @@ var energyFlow = {
 
 	onPeriodChange: function (val) {
 		this.period = val;
+		// Switching granularity returns to the running period; a month stepped to in one year has
+		// no meaning as a year, and the tab's own label would otherwise be a lie.
+		this.periodYear = null;
+		this.periodMonth = null;
+		this.update(app.states, app.connectors);
+		app.renderDashboard();
+	},
+
+	/**
+	 * Move to the adjacent stored period.
+	 *
+	 * @param {number} dir - -1 for older, 1 for newer
+	 */
+	onPeriodStep: function (dir) {
+		var list = this.availablePeriods(app.states, this.period);
+		var target = list[this.indexOfPeriod(list, this.selectedPeriod()) + dir];
+		if (!target) {
+			return;
+		}
+		var now = new Date();
+		var running =
+			target.year === now.getFullYear() && (target.month === null || target.month === now.getMonth() + 1);
+		this.periodYear = running ? null : target.year;
+		this.periodMonth = running ? null : target.month;
 		this.update(app.states, app.connectors);
 		app.renderDashboard();
 	},

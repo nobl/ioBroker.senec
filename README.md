@@ -158,6 +158,8 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- New: **The energy totals can look back.** *Dieser Monat* and *Dieses Jahr* carry arrows now that step to the month or year beside the one shown, and the card's heading names the period it is actually showing. How far back the arrows reach is whatever the adapter has stored: the App API covers every year its all-time rebuild has filled in, the portal keeps a total for every year the system has run but a month-by-month breakdown for this year and last only. An installation polling the appliance alone has no history to step through and gets no arrows. SENEC reports *Autarkie* for the running period only, so for any period stepped to it is worked out from that period's own energy totals and may differ a little from the figure the portal shows.
+- Fixed: The App API's monthly and yearly totals never appeared. The dashboard asked for them under the field names the dashboard endpoint uses, but the measurement history stores the cloud's own names and counts in kWh rather than Wh — so an installation running only the App API saw *no data* on both tabs.
 - Fixed: Long values in the web dashboard's *System* card no longer paint over the cell beside them — a serial number or an installer e-mail address wraps inside its own column instead. The serial number is also shown last, on a line of its own, since it is the longest value in the card.
 - dependency updates
 

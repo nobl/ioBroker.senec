@@ -530,7 +530,7 @@
 				transition: all 0.15s ease;
 			}
 
-			.period-tab:hover {
+			.period-tab:hover:not(:disabled) {
 				color: var(--color-text);
 			}
 
@@ -539,6 +539,24 @@
 				color: var(--color-primary);
 				font-weight: 600;
 				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+			}
+
+			.period-tab:disabled {
+				opacity: 0.35;
+				cursor: default;
+			}
+
+			.period-steps {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				margin-left: 8px;
+			}
+
+			.period-step {
+				min-width: 24px;
+				padding: 4px 6px;
+				text-align: center;
 			}
 
 			.day-totals-grid {
