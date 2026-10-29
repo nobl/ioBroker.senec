@@ -30,8 +30,6 @@ var energyFlow = {
 		/** @type {number|null} */ todayWallbox: null,
 		/** @type {number|null} */ autarkyCurrent: null, // % self-sufficiency right now (live)
 		/** @type {number|null} */ autarky: null, // % self-sufficiency for current period
-		/** @type {number|null} */ autarkyWeek: null, // % self-sufficiency this week (web only)
-		/** @type {number|null} */ autarkyAll: null, // % self-sufficiency lifetime (web only)
 		/** @type {number|null} */ batteryCapacity: null, // kWh — design capacity for time estimates
 		// External sources (separate mode only — integrate mode values already added to pv/wallbox/battery)
 		/** @type {Array<{power: number, label: string}>} */ externalPv: [], // array of { power, label }
@@ -44,6 +42,15 @@ var energyFlow = {
 
 	source: "auto", // "auto", "local", "openapi", "api", "web"
 	period: "today", // "today", "month", "year"
+
+	/**
+	 * Period the energy-flow pill is showing: "now" (live), "day", "week", "month", "year" or
+	 * "all" (lifetime). Independent of `period` above, which belongs to the totals card.
+	 */
+	autarkyPeriod: "now",
+
+	/** Fixed cycle order for the pill; `renderAutarkyPill` filters out periods with no data. */
+	AUTARKY_PILL_PERIODS: ["now", "day", "week", "month", "year", "all"],
 
 	/**
 	 * Period stepped to by the arrows, or null for the running period.
@@ -698,9 +705,7 @@ var energyFlow = {
 			this.data.todayBatteryCharge = this.getState(states, `${pfx}today.batteryChargeInWh`) / 1000;
 			this.data.todayBatteryDischarge = this.getState(states, `${pfx}today.batteryDischargeInWh`) / 1000;
 			this.data.todayWallbox = this.getState(states, `${pfx}today.wallboxInWh`) / 1000;
-			this.data.autarky = this.getStateOrNull(states, `${pfx}today.selfSufficiencyInPercent`);
-			this.data.autarkyWeek = this.getStateOrNull(states, "_meinsenec.Autarky.week");
-			this.data.autarkyAll = this.getStateOrNull(states, "_meinsenec.Autarky.all");
+			this.data.autarky = this.readRunningDayAutarky(states);
 			return;
 		}
 
@@ -714,9 +719,7 @@ var energyFlow = {
 			this.data.todayBatteryCharge = this.getStateOrNull(states, `${wpfx}accuexport.today`);
 			this.data.todayBatteryDischarge = this.getStateOrNull(states, `${wpfx}accuimport.today`);
 			this.data.todayWallbox = null;
-			this.data.autarky = this.getStateOrNull(states, "_meinsenec.Autarky.day");
-			this.data.autarkyWeek = this.getStateOrNull(states, "_meinsenec.Autarky.week");
-			this.data.autarkyAll = this.getStateOrNull(states, "_meinsenec.Autarky.all");
+			this.data.autarky = this.readRunningDayAutarky(states);
 			return;
 		}
 
@@ -813,7 +816,9 @@ var energyFlow = {
 	/**
 	 * Totals for a specific stepped-to day. Only the current and previous month keep a daily
 	 * breakdown, so a day outside that window clears the totals the same way an unstored month or
-	 * year does. Neither cloud publishes a per-day self-sufficiency figure, so it is always derived.
+	 * year does. The portal publishes no per-day self-sufficiency figure, so its totals always
+	 * derive autarky; the API publishes one, read from `Daily.yesterday` for yesterday and from
+	 * the matching Monthly daily breakdown for every other stepped-to day.
 	 *
 	 * @param {object} states - ioBroker state values
 	 * @param {number} year - Calendar year of the day
@@ -845,7 +850,15 @@ var energyFlow = {
 		if (apfx) {
 			var aTotals = this.readDailyTotals(states, `${apfx}Monthly.${key}.`, "api", day);
 			if (aTotals) {
-				this.applyTotals(aTotals, null);
+				var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+				var isYesterday =
+					year === yesterday.getFullYear() &&
+					month === yesterday.getMonth() + 1 &&
+					day === yesterday.getDate();
+				var aAutarky = isYesterday
+					? this.getStateOrNull(states, `${apfx}Daily.yesterday.AUTARKY_IN_PERCENT`)
+					: this.getStateOrNull(states, `${apfx}Monthly.${key}.daily.AUTARKY_IN_PERCENT.${day}`);
+				this.applyTotals(aTotals, aAutarky);
 				return;
 			}
 		}
@@ -892,11 +905,103 @@ var energyFlow = {
 		return Math.max(0, Math.min(100, (selfSupplied / consumption) * 100));
 	},
 
+	/**
+	 * SENEC's own self-sufficiency figure for the running day.
+	 *
+	 * The Dashboard tree's `today.selfSufficiencyInPercent` is tried first because that tier is
+	 * polled every few minutes against the Measurements tree's heavy-tier (24 h) refresh; the
+	 * Measurements figure is a same-connector fallback for an install where Dashboard polling
+	 * has not landed yet, and the portal is the last resort.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {number|null} Self-sufficiency in percent, or null when nothing live reports it
+	 */
+	readRunningDayAutarky: function (states) {
+		var pfx = this.apiPrefix();
+		var val = pfx ? this.getStateOrNull(states, `${pfx}today.selfSufficiencyInPercent`) : null;
+		if (val === null) {
+			var apfx = this.apiMeasurementPrefix();
+			val = apfx ? this.getStateOrNull(states, `${apfx}Daily.today.AUTARKY_IN_PERCENT`) : null;
+		}
+		if (val === null) {
+			val = this.getStateOrNull(states, "_meinsenec.Autarky.day");
+		}
+		return val;
+	},
+
+	/**
+	 * SENEC's own self-sufficiency figure for the running month, portal first to match the order
+	 * `updateTotalsMonth` tries its totals sources in.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {number|null} Self-sufficiency in percent, or null when nothing live reports it
+	 */
+	readRunningMonthAutarky: function (states) {
+		var val = this.getStateOrNull(states, "_meinsenec.Autarky.month");
+		if (val === null) {
+			var apfx = this.apiMeasurementPrefix();
+			val = apfx ? this.getStateOrNull(states, `${apfx}Monthly.current_month.AUTARKY_IN_PERCENT`) : null;
+		}
+		return val;
+	},
+
+	/**
+	 * SENEC's own self-sufficiency figure for the running year, portal first to match the order
+	 * `updateTotalsYear` tries its totals sources in.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {number|null} Self-sufficiency in percent, or null when nothing live reports it
+	 */
+	readRunningYearAutarky: function (states) {
+		var val = this.getStateOrNull(states, "_meinsenec.Autarky.year");
+		if (val === null) {
+			var apfx = this.apiMeasurementPrefix();
+			var year = new Date().getFullYear();
+			val = apfx ? this.getStateOrNull(states, `${apfx}Yearly.${year}.AUTARKY_IN_PERCENT`) : null;
+		}
+		return val;
+	},
+
+	/**
+	 * SENEC's own running-period self-sufficiency figures — day, week, month, year and lifetime —
+	 * independent of whatever period the totals card currently has selected.
+	 *
+	 * Used by the totals card's context line and the flow diagram's switchable pill, neither of
+	 * which follow the totals card's own stepped-to-period selection. Each field's source order
+	 * mirrors the `updateTotals*` branch that would show the same period as its main figure, so
+	 * the context line and the pill never disagree with the totals card about a given period's
+	 * value.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {{day: number|null, week: number|null, month: number|null, year: number|null, all: number|null}}
+	 * Running-period self-sufficiency in percent per granularity, or null where unreported
+	 */
+	runningAutarky: function (states) {
+		var apfx = this.apiMeasurementPrefix();
+		// Lifetime has no corresponding `updateTotals*` branch to agree with. The portal reports
+		// its own figure; the API's AllTime series is derived by this adapter from per-year totals
+		// rather than a figure SENEC stores, so it is only the fallback.
+		var all = this.getStateOrNull(states, "_meinsenec.Autarky.all");
+		if (all === null) {
+			all = apfx ? this.getStateOrNull(states, `${apfx}AllTime.AUTARKY_IN_PERCENT`) : null;
+		}
+		return {
+			day: this.readRunningDayAutarky(states),
+			// No API equivalent — portal only.
+			week: this.getStateOrNull(states, "_meinsenec.Autarky.week"),
+			month: this.readRunningMonthAutarky(states),
+			year: this.readRunningYearAutarky(states),
+			all: all,
+		};
+	},
+
 	updateTotalsMonth: function (states) {
 		var now = new Date();
 		var year = this.periodYear !== null ? this.periodYear : now.getFullYear();
 		var month = this.periodMonth !== null ? this.periodMonth : now.getMonth() + 1;
 		var current = year === now.getFullYear() && month === now.getMonth() + 1;
+		var prevMonth = this.previousMonthOf(now.getFullYear(), now.getMonth() + 1);
+		var isPrevMonth = !current && year === prevMonth.year && month === prevMonth.month;
 		var apfx = this.apiMeasurementPrefix();
 
 		// The running month has a subtree of its own, polled more often than the yearly
@@ -904,13 +1009,13 @@ var energyFlow = {
 		if (current) {
 			var wCur = this.readTotals(states, "_meinsenec.Measurements.Monthly.current_month.", "web", "");
 			if (wCur) {
-				this.applyTotals(wCur, this.getStateOrNull(states, "_meinsenec.Autarky.month"));
+				this.applyTotals(wCur, this.readRunningMonthAutarky(states));
 				return;
 			}
 			if (apfx) {
 				var aCur = this.readTotals(states, `${apfx}Monthly.current_month.`, "api", "");
 				if (aCur) {
-					this.applyTotals(aCur, null);
+					this.applyTotals(aCur, this.readRunningMonthAutarky(states));
 					return;
 				}
 			}
@@ -918,13 +1023,21 @@ var energyFlow = {
 
 		var wMonth = this.readTotals(states, `_meinsenec.Measurements.Yearly.${year}.monthly.`, "web", `.${month}`);
 		if (wMonth) {
-			this.applyTotals(wMonth, current ? this.getStateOrNull(states, "_meinsenec.Autarky.month") : null);
+			this.applyTotals(wMonth, current ? this.readRunningMonthAutarky(states) : null);
 			return;
 		}
 		if (apfx) {
 			var aMonth = this.readTotals(states, `${apfx}Yearly.${year}.monthly.`, "api", `.${month}`);
 			if (aMonth) {
-				this.applyTotals(aMonth, null);
+				// The API stores the previous month's own figure separately from the Yearly
+				// breakdown that supplied the totals above; any older month falls back to that
+				// breakdown's own per-month figure.
+				var aMonthAutarky = current
+					? this.readRunningMonthAutarky(states)
+					: isPrevMonth
+						? this.getStateOrNull(states, `${apfx}Monthly.previous_month.AUTARKY_IN_PERCENT`)
+						: this.getStateOrNull(states, `${apfx}Yearly.${year}.monthly.AUTARKY_IN_PERCENT.${month}`);
+				this.applyTotals(aMonth, aMonthAutarky);
 				return;
 			}
 		}
@@ -936,7 +1049,9 @@ var energyFlow = {
 		var now = new Date();
 		var year = this.periodYear !== null ? this.periodYear : now.getFullYear();
 		var current = year === now.getFullYear();
-		var reported = current ? this.getStateOrNull(states, "_meinsenec.Autarky.year") : null;
+		// The portal's own figure is a running-year stat with no meaning for a past year;
+		// readRunningYearAutarky always answers for the running year.
+		var reported = current ? this.readRunningYearAutarky(states) : null;
 
 		var wYear = this.readTotals(states, `_meinsenec.Measurements.Yearly.${year}.`, "web", "");
 		if (wYear) {
@@ -956,7 +1071,12 @@ var energyFlow = {
 		if (apfx) {
 			var aYear = this.readTotals(states, `${apfx}Yearly.${year}.`, "api", "");
 			if (aYear) {
-				this.applyTotals(aYear, reported);
+				// A past year has no portal figure to prefer; the API's own per-year figure applies
+				// directly regardless of which source supplied the totals above.
+				var aYearAutarky = current
+					? reported
+					: this.getStateOrNull(states, `${apfx}Yearly.${year}.AUTARKY_IN_PERCENT`);
+				this.applyTotals(aYear, aYearAutarky);
 				return;
 			}
 		}
@@ -1144,6 +1264,25 @@ var energyFlow = {
 	},
 
 	/**
+	 * Whether the totals card is showing the running period for its current tab — today, this
+	 * month or this year — rather than a period stepped to with the arrows.
+	 *
+	 * @returns {boolean} True for the running period
+	 */
+	isRunningPeriod: function () {
+		if (this.period === "today") {
+			return this.periodDay === null;
+		}
+		if (this.period === "month") {
+			return this.periodMonth === null;
+		}
+		if (this.period === "year") {
+			return this.periodYear === null;
+		}
+		return false;
+	},
+
+	/**
 	 * @param {Array<{year: number, month: number|null, day: number|null}>} list - Periods from availablePeriods
 	 * @param {{year: number, month: number|null, day: number|null}} sel - Period to locate
 	 * @returns {number} Index of sel, or the last index when it is not listed
@@ -1201,8 +1340,6 @@ var energyFlow = {
 		this.data.todayBatteryDischarge = null;
 		this.data.todayWallbox = null;
 		this.data.autarky = null;
-		this.data.autarkyWeek = null;
-		this.data.autarkyAll = null;
 	},
 
 	/**
@@ -1442,15 +1579,14 @@ var energyFlow = {
 		}
 		html += "</div></div>";
 
-		// Operating mode badge + current autarky
-		if (modeBadge || d.autarkyCurrent !== null) {
+		// Operating mode badge + switchable autarky pill
+		var autarkyPillHtml = this.renderAutarkyPill(d);
+		if (modeBadge || autarkyPillHtml) {
 			html += '<div class="energy-status-row">';
 			if (modeBadge) {
 				html += modeBadge;
 			}
-			if (d.autarkyCurrent !== null) {
-				html += `<div class="system-mode-badge" style="border-color:#157c00;color:#157c00">${t("autarky_now")}: ${Math.round(d.autarkyCurrent)}%</div>`;
-			}
+			html += autarkyPillHtml;
 			html += "</div>";
 		}
 
@@ -1972,6 +2108,92 @@ var energyFlow = {
 	},
 
 	/**
+	 * Label for one pill period: the existing "(now)" phrase for the live reading, or
+	 * "Self-sufficiency (<period>)" built from the same period words the totals tabs already
+	 * use — "day", "week", "month", "year" and "all" are each a `period_*` i18n key, so no new
+	 * strings are needed.
+	 *
+	 * @param {string} period - "now", "day", "week", "month", "year" or "all"
+	 * @returns {string} The pill's label for that period, without the value
+	 */
+	autarkyPillLabel: function (period) {
+		if (period === "now") {
+			return t("autarky_now");
+		}
+		return `${t("total_self_sufficiency")} (${t(`period_${period}`)})`;
+	},
+
+	/**
+	 * The pill's value for every period it can cycle through, independent of which the totals
+	 * card currently has selected.
+	 *
+	 * @param {object} d - this.data
+	 * @param {object} states - ioBroker state values
+	 * @returns {{now: number|null, day: number|null, week: number|null, month: number|null, year: number|null, all: number|null}}
+	 * Self-sufficiency in percent per pill period, or null where unavailable
+	 */
+	autarkyPillValues: function (d, states) {
+		var running = this.runningAutarky(states);
+		return {
+			now: d.autarkyCurrent,
+			day: running.day,
+			week: running.week,
+			month: running.month,
+			year: running.year,
+			all: running.all,
+		};
+	},
+
+	/**
+	 * Render the energy-flow header's self-sufficiency pill.
+	 *
+	 * Clicking rotates through whichever periods have data on this installation; with only one
+	 * available (a local-only install reporting just the live figure) it renders as a plain,
+	 * unclickable status pill, unchanged from before this control existed.
+	 *
+	 * @param {object} d - this.data
+	 * @returns {string} HTML for the pill, or "" when no period has data
+	 */
+	renderAutarkyPill: function (d) {
+		var values = this.autarkyPillValues(d, app.states);
+		var available = this.AUTARKY_PILL_PERIODS.filter(function (key) {
+			return values[key] !== null;
+		});
+		if (available.length === 0) {
+			return "";
+		}
+		if (available.indexOf(this.autarkyPeriod) === -1) {
+			this.autarkyPeriod = available[0];
+		}
+		var period = this.autarkyPeriod;
+		var text = `${this.autarkyPillLabel(period)}: ${Math.round(values[period])}%`;
+		if (available.length < 2) {
+			return `<div class="system-mode-badge" style="border-color:#157c00;color:#157c00">${text}</div>`;
+		}
+		var nextPeriod = available[(available.indexOf(period) + 1) % available.length];
+		var nextLabel = this.autarkyPillLabel(nextPeriod);
+		return (
+			`<button type="button" class="system-mode-badge autarky-pill" style="border-color:#157c00;color:#157c00" ` +
+			`onclick="energyFlow.onAutarkyPillClick()" title="${escHtml(nextLabel)}" aria-label="${escHtml(nextLabel)}">` +
+			`${text}</button>`
+		);
+	},
+
+	/** Advance the energy-flow pill to the next available period and re-render. */
+	onAutarkyPillClick: function () {
+		var values = this.autarkyPillValues(this.data, app.states);
+		var available = this.AUTARKY_PILL_PERIODS.filter(function (key) {
+			return values[key] !== null;
+		});
+		if (available.length < 2) {
+			return;
+		}
+		var idx = available.indexOf(this.autarkyPeriod);
+		this.autarkyPeriod = available[(idx === -1 ? 0 : idx + 1) % available.length];
+		app.renderDashboard();
+	},
+
+	/**
 	 * Tab label for a granularity. "today" reads as "Day" here — a granularity, not a date — since
 	 * periodTitle names the actual selected date right beside it.
 	 *
@@ -2021,15 +2243,23 @@ var energyFlow = {
 
 		if (d.autarky !== null) {
 			var autarkyParts = [`${Math.round(d.autarky)}%`];
-			// Lifetime/week figures the cloud reports for the running day only — showing them next
-			// to a stepped-to day's derived autarky would pair today's week/all-time with another
-			// day's own total.
-			var isRunningToday = this.period === "today" && this.periodDay === null;
-			if (d.autarkyWeek !== null && isRunningToday) {
-				autarkyParts.push(`${t("period_week")}: ${Math.round(d.autarkyWeek)}%`);
-			}
-			if (d.autarkyAll !== null && isRunningToday) {
-				autarkyParts.push(`${t("period_all")}: ${Math.round(d.autarkyAll)}%`);
+			// The context figures are all running-period figures — showing them next to a
+			// stepped-to period's own total would pair today's week/month/year/lifetime with
+			// another period's total, which is noise rather than context.
+			if (this.isRunningPeriod()) {
+				var running = this.runningAutarky(app.states);
+				var contextFields = [
+					{ key: "week", label: t("period_week") },
+					{ key: "month", label: t("period_month") },
+					{ key: "year", label: t("period_year") },
+					{ key: "all", label: t("period_all") },
+				];
+				for (var cfi = 0; cfi < contextFields.length; cfi++) {
+					var cVal = running[contextFields[cfi].key];
+					if (cVal !== null) {
+						autarkyParts.push(`${contextFields[cfi].label}: ${Math.round(cVal)}%`);
+					}
+				}
 			}
 			html += this.renderTotalItem(t("total_self_sufficiency"), null, "#157c00", autarkyParts.join(" · "));
 		}

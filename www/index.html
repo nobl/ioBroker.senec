@@ -777,6 +777,29 @@
 				display: inline-block;
 			}
 
+			/* The switchable energy-flow pill renders as a <button> so it stays keyboard-reachable;
+			   these undo the browser's own button chrome so it still reads as a status pill. */
+			button.system-mode-badge {
+				appearance: none;
+				-webkit-appearance: none;
+				background: none;
+				font-family: inherit;
+				line-height: inherit;
+			}
+
+			.system-mode-badge.autarky-pill {
+				cursor: pointer;
+			}
+
+			.system-mode-badge.autarky-pill:hover {
+				opacity: 0.85;
+			}
+
+			.system-mode-badge.autarky-pill:focus-visible {
+				outline: 2px solid currentColor;
+				outline-offset: 2px;
+			}
+
 			.system-grid {
 				display: grid;
 				grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
