@@ -222,9 +222,23 @@ var i18n = {
  * @param {{[key: string]: string|number}} [params] - Placeholder values
  * @returns {string} Translated string
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function t(key, params) {
 	return i18n.translate(key, params);
+}
+
+/**
+ * Tab label for one totals granularity, shared by every card that offers the same three tabs.
+ *
+ * "today" reads as "Day" here — a granularity, not a date. One helper rather than a label per
+ * card, because two cards sitting on the same page with different words for the same tab read
+ * as two different controls.
+ *
+ * @param {string} period - "today", "month" or "year"
+ * @returns {string} The tab's label
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function periodTabLabel(period) {
+	return t(period === "today" ? "period_day" : `period_${period}`);
 }
 
 /**
@@ -281,6 +295,21 @@ function connectorOfState(id) {
 }
 
 /**
+ * Last configuration object `connectorEnabled` answered for.
+ *
+ * `connectorEnabled` is asked once per state id by the dashboard's state-tree scans, so without
+ * this it walked `Object.keys(app.config)` once per id in the tree. The identity test holds
+ * because `app.config` is replaced wholesale when an instance object arrives, never edited in
+ * place; a caller that mutates the existing object instead would keep the previous answer.
+ *
+ * @type {object|null}
+ */
+var _connectorConfig = null;
+
+/** Whether `_connectorConfig` was still the empty placeholder, which enables every connector. */
+var _connectorConfigEmpty = true;
+
+/**
  * Whether a connector is switched on in the instance configuration.
  *
  * Deliberately the configuration and not `info.<name>Connected`: a connector that is enabled
@@ -296,7 +325,11 @@ function connectorOfState(id) {
 
 function connectorEnabled(connector) {
 	var config = typeof app !== "undefined" && app.config ? app.config : null;
-	if (!config || !Object.keys(config).length) {
+	if (_connectorConfig !== config) {
+		_connectorConfig = config;
+		_connectorConfigEmpty = !config || !Object.keys(config).length;
+	}
+	if (_connectorConfigEmpty) {
 		return true;
 	}
 	var key = CONNECTOR_CONFIG_KEY[connector];

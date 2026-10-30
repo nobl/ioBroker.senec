@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, t, chartColors, stateIsLive, connectorEnabled, energyFlow, document, getComputedStyle, XMLSerializer, Image */
+/* global app, t, periodTabLabel, chartColors, stateIsLive, connectorEnabled, energyFlow, document, getComputedStyle, XMLSerializer, Image */
 /* exported charts */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -428,11 +428,10 @@ var charts = {
 		html += `<h2>${t("chart_title")}</h2>`;
 		html += '<div class="day-totals-tabs">';
 		var periods = ["today", "month", "year"];
-		var periodKeys = { today: "period_today", month: "period_month", year: "period_year" };
 		for (var i = 0; i < periods.length; i++) {
 			var p = periods[i];
 			var cls = this.period === p ? "period-tab active" : "period-tab";
-			html += `<button class="${cls}" onclick="charts.onPeriodChange('${p}')">${t(periodKeys[p])}</button>`;
+			html += `<button class="${cls}" onclick="charts.onPeriodChange('${p}')">${periodTabLabel(p)}</button>`;
 		}
 		// Data source selector
 		html += '<div class="energy-source">';

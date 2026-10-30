@@ -1,6 +1,6 @@
 "use strict";
 
-/* global app, i18n, t, escHtml, stateIsLive, connectorOfState, connectorEnabled, liveChart */
+/* global app, i18n, t, periodTabLabel, escHtml, stateIsLive, connectorOfState, connectorEnabled, liveChart */
 /* exported energyFlow */
 /* eslint-disable jsdoc/check-tag-names -- @type annotations are required for TS type checking */
 
@@ -65,6 +65,18 @@ var energyFlow = {
 	periodMonth: null,
 	/** @type {number|null} Day of periodYear/periodMonth, or null for the running day. */
 	periodDay: null,
+
+	/**
+	 * The instant this update/render pass is anchored to.
+	 *
+	 * Every calendar question the card asks — which day is running, which month `current_month`
+	 * means, whether a stored period lies in the future, what the title says — has to be
+	 * answered against one clock reading. Independent `new Date()` calls either side of midnight
+	 * labelled one month's values with the next month's name.
+	 *
+	 * @type {Date|null}
+	 */
+	_now: null,
 
 	/** @type {string|null} */ activeSource: null, // which source is actually providing data
 
@@ -142,6 +154,31 @@ var energyFlow = {
 		if (fallback) {
 			this.apiAnlagenId = fallback;
 		}
+	},
+
+	/**
+	 * Start a new pass and anchor it to the current instant.
+	 *
+	 * Called from `update` only, which is the one place a pass begins: the render that follows
+	 * reuses the anchor, and the event handlers all end in a re-render that goes through
+	 * `update` again. Dropping the period scan here is what keeps that cache from outliving the
+	 * state tree it was built from — there is no other invalidation.
+	 *
+	 * @returns {Date} The pass's instant
+	 */
+	resolveNow: function () {
+		this._now = new Date();
+		this._periodScanFor = null;
+		return this._now;
+	},
+
+	/**
+	 * The instant the current pass is anchored to, resolving one if no pass has started.
+	 *
+	 * @returns {Date} The pass's instant
+	 */
+	now: function () {
+		return this._now || this.resolveNow();
 	},
 
 	/** Get the API state prefix for the discovered system */
@@ -301,6 +338,7 @@ var energyFlow = {
 	 * @param {object} connectors - Connector status objects
 	 */
 	update: function (states, connectors) {
+		this.resolveNow();
 		this.discoverApiId(states);
 		var src = this.resolveSource(states, connectors);
 		var changed = src !== this.activeSource;
@@ -678,6 +716,7 @@ var energyFlow = {
 	},
 
 	updateDayTotals: function (states) {
+		this.ensureSelectedPeriodReachable(states);
 		if (this.period === "today") {
 			this.updateTotalsToday(states);
 		} else if (this.period === "month") {
@@ -745,6 +784,28 @@ var energyFlow = {
 	},
 
 	/**
+	 * Whether a measurement subtree may be read as a period's totals.
+	 *
+	 * Consumption has to be live *and positive*, and generation has to be live beside it. Both
+	 * halves earn their place:
+	 *
+	 * - A measurement poll settles each of its six types independently, so a single failed type
+	 *   leaves its states unwritten while the others land. Accepting consumption alone derived a
+	 *   self-sufficiency figure from a subtree that had no generation in it.
+	 * - A stored `0` is present, so presence alone cannot tell a real zero from a slot that a
+	 *   month rotation has just blanked. This is the same live-and-positive test the period
+	 *   pickers apply, so the card never reads a period the arrows refuse to offer.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} consumptionId - State id of the period's consumption total
+	 * @param {string} generationId - State id of the period's generation total
+	 * @returns {boolean} True when the subtree may be read
+	 */
+	totalsUsable: function (states, consumptionId, generationId) {
+		return Number(this.liveValue(states, consumptionId)) > 0 && this.hasLive(states, generationId);
+	},
+
+	/**
 	 * Read one period's six totals, in kWh, from a Measurements subtree.
 	 *
 	 * Every subtree this reads — yearly, the monthly breakdown and the per-year all-time series —
@@ -754,10 +815,16 @@ var energyFlow = {
 	 * @param {string} pfx - Subtree prefix, ending in a dot
 	 * @param {string} src - "web" or "api"
 	 * @param {string} suffix - Trailing index, e.g. ".7" for July, or "" for a plain total
-	 * @returns {object|null} Totals by data field, or null when the subtree holds nothing live
+	 * @returns {object|null} Totals by data field, or null when the subtree is not usable
 	 */
 	readTotals: function (states, pfx, src, suffix) {
-		if (!this.hasLive(states, pfx + this.totalsKeys.todayConsumption[src] + suffix)) {
+		if (
+			!this.totalsUsable(
+				states,
+				pfx + this.totalsKeys.todayConsumption[src] + suffix,
+				pfx + this.totalsKeys.todayPv[src] + suffix,
+			)
+		) {
 			return null;
 		}
 		var out = {};
@@ -780,7 +847,7 @@ var energyFlow = {
 	 * @param {string} pfx - Subtree prefix, ending in a dot (e.g. "…Monthly.current_month.")
 	 * @param {string} src - "web" or "api"
 	 * @param {number} day - Day of month, 1-31
-	 * @returns {object|null} Totals by data field, or null when the subtree holds nothing live
+	 * @returns {object|null} Totals by data field, or null when the subtree is not usable
 	 */
 	readDailyTotals: function (states, pfx, src, day) {
 		var build =
@@ -791,7 +858,13 @@ var energyFlow = {
 				: function (key) {
 						return `${pfx}daily.${key}.${day}`;
 					};
-		if (!this.hasLive(states, build(this.totalsKeys.todayConsumption[src]))) {
+		if (
+			!this.totalsUsable(
+				states,
+				build(this.totalsKeys.todayConsumption[src]),
+				build(this.totalsKeys.todayPv[src]),
+			)
+		) {
 			return null;
 		}
 		var out = {};
@@ -814,6 +887,37 @@ var energyFlow = {
 	},
 
 	/**
+	 * Whether a recycled Monthly subtree really holds the month the card is about to label it
+	 * with, according to the tag the connector wrote beside the values.
+	 *
+	 * `current_month` and `previous_month` are fixed paths whose meaning moves, and the three
+	 * calendars involved do not move together: the portal connector rotates them by UTC, the App
+	 * API connector by the adapter host's local calendar, and this card reads the browser's. Any
+	 * two of those can disagree for hours, and during that window the subtree holds one month's
+	 * values under another month's name. Each connector writes a `period` state of `"YYYY-MM"`
+	 * naming the month it actually asked for; comparing it is the only way to tell.
+	 *
+	 * Only these two paths need the check — every other subtree carries its year and month in
+	 * the state id itself, so it cannot be misread.
+	 *
+	 * An absent tag passes. Installs that polled before the tag existed have values worth
+	 * showing, and a connector that writes no tag at all would otherwise be shut out entirely.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} pfx - Monthly subtree prefix, ending in a dot
+	 * @param {number} year - Calendar year the card means to label the subtree with
+	 * @param {number} month - Calendar month, 1-12, the card means to label the subtree with
+	 * @returns {boolean} True when the tag agrees, or when there is no tag
+	 */
+	periodTagMatches: function (states, pfx, year, month) {
+		var tag = this.liveValue(states, `${pfx}period`);
+		if (tag === undefined || tag === null || tag === "") {
+			return true;
+		}
+		return String(tag) === `${year}-${String(month).padStart(2, "0")}`;
+	},
+
+	/**
 	 * Whether a candidate period lies strictly after the one currently running, at whatever
 	 * granularity the caller is checking (pass `month`/`day` as null above the checked level).
 	 *
@@ -828,7 +932,7 @@ var energyFlow = {
 	 * @returns {boolean} True when the candidate is later than the running period
 	 */
 	isFuturePeriod: function (year, month, day) {
-		var now = new Date();
+		var now = this.now();
 		if (year !== now.getFullYear()) {
 			return year > now.getFullYear();
 		}
@@ -857,7 +961,7 @@ var energyFlow = {
 	 * @param {number} day - Day of month
 	 */
 	updateTotalsDay: function (states, year, month, day) {
-		var now = new Date();
+		var now = this.now();
 		var curYear = now.getFullYear();
 		var curMonth = now.getMonth() + 1;
 		var prev = this.previousMonthOf(curYear, curMonth);
@@ -872,13 +976,16 @@ var energyFlow = {
 			return;
 		}
 
-		var wTotals = this.readDailyTotals(states, `_meinsenec.Measurements.Monthly.${key}.`, "web", day);
+		var wpfx = `_meinsenec.Measurements.Monthly.${key}.`;
+		var wTotals = this.periodTagMatches(states, wpfx, year, month)
+			? this.readDailyTotals(states, wpfx, "web", day)
+			: null;
 		if (wTotals) {
 			this.applyTotals(wTotals, null);
 			return;
 		}
 		var apfx = this.apiMeasurementPrefix();
-		if (apfx) {
+		if (apfx && this.periodTagMatches(states, `${apfx}Monthly.${key}.`, year, month)) {
 			var aTotals = this.readDailyTotals(states, `${apfx}Monthly.${key}.`, "api", day);
 			if (aTotals) {
 				var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
@@ -920,20 +1027,32 @@ var energyFlow = {
 	 * supply. Only the running period is reported by the cloud, so every stepped-to period is
 	 * derived this way and may differ slightly from the portal's own figure.
 	 *
+	 * The identity only holds for a window the battery neither entered nor left charged from the
+	 * grid. Charging from the grid — this adapter's own force-charge and peak-shaving controls do
+	 * exactly that — drives the result below 0 % or above 100 %, and a grid-charged battery
+	 * discharging on a later day does the same in the other direction. A result outside the range
+	 * is the derivation failing, not a measurement, so it is refused rather than clamped into a
+	 * plausible-looking 0 % or 100 %.
+	 *
 	 * @param {object} tot - Totals from readTotals
-	 * @returns {number|null} Self-sufficiency in percent, or null when consumption is unknown
+	 * @returns {number|null} Self-sufficiency in percent, or null when it cannot be derived
 	 */
 	calcAutarkyFromTotals: function (tot) {
 		var consumption = tot.todayConsumption;
-		if (!consumption || consumption <= 0) {
+		if (!(consumption > 0)) {
 			return null;
 		}
-		var selfSupplied =
-			(tot.todayPv || 0) -
-			(tot.todayGridExport || 0) -
-			(tot.todayBatteryCharge || 0) +
-			(tot.todayBatteryDischarge || 0);
-		return Math.max(0, Math.min(100, (selfSupplied / consumption) * 100));
+		// A missing term is unknown, not zero: substituting zero turns half a subtree into a
+		// confident figure.
+		var terms = ["todayPv", "todayGridExport", "todayBatteryCharge", "todayBatteryDischarge"];
+		for (var i = 0; i < terms.length; i++) {
+			if (typeof tot[terms[i]] !== "number") {
+				return null;
+			}
+		}
+		var selfSupplied = tot.todayPv - tot.todayGridExport - tot.todayBatteryCharge + tot.todayBatteryDischarge;
+		var pct = (selfSupplied / consumption) * 100;
+		return pct < 0 || pct > 100 ? null : pct;
 	},
 
 	/**
@@ -987,7 +1106,7 @@ var energyFlow = {
 		var val = this.getStateOrNull(states, "_meinsenec.Autarky.year");
 		if (val === null) {
 			var apfx = this.apiMeasurementPrefix();
-			var year = new Date().getFullYear();
+			var year = this.now().getFullYear();
 			val = apfx ? this.getStateOrNull(states, `${apfx}Yearly.${year}.AUTARKY_IN_PERCENT`) : null;
 		}
 		return val;
@@ -1027,7 +1146,7 @@ var energyFlow = {
 	},
 
 	updateTotalsMonth: function (states) {
-		var now = new Date();
+		var now = this.now();
 		var year = this.periodYear !== null ? this.periodYear : now.getFullYear();
 		var month = this.periodMonth !== null ? this.periodMonth : now.getMonth() + 1;
 		var current = year === now.getFullYear() && month === now.getMonth() + 1;
@@ -1038,12 +1157,15 @@ var energyFlow = {
 		// The running month has a subtree of its own, polled more often than the yearly
 		// breakdown that covers every other month.
 		if (current) {
-			var wCur = this.readTotals(states, "_meinsenec.Measurements.Monthly.current_month.", "web", "");
+			var wCurPfx = "_meinsenec.Measurements.Monthly.current_month.";
+			var wCur = this.periodTagMatches(states, wCurPfx, year, month)
+				? this.readTotals(states, wCurPfx, "web", "")
+				: null;
 			if (wCur) {
 				this.applyTotals(wCur, this.readRunningMonthAutarky(states));
 				return;
 			}
-			if (apfx) {
+			if (apfx && this.periodTagMatches(states, `${apfx}Monthly.current_month.`, year, month)) {
 				var aCur = this.readTotals(states, `${apfx}Monthly.current_month.`, "api", "");
 				if (aCur) {
 					this.applyTotals(aCur, this.readRunningMonthAutarky(states));
@@ -1077,7 +1199,7 @@ var energyFlow = {
 	},
 
 	updateTotalsYear: function (states) {
-		var now = new Date();
+		var now = this.now();
 		var year = this.periodYear !== null ? this.periodYear : now.getFullYear();
 		var current = year === now.getFullYear();
 		// The portal's own figure is a running-year stat with no meaning for a past year;
@@ -1129,6 +1251,35 @@ var energyFlow = {
 	 * @returns {Array<{year: number, month: number|null, day: number|null}>} Reachable periods
 	 */
 	availablePeriods: function (states, period) {
+		// One scan per pass, however many callers ask: the scan walks the whole state tree, and
+		// both the reachability guard in `update` and the arrows in `render` need the same answer
+		// for the same instant. `resolveNow` is the only thing that drops it, so the cache cannot
+		// outlive its pass — but it can outlive a state write, because a Measurements write
+		// starts no pass on the overview tab. The arrows therefore pick up a newly stored period
+		// on the next energy-state write rather than immediately, which is within a poll of a
+		// tier that refreshes hourly at best.
+		if (this._periodScanFor === period && this._periodScan) {
+			return this._periodScan;
+		}
+		var scanned = this.scanAvailablePeriods(states, period);
+		this._periodScanFor = period;
+		this._periodScan = scanned;
+		return scanned;
+	},
+
+	/** @type {string|null} Period granularity `_periodScan` was built for. */
+	_periodScanFor: null,
+	/** @type {Array<{year: number, month: number|null, day: number|null}>|null} */
+	_periodScan: null,
+
+	/**
+	 * The state-tree scan behind `availablePeriods`, without its per-pass cache.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @param {string} period - "today", "month" or "year"
+	 * @returns {Array<{year: number, month: number|null, day: number|null}>} Reachable periods
+	 */
+	scanAvailablePeriods: function (states, period) {
 		if (period === "today") {
 			return this.availableDays(states);
 		}
@@ -1140,7 +1291,7 @@ var energyFlow = {
 		}
 
 		var seen = {};
-		var now = new Date();
+		var now = this.now();
 		// The running period is always reachable, so the arrows can come back to it even before
 		// the slow poll that fills its history subtree has run.
 		var curMonth = monthly ? now.getMonth() + 1 : null;
@@ -1158,12 +1309,15 @@ var energyFlow = {
 				: new RegExp(`^Yearly\\.(\\d{4})\\.${key}$`);
 			var allTime = monthly ? null : new RegExp(`^AllTime\\.${key}\\.(\\d{4})$`);
 			for (var id in states) {
-				if (id.lastIndexOf(pfx, 0) !== 0 || !stateIsLive(id) || !(Number(states[id]) > 0)) {
+				// Cheapest tests first, and `stateIsLive` last of them: this loop runs over the
+				// whole state tree, and only the handful of ids that match the pattern are worth
+				// resolving an owning connector for.
+				if (id.lastIndexOf(pfx, 0) !== 0 || !(Number(states[id]) > 0)) {
 					continue;
 				}
 				var tail = id.slice(pfx.length);
 				var m = breakdown.exec(tail) || (allTime ? allTime.exec(tail) : null);
-				if (!m) {
+				if (!m || !stateIsLive(id)) {
 					continue;
 				}
 				var year = Number(m[1]);
@@ -1202,7 +1356,7 @@ var energyFlow = {
 	 */
 	availableDays: function (states) {
 		var seen = {};
-		var now = new Date();
+		var now = this.now();
 		var add = function (year, month, day) {
 			seen[`${year}-${month}-${day}`] = { year: year, month: month, day: day };
 		};
@@ -1218,20 +1372,28 @@ var energyFlow = {
 		var apiKey = this.totalsKeys.todayConsumption.api;
 		var apfx = this.apiMeasurementPrefix();
 
+		// Each subtree is offered only if its own tag agrees that it holds the month this loop is
+		// about to attribute its days to — the same guard updateTotalsDay applies before reading
+		// one, so the arrows never reach a day whose card would then come up empty. Checked per
+		// subtree, so two connectors that have rotated at different times are never merged.
 		for (var pi = 0; pi < periods.length; pi++) {
 			var per = periods[pi];
-			this.scanDayKeys(
-				states,
-				`_meinsenec.Measurements.Monthly.${per.key}.`,
-				new RegExp(`^${webKey}\\.daily\\.(\\d{1,2})$`),
-				per.year,
-				per.month,
-				add,
-			);
-			if (apfx) {
+			var wpfx = `_meinsenec.Measurements.Monthly.${per.key}.`;
+			if (this.periodTagMatches(states, wpfx, per.year, per.month)) {
 				this.scanDayKeys(
 					states,
-					`${apfx}Monthly.${per.key}.`,
+					wpfx,
+					new RegExp(`^${webKey}\\.daily\\.(\\d{1,2})$`),
+					per.year,
+					per.month,
+					add,
+				);
+			}
+			var amPfx = apfx ? `${apfx}Monthly.${per.key}.` : null;
+			if (amPfx && this.periodTagMatches(states, amPfx, per.year, per.month)) {
+				this.scanDayKeys(
+					states,
+					amPfx,
 					new RegExp(`^daily\\.${apiKey}\\.(\\d{1,2})$`),
 					per.year,
 					per.month,
@@ -1265,11 +1427,12 @@ var energyFlow = {
 	 */
 	scanDayKeys: function (states, pfx, re, year, month, add) {
 		for (var id in states) {
-			if (id.lastIndexOf(pfx, 0) !== 0 || !stateIsLive(id) || !(Number(states[id]) > 0)) {
+			// Cheapest tests first, and `stateIsLive` last of them — see availablePeriods.
+			if (id.lastIndexOf(pfx, 0) !== 0 || !(Number(states[id]) > 0)) {
 				continue;
 			}
 			var m = re.exec(id.slice(pfx.length));
-			if (!m) {
+			if (!m || !stateIsLive(id)) {
 				continue;
 			}
 			var day = Number(m[1]);
@@ -1291,7 +1454,7 @@ var energyFlow = {
 	 * @returns {{year: number, month: number|null, day: number|null}} Selected period
 	 */
 	selectedPeriod: function () {
-		var now = new Date();
+		var now = this.now();
 		if (this.period === "today") {
 			return this.periodDay === null
 				? { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() }
@@ -1324,9 +1487,14 @@ var energyFlow = {
 	},
 
 	/**
+	 * Answers -1 rather than the last index when the period is not listed. A stepped-to period
+	 * can leave the list under the card — a month rotation blanks every day of the outgoing
+	 * month in one write — and anchoring on the newest entry instead silently re-pointed the
+	 * arrows at a different period from the one the heading named.
+	 *
 	 * @param {Array<{year: number, month: number|null, day: number|null}>} list - Periods from availablePeriods
 	 * @param {{year: number, month: number|null, day: number|null}} sel - Period to locate
-	 * @returns {number} Index of sel, or the last index when it is not listed
+	 * @returns {number} Index of sel, or -1 when it is not listed
 	 */
 	indexOfPeriod: function (list, sel) {
 		for (var i = 0; i < list.length; i++) {
@@ -1338,7 +1506,32 @@ var energyFlow = {
 				return i;
 			}
 		}
-		return list.length - 1;
+		return -1;
+	},
+
+	/**
+	 * Drop a stepped-to period back to the running one once it is no longer reachable.
+	 *
+	 * Run before the totals are read, so the heading, the totals and the arrows all describe the
+	 * same period. `availablePeriods` always lists the running period, so the fallback is always
+	 * reachable.
+	 *
+	 * @param {object} states - ioBroker state values
+	 */
+	ensureSelectedPeriodReachable: function (states) {
+		if (this.isRunningPeriod()) {
+			return;
+		}
+		if (this.indexOfPeriod(this.availablePeriods(states, this.period), this.selectedPeriod()) === -1) {
+			this.resetToRunningPeriod();
+		}
+	},
+
+	/** Point the card back at the running day, month or year. */
+	resetToRunningPeriod: function () {
+		this.periodYear = null;
+		this.periodMonth = null;
+		this.periodDay = null;
 	},
 
 	/**
@@ -1579,6 +1772,10 @@ var energyFlow = {
 	 * @param {string} [modeBadge] - HTML for operating mode badge
 	 */
 	render: function (modeBadge) {
+		// Deliberately `now`, not `resolveNow`: the render follows the update in the same frame
+		// and must describe the instant the totals were read at, not a second reading of the
+		// clock. Anchors one itself when the update was skipped and nothing else has.
+		this.now();
 		if (!this.hasData) {
 			return `<div class="card"><h2>${t("energy_flow")}</h2>${
 				modeBadge || ""
@@ -2234,17 +2431,6 @@ var energyFlow = {
 		app.renderDashboard();
 	},
 
-	/**
-	 * Tab label for a granularity. "today" reads as "Day" here — a granularity, not a date — since
-	 * periodTitle names the actual selected date right beside it.
-	 *
-	 * @param {string} p - "today", "month" or "year"
-	 * @returns {string} The tab's label
-	 */
-	periodLabel: function (p) {
-		return p === "today" ? t("period_day") : t(`period_${p}`);
-	},
-
 	renderDayTotals: function (d) {
 		var html = '<div class="day-totals">';
 		html += '<div class="day-totals-header">';
@@ -2254,9 +2440,7 @@ var energyFlow = {
 		for (var i = 0; i < periods.length; i++) {
 			var p = periods[i];
 			var cls = this.period === p ? "period-tab active" : "period-tab";
-			html += `<button class="${cls}" onclick="energyFlow.onPeriodChange('${p}')">${this.periodLabel(
-				p,
-			)}</button>`;
+			html += `<button class="${cls}" onclick="energyFlow.onPeriodChange('${p}')">${periodTabLabel(p)}</button>`;
 		}
 		html += this.renderPeriodSteps();
 		html += "</div></div>";
@@ -2329,6 +2513,14 @@ var energyFlow = {
 			return "";
 		}
 		var idx = this.indexOfPeriod(list, this.selectedPeriod());
+		if (idx === -1) {
+			// The selected period left the list since the totals were read — `update` is skipped
+			// mid-OpenAPI-cycle, so a render can reach this. Step from the running period, which
+			// availablePeriods always lists, rather than from the newest entry: the heading names
+			// a period the arrows would otherwise silently disown.
+			this.resetToRunningPeriod();
+			idx = this.indexOfPeriod(list, this.selectedPeriod());
+		}
 		return (
 			`<span class="period-steps">${this.renderPeriodStep(list[idx - 1], -1, "‹")}` +
 			`${this.renderPeriodStep(list[idx + 1], 1, "›")}</span>`
@@ -2468,9 +2660,7 @@ var energyFlow = {
 		this.period = val;
 		// Switching granularity returns to the running period; a month stepped to in one year has
 		// no meaning as a year, and the tab's own label would otherwise be a lie.
-		this.periodYear = null;
-		this.periodMonth = null;
-		this.periodDay = null;
+		this.resetToRunningPeriod();
 		this.update(app.states, app.connectors);
 		app.renderDashboard();
 	},
@@ -2482,11 +2672,20 @@ var energyFlow = {
 	 */
 	onPeriodStep: function (dir) {
 		var list = this.availablePeriods(app.states, this.period);
-		var target = list[this.indexOfPeriod(list, this.selectedPeriod()) + dir];
+		var idx = this.indexOfPeriod(list, this.selectedPeriod());
+		if (idx === -1) {
+			// The period under the arrows is gone from the tree. Land on the running period
+			// rather than stepping from a position that no longer means anything.
+			this.resetToRunningPeriod();
+			this.update(app.states, app.connectors);
+			app.renderDashboard();
+			return;
+		}
+		var target = list[idx + dir];
 		if (!target) {
 			return;
 		}
-		var now = new Date();
+		var now = this.now();
 		var running =
 			target.year === now.getFullYear() &&
 			(target.month === null || target.month === now.getMonth() + 1) &&
