@@ -218,6 +218,8 @@
     "total_pv": "Production photovoltaïque",
     "total_self_sufficiency": "Autosuffisance",
     "total_wallbox": "Boîte murale",
+    "totals_group_from": "Sources",
+    "totals_group_to": "Utilisations",
     "wallbox_charging": "Chargement",
     "wallbox_ev_connected": "VE connecté",
     "wallbox_limitation": "Limitation",

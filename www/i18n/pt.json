@@ -218,6 +218,8 @@
     "total_pv": "Geração fotovoltaica",
     "total_self_sufficiency": "Autossuficiência",
     "total_wallbox": "Caixa de embutir",
+    "totals_group_from": "Fontes",
+    "totals_group_to": "Usos",
     "wallbox_charging": "Carregando",
     "wallbox_ev_connected": "VE conectado",
     "wallbox_limitation": "Limitação",

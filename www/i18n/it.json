@@ -218,6 +218,8 @@
     "total_pv": "Generazione fotovoltaica",
     "total_self_sufficiency": "Autosufficienza",
     "total_wallbox": "Scatola a muro",
+    "totals_group_from": "Fonti",
+    "totals_group_to": "Usi",
     "wallbox_charging": "Ricarica",
     "wallbox_ev_connected": "Veicolo connesso",
     "wallbox_limitation": "Limitazione",

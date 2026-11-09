@@ -218,6 +218,8 @@
     "total_pv": "Генерація PV",
     "total_self_sufficiency": "Самоокупність",
     "total_wallbox": "Wallbox",
+    "totals_group_from": "Джерела",
+    "totals_group_to": "Використання",
     "wallbox_charging": "Зарядка",
     "wallbox_ev_connected": "EV Connected",
     "wallbox_limitation": "Обмеження",

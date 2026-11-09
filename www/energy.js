@@ -2453,19 +2453,51 @@ var energyFlow = {
 			return html;
 		}
 
-		html += '<div class="day-totals-grid">';
-
-		html += this.renderTotalItem(t("total_pv"), d.todayPv, "#f9a825");
-		html += this.renderTotalItem(t("total_consumption"), d.todayConsumption, "#ff7043");
-		html += this.renderTotalItem(t("total_grid_import"), d.todayGridImport, "#f44336");
-		html += this.renderTotalItem(t("total_grid_export"), d.todayGridExport, "#2196f3");
-		html += this.renderTotalItem(t("total_battery_charge"), d.todayBatteryCharge, "#4caf50");
-		html += this.renderTotalItem(t("total_battery_discharge"), d.todayBatteryDischarge, "#66bb6a");
-
+		// A group is one grid cell, which is what caps the column count at the number of groups
+		// however wide the card grows.
+		var fromGroup = {
+			title: t("totals_group_from"),
+			items: [
+				{ label: t("total_pv"), value: d.todayPv, color: "#f9a825" },
+				{ label: t("total_grid_import"), value: d.todayGridImport, color: "#f44336" },
+				{ label: t("total_battery_discharge"), value: d.todayBatteryDischarge, color: "#66bb6a" },
+			],
+		};
+		var toGroup = {
+			title: t("totals_group_to"),
+			items: [
+				{ label: t("total_consumption"), value: d.todayConsumption, color: "#ff7043" },
+				{ label: t("total_grid_export"), value: d.todayGridExport, color: "#2196f3" },
+				{ label: t("total_battery_charge"), value: d.todayBatteryCharge, color: "#4caf50" },
+			],
+		};
+		// Indented under consumption rather than listed as a fourth destination: the flow diagram
+		// above branches the wallbox off the house node, so within this card the charging load is
+		// part of consumption, and a sibling entry would read as energy spent on top of it. What
+		// the App API itself reports is recorded in docs/WALLBOX_AND_CONSUMPTION.md.
 		if (d.todayWallbox !== null && d.todayWallbox > 0) {
-			html += this.renderTotalItem(t("total_wallbox"), d.todayWallbox, "#9c27b0");
+			toGroup.items.splice(1, 0, {
+				label: t("total_wallbox"),
+				value: d.todayWallbox,
+				color: "#9c27b0",
+				extraClass: "day-total-subitem",
+			});
 		}
+		var groups = [fromGroup, toGroup];
 
+		html += '<div class="day-totals-grid">';
+		for (var gi = 0; gi < groups.length; gi++) {
+			html += `<div class="day-total-group"><div class="day-total-group-title">${groups[gi].title}</div>`;
+			for (var ii = 0; ii < groups[gi].items.length; ii++) {
+				var gItem = groups[gi].items[ii];
+				html += this.renderTotalItem(gItem.label, gItem.value, gItem.color, { cls: gItem.extraClass });
+			}
+			html += "</div>";
+		}
+		html += "</div>";
+
+		// Below the grid, not in it: this value is a list of periods and needs the card's full
+		// width, which a column track cannot give it.
 		if (d.autarky !== null) {
 			var autarkyParts = [`${Math.round(d.autarky)}%`];
 			// The context figures are all running-period figures — showing them next to a
@@ -2482,14 +2514,18 @@ var energyFlow = {
 				for (var cfi = 0; cfi < contextFields.length; cfi++) {
 					var cVal = running[contextFields[cfi].key];
 					if (cVal !== null) {
-						autarkyParts.push(`${contextFields[cfi].label}: ${Math.round(cVal)}%`);
+						autarkyParts.push(`${contextFields[cfi].label}:&nbsp;${Math.round(cVal)}%`);
 					}
 				}
 			}
-			html += this.renderTotalItem(t("total_self_sufficiency"), null, "#157c00", autarkyParts.join(" · "));
+			// The separator binds to the part before it so a wrap never starts a line with "·".
+			html += this.renderTotalItem(t("total_self_sufficiency"), null, "#157c00", {
+				text: autarkyParts.join("&nbsp;· "),
+				cls: "day-total-summary",
+			});
 		}
 
-		html += "</div></div>";
+		html += "</div>";
 		return html;
 	},
 
@@ -2545,27 +2581,28 @@ var energyFlow = {
 		);
 	},
 
-	renderTotalItem: function (label, value, color, customValue) {
+	/**
+	 * The two optional arguments are named rather than positional: both are strings, so
+	 * transposing them would type-check and only show up on screen.
+	 *
+	 * @param {string} label - Row label, already translated
+	 * @param {number|null} value - Energy in kWh, formatted here; unused when `opts.text` is given
+	 * @param {string} color - Swatch colour
+	 * @param {{text?: string, cls?: string}} [opts] - `text` replaces the formatted value,
+	 *   `cls` adds a class to the row
+	 * @returns {string} One totals row
+	 */
+	renderTotalItem: function (label, value, color, opts) {
+		var o = opts || {};
 		return (
-			`<div class="day-total-item">` +
+			`<div class="day-total-item${o.cls ? ` ${o.cls}` : ""}">` +
 			`<div class="day-total-color" style="background:${color}"></div>` +
 			`<div class="day-total-label">${label}</div>` +
-			`<div class="day-total-value">${customValue || this.formatKwh(value)}</div>` +
+			`<div class="day-total-value">${o.text || this.formatKwh(value)}</div>` +
 			`</div>`
 		);
 	},
 
-	/**
-	 * Whether the OpenAPI's latest cycle delivered every section it asked for.
-	 *
-	 * The connector stamps both markers from one timestamp, so equality is exact: they differ
-	 * only when a section failed or answered with nothing. A cycle that did not complete leaves
-	 * some sections holding the previous cycle's values, which is why the flow is marked partial
-	 * rather than presented as a measurement.
-	 *
-	 * @param {object} states - ioBroker state values
-	 * @returns {boolean} True when the last poll served every requested section
-	 */
 	/**
 	 * Whether an OpenAPI poll cycle is part-written right now.
 	 *
@@ -2599,6 +2636,17 @@ var energyFlow = {
 		}
 	},
 
+	/**
+	 * Whether the OpenAPI's latest cycle delivered every section it asked for.
+	 *
+	 * The connector stamps both markers from one timestamp, so equality is exact: they differ
+	 * only when a section failed or answered with nothing. A cycle that did not complete leaves
+	 * some sections holding the previous cycle's values, which is why the flow is marked partial
+	 * rather than presented as a measurement.
+	 *
+	 * @param {object} states - ioBroker state values
+	 * @returns {boolean} True when the last poll served every requested section
+	 */
 	openapiCycleComplete: function (states) {
 		var polled = states["_openapi.info.lastPoll"];
 		var complete = states["_openapi.info.lastCompletePoll"];

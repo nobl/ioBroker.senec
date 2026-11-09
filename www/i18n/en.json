@@ -22,6 +22,8 @@
     "period_month": "Month",
     "period_year": "Year",
     "period_no_data": "No {period} data available. Requires API or Web connector with measurements enabled.",
+    "totals_group_from": "Sources",
+    "totals_group_to": "Uses",
     "total_pv": "PV Generation",
     "total_consumption": "Consumption",
     "total_grid_import": "Grid Import",

@@ -218,6 +218,8 @@
     "total_pv": "Фотоэлектрическая генерация",
     "total_self_sufficiency": "Самодостаточность",
     "total_wallbox": "Настенная коробка",
+    "totals_group_from": "Источники",
+    "totals_group_to": "Использование",
     "wallbox_charging": "Зарядка",
     "wallbox_ev_connected": "Электромобиль подключен",
     "wallbox_limitation": "Ограничение",

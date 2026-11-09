@@ -218,6 +218,8 @@
     "total_pv": "PV-generatie",
     "total_self_sufficiency": "Zelfvoorziening",
     "total_wallbox": "Wanddoos",
+    "totals_group_from": "Bronnen",
+    "totals_group_to": "Gebruik",
     "wallbox_charging": "Opladen",
     "wallbox_ev_connected": "EV verbonden",
     "wallbox_limitation": "Beperking",

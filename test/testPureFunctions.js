@@ -823,6 +823,21 @@ describe("state_trans keys", () => {
 		}
 	});
 
+	// The unit is what every client labels the value with, and the field name carries the unit
+	// it is reported in. `today.wallboxInWh` was declared in watts, so Admin, charts and a
+	// history adapter all presented an energy figure as power.
+	it("declares every In<unit> state in the unit its name promises", () => {
+		const promised = { InWh: "Wh", InW: "W", InPercent: "%", InKwh: "kWh" };
+		for (const [id, attr] of Object.entries(state_attr)) {
+			const suffix = Object.keys(promised).find((s) => id.endsWith(s));
+			if (suffix && attr && typeof attr === "object") {
+				// Asserted rather than skipped when absent: no unit at all leaves the state
+				// unlabelled, which is the same defect in a quieter form.
+				assert.equal(attr.unit, promised[suffix], `state_attr["${id}"] is declared in ${attr.unit}`);
+			}
+		}
+	});
+
 	// doDecode writes its result to "<datapoint>_Text". Without a state_attr entry that state is
 	// created with no name, role or type, so the decoded text shows up as an untyped raw object.
 	it("has a matching state_attr _Text entry for every datapoint", () => {

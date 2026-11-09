@@ -120,9 +120,11 @@ var i18n = {
 		var self = this;
 		var url = new URL(`i18n/${lang}.json`, baseUrl).href;
 
-		// Always revalidate. Nothing under www/ is version-stamped, so a browser is free to
-		// keep serving the dictionary it cached before an adapter update — which resolves any
-		// key added by that update to its raw name. Unchanged files still answer 304.
+		// Always revalidate. Nothing here carries a cache key, and the web adapter serves www/
+		// with `Cache-Control: public, max-age=<staticAssetCacheMaxAge>` — 60 seconds by
+		// default, but the installation may set it to anything. For as long as that lasts a
+		// browser may still answer an update from its own copy, which resolves any key the
+		// update added to its raw name. Unchanged files still answer 304.
 		return fetch(url, { cache: "no-cache" })
 			.then(function (res) {
 				if (!res.ok) {

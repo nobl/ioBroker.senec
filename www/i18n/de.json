@@ -218,6 +218,8 @@
     "total_pv": "PV-Erzeugung",
     "total_self_sufficiency": "Autarkie",
     "total_wallbox": "Wallbox",
+    "totals_group_from": "Woher",
+    "totals_group_to": "Wohin",
     "wallbox_charging": "Lädt",
     "wallbox_ev_connected": "EV verbunden",
     "wallbox_limitation": "Begrenzung",

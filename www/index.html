@@ -224,7 +224,9 @@
 
 			.grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+				/* `min()` keeps the track from staying at 280px on a narrower container. Below a
+				   328px viewport it did, and the card reached 8px into the page's side margin. */
+				grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
 				gap: 16px;
 			}
 
@@ -559,16 +561,38 @@
 				text-align: center;
 			}
 
+			/* Sized by the card, not the viewport. The card is bounded by the container's
+			   max-width and its own padding, and `#dashboard` is an auto-fit grid that would
+			   narrow it further if it ever held a second card again — a viewport media query
+			   sees none of that and hands out columns the card cannot show. 200px is a chosen
+			   floor, not a measured one: several locales wrap their longest label at that
+			   width. A cell holds a whole group, so the number of groups caps the column
+			   count. */
 			.day-totals-grid {
 				display: grid;
-				grid-template-columns: repeat(2, 1fr);
-				gap: 4px 16px;
+				grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+				gap: 10px 16px;
 			}
 
-			@media (min-width: 600px) {
-				.day-totals-grid {
-					grid-template-columns: repeat(3, 1fr);
-				}
+			.day-total-group {
+				display: flex;
+				flex-direction: column;
+				/* Caps how far a value can sit from its own label on a wide screen. Belongs
+				   here and not on the track: `auto-fit` counts columns against a definite
+				   track maximum, so capping the track there would cost a column instead. */
+				max-width: 420px;
+			}
+
+			.day-total-group-title {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				color: var(--color-text-secondary);
+				opacity: 0.65;
+				/* Indented by the swatch width plus its gap, so the title starts where the
+				   labels below it start. */
+				padding: 2px 0 2px 18px;
 			}
 
 			.day-total-item {
@@ -576,6 +600,12 @@
 				align-items: center;
 				gap: 8px;
 				padding: 6px 0;
+			}
+
+			/* A breakdown of the row above it, not a figure of its own. Must stay after
+			   `.day-total-item`, whose padding shorthand would otherwise reset the indent. */
+			.day-total-subitem {
+				padding-left: 18px;
 			}
 
 			.day-total-color {
@@ -589,6 +619,10 @@
 				font-size: 13px;
 				color: var(--color-text-secondary);
 				flex: 1;
+				/* Headroom for translations: a label longer than its column would otherwise
+				   set the item's minimum width and push the row past the column's edge. */
+				min-width: 0;
+				overflow-wrap: anywhere;
 			}
 
 			.day-total-value {
@@ -596,6 +630,21 @@
 				font-weight: 600;
 				color: var(--color-text);
 				white-space: nowrap;
+			}
+
+			/* A summary row sits below the grid and spans the card; its value is a list, so it
+			   wraps and stays beside its label instead of being pushed to the opposite edge. */
+			.day-total-summary {
+				align-items: baseline;
+				margin-top: 4px;
+			}
+
+			.day-total-summary .day-total-label {
+				flex: 0 0 auto;
+			}
+
+			.day-total-summary .day-total-value {
+				white-space: normal;
 			}
 
 			/* Charts */

@@ -442,6 +442,117 @@ describe("dashboard — period browsing and totals acceptance", () => {
 		});
 	});
 
+	describe("the grouped totals", () => {
+		/**
+		 * Which element something sits inside is the question here, since the self-sufficiency
+		 * row renders beside the grid rather than in it and a plain `indexOf` cannot tell the
+		 * two apart. A `<div>` depth scan answers it: the card's other elements — the period
+		 * buttons — are balanced and hold no `<div>`, so they cannot skew the count.
+		 *
+		 * @param {string} html - Rendered markup
+		 * @param {string} className - Class on the element to open
+		 * @returns {string} That element's inner markup
+		 */
+		function innerOf(html, className) {
+			const start = html.indexOf(`<div class="${className}"`);
+			assert.notEqual(start, -1, `no element with class ${className} in ${html}`);
+			const open = html.indexOf(">", start) + 1;
+			let depth = 1;
+			let at = open;
+			while (depth > 0) {
+				const nextOpen = html.indexOf("<div", at);
+				const nextClose = html.indexOf("</div>", at);
+				assert.notEqual(nextClose, -1, `unbalanced markup after ${className}`);
+				if (nextOpen !== -1 && nextOpen < nextClose) {
+					depth++;
+					at = nextOpen + 4;
+				} else {
+					depth--;
+					if (depth === 0) {
+						return html.slice(open, nextClose);
+					}
+					at = nextClose + 6;
+				}
+			}
+			throw new Error("unreachable");
+		}
+
+		/**
+		 * @param {object} [overrides] - Totals to apply on top of the balanced set
+		 * @returns {string} The totals card's markup
+		 */
+		function totals(overrides = {}) {
+			energyFlow.applyTotals(BALANCED_TOTALS, 50);
+			Object.assign(energyFlow.data, overrides);
+			return energyFlow.renderDayTotals(energyFlow.data);
+		}
+
+		it("renders one group per direction, each naming itself", () => {
+			const grid = innerOf(totals(), "day-totals-grid");
+			const titles = grid.match(/day-total-group-title">([^<]*)</g) || [];
+			assert.deepEqual(titles.length, 2, grid);
+			assert.ok(grid.includes(">Sources<"), grid);
+			assert.ok(grid.includes(">Uses<"), grid);
+		});
+
+		/**
+		 * @param {string} html - A group's markup
+		 * @returns {Array<{label: string, value: string}>} Its rows, in render order
+		 */
+		function rowsOf(html) {
+			const pattern = /day-total-label">([^<]*)<\/div><div class="day-total-value">([^<]*)</g;
+			return [...html.matchAll(pattern)].map((m) => ({ label: m[1], value: m[2] }));
+		}
+
+		it("pairs every figure with its own label, on the side its energy moves to, in order", () => {
+			const grid = innerOf(totals({ todayWallbox: 7.3 }), "day-totals-grid");
+			const from = innerOf(grid, "day-total-group");
+			const to = grid.slice(grid.indexOf(from) + from.length);
+			// Grid import is absent from the balanced set, so it also pins how a missing figure reads.
+			assert.deepEqual(rowsOf(from), [
+				{ label: "PV Generation", value: "6.0 kWh" },
+				{ label: "Grid Import", value: "-" },
+				{ label: "Battery Discharge", value: "4.0 kWh" },
+			]);
+			assert.deepEqual(rowsOf(to), [
+				{ label: "Consumption", value: "10.0 kWh" },
+				{ label: "Wallbox", value: "7.3 kWh" },
+				{ label: "Grid Export", value: "2.0 kWh" },
+				{ label: "Battery Charge", value: "3.0 kWh" },
+			]);
+		});
+
+		it("leaves the wallbox out when it reports nothing", () => {
+			assert.equal(totals({ todayWallbox: null }).includes("Wallbox"), false);
+			assert.equal(totals({ todayWallbox: 0 }).includes("Wallbox"), false);
+		});
+
+		it("shows the wallbox as a breakdown of consumption, directly beneath it", () => {
+			const grid = innerOf(totals({ todayWallbox: 7.3 }), "day-totals-grid");
+			const wallbox = grid.indexOf("Wallbox");
+			assert.ok(wallbox > grid.indexOf("Consumption"), grid);
+			assert.ok(wallbox < grid.indexOf("Grid Export"), grid);
+			// Indented rather than listed as a fourth destination — the flow diagram above
+			// branches the wallbox off the house node.
+			const row = grid.slice(grid.lastIndexOf('<div class="day-total-item', wallbox), wallbox);
+			assert.ok(row.includes("day-total-subitem"), row);
+		});
+
+		it("keeps the self-sufficiency row beside the grid, not inside it", () => {
+			const html = totals();
+			assert.ok(html.includes("day-total-summary"), html);
+			assert.equal(innerOf(html, "day-totals-grid").includes("day-total-summary"), false);
+		});
+
+		it("binds each period to its figure so a wrap cannot orphan a separator", () => {
+			app.config = { api_use: false };
+			app.states["_meinsenec.Autarky.week"] = 61;
+			const summary = innerOf(totals(), "day-total-item day-total-summary");
+			assert.ok(summary.includes("Week:&nbsp;61%"), summary);
+			assert.ok(summary.includes("&nbsp;· "), summary);
+		});
+	});
+
 	describe("the self-sufficiency row", () => {
 		it("is left out when the figure cannot be derived", () => {
 			// Half a subtree used to render "Self-sufficiency 0 %" beside a dash for generation.

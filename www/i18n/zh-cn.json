@@ -218,6 +218,8 @@
     "total_pv": "光伏发电",
     "total_self_sufficiency": "自给自足",
     "total_wallbox": "壁箱",
+    "totals_group_from": "来源",
+    "totals_group_to": "用途",
     "wallbox_charging": "收费",
     "wallbox_ev_connected": "电动车联网",
     "wallbox_limitation": "局限性",

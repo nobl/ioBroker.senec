@@ -218,6 +218,8 @@
     "total_pv": "Generacja PV",
     "total_self_sufficiency": "Samowystarczalność",
     "total_wallbox": "Wallbox",
+    "totals_group_from": "Skąd",
+    "totals_group_to": "Dokąd",
     "wallbox_charging": "Ładowanie",
     "wallbox_ev_connected": "Połączono z pojazdem elektrycznym",
     "wallbox_limitation": "Ograniczenie",
