@@ -157,6 +157,8 @@ I am grateful to everyone who supports my work through GitHub Sponsors and in ot
   Placeholder for the next version (at the beginning of the line):
   ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
 ### 2.16.6 (2026-11-11)
 - Change: **The energy totals are grouped by direction.** One column lists where the energy came from — generation, grid draw, battery discharge — and the next where it went: consumption, feed-in and battery charge. The wallbox, when it reports a figure, is indented beneath consumption rather than listed as a destination of its own, because the energy-flow diagram above draws it as a branch off the house. Grouping the figures this way is also what keeps the card readable at any width, because a column is now a whole group rather than a single figure, which is what limits how many columns there can be.
 - Fixed: **The energy totals no longer run off the side of the card.** The *Autarkie* line lists the week, month, year and lifetime figures beside today's, and as one unbreakable cell it widened its column until the columns beside it were pushed out of view — on a tablet the third column was simply gone. That line now sits below the totals, spanning the card and wrapping. The totals themselves also size their columns by the width of the card rather than of the window, which the card is free to be far narrower than, and no longer let a column grow wide enough to strand a figure far from its own label.
